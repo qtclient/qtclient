@@ -3,6 +3,7 @@
 
 #include "analysers/itempricestorage.h"
 #include "config/characterconfigurationmanager.h"
+#include "config/clientoptions.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/containercontroller.h"
@@ -17,18 +18,24 @@ void TContainerStorageController::setCharacterConfigurationManager(config::TChar
     m_characterConfigurationManager = manager;
 }
 
-TContainerStorageController::TContainerStorageController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
+TContainerStorageController::TContainerStorageController(TSidebarManager* SidebarManager,
+                                                         std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                                         config::TClientOptions* ClientOptions, QQuickItem* ParentItem,
                                                          QObject* parent)
     : cip::tibia::gamewindow::TContainerStorageController(parent)
-    , m_sidebars(sidebars)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
+    , m_sidebars(SidebarManager)
+    , m_gameActionMapper(std::move(GameActionMapper))
+    , m_clientOptions(ClientOptions)
+    , m_parentItem(ParentItem)
 {
     container::ownProductSurface(this);
     m_displayContainerAsynchronousTimer.setSingleShot(true);
     m_displayContainerAsynchronousTimer.setInterval(0);
     connect(&m_displayContainerAsynchronousTimer, &QTimer::timeout, this,
             &TContainerStorageController::onDisplayContainerAsynchronousTriggerd);
+    if (m_clientOptions)
+        connect(m_clientOptions, &config::TClientOptions::containerStorageControllerOptionsChanged, this,
+                &TContainerStorageController::onOptionsChanged);
 }
 
 TContainerStorageController::~TContainerStorageController()
@@ -140,7 +147,7 @@ TContainerController* TContainerStorageController::createContainerController(con
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     auto* controller = new TContainerController(containerId, session ? session->containerProtocolMessageHandler().get() : nullptr,
-                                                m_gameWindowItem, m_engine, this);
+                                                m_parentItem, m_sidebars->engine(), this);
     m_containerControllers[containerId] = controller;
     updateContainerController(containerId, isNewContainer);
     // CIP connects the controller to the session; the input schemes are the host's.

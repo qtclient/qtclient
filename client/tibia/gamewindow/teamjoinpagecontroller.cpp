@@ -125,4 +125,10 @@ void TTeamJoinPageController::onTeamsChanged()
     m_proxy->setTeams(m_storage->teams());
 }
 
+void TTeamJoinPageController::setMapStorages(minimap::TMinimapTileStorage*, minimap::TMinimapMarkerStorage*,
+                                             std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage)
+{
+    m_mapStaticDataStorage = std::move(StaticDataStorage);
+}
+
 }

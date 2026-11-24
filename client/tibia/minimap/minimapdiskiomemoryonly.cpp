@@ -3,7 +3,7 @@
 namespace tibia::minimap {
 
 TMinimapDiskIOMemoryOnly::TMinimapDiskIOMemoryOnly(QObject* parent)
-    : TMinimapDiskIO(parent)
+    : TMinimapDiskIO(nullptr, parent)
 {
 }
 

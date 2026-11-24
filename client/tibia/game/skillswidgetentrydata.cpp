@@ -366,7 +366,18 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
 
 }
 
-SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type)
+TSkillsWidgetEntryUpdater::TSkillsWidgetEntryUpdater(
+    std::shared_ptr<shared::IExperienceGainChangeTracker> experienceGainChangeTracker)
+    : m_experienceGainChangeTracker(std::move(experienceGainChangeTracker))
+{
+}
+
+void TSkillsWidgetEntryUpdater::updateEntry(TSkillsWidgetEntryData& entry) const
+{
+    entry.assign(buildSkillsWidgetEntry(entry.type(), m_precisePercent));
+}
+
+SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precisePercent)
 {
     switch (type) {
         case SkillType::Experience:
@@ -378,7 +389,7 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type)
         case SkillType::Axe:
         case SkillType::Fist:
         case SkillType::Fishing: {
-            SkillsWidgetEntry entry = buildSkillEntry(type);
+            SkillsWidgetEntry entry = buildSkillEntry(type, precisePercent);
             entry.progressBarVisible = skillHasProgressBar(type);
             return entry;
         }

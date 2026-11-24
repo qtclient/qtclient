@@ -96,9 +96,9 @@ void TReportViolationController::open(const EType type, const QString& name, con
     if (m_lastReport.isValid() && m_lastReport.secsTo(now) < ReportCooldownSeconds) {
         // A chat system message and the same line beneath the world map.
         const QString text = qtTrId("new_report_too_soon_error");
-        for (const A messageType : { A::ADD_SYSTEM_CHAT_MESSAGE, A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE }) {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(messageType, text, chat::consoleColor(30)));
-        }
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(text));
+        Q_EMIT publishGameAction(
+            std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, text, chat::consoleColor(30)));
         return;
     }
     dialog()->close();

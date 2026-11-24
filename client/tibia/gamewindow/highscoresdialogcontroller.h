@@ -52,6 +52,8 @@ class THighscoresData final : public cip::tibia::highscores::THighscoresData
 public:
     explicit THighscoresData(std::vector<THighscoreEntry> entries, QObject* parent = nullptr);
 
+    QObject* highscoreEntryModel() const override { return const_cast<THighscoresEntriesModel*>(&m_model); }
+
 private:
     THighscoresEntriesModel m_model;
 };

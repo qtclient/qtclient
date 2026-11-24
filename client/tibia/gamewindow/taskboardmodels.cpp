@@ -15,8 +15,7 @@ namespace {
 /// The QML AppearanceTypeHelper service the delivery captions come from.
 qmlcomponents::TAppearanceTypeHelperQmlService* appearanceTypeHelper()
 {
-    static auto* const helper = new qmlcomponents::TAppearanceTypeHelperQmlService();
-    return helper;
+    return qmlcomponents::TAppearanceTypeHelperQmlService::instance();
 }
 
 }

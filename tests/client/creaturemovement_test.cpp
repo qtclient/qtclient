@@ -87,7 +87,16 @@ TEST(CreatureMovementSpeedCalculator, NoFormulaBeforeLogin)
 {
     TCreatureMovementSpeedCalculator calculator;
     EXPECT_EQ(calculator.effectiveSpeed(220), 0);
-    EXPECT_EQ(calculator.serverBeat(), 0);
+    EXPECT_EQ(calculator.serverBeat(), 1);
+}
+
+TEST(CreatureMovementSpeedCalculator, ConstructedWithFormula)
+{
+    const TCreatureMovementSpeedCalculator calculator(857.36, 261.29, -4795.01);
+    EXPECT_DOUBLE_EQ(calculator.speedFormulaA(), 857.36);
+    EXPECT_DOUBLE_EQ(calculator.speedFormulaB(), 261.29);
+    EXPECT_DOUBLE_EQ(calculator.speedFormulaC(), -4795.01);
+    EXPECT_EQ(calculator.serverBeat(), 1);
 }
 
 // Mode 1: the placeholder is on the destination; covered field and offset are

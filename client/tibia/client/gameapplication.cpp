@@ -7,6 +7,7 @@
 #include "app/launcherenv.h"
 #include "client/gameclient.h"
 #include "client/preventcloseeventfilter.h"
+#include "client/translationloader.h"
 #include "config/clientoptions.h"
 #include "config/clientsettings.h"
 #include "config/tibiaconfig.h"
@@ -53,11 +54,14 @@ TGameApplicationBase::TGameApplicationBase(int& argc, char** argv)
     : QGuiApplication(argc, argv)
     , m_pTibiaFileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
     , m_pTibiaConfig(std::make_shared<config::TTibiaConfig>(*m_pTibiaFileSystemHelper))
+    , m_pTranslationLoader(std::make_unique<TTranslationLoader>(m_pTibiaFileSystemHelper))
 {
     config::setProcessTibiaConfig(m_pTibiaConfig);
     if (qEnvironmentVariable("QT_D3D_NO_VBLANK_THREAD").isEmpty())
         qputenv("QT_D3D_NO_VBLANK_THREAD", "1");
 }
+
+void TGameApplicationBase::prepareProcess() {}
 
 TGameApplicationBase::~TGameApplicationBase()
 {
@@ -66,6 +70,7 @@ TGameApplicationBase::~TGameApplicationBase()
     // go with the application, not with the process's statics.
     config::setProcessTibiaConfig(nullptr);
     google::protobuf::ShutdownProtobufLibrary();
+    m_pTranslationLoader.reset();
 }
 
 void TGameApplicationBase::initialize()
@@ -207,8 +212,8 @@ TGameApplication::TStartOptions TGameApplication::readStartOptions()
 bool TGameApplication::showClientWindow(const THostWindowSetup& HostWindowSetup, const TStartClient& StartClient)
 {
     QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedKingdom));
-    // Host: qtclient's client strings come from the bundled client.en.qm.
-    app::installTranslations();
+    if (!translationLoader()->reloadTranslator())
+        qWarning() << "Loading of translations failed!";
 
     auto* component = new QQmlComponent(qmlEngine(), this);
     const QUrl url(QStringLiteral("clientwindow.qml"));

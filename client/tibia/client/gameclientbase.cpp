@@ -34,12 +34,16 @@
 #include "spells/spellinfostorage.h"
 #include "sprites/resourcespritesmanager.h"
 #include "sprites/spriteresolver.h"
+#include "sprites/spritesheetcache.h"
+#include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
 #include "sprites/spritesystem.h"
 #include "assets/assethandler.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
+#include "filesystemhelper.h"
 
+#include <QDebug>
 #include <QDir>
 #include <QObject>
 #include <QQmlContext>
@@ -48,6 +52,17 @@
 #include <stdexcept>
 
 namespace tibia::client {
+
+namespace {
+
+/// CIP: a file system helper whose data and base directory is `Path`, with a
+/// file system helper of its own.
+std::shared_ptr<shared::TTibiaFileSystemHelper> makeTibiaFileSystemHelper(const QString& Path)
+{
+    return std::make_shared<shared::TTibiaFileSystemHelper>(QDir(Path), std::make_shared<shared::TFileSystemHelper>());
+}
+
+}
 
 TGameClientBase::TGameClientBase(QQmlEngine* Engine,
                                  std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
@@ -59,11 +74,13 @@ TGameClientBase::TGameClientBase(QQmlEngine* Engine,
     , m_pTibiaConfig(TibiaConfig ? std::move(TibiaConfig) : config::processTibiaConfig())
     , m_pAppearancesManager(std::make_shared<appearances::TAppearancesManager>())
     , m_pCyclopediaMapStaticDataStorage(std::make_shared<cyclopedia::TCyclopediaMapStaticDataStorage>())
+    , m_pSpellInfoStorage(std::make_unique<spells::TSpellInfoStorage>())
     , m_pPassiveAbilityInfoStorage(std::make_unique<game::TPassiveAbilityInfoStorage>())
     , m_pProficiencyStorage(std::make_unique<proficiency::TProficiencyStorage>(m_pAppearancesManager))
 {
     appearances::TAppearancesManager::setInstance(m_pAppearancesManager.get());
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(m_pCyclopediaMapStaticDataStorage.get());
+    spells::TSpellInfoStorage::setInstance(m_pSpellInfoStorage.get());
     game::TPassiveAbilityInfoStorage::setInstance(m_pPassiveAbilityInfoStorage.get());
 }
 
@@ -74,13 +91,13 @@ TGameClientBase::~TGameClientBase()
         // Host: the sprite system goes back to its own resolver.
         if (m_pSpriteResolver)
             sprites::TSpriteSystem::instance().setResolver(nullptr);
+        sprites::TSpriteSystem::instance().setSpritesheetManager(nullptr);
         m_pMinimapWorldFeed.reset();
         minimap::TMinimapMarkerStorage::setActive(nullptr);
         m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(nullptr);
         saveMinimapToDisk();
     }
-    if (m_pSpellInfoStorage)
-        spells::TSpellInfoStorage::setInstance(nullptr);
+    spells::TSpellInfoStorage::setInstance(nullptr);
     game::TPassiveAbilityInfoStorage::setInstance(nullptr);
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(nullptr);
     appearances::TAppearancesManager::setInstance(nullptr);
@@ -120,25 +137,56 @@ void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
     renderer::updateHighlightStrength(Timestamp);
 }
 
+std::shared_ptr<config::TTibiaConfig> TGameClientBase::createResourcesTibiaConfig()
+{
+    const std::shared_ptr<shared::TTibiaFileSystemHelper> helper =
+        makeTibiaFileSystemHelper(gamecore::resourcesDirectory().canonicalPath());
+    return std::make_shared<config::TTibiaConfig>(*helper);
+}
+
+std::shared_ptr<sprites::TSpritesheetManager> TGameClientBase::createSpritesheetManager(const config::TTibiaConfig& TibiaConfig)
+{
+    auto decompressor = std::make_shared<sprites::TSpritesheetDecompressorThreadpool>();
+    const auto capacity = static_cast<uint32_t>(TibiaConfig.clientSettingAtLeast(
+        QStringLiteral("GRAPHICS"), QStringLiteral("spritesheetCacheSize"), sprites::TSpriteSystem::defaultCacheCapacity(), 2));
+    qDebug() << "Using spritesheet cache size of" << capacity;
+    return std::make_shared<sprites::TSpritesheetManager>(std::move(decompressor),
+                                                          std::make_shared<sprites::TSpritesheetCache>(capacity));
+}
+
+std::shared_ptr<assets::TAssetFileSystemHelper> TGameClientBase::createAssetFileSystemHelper()
+{
+    // Host: the assets' and sounds' search roots of qtclient's data tree (CIP:
+    // the directories of a file system helper on the Resources directory).
+    const std::string assetsRoot = gamecore::assetsRoot(ClientVersion);
+    gamecore::soundsRoot(ClientVersion);
+    const QDir assetsDirectory(QString::fromStdString(tibia::files::data().getRealPath(assetsRoot)));
+    const std::string soundsPath = tibia::files::data().getRealPath("sounds");
+    const QDir soundsDirectory = soundsPath.empty() ? assetsDirectory : QDir(QString::fromStdString(soundsPath));
+    return std::make_shared<assets::TAssetFileSystemHelper>(assetsDirectory, soundsDirectory);
+}
+
 void TGameClientBase::initializeStorages()
 {
+    const std::shared_ptr<config::TTibiaConfig> resourcesTibiaConfig = createResourcesTibiaConfig();
+    m_pSpritesheetManager = createSpritesheetManager(*resourcesTibiaConfig);
+    // Host: the code that reaches the spritesheets process-wide finds the client's.
+    sprites::TSpriteSystem::instance().setSpritesheetManager(m_pSpritesheetManager);
+    m_pAssetFileSystemHelper = createAssetFileSystemHelper();
     m_pTraderStorage = std::make_shared<game::TTraderStorage>();
     m_pResourceSpritesManager = std::make_shared<sprites::TResourceSpritesManager>();
     m_pMinimapTileStorage = std::make_shared<minimap::TMinimapTileStorage>();
     m_pMinimapMarkerStorage = std::make_shared<minimap::TMinimapMarkerStorage>();
-    m_pMinimapTileManagerDiskIO = std::make_shared<minimap::TMinimapDiskIOAsync>(
-        tibiaFileSystemHelper()->getMinimapDirectory().absolutePath());
+    m_pMinimapTileManagerDiskIO = std::make_shared<minimap::TMinimapDiskIOAsync>(tibiaFileSystemHelper());
     m_pMinimapTileManager = std::make_shared<minimap::TMinimapTileManager>(m_pMinimapTileManagerDiskIO, m_pMinimapTileStorage);
     // Host: the code that still reaches the markers through these finds them.
     minimap::TMinimapMarkerStorage::setActive(m_pMinimapMarkerStorage.get());
     m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(m_pMinimapMarkerStorage.get());
-    createSpellInfoStorage();
 }
 
 void TGameClientBase::initializeMinimap()
 {
-    m_pMinimapTileDiskIO =
-        std::make_shared<minimap::TMinimapDiskIOAsync>(tibiaFileSystemHelper()->getMinimapDirectory().absolutePath());
+    m_pMinimapTileDiskIO = std::make_shared<minimap::TMinimapDiskIOAsync>(tibiaFileSystemHelper());
     // Host: CipSoft's bundled minimap (Resources/minimap, next to the assets)
     // is copied in while the user's minimap has no tiles; reads fall back to
     // it. getRealPath, not getRealDir plus a name: a "/" search root must not
@@ -213,14 +261,14 @@ void TGameClientBase::saveMinimapToDisk()
 
 void TGameClientBase::initializeSpriteResolver()
 {
-    QObject::connect(&sprites::TSpriteSystem::instance().spritesheets(),
-                     &sprites::TSpritesheetManager::spritesheetUncompressFailed, m_pResourceSpritesManager.get(),
+    QObject::connect(spritesheetManager().get(), &sprites::TSpritesheetManager::spritesheetUncompressFailed,
+                     m_pResourceSpritesManager.get(),
                      [this](const sprites::TSpritesheetID& SpritesheetID) { onSpritesheetUncompressFailed(SpritesheetID); });
     // CIP: the client's resolver draws from the spritesheet manager and the
-    // minimap tiles of the client's tile manager. Host: the spritesheet
-    // manager is the sprite system's, and the resolver is installed there for
-    // the code that reaches it process-wide.
-    m_pSpriteResolver = std::make_shared<sprites::TSpriteResolver>(sprites::TSpriteSystem::instance().sharedSpritesheets());
+    // minimap tiles of the client's tile manager. Host: the resolver is
+    // installed in the sprite system for the code that reaches it
+    // process-wide.
+    m_pSpriteResolver = std::make_shared<sprites::TSpriteResolver>(spritesheetManager());
     m_pSpriteResolver->setMinimapTileManager(minimapTileManager());
     sprites::TSpriteSystem::instance().setResolver(m_pSpriteResolver);
     m_pEngine->rootContext()->setContextProperty(QStringLiteral("ResourceSpritesManager"), m_pResourceSpritesManager.get());
@@ -231,7 +279,7 @@ void TGameClientBase::initializeAppearanceInstanceFactory()
     m_pAppearanceInstanceFactory = std::make_shared<appearances::TAppearanceInstanceFactory>(m_pAppearancesManager);
     const std::shared_ptr<appearances::TAppearanceInstanceTracker> tracker = m_pAppearanceInstanceFactory->instanceTracker();
     QObject::connect(tracker.get(), &appearances::TAppearanceInstanceTracker::loadSpritesheetWithID,
-                     &sprites::TSpriteSystem::instance().spritesheets(), &sprites::TSpritesheetManager::getSpritesheet);
+                     spritesheetManager().get(), &sprites::TSpritesheetManager::getSpritesheet);
     m_pAppearanceInstanceGenericStoragesManager =
         std::make_shared<appearances::TAppearanceInstanceGenericStoragesManager>(appearanceInstanceFactory());
     m_pAppearanceInstanceGenericStoragesManager->registerInQmlContext(m_pEngine->rootContext());
@@ -253,22 +301,16 @@ void TGameClientBase::initializeQmlContext()
 void TGameClientBase::initializeAssets()
 {
     gamecore::setClientVersion(ClientVersion);
-    // Host: the directories the file system helper names (CIP): the assets'
-    // and sounds' search roots of qtclient's data tree.
     const std::string assetsRoot = gamecore::assetsRoot(ClientVersion);
-    gamecore::soundsRoot(ClientVersion);
-    const QDir assetsDirectory(QString::fromStdString(tibia::files::data().getRealPath(assetsRoot)));
-    const std::string soundsPath = tibia::files::data().getRealPath("sounds");
-    const QDir soundsDirectory = soundsPath.empty() ? assetsDirectory : QDir(QString::fromStdString(soundsPath));
-    m_pAssetAsyncLoader = std::make_shared<assets::TAssetAsyncLoader>(
-        std::make_shared<assets::TAssetFileSystemHelper>(assetsDirectory, soundsDirectory));
-    m_pAssetManager = std::make_shared<assets::TAssetManager>(assetsDirectory.absolutePath(), m_pAssetAsyncLoader, nullptr);
+    m_pAssetAsyncLoader = std::make_shared<assets::TAssetAsyncLoader>(m_pAssetFileSystemHelper);
+    m_pAssetManager = std::make_shared<assets::TAssetManager>(m_pAssetFileSystemHelper->assetsDirectory().absolutePath(),
+                                                              m_pAssetAsyncLoader, nullptr);
 
     const std::shared_ptr<appearances::TAppearancesManager> appearances = appearancesManager();
     // Host: the login sends the assets' identifier (assets.json.sha256).
     appearances->readAssetIdentifier(assetsRoot);
     m_pAssetHandler = std::make_shared<assets::TAssetHandler>(
-        sprites::TSpriteSystem::instance().sharedSpritesheets(), appearances, m_pSoundMetadataManager, m_pSoundManager,
+        spritesheetManager(), appearances, m_pSoundMetadataManager, m_pSoundManager,
         m_pTraderStorage, m_pProficiencyStorage.get(),
         [appearances](auto information) { appearances->setStaticInformation(std::move(information)); },
         [](auto areas) { appearances::TAppearancesManager::setStaticMapData(std::move(areas)); },
@@ -290,8 +332,7 @@ void TGameClientBase::initializeAssets()
     QObject::connect(manager, &assets::TAssetManager::error, manager, [this] { onAssetsError(); });
     QObject::connect(handler, &assets::TAssetHandler::newAssetDataToLoad, manager,
                      &assets::TAssetManager::onNewAdditionalAssetToLoad);
-    QObject::connect(sprites::TSpriteSystem::instance().sharedSpritesheets().get(),
-                     &sprites::TSpritesheetManager::spritesheetMissing, m_pAssetAsyncLoader.get(),
+    QObject::connect(spritesheetManager().get(), &sprites::TSpritesheetManager::spritesheetMissing, m_pAssetAsyncLoader.get(),
                      &assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::QueuedConnection);
     // Host: the Cyclopedia map's process-wide fallback storage asks this loader.
     sprites::TSpriteSystem::instance().setAssetLoader(m_pAssetAsyncLoader);
@@ -332,12 +373,6 @@ void TGameClientBase::connectToGameActionRouter()
     // Host: qtclient's marker storage handles the marker dialog's actions.
     QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, minimapMarkerStorage().get(),
                      qOverload<const input::IGameActionPtr&>(&minimap::TMinimapMarkerStorage::handleGameAction));
-}
-
-void TGameClientBase::createSpellInfoStorage()
-{
-    m_pSpellInfoStorage = std::make_unique<spells::TSpellInfoStorage>();
-    spells::TSpellInfoStorage::setInstance(m_pSpellInfoStorage.get());
 }
 
 std::shared_ptr<shared::TTibiaFileSystemHelper> TGameClientBase::tibiaFileSystemHelper() const
@@ -422,6 +457,13 @@ std::shared_ptr<sprites::TSpriteResolver> TGameClientBase::spriteResolver() cons
     if (!m_pSpriteResolver)
         throw std::logic_error("m_pSpriteResolver was not initialized yet");
     return m_pSpriteResolver;
+}
+
+std::shared_ptr<sprites::TSpritesheetManager> TGameClientBase::spritesheetManager() const
+{
+    if (!m_pSpritesheetManager)
+        throw std::logic_error("m_pSpritesheetManager was not initialized yet");
+    return m_pSpritesheetManager;
 }
 
 gamewindow::TStoreAndResourceBalanceHelperController* TGameClientBase::storeAndResourceBalanceHelperController() const

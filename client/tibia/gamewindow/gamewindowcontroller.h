@@ -21,6 +21,9 @@ class QObject;
 class QQuickItem;
 
 namespace tibia {
+namespace input {
+class TEventFilterManager;
+}
 namespace appearances {
 class TAppearanceInstanceFactory;
 }
@@ -75,7 +78,7 @@ public:
     TGameWindowController(std::shared_ptr<game::TGameActionRouter> GameActionRouter,
                           std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
                           QQmlEngine* Engine, config::TClientOptions* ClientOptions, QQuickItem* ClientWindow,
-                          const QUrl& HintsUrl, const QUrl& ClientServicesUrl,
+                          std::shared_ptr<input::TEventFilterManager> EventFilterManager, const QUrl& HintsUrl, const QUrl& ClientServicesUrl,
                           std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
                           std::shared_ptr<shared::IClockService> ClockService, QObject* parent = nullptr);
     ~TGameWindowController() override;
@@ -107,7 +110,6 @@ public:
     void onClientOptionsChangedAfterShowGameWindows() override;
 
     /// Button-bar Compendium / News button (CIP TNewsButtonController).
-    TNewsButtonController* newsButton() const { return m_newsButton.get(); }
 
     /// CIP clientservices URL (`LauncherEnv::clientServicesUrl`) and optional
     /// client revision header.
@@ -192,6 +194,8 @@ public:
     /// close that follows must not ask Exit / Logout / Cancel.
     static void allowProcessExit();
     static bool processExitAllowed();
+    /// The start screen's create-account option (the client's first-start step shows it).
+    void setShowCreateAccountOption(bool show);
 
 Q_SIGNALS:
     /// The options dialog should open on `category` (OPEN_OPTIONS_MENU_DIALOG's).
@@ -199,7 +203,6 @@ Q_SIGNALS:
 
 private:
     void setScreen(const QString& state, bool backgroundImageVisible, const QColor& windowColor);
-    void setShowCreateAccountOption(bool show);
     void requestStartScreenServices();
     void requestDeferredStartScreenServices();
     void loadHints();
@@ -218,6 +221,9 @@ private:
     QQmlEngine* m_pEngine = nullptr;
     config::TClientOptions* m_pClientOptions = nullptr;
     QPointer<QQuickItem> m_container;
+    /// The game window discards unhandled mouse buttons while it exists; the
+    /// game screen turns the keyboard shortcuts and the movement keys on.
+    std::shared_ptr<input::TEventFilterManager> m_pEventFilterManager;
     std::unique_ptr<TStatusBarController> m_pStatusBarController;
     QPointer<QQuickItem> m_gameWindowItem;
     QUrl m_hintsUrl;
@@ -240,7 +246,6 @@ private:
     std::unique_ptr<news::TNewsRequestUploader> m_newsUploader;
     std::unique_ptr<news::TNewsViewsUploader> m_newsViewsUploader;
     std::unique_ptr<TNewsDialogController> m_newsDialog;
-    std::unique_ptr<TNewsButtonController> m_newsButton;
     std::unique_ptr<TCalendarDialogController> m_calendarDialog;
 
 public Q_SLOTS:

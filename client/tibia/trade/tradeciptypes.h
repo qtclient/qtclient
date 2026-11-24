@@ -11,6 +11,8 @@
 #include <client/outfit.h>
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 #include <QString>
 
@@ -170,6 +172,12 @@ public:
     void handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& message);
     void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
+Q_SIGNALS:
+    void sendCloseNPCTrade(const ::tibia::protobuf::protocol::GameclientMessageCloseNPCTrade& CloseNPCTradeMessage);
+    void sendLookNPCTrade(const ::tibia::protobuf::protocol::GameclientMessageLookNPCTrade& LookNPCTradeMessage);
+    void sendInspectObject(const ::tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage);
+    void sendBuyObject(const ::tibia::protobuf::protocol::GameclientMessageBuyObject& BuyObjectMessage);
+    void sendSellObject(const ::tibia::protobuf::protocol::GameclientMessageSellObject& SellObjectMessage);
 
 private:
     TNPCTradeStorage* m_storage = nullptr;
@@ -217,11 +225,18 @@ public:
     void rejectTrade();
     /// `side` 0 is the own offer, 1 the counter offer.
     void lookTrade(int index, int side);
+    /// The offered object goes to the inspection window (player trade inspection).
+    void inspectTrade(int index, int side);
 
     void handleOwnOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageOwnOffer& OwnOfferMessage);
     void handleCounterOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage);
     void handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade& message);
 
+Q_SIGNALS:
+    void sendAcceptTrade(const ::tibia::protobuf::protocol::GameclientMessageAcceptTrade& AcceptTradeMessage);
+    void sendRejectTrade(const ::tibia::protobuf::protocol::GameclientMessageRejectTrade& RejectTradeMessage);
+    void sendLookTrade(const ::tibia::protobuf::protocol::GameclientMessageLookTrade& LookTradeMessage);
+    void sendInspectObject(const ::tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage);
 
 private:
     TPlayerTradeStorage& m_storage;

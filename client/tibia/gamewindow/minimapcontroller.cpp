@@ -85,6 +85,10 @@ void TMinimapController::setTileStorage(minimap::TMinimapTileStorage* storage)
         m_minimap->setRenderProvider(m_renderProvider.get());
     if (storage) {
         connect(storage, &minimap::TMinimapTileStorage::minimapTileChanged, this, &TMinimapController::onMinimapDataChanged);
+        connect(storage, &minimap::TMinimapTileStorage::reloadVisibleMinimap, this, [this] {
+            if (m_storage)
+                m_storage->reloadTiles(m_area.topLeft(), m_area.bottomRight());
+        });
         if (tibia::game::hasLocalPlayer()) {
             const Position pos = tibia::game::localPlayerPosition();
             if (pos.isValid())

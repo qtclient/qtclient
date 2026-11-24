@@ -54,6 +54,9 @@ public:
     /// The account's premium state: hasPremium follows it, and both team
     /// pages get it.
     void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
+    /// The map storages go to the assemble page, then the join page.
+    void setMapStorages(minimap::TMinimapTileStorage* TileStorage, minimap::TMinimapMarkerStorage* MarkerStorage,
+                        std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage);
 
     TFriendsFriendListPageController* friendListPage() const { return m_friends; }
     TFriendsInvitesPageController* invitesPage() const { return m_invites; }

@@ -1,5 +1,8 @@
 #include "protocol/protocolclientmessageprocessor.h"
 
+#include "network/unencryptedrawmessagestream.h"
+#include "protocol/protobufclientmessagetranslator.h"
+
 #include <protocol.pb.h>
 
 namespace tibia::protocol {
@@ -12,17 +15,27 @@ constexpr int ConnectionPingBackMessageType = 28;
 
 }
 
-TProtocolClientMessageProcessor::TProtocolClientMessageProcessor() = default;
+TProtocolClientMessageProcessor::TProtocolClientMessageProcessor(
+    std::shared_ptr<TProtobufClientMessageTranslator> ClientMessageTranslator,
+    std::shared_ptr<network::TUnencryptedRawMessageStream> MessageStream)
+    : m_clientMessageTranslator(std::move(ClientMessageTranslator))
+    , m_messageStream(std::move(MessageStream))
+{
+}
 
 TProtocolClientMessageProcessor::~TProtocolClientMessageProcessor() = default;
 
 network::TGameserverNetworkPacket TProtocolClientMessageProcessor::processClientMessage(
-    const ::tibia::protobuf::protocol::GameclientMessage& GameclientMessage, const QByteArray& Data) const
+    const ::tibia::protobuf::protocol::GameclientMessage& GameclientMessage) const
 {
     using network::EConnectionsUsed;
     using network::TGameserverNetworkPacket;
     using ::tibia::protobuf::protocol::GameclientMessageConnectionPingBack;
-    TGameserverNetworkPacket packet(TGameserverNetworkPacket::Gameclient, Data);
+    m_clientMessageTranslator->writeClientMessage(GameclientMessage);
+    m_messageStream->seek(0);
+    const QByteArray data = m_messageStream->readAllData();
+    m_messageStream->removeReadData();
+    TGameserverNetworkPacket packet(TGameserverNetworkPacket::Gameclient, data);
     const int type = GameclientMessage.type();
     if (type == LoginMessageType || type == SecondaryLoginMessageType) {
         packet.setEncryptionType(TGameserverNetworkPacket::LoginRsa);

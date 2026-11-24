@@ -1,7 +1,11 @@
 #include "game/tutorialsessiondumpgamesession.h"
 
+#include "creatures/creaturestorage.h"
+#include "effects/effectgameactionhandler.h"
+#include "effects/effectstorage.h"
 #include "game/gameactionrouter.h"
 #include "input/gameaction.h"
+#include "protocol/protocolmessagequeue.h"
 #include "sessiondump/sessiondumpplayer.h"
 #include "tutorial/sessiondumphints.h"
 #include "tutorial/sessiondumphintsprocessor.h"
@@ -38,6 +42,8 @@ void TTutorialSessiondumpGameSession::initialize(const std::shared_ptr<const TGa
     m_tutorialMetaInfo = std::dynamic_pointer_cast<const TTutorialSessiondumpGameSessionMetaInfo>(metaInfo);
     if (!m_tutorialMetaInfo)
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
+    connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedPlayerDataBasicMessage, this,
+            &TTutorialSessiondumpGameSession::onPlayerDataBasicReceived);
     connect(this, &IGameSession::disconnected, this, &TTutorialSessiondumpGameSession::onDisconnected);
 
     TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
@@ -63,6 +69,14 @@ void TTutorialSessiondumpGameSession::initialize(const std::shared_ptr<const TGa
             &TTutorialSessiondumpGameActionHandler::handleGameAction);
     connect(tutorialActions, &TTutorialSessiondumpGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
+}
+
+void TTutorialSessiondumpGameSession::createGameActionProvidersAndHandlers()
+{
+    TSessiondumpGameSession::createGameActionProvidersAndHandlers();
+    m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*effectStorage());
+    connect(gameActionRouter()->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal,
+            m_effectGameActionHandler.get(), &effects::TEffectGameActionHandler::handleGameAction);
 }
 
 void TTutorialSessiondumpGameSession::startSession()
@@ -107,6 +121,17 @@ void TTutorialSessiondumpGameSession::onSessiondumpTimerElapsed()
             player->resume();
     }
     TSessiondumpGameSession::onSessiondumpTimerElapsed();
+}
+
+void TTutorialSessiondumpGameSession::onPlayerDataBasicReceived()
+{
+    const std::shared_ptr<creatures::TCreature> player = creatureStorage()->player();
+    if (!player)
+        return;
+    player->setName(m_tutorialMetaInfo->characterName);
+    // Host: a missing or malformed hints file leaves the dump's outfit.
+    if (m_sessiondumpHints)
+        player->setOutfitAppearance(m_sessiondumpHints->createOutfitInstance(m_tutorialMetaInfo->isMale));
 }
 
 void TTutorialSessiondumpGameSession::onDisconnected()

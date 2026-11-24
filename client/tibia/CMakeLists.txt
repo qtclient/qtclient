@@ -397,6 +397,7 @@ if(TIBIA_WITH_GAMECORE)
     systemsurvey/fpshistorycontroller.cpp systemsurvey/fpshistorycontroller.h
     systemsurvey/fpshistorytojsonconverter.cpp systemsurvey/fpshistorytojsonconverter.h
     systemsurvey/fpshistoryuploader.cpp systemsurvey/fpshistoryuploader.h
+    systemsurvey/slidingfpscounter.cpp systemsurvey/slidingfpscounter.h
     teamfinder/teamfinderciptypes.cpp teamfinder/teamfinderciptypes.h
     teamfinder/teamsortproxymodels.cpp teamfinder/teamsortproxymodels.h
     bossbestiary/bossbestiaryciptypes.cpp bossbestiary/bossbestiaryciptypes.h
@@ -454,6 +455,7 @@ if(TIBIA_WITH_GAMECORE)
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     client/gameclientbase.cpp client/gameclientbase.h
     client/gameapplication.cpp client/gameapplication.h
+    client/translationloader.cpp client/translationloader.h
     qmlcomponents/qmlcomponentsciptypes.cpp qmlcomponents/qmlcomponentsciptypes.h
     qmlcomponents/lenshelpmanager.cpp qmlcomponents/lenshelpmanager.h
     qmlcomponents/lenshelpquickitem.cpp qmlcomponents/lenshelpquickitem.h
@@ -744,7 +746,6 @@ if(TIBIA_WITH_GAMECORE)
     input/myexception.cpp input/myexception.h
     input/multiactionprioritysolver.cpp input/multiactionprioritysolver.h
     input/keyboardinputtogameactionconverter.cpp input/keyboardinputtogameactionconverter.h
-    minimap/minimapciptypes.cpp minimap/minimapciptypes.h
     minimap/minimapdiskio.cpp minimap/minimapdiskio.h
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
     minimap/minimapmanager.cpp minimap/minimapmanager.h
@@ -766,6 +767,8 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapmarkerrenderprovider.cpp minimap/minimapmarkerrenderprovider.h
     minimap/minimaprendererscenegraphdrawcommandprovider.cpp minimap/minimaprendererscenegraphdrawcommandprovider.h
     minimap/waypointsectors.cpp minimap/waypointsectors.h
+    minimap/minimapmarkergameactionhandler.cpp minimap/minimapmarkergameactionhandler.h
+    minimap/minimapprotocolmessagehandler.cpp minimap/minimapprotocolmessagehandler.h
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
     protocol/objectdata.cpp protocol/objectdata.h
     protocol/protocolclientmessageprocessor.cpp protocol/protocolclientmessageprocessor.h
@@ -774,6 +777,8 @@ if(TIBIA_WITH_GAMECORE)
     protocol/protocolserverpacketprocessor.cpp protocol/protocolserverpacketprocessor.h
     protocol/protocolreader.cpp protocol/protocolreader.h
     protocol/clientwire.cpp
+    protocol/protocolwriter.cpp protocol/protocolwriter.h
+    protocol/protobufclientmessagetranslator.cpp protocol/protobufclientmessagetranslator.h
     network/gameserverconnection.cpp network/gameserverconnection.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
@@ -911,6 +916,7 @@ if(TIBIA_WITH_GAMECORE)
     renderer/worldmapcameraviewport.cpp renderer/worldmapcameraviewport.h
     renderer/worldmapcamera.cpp renderer/worldmapcamera.h
     renderer/scenegraphdrawcommand.cpp renderer/scenegraphdrawcommand.h
+    renderer/renderinfo.h
     store/storeciptypes.cpp store/storeciptypes.h
     store/dynamicallyloadedimage.cpp store/dynamicallyloadedimage.h
     store/qmlstoreobjects.cpp store/qmlstoreobjects.h
@@ -981,6 +987,7 @@ if(TIBIA_WITH_GAMECORE)
     game/premiummessagerenewpremium.cpp game/premiummessagerenewpremium.h
     game/traderstorage.cpp game/traderstorage.h
     game/fpsdropslogger.cpp game/fpsdropslogger.h
+    game/gameworldvolumestorage.cpp game/gameworldvolumestorage.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h)
 endif()

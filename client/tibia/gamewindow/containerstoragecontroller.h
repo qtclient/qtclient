@@ -24,7 +24,11 @@ class IGameSession;
 }
 
 namespace tibia {
+namespace input {
+class TGameActionMapper;
+}
 namespace config {
+class TClientOptions;
 class TCharacterConfigurationManager;
 class TSidebarOptions;
 }
@@ -51,7 +55,12 @@ class TContainerStorageController final : public cip::tibia::gamewindow::TContai
 {
     Q_OBJECT
 public:
-    TContainerStorageController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// `SidebarManager`: where the container widgets go (and the engine they are
+    /// created with); `ClientOptions`: its container storage options signal
+    /// refreshes every container; `ParentItem`: the container widgets' item.
+    TContainerStorageController(TSidebarManager* SidebarManager, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                config::TClientOptions* ClientOptions, QQuickItem* ParentItem,
+                                QObject* parent = nullptr);
     ~TContainerStorageController() override;
     /// CIP: the frame update of every open container.
     void updateWithTimestamp(qint64 TimestampMilliseconds);
@@ -119,13 +128,15 @@ private:
 
     shared::TQtConnectionManager m_gameSessionConnections;
     TSidebarManager* m_sidebars;
-    QQuickItem* m_gameWindowItem;
-    QQmlEngine* m_engine;
+    /// CipSoft hands it to each container controller (qtclient's takes none yet).
+    std::shared_ptr<input::TGameActionMapper> m_gameActionMapper;
+    config::TClientOptions* m_clientOptions;
+    QQuickItem* m_parentItem;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<container::TContainerStorage> m_containerStorage;
     QPointer<config::TCharacterConfigurationManager> m_characterConfigurationManager;
-    int m_controlScheme = 0;
-    int m_lootScheme = 0; // CIP lootSchemeIndex default: Loot: Right
+    int m_controlScheme = 1; // CIP control scheme (1 classic)
+    int m_lootScheme = 0; // CIP loot scheme (0 Loot: Right)
     std::map<int, TContainerController*> m_containerControllers;
     bool m_loginRampUpFinished = false;
     QTimer m_displayContainerAsynchronousTimer;

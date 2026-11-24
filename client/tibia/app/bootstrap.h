@@ -6,6 +6,8 @@
 
 #include <memory>
 
+class QTranslator;
+
 class QQmlEngine;
 
 namespace tibia {
@@ -28,6 +30,8 @@ bool isRendererSupported(int rendererIndex);
 /// CIP: the renderer index the process started its graphics with (0 auto).
 void setActiveGraphicsEngine(int rendererIndex);
 int activeGraphicsEngine();
+/// CIP: the process renders with the software renderer (index 3).
+bool isSoftwareGraphicsEngineActive();
 /// Host: --renderer on the command line (or QTCLIENT_RENDERER), -1 when none.
 int rendererFromCommandLine();
 /// CIP: Qt 5 builds installed QML modules next to the binary; the folder is
@@ -41,8 +45,16 @@ void applyBundledMoltenVkIcd();
 /// at qrc:. Returns the mounted file, empty when none of dirs has it.
 QString mountGraphicsResources(const QStringList& dirs);
 
-/// Installs CIP's client strings (client.en.qm) on the application.
+/// Installs CIP's client strings (client.en.qm) on the application (the
+/// client-less start; the game application loads them with its translation
+/// loader).
 void installTranslations();
+/// Host: the translator CIP's client strings are loaded into; it shows the
+/// application name where the strings name the client "Tibia".
+std::unique_ptr<QTranslator> createClientTranslator();
+/// Host: where the client strings are (CIP: the application directory;
+/// qtclient bundles client.en.qm in its resources).
+QString clientTranslationDirectory();
 
 /// CIP QML asks for Verdana. Desktop has it as a system font; the browser does
 /// not, so load the same faces from `<data>/fonts` when the family is missing.

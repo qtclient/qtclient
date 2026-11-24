@@ -13,6 +13,15 @@ namespace tibia::creatures {
 class TCreatureMovementSpeedCalculator
 {
 public:
+    /// The speed formula's factors and a beat of 1 ms.
+    explicit TCreatureMovementSpeedCalculator(const double a = 0.0, const double b = 0.0, const double c = 0.0)
+        : m_a(a)
+        , m_b(b)
+        , m_c(c)
+        , m_serverBeat(1)
+    {
+    }
+
     /// Speed the step duration is computed from:
     /// `A * log(speed + B) + C`, rounded to the nearest integer.
     quint16 effectiveSpeed(quint16 speed) const;

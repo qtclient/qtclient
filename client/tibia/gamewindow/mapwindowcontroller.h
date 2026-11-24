@@ -11,11 +11,15 @@
 
 #include <memory>
 
+class QQmlEngine;
 class QQuickItem;
 class QQuickWindow;
 
 namespace tibia::game {
 class IGameSession;
+}
+namespace tibia::config {
+class TClientOptions;
 }
 
 namespace tibia {
@@ -31,6 +35,7 @@ class TNumericalEffectOverlayQuickItem;
 class TSpeechBubbleOverlayQuickItem;
 class TWorldMapQuickItem;
 class TWorldMapRenderProvider;
+class TLenshelpManager;
 }
 }
 
@@ -56,9 +61,13 @@ class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowCont
     Q_PROPERTY(qreal viewScale READ viewScale NOTIFY fovChanged)
 public:
     /// `pane` is the MapWindowPane item; the controller is its mapWindowController.
-    /// Clicks on the map map to game actions through the client's shared mapping.
-    TMapWindowController(QQuickItem* pane, bool softwareRenderer, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
-                         QObject* parent = nullptr);
+    /// Clicks on the map map to game actions through the client's shared mapping;
+    /// the render options come from `clientOptions`; in lenshelp mode the hovered
+    /// object's lenshelp shows. Host: `softwareRenderer` (no light map) is the
+    /// running renderer, which CipSoft reads from its global renderer choice.
+    TMapWindowController(QQmlEngine* engine, QQuickItem* pane, config::TClientOptions* clientOptions,
+                         std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                         qmlcomponents::TLenshelpManager* lenshelpManager, bool softwareRenderer, QObject* parent = nullptr);
     ~TMapWindowController() override;
 
     /// Drops the window's pointer filter and the game session.
@@ -118,6 +127,10 @@ private:
     /// The mouse cursor in mapWindow pixels; `onMap` when it is over the map and no dialog is up.
     QPointF mouseCursorPosition(bool& onMap) const;
     void applyTargetHighlightOption();
+    /// In lenshelp mode: the hovered candidates' LENSHELP_SHOW, placed over its
+    /// field in scene coordinates; LENSHELP_HIDE once nothing with a lenshelp is
+    /// hovered any more.
+    void updateLenshelpAtMouseCursor(const input::TGameActionList& candidates);
 
     QPoint toMapPixel(const QPointF& mapWindowPoint) const;
     /// The TARGET_SELECTED candidate at a mapWindow point, creatures first.
@@ -142,6 +155,7 @@ private:
     bool isInteractiveOverlay(const QQuickItem* leaf) const;
     void ungrabOverlayPointer(QQuickItem* from) const;
 
+    QQmlEngine* m_pEngine = nullptr;
     QPointer<QQuickItem> m_pane;
     QPointer<QQuickItem> m_mapWindow;
     QPointer<qmlcomponents::TWorldMapQuickItem> m_worldMap;
@@ -157,13 +171,16 @@ private:
     /// area from it.
     worldmap::TWorldMapViewport* m_viewport = nullptr;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_actions;
+    config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    QPointer<qmlcomponents::TLenshelpManager> m_pLenshelpManager;
+    /// A LENSHELP_SHOW went out for the last hover.
+    bool m_lenshelpShown = false;
     bool m_softwareRenderer = false;
     int m_fovWidth = 15;
     int m_fovHeight = 11;
     qreal m_viewScale = 1;
     bool m_classicView = false;
-    bool m_highlightMouseTarget = true;
     bool m_hovering = false;
     QPointF m_hoverPosition;
     /// CIP +0x140: the tracked use at the mouse cursor, and the frames since (+0x150).

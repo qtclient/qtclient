@@ -1,6 +1,7 @@
 #include "depotsearchwidgetcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "analysers/itempricestorage.h"
 #include "container/containergameactionprovider.h"
 #include "config/sidebaroptions.h"
@@ -151,7 +152,8 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindo
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_searchProxy(true, true, false, nullptr)
     , m_stashProxy(false, true, false, nullptr)
-    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
+    , m_mapper(config::controlSchemeForListModelIndex(
+          app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0)))
 {
     // Host: the stash counts are the detail list's.
     m_stashProxy.model().setCountProvider([this](const uint16_t typeId, uint8_t) {
@@ -181,7 +183,8 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindo
             &TDepotSearchWidgetController::saveWidgetOptions);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String(ControlSchemeOption))
-            m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
+            m_mapper.setControlScheme(
+                config::controlSchemeForListModelIndex(app::ClientOptions::load().options().value(name).toInt(0)));
     });
 
     widget()->createItem(QStringLiteral("DepotSearchWidget.qml"));

@@ -20,6 +20,9 @@ class QNetworkAccessManager;
 class QNetworkReply;
 
 namespace tibia {
+namespace authentication {
+class TAuthenticationProcessController;
+}
 namespace shared {
 class TTibiaFileSystemHelper;
 }
@@ -140,19 +143,22 @@ class TCreateCharacterDialogController : public TDialogController<cip::tibia::ga
 {
     Q_OBJECT
 public:
-    /// `qmlFile`: see TDialog.
-    explicit TCreateCharacterDialogController(const QString& qmlFile = QStringLiteral("createaccountandcharacter/CreateCharacterDialog.qml"),
-                                              QObject* parent = nullptr);
+    /// `TibiaFileSystemHelper`: createCharacter reads the distribution marker with
+    /// it; `Authentication`: its login data's session key is the session the new
+    /// character goes to; `ServiceUrl`: the account service (CIP
+    /// accountcreationclientservices.php on the portal).
+    TCreateCharacterDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                     std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                     std::shared_ptr<authentication::TAuthenticationProcessController> Authentication,
+                                     const QUrl& ServiceUrl, QObject* parent = nullptr);
+    /// Host (pack ABI): a product dialog with its own `qmlFile` (see TDialog); it
+    /// gets the service url and the session key through the setters.
+    explicit TCreateCharacterDialogController(const QString& qmlFile, QObject* parent = nullptr);
     ~TCreateCharacterDialogController() override;
 
-    /// The account service (CIP accountcreationclientservices.php on the portal).
+    /// Host (pack dialog): the account service.
     void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
-    /// The file system helper createCharacter reads the distribution marker with.
-    void setTibiaFileSystemHelper(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper)
-    {
-        m_tibiaFileSystemHelper = std::move(tibiaFileSystemHelper);
-    }
-    /// The login session the new character goes to.
+    /// Host (pack dialog): the login session the new character goes to.
     void setSessionKey(const QString& sessionKey) { m_sessionKey = sessionKey; }
 
     /// SHOW_CREATE_CHARACTER_DIALOG; ignored while a request is pending. The
@@ -191,6 +197,8 @@ private:
 
     /// POSTs `request`; asyncOperationInProgress while any post is unanswered.
     void post(const QJsonObject& request, ReplyHandler onReply);
+    /// Both constructors: the dialog's defaults and the error box.
+    void initialize();
     void setPending(int pending);
     void setAccountHasNoCharacters(bool noCharacters);
     void requestAccountCreationStatus();
@@ -200,8 +208,9 @@ private:
     void onCharacterCreated(QNetworkReply* reply);
     void showError(const QString& message);
 
-    QUrl m_serviceUrl;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_tibiaFileSystemHelper;
+    std::shared_ptr<authentication::TAuthenticationProcessController> m_authentication;
+    QUrl m_serviceUrl;
     QString m_sessionKey;
     QNetworkAccessManager* m_network;
     TWorldSelectionSortProxyModel* m_proxy;

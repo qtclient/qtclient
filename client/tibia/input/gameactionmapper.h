@@ -6,15 +6,18 @@
 
 #include <Qt>
 
+#include <cstdint>
+#include <vector>
+
 namespace tibia {
 namespace input {
 
 /// Picks the action a mouse click runs from the candidates under the mouse
-/// (CIP: TGameActionMapper,). Rules come from the control scheme
-/// (option controlSchemeIndex: 0 classic, 1 legacy, 2 smart) and loot scheme
-/// (option lootSchemeIndex: 0 right, 1 shift+right, 2 left). With Loot: Right,
-/// Classic/Legacy Shift+Right is use/open (no attack) so a ladder under a
-/// creature is usable.
+/// (CIP: TGameActionMapper). The rules come from the control scheme's table
+/// (setControlScheme); under the classic scheme the loot scheme rewrites them
+/// (setLootScheme). Control schemes (clientOptions controlScheme): 1 classic,
+/// 2 legacy, 3 left smart click. Loot schemes (clientOptions lootScheme):
+/// 0 right, 1 shift+right, 2 left.
 class TGameActionMapper : public ::tibia::CipTyped
 {
 public:
@@ -25,17 +28,27 @@ public:
     /// Rule context of the sidebar minimap (CIP: TMinimapController click,).
     static constexpr int MinimapContext = 6;
 
-    /// CIP defaults: Classic (0) + Loot: Right (0). Callers pass loaded options.
-    explicit TGameActionMapper(int controlScheme = 0, int lootScheme = 0)
-        : m_controlScheme(controlScheme)
-        , m_lootScheme(lootScheme)
-    {
-    }
+    static constexpr int ClassicControlScheme = 1;
+    static constexpr int LegacyControlScheme = 2;
+    static constexpr int LeftSmartClickControlScheme = 3;
+    static constexpr int LootRight = 0;
+    static constexpr int LootShiftRight = 1;
+    static constexpr int LootLeft = 2;
+
+    /// Host: the mapping of `controlScheme` with `lootScheme` applied (the
+    /// client's two setters in order); the defaults are classic and right.
+    explicit TGameActionMapper(int controlScheme = ClassicControlScheme, int lootScheme = LootRight);
 
     int controlScheme() const { return m_controlScheme; }
-    void setControlScheme(int controlScheme) { m_controlScheme = controlScheme; }
-    int lootScheme() const { return m_lootScheme; }
-    void setLootScheme(int lootScheme) { m_lootScheme = lootScheme; }
+    /// The rules become the scheme's table (a loot rewrite is dropped);
+    /// std::out_of_range for a scheme without one.
+    void setControlScheme(int controlScheme);
+    /// Under the classic scheme the rules become the classic table rewritten
+    /// for the loot scheme: right adds quick loot after use to the right click
+    /// and gives containers a right click without it, left puts quick loot
+    /// first on the left click; both drop the shift+right quick loot. Other
+    /// control schemes keep their rules.
+    void setLootScheme(int lootScheme);
 
     /// The matching rule's action types (CIP:): a rule of the
     /// context wins over the last matching rule of every context.
@@ -43,11 +56,19 @@ public:
     /// The first candidate of the matching rule's types, or null.
     IGameActionPtr map(const TGameActionList& candidates, int context, Qt::MouseButton button, int modifiers) const;
 
-private:
-    bool isLootSchemeChord(int cipButton, int modifiers) const;
+    /// One mouse rule: a click of `button` (1 left, 2 right, 4 middle) with
+    /// `modifiers` (Qt's Shift / Ctrl / Alt bits, all three: any) in `context`.
+    struct TRule
+    {
+        int context = 0;
+        int button = 0;
+        uint32_t modifiers = 0;
+        std::vector<EGameAction> types;
+    };
 
-    int m_controlScheme;
-    int m_lootScheme;
+private:
+    int m_controlScheme = 0;
+    std::vector<TRule> m_rules;
 };
 
 }

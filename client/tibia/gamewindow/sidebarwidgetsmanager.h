@@ -20,12 +20,26 @@ namespace tibia {
 namespace analysers {
 class TAnalyserStorages;
 }
+namespace config {
+class TClientOptions;
+}
+namespace news {
+class TNewsStorage;
+}
+namespace shared {
+class TTibiaFileSystemHelper;
+}
+namespace spells {
+class TSpellInfoStorage;
+}
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
 }
 namespace input {
 class IGameAction;
+class TEventFilterManager;
+class TGameActionMapper;
 }
 namespace gamewindow {
 
@@ -122,8 +136,13 @@ public:
     /// CIP: makes the battle lists and connects them; the other widgets are
     /// made when they open. `analyserStorages` is the loot tracker's source
     /// (host: CipSoft passes the session's storages).
-    TSidebarWidgetsManager(TSidebarManager* sidebars, TContainerStorageController* containers, QQuickItem* gameWindowItem,
-                           QQmlEngine* engine, analysers::TAnalyserStorages* analyserStorages, QObject* parent = nullptr);
+    /// The widgets are made with the sidebar manager's engine over
+    /// `dialogParentItem`. Host: `analyserStorages` feed the loot tracker.
+    TSidebarWidgetsManager(TSidebarManager* sidebars, TContainerStorageController* containers,
+                           std::shared_ptr<input::TGameActionMapper> gameActionMapper, input::TEventFilterManager* eventFilterManager,
+                           config::TClientOptions* clientOptions, std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                           std::shared_ptr<news::TNewsStorage> newsStorage, spells::TSpellInfoStorage* spellInfoStorage,
+                           QQuickItem* dialogParentItem, analysers::TAnalyserStorages* analyserStorages, QObject* parent = nullptr);
     /// CIP: deletes the widgets, the battle lists, the depot search and
     /// player trade widgets, then the widgets kept by type.
     ~TSidebarWidgetsManager() override;
@@ -255,10 +274,15 @@ private:
     config::SidebarWidgetsManagerOptions currentWidgetsManagerOptions() const;
 
     QPointer<TSidebarManager> m_sidebars;
-    QQuickItem* m_gameWindowItem;
-    QQmlEngine* m_engine;
-    QPointer<config::TSidebarOptions> m_options;
     QPointer<TContainerStorageController> m_containers;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    input::TEventFilterManager* m_eventFilterManager = nullptr;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_pFileSystemHelper;
+    std::shared_ptr<news::TNewsStorage> m_newsStorage;
+    spells::TSpellInfoStorage* m_spellInfoStorage = nullptr;
+    QQuickItem* m_dialogParentItem = nullptr;
+    QPointer<config::TSidebarOptions> m_options;
     std::unique_ptr<TBattleListControllerStorage> m_battleLists;
     TSkillsWidgetController* m_skills = nullptr;
     /// CIP: the trade window and the depot search widget, while open.
@@ -282,7 +306,7 @@ private:
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::map<int, WidgetHooks> m_widgets;
     std::map<int, QMetaObject::Connection> m_closeConnections;
-    int m_controlScheme = 0;
+    int m_controlScheme = 1; // CIP control scheme (1 classic)
     bool m_restoring = false;
 
 public Q_SLOTS:

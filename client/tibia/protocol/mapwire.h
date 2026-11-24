@@ -6,6 +6,7 @@
 // order into CipSoft's map message layout.
 
 #include "protocol/protocolclassicwire.h"
+#include "worldmap/coordinates.h"
 
 namespace tibia::protobuf::protocol {
 class AppearanceInstance;
@@ -33,9 +34,9 @@ bool readMapField(ClassicReader& r, protobuf::protocol::MapField* out);
 
 /// Fill a world map message (FullMap, the four slices, TopFloor, BottomFloor,
 /// FieldData, CreateOnMap, ChangeOnMap, DeleteOnMap); 0 when the body is short.
-size_t fillMapMessage(protobuf::protocol::GameserverMessage& msg, int opcode, ClassicReader& r);
-/// Commit the central position the last translated world map message moved to.
-void advanceMapViewport(const protobuf::protocol::GameserverMessage& msg);
+/// The fill moves `CentralPosition` (the translator's central position) like the message does.
+size_t fillMapMessage(protobuf::protocol::GameserverMessage& msg, int opcode, ClassicReader& r,
+                      worldmap::TWorldMapCentralPosition& CentralPosition);
 bool isMapMessage(int opcode);
 /// Fill a creature message (InspectionState, CreatureUpdate, CreatureHealth,
 /// CreatureLight, CreatureOutfit, CreatureSpeed, CreatureSkull, CreatureParty,
@@ -44,7 +45,5 @@ bool isMapMessage(int opcode);
 /// data with that value.
 size_t fillCreatureMessage(protobuf::protocol::GameserverMessage& msg, int opcode, ClassicReader& r);
 bool isCreatureMessage(int opcode);
-/// Centre the translator's view (a floor description re-centring the map).
-void setMapViewport(int x, int y, int z);
 
 }

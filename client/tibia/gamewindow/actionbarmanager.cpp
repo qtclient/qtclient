@@ -88,11 +88,8 @@ void TActionBarManager::connectToGameSession(const std::shared_ptr<game::IGameSe
 
 void TActionBarManager::onWorldEntered()
 {
-    if (tibia::game::hasLocalPlayer()) {
+    if (tibia::game::hasLocalPlayer())
         config::THotkeyOptions::instance()->onCharacterLoggedIn();
-        auto action = std::make_shared<input::TGameActionTryToSwitchHotkeySet>(QString::fromStdString(tibia::game::characterName()), false);
-        Q_EMIT publishGameAction(action);
-    }
     // The host's hotkey options load without announcing it.
     for (const auto& [position, group] : m_groups)
         for (TActionBarController* bar : group->bars()) {
@@ -138,9 +135,10 @@ config::EUseType TActionBarManager::defaultUseType(const int objectId)
     const TAppearanceTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
     if (!type)
         return config::EUseType::Use;
-    if ((type->isCloth() || type->getClothSlot() > 0) && !type->isMultiUse())
-        return config::EUseType::Equip;
-    return type->isMultiUse() ? config::EUseType::SelectUseTarget : config::EUseType::Use;
+    // A worn container (a backpack) is used like any other object.
+    if (!type->isCloth() || type->isContainer())
+        return type->isMultiUse() ? config::EUseType::SelectUseTarget : config::EUseType::Use;
+    return config::EUseType::Equip;
 }
 
 }

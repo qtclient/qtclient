@@ -13,6 +13,13 @@
 #include <memory>
 
 namespace tibia {
+namespace cyclopedia {
+class TCyclopediaMapStaticDataStorage;
+}
+namespace minimap {
+class TMinimapMarkerStorage;
+class TMinimapTileStorage;
+}
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
@@ -35,6 +42,11 @@ public:
 
     /// The account's premium state; premiumTimeChanged follows it.
     void setPremiumStorage(game::TPremiumTimeStorage* Storage);
+    /// The map storages: the page keeps the Cyclopedia map's static data,
+    /// which the team list's activities come from (the tile and marker storages are
+    /// not used).
+    void setMapStorages(minimap::TMinimapTileStorage* TileStorage, minimap::TMinimapMarkerStorage* MarkerStorage,
+                        std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage);
     /// A new game session: the filters start over (and pick up the new character on the next show).
     /// CIP v12: the page follows the session's team finder; the filters start over.
     void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -50,6 +62,7 @@ private:
 
     QPointer<game::TPremiumTimeStorage> m_premium;
     QPointer<teamfinder::TTeamFinderStorage> m_storage;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_mapStaticDataStorage;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<teamfinder::TTeamFinderProtocolMessageHandler> m_teamFinderProtocolMessageHandler;
     QList<QMetaObject::Connection> m_connections;

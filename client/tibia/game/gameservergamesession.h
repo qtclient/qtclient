@@ -35,6 +35,16 @@ class TLoginProtocolMessageHandler;
 namespace tibia::shared {
 class TCompressionHelper;
 }
+namespace tibia::minimap {
+class TMinimapTileStorage;
+class TMinimapMarkerStorage;
+}
+namespace tibia::cyclopedia {
+class TCyclopediaMapStaticDataStorage;
+}
+namespace tibia::protobuf::protocol {
+class GameclientMessage;
+}
 namespace tibia::protocol {
 class TProtocolClientMessageProcessor;
 class TProtocolServerPacketProcessor;
@@ -118,6 +128,11 @@ public:
     /// Once per frame: the player movement intent handler repeats a held
     /// direction and sends the next step of its path when it is due.
     void updatePlayerMovementIntentHandler() override;
+    /// The base's, then the player movement intent handler plans on the
+    /// minimap tile storage.
+    void setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
+                            std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
+                            std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage) override;
 
     /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
@@ -163,11 +178,19 @@ private:
     /// the authentication info, and the player movement intent handler with the
     /// player's creature (now or once the creature storage adds it).
     void createSessionControllers();
+    /// The player movement timer (precise, single shot): its timeout runs the
+    /// intent handler, whose timed callback requests start it for the time left.
+    void createPlayerMovementTimer();
     /// A packet in order from the sequence flow processor: decoded and handed
     /// to the protocol layer.
     void onPacketReady(network::TGameserverNetworkPacket packet);
-    /// An encoded client message from the protocol queue: a packet for the
-    /// dual connection while it uses a connection.
+    /// A client message from the protocol queue: the client message processor
+    /// makes its packet. Host: the packet's data passes the classic session
+    /// state's view of the connection (it records it and drops it in a replay),
+    /// which hands it to sendClientFrame.
+    void onClientMessageReadyToProcess(std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage);
+    /// A client packet's data: a packet for the dual connection while it uses a
+    /// connection (the processor's packet when the data is that packet's).
     void sendClientFrame(const QByteArray& frame);
     /// Closes the connections and stops the network tick.
     void closeConnection();
@@ -177,6 +200,8 @@ private:
     std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
     std::shared_ptr<network::TNetworkQualityProtocolMessageHandler> m_networkQualityProtocolMessageHandler;
     std::shared_ptr<protocol::TProtocolClientMessageProcessor> m_clientMessageProcessor;
+    /// Host: the packet onClientMessageReadyToProcess is handing on; null outside it.
+    const network::TGameserverNetworkPacket* m_clientPacketBeingSent = nullptr;
     /// The decoded bytes of the server packets, read by the server packet processor.
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_serverMessageStream;
     std::shared_ptr<protocol::TProtocolServerPacketProcessor> m_serverPacketProcessor;
@@ -194,6 +219,8 @@ private:
     std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
     /// Host: the network tick (CipSoft's game client runs processNetwork every tick).
     QTimer m_networkTick;
+    /// The player movement intent handler's timed callbacks (createPlayerMovementTimer).
+    QTimer m_playerMovementTimer;
     /// Host: the classic session state's view of this session's connection.
     std::weak_ptr<network::TGameserverSessionNetwork> m_sessionNetwork;
     /// Host: the client message links, made again when the game window relinks

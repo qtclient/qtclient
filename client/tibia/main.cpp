@@ -222,6 +222,7 @@ int main(int argc, char** argv)
 #endif
 
 #ifdef TIBIA_WITH_GAMECORE
+    client::TGameApplicationBase::prepareProcess();
     // CIP: the application shows the client window and owns the game client.
     client::TGameApplication application(argc, argv);
 #else

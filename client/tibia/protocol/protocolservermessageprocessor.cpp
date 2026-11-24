@@ -20,18 +20,6 @@ TProtocolServerMessageProcessor::TProtocolServerMessageProcessor(
 
 TProtocolServerMessageProcessor::~TProtocolServerMessageProcessor() = default;
 
-std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> TProtocolServerMessageProcessor::processServerMessage(
-    ClassicReader& Reader, const qint64& Timestamp, const uint32_t PacketNumber,
-    const network::EConnectionType ConnectionType)
-{
-    std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> message =
-        m_serverMessageTranslator->translateServerMessage(Reader);
-    if (!message)
-        return nullptr;
-    enqueueServerMessage(message, Timestamp, PacketNumber, ConnectionType);
-    return message;
-}
-
 void TProtocolServerMessageProcessor::processServerMessage(const uint64_t& Timestamp, const uint32_t PacketNumber,
                                                            const network::EConnectionType ConnectionType)
 {

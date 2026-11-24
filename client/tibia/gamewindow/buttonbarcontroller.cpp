@@ -1,6 +1,7 @@
 #include "buttonbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "config/sidebaroptions.h"
 #include "config/characterconfigurationmanager.h"
 #include "container/containerciptypes.h"
@@ -10,6 +11,7 @@
 #include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/cyclopediadialogcontroller.h"
+#include "gamewindow/newsdialogcontroller.h"
 #include "gamewindow/socialbuttoncontroller.h"
 #include "gamewindow/storedialogcontroller.h"
 #include "proficiency/proficiencystorage.h"
@@ -303,12 +305,36 @@ QVariant TButtonBarModel::data(const QModelIndex& index, const int role) const
 
 QHash<int, QByteArray> TButtonBarModel::roleNames() const { return { { ButtonIdRole, "buttonId" } }; }
 
-TButtonBarController::TButtonBarController(QObject* parent)
+TButtonBarController::TButtonBarController(config::TClientOptions* ClientOptions, TSocialDialogController* SocialDialog,
+                                           QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TSidebarPanelController(parent)
+    , m_pClientOptions(ClientOptions)
+    , m_logoutQuestion(std::make_unique<TMessageDialogController>(Engine, DialogParentItem))
+    , m_socialButton(std::make_unique<TSocialButtonController>(SocialDialog))
+    , m_newsButton(std::make_unique<TNewsButtonController>())
+    , m_storeButton(std::make_unique<TStoreButtonController>())
+    , m_cyclopediaButton(std::make_unique<TCyclopediaButtonController>())
+    , m_bosstiaryButton(std::make_unique<TBosstiaryButtonController>())
 {
     m_buttonsModel = &m_model;
-    // Replaced by TGameWindowController::newsButton() via setNewsButtonController.
-    m_newsButtonController = new cip::tibia::gamewindow::TNewsButtonController(this);
+    m_socialButtonController = m_socialButton.get();
+    m_newsButtonController = m_newsButton.get();
+    m_storeButtonController = m_storeButton.get();
+    m_cyclopediaButtonController = m_cyclopediaButton.get();
+    m_bosstiaryButtonController = m_bosstiaryButton.get();
+
+    if (m_pClientOptions)
+        connect(m_pClientOptions.data(), &config::TClientOptions::buttonBarOptionsChanged, this, &TButtonBarController::onButtonOptionsChanged);
+    connect(m_logoutQuestion.get(), &TMessageDialogController::buttonClicked, this, &TButtonBarController::onLogoutRequestConfirmedOrCanceled);
+    m_logoutQuestion->setCloseOnButtonClicked(true);
+    // The buttons' game actions go out as the bar's.
+    connect(m_socialButton.get(), &TSocialButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
+    connect(m_newsButton.get(), &TNewsButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
+    connect(m_storeButton.get(), &TStoreButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
+    connect(m_cyclopediaButton.get(), &TCyclopediaButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
+    connect(m_bosstiaryButton.get(), &TBosstiaryButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
+
+    // Host: product shortcuts write controlButtonsOptions straight to the options file.
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String("controlButtonsOptions"))
             onButtonOptionsChanged();
@@ -364,8 +390,7 @@ void TButtonBarController::connectToPremiumTimeStorage(game::TPremiumTimeStorage
 
 void TButtonBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (m_logoutQuestion)
-        m_logoutQuestion->dialog()->close();
+    m_logoutQuestion->dialog()->close();
     m_gameSessionConnections.disconnectAll();
     m_skillWheelStorage = nullptr;
     m_gameSession = GameSession;
@@ -402,14 +427,11 @@ void TButtonBarController::connectToGameSession(const std::shared_ptr<game::IGam
                                                  [this] { Q_EMIT highlightTaskboardButtonChanged(); }));
         onSidebarPanelsOptionsChanged();
     }
-    if (auto* social = qobject_cast<TSocialButtonController*>(m_socialButtonController))
-        social->connectToGameSession(m_gameSession);
-    if (auto* store = qobject_cast<TStoreButtonController*>(m_storeButtonController))
-        store->connectToGameSession(m_gameSession);
-    if (auto* cyclopedia = qobject_cast<TCyclopediaButtonController*>(m_cyclopediaButtonController))
-        cyclopedia->connectToGameSession(m_gameSession);
-    if (auto* bosstiary = qobject_cast<TBosstiaryButtonController*>(m_bosstiaryButtonController))
-        bosstiary->connectToGameSession(m_gameSession);
+    // Host: a pack's social button (setSocialButtonController) follows the session itself.
+    m_socialButton->connectToGameSession(m_gameSession);
+    m_storeButton->connectToGameSession(m_gameSession);
+    m_cyclopediaButton->connectToGameSession(m_gameSession);
+    m_bosstiaryButton->connectToGameSession(m_gameSession);
     Q_EMIT highlightSkillWheelButtonChanged();
     Q_EMIT highlightExaltationForgeDialogButtonChanged();
 }
@@ -427,8 +449,7 @@ void TButtonBarController::onSidebarPanelsOptionsChanged()
 
 void TButtonBarController::onGamesessionChanged()
 {
-    if (m_logoutQuestion)
-        m_logoutQuestion->dialog()->close();
+    m_logoutQuestion->dialog()->close();
 }
 
 void TButtonBarController::onButtonOptionsChanged() { m_model.reload(); }
@@ -476,26 +497,13 @@ bool TButtonBarController::taskboardButtonHighlight() const
     return false;
 }
 
-void TButtonBarController::setButtonController(QObject*& member, QObject* controller)
+void TButtonBarController::setSocialButtonController(QObject* controller)
 {
-    if (member == controller)
+    QObject* const current = controller ? controller : m_socialButton.get();
+    if (m_socialButtonController == current)
         return;
-    if (member && member->parent() == this)
-        member->deleteLater();
-    member = controller;
+    m_socialButtonController = current;
     Q_EMIT buttonControllersChanged();
-}
-
-void TButtonBarController::setStoreButtonController(QObject* controller) { setButtonController(m_storeButtonController, controller); }
-void TButtonBarController::setNewsButtonController(QObject* controller) { setButtonController(m_newsButtonController, controller); }
-void TButtonBarController::setSocialButtonController(QObject* controller) { setButtonController(m_socialButtonController, controller); }
-void TButtonBarController::setCyclopediaButtonController(QObject* controller)
-{
-    setButtonController(m_cyclopediaButtonController, controller);
-}
-void TButtonBarController::setBosstiaryButtonController(QObject* controller)
-{
-    setButtonController(m_bosstiaryButtonController, controller);
 }
 
 void TButtonBarController::setSidebarOptions(config::TSidebarOptions* options)
@@ -551,13 +559,7 @@ void TButtonBarController::onSwitchCharacterButtonClicked()
 
 void TButtonBarController::onLogoutButtonClicked()
 {
-    if (!m_logoutQuestion) {
-        m_logoutQuestion = new TMessageDialogController(this);
-        m_logoutQuestion->setCloseOnButtonClicked(true);
-        m_logoutQuestion->setYesNoButtons();
-        connect(m_logoutQuestion, &TMessageDialogController::buttonClicked, this,
-                &TButtonBarController::onLogoutRequestConfirmedOrCanceled);
-    }
+    m_logoutQuestion->setYesNoButtons();
     m_logoutQuestion->showMessage(qtTrId("warning"), qtTrId("buttonbar_logout_warning"));
 }
 

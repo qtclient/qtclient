@@ -63,10 +63,11 @@ int activeRenderer()
     }
 }
 
-/// : the software renderer has no light, vsync or frame limit choice.
+/// The process started on the software renderer: it has no light, vsync or
+/// frame limit choice.
 bool rendererLimitationsActive()
 {
-    return activeRenderer() == SoftwareRenderer;
+    return app::activeGraphicsEngine() == SoftwareRenderer;
 }
 
 /// .

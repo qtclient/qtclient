@@ -23,12 +23,6 @@ using worldmap::TWorldMapCoordinate;
 using worldmap::TWorldMapCuboid;
 using worldmap::TWorldMapExtent;
 
-/// The translator's central position (CIP: the translator's member the map
-/// messages move) and the one the message being translated moves it to; the
-/// move is committed once the message translated completely.
-TWorldMapCoordinate g_center;
-TWorldMapCoordinate g_pendingCenter;
-
 /// The central position at `center` with the aware area the session uses.
 TWorldMapCentralPosition centralPositionAt(const TWorldMapCoordinate& center)
 {
@@ -476,13 +470,14 @@ bool isMapMessage(const int opcode)
     }
 }
 
-size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r)
+size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r,
+                      TWorldMapCentralPosition& CentralPosition)
 {
     // The slices and floor changes move the central position first; their
     // fields cover the area the move added.
-    TWorldMapCentralPosition central = centralPositionAt(g_center);
+    TWorldMapCentralPosition central = centralPositionAt(CentralPosition.center);
     const auto fillArea = [&](MapArea* area, const TShearedWorldMapCuboid& volume) -> size_t {
-        g_pendingCenter = central.center;
+        CentralPosition = central;
         return readArea(r, area, central, volume) ? r.i : 0;
     };
     switch (opcode) {
@@ -529,12 +524,10 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
             return 0;
         setCoordinate(m->mutable_coordinate(), at);
         m->set_stack_position(stack);
-        g_pendingCenter = g_center;
         return readMapObject(r, m->mutable_object()) ? r.i : 0;
     }
     case 107: {
         auto* m = msg.MutableExtension(GameserverMessageChangeOnMap::gameserver_message_change_on_map);
-        g_pendingCenter = g_center;
         uint16_t x = 0;
         if (!r.u16(x))
             return 0;
@@ -555,7 +548,6 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
         return readMapObject(r, m->mutable_object()) ? r.i : 0;
     }
     case 108:
-        g_pendingCenter = g_center;
         return readObjectPosition(r, msg.MutableExtension(GameserverMessageDeleteOnMap::gameserver_message_delete_on_map))
                    ? r.i
                    : 0;
@@ -570,17 +562,6 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
     default:
         return 0;
     }
-}
-
-void setMapViewport(const int x, const int y, const int z)
-{
-    g_center = TWorldMapCoordinate(x, y, z);
-    g_pendingCenter = g_center;
-}
-
-void advanceMapViewport(const GameserverMessage&)
-{
-    g_center = g_pendingCenter;
 }
 
 bool isCreatureMessage(const int opcode)

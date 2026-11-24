@@ -70,14 +70,18 @@ void TNpcDialogOutfit::setOutfit(const Outfit& outfit)
     Q_EMIT changed();
 }
 
-TNpcDialogController::TNpcDialogController(config::TClientOptions* ClientOptions, TChatController* ChatController, QQmlEngine* Engine,
-                                           QQuickItem* DialogParentItem, QObject* parent)
+TNpcDialogController::TNpcDialogController(config::TClientOptions* ClientOptions,
+                                           std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                           TChatController* ChatController, input::TEventFilterManager* EventFilterManager,
+                                           QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), Engine, DialogParentItem, parent)
     , m_trade(DialogParentItem, Engine)
     , m_chat(this)
     , m_filter(&m_chat, this)
     , m_chatControl(ChatController)
     , m_clientOptions(ClientOptions)
+    , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_pEventFilterManager(EventFilterManager)
 {
     connect(&m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
     m_chatChannelModel = QVariant::fromValue<QObject*>(&m_filter);

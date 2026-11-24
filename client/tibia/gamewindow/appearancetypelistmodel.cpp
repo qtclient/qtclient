@@ -105,6 +105,17 @@ int TAppearanceTypeListModel::count(const TAppearanceTypeEntry& entry) const
     return m_counts ? m_counts(entry.typeId, entry.tier) : 0;
 }
 
+uint16_t TAppearanceTypeListModel::displayTypeID(const TAppearanceTypeEntry& entry) const
+{
+    const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+    if (!type)
+        return entry.typeId;
+    if (const appearances::TAppearanceMarketProperties* market = type->marketProperties(); m_useDisplayTypeId && market)
+        return market->showAs;
+    const auto cyclopediaType = static_cast<uint16_t>(type->getCyclopediaType());
+    return cyclopediaType != 0 ? cyclopediaType : type->getId();
+}
+
 QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= static_cast<int>(m_entries.size()))
@@ -112,8 +123,9 @@ QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role
     const TAppearanceTypeEntry& entry = m_entries[index.row()];
     switch (role) {
     case TypeID:
-    case DisplayTypeID:
         return entry.typeId;
+    case DisplayTypeID:
+        return displayTypeID(entry);
     case CumulativeCount:
         return std::min(count(entry), 255);
     case TypeCount:
@@ -536,6 +548,23 @@ int TAppearanceTypeListModelSortFilterProxy::rowOf(const uint16_t typeId, const 
             return row;
     }
     return -1;
+}
+
+int TAppearanceTypeListModelSortFilterProxy::acceptedIndexOf(const uint16_t typeId, const int tier) const
+{
+    int index = -1;
+    const int count = m_model.rowCount();
+    for (int sourceRow = 0; sourceRow < count; ++sourceRow) {
+        if (!filterAcceptsRow(sourceRow, {}))
+            continue;
+        const QModelIndex source = m_model.index(sourceRow, 0);
+        const auto rowTypeId = static_cast<uint16_t>(m_model.data(source, TAppearanceTypeListModel::TypeID).toInt());
+        const int rowTier = m_model.data(source, TAppearanceTypeListModel::UpgradeTier).toInt();
+        ++index;
+        if (rowTypeId == typeId && rowTier == tier)
+            break;
+    }
+    return index;
 }
 
 uint16_t TAppearanceTypeListModelSortFilterProxy::typeIdAt(const int row) const

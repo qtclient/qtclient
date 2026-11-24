@@ -1,4 +1,5 @@
 #include "remainingdialogs.h"
+#include "shared/experiencegainchangetracker.h"
 #include "colorhelper.h"
 
 #include "shared/simplevectorabstractlistmodel.h"
@@ -949,8 +950,10 @@ constexpr OfflineTrainingSkill kOfflineTrainingSkills[] = {
 
 TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), Engine, DialogParentItem, parent)
+    , m_skillsWidgetEntryUpdater(std::make_shared<shared::TExperienceGainChangeTracker>())
 {
     s_instance = this;
+    m_skillsWidgetEntryUpdater.setPrecisePercent(true);
 }
 
 void TMultiOfflineTrainingDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -994,7 +997,7 @@ void TMultiOfflineTrainingDialogController::rebuildSkillsModel()
     const QList<QObject*> old = std::exchange(m_skillsModel, {});
     for (const OfflineTrainingSkill skill : kOfflineTrainingSkills) {
         auto* data = new game::TOfflineSkillTrainingData(skill, this);
-        data->assign(game::buildOfflineTrainingEntry(skill));
+        data->assign(game::buildSkillsWidgetEntry(game::skillTypeForOfflineTraining(skill), m_skillsWidgetEntryUpdater.precisePercent()));
         m_skillsModel.append(data);
     }
     Q_EMIT skillsModelChanged();

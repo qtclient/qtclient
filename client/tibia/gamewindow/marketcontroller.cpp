@@ -933,7 +933,7 @@ void TMarketController::onMarketItemDetailsChanged()
         m_selectedTier = details.tier.value_or(0);
         m_proxy.setTypeFilter(m_selectedType);
         m_proxy.applyFilterNow();
-        row = m_proxy.rowOf(m_selectedType, selectedTier());
+        row = m_proxy.acceptedIndexOf(m_selectedType, selectedTier());
         Q_EMIT itemListSelectionRequest(0);
     }
     setItemProperty("itemDetailsModel", detailsText(details));

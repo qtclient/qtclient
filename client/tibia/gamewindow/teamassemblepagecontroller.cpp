@@ -82,12 +82,14 @@ void TTeamAssemblePageController::loadActivities()
     addQuest(0);
     activities.push_back(makeActivity({ .kind = TTeamActivity::Other }, m_resolver));
 
-    // Hunting places: each map area (with an "any" entry when it has several subareas) and its subareas.
-    for (const auto& [areaId, area] : cyclopedia::TCyclopediaMapStaticDataStorage::instance().areas()) {
-        if (area.subareaIds.size() > 1)
-            addHunt(areaId, 0);
-        for (const quint16 subarea : area.subareaIds)
-            addHunt(areaId, subarea);
+    // Hunting places (none without the map's static data): each map area (with an "any" entry when it has several subareas) and its subareas.
+    if (m_mapStaticDataStorage) {
+        for (const auto& [areaId, area] : m_mapStaticDataStorage->areas()) {
+            if (area.subareaIds.size() > 1)
+                addHunt(areaId, 0);
+            for (const quint16 subarea : area.subareaIds)
+                addHunt(areaId, subarea);
+        }
     }
 
     std::vector<uint16_t> bosses;
@@ -280,6 +282,12 @@ void TTeamAssemblePageController::connectToGameSession(const std::shared_ptr<gam
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_teamFinderProtocolMessageHandler = session ? session->teamFinderProtocolMessageHandler().get() : nullptr;
+}
+
+void TTeamAssemblePageController::setMapStorages(minimap::TMinimapTileStorage*, minimap::TMinimapMarkerStorage*,
+                                                 std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage)
+{
+    m_mapStaticDataStorage = std::move(StaticDataStorage);
 }
 
 }

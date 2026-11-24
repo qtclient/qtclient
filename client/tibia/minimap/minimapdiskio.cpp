@@ -1,20 +1,56 @@
 #include "minimapdiskio.h"
 
+#include "shared/tibiafilesystemhelper.h"
+
 #include <minimap.pb.h>
 
 #include <QDir>
 #include <QFile>
 #include <QRegularExpression>
-#include <QSaveFile>
 
 #include <stdexcept>
 
 namespace tibia::minimap {
 
-TMinimapDiskIOAsync::TMinimapDiskIOAsync(const QString& dir, QObject* parent)
-    : TMinimapDiskIO(parent)
-    , m_dir(dir)
+TMinimapDiskIO::TMinimapDiskIO(std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper, QObject* parent)
+    : cip::tibia::minimap::TMinimapDiskIO(parent)
+    , m_fileSystemHelper(std::move(fileSystemHelper))
 {
+}
+
+TMinimapTilePtr TMinimapDiskIO::loadTileFromFileSystemIfItExists(const Position& id) const
+{
+    const shared::TCoordinate coordinate(id.x, id.y, id.z);
+    const std::shared_ptr<QImage> colors = m_fileSystemHelper->readMinimapColorImage(coordinate);
+    const std::shared_ptr<QImage> waypoints = m_fileSystemHelper->readMinimapWaypointCostImage(coordinate);
+    if (!colors || !waypoints)
+        return nullptr;
+    return std::make_shared<TMinimapTile>(id, *colors, *waypoints);
+}
+
+void TMinimapDiskIO::saveTileToFileSystem(const Position& id, const QImage& colors, const QImage& waypoints) const
+{
+    const shared::TCoordinate coordinate(id.x, id.y, id.z);
+    m_fileSystemHelper->writeMinimapColorImage(coordinate, colors);
+    m_fileSystemHelper->writeMinimapWaypointCostImage(coordinate, waypoints);
+}
+
+tibia::protobuf::minimap::MinimapMarkerFileContent TMinimapDiskIO::loadMinimapMarkerFileContentFromFileSystem() const
+{
+    return TMinimapDiskIOAsync::deserializeMinimapMarkerFileContent(m_fileSystemHelper->readMinimapMarkers());
+}
+
+void TMinimapDiskIO::saveMinimapMarkerFileContentToFileSystem(
+    const tibia::protobuf::minimap::MinimapMarkerFileContent& content) const
+{
+    m_fileSystemHelper->writeMinimapMarkers(TMinimapDiskIOAsync::serializeMinimapMarkerFileContent(content));
+}
+
+TMinimapDiskIOAsync::TMinimapDiskIOAsync(std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                         QObject* parent)
+    : TMinimapDiskIO(std::move(fileSystemHelper), parent)
+{
+    // One worker: a tile's save always lands before its next load.
     m_pool.setMaxThreadCount(1);
 }
 
@@ -49,8 +85,11 @@ shared::TCoordinate TMinimapDiskIOAsync::tileIdFromFileName(const QString& fileN
     return id;
 }
 
-TMinimapTilePtr TMinimapDiskIOAsync::readTilePair(const QDir& dir, const Position& id) const
+TMinimapTilePtr TMinimapDiskIOAsync::loadDefaultTile(const Position& id) const
 {
+    if (m_defaultTilesDir.isEmpty())
+        return nullptr;
+    const QDir dir(m_defaultTilesDir);
     QImage colors(dir.filePath(colorFileName(id)));
     QImage waypoints(dir.filePath(waypointFileName(id)));
     const bool ok = colors.format() == QImage::Format_Indexed8 && waypoints.format() == QImage::Format_Indexed8
@@ -74,13 +113,11 @@ void TMinimapDiskIOAsync::loadTile(const Position& id)
         else
             Q_EMIT loadingFailed(id);
     };
-    auto load = [this, dir = QDir(m_dir), id]() -> TMinimapTilePtr {
-        if (TMinimapTilePtr tile = readTilePair(dir, id))
+    auto load = [this, id]() -> TMinimapTilePtr {
+        if (TMinimapTilePtr tile = loadTileFromFileSystemIfItExists(id))
             return tile;
-        // Tip CipSoft Resources/minimap (desktop AppData; wasm WasmFS OPFS).
-        if (m_defaultTilesDir.isEmpty())
-            return nullptr;
-        return readTilePair(QDir(m_defaultTilesDir), id);
+        // Host: CIP's default tiles (Resources/minimap; wasm reads them on demand).
+        return loadDefaultTile(id);
     };
     m_pool.start([this, load, finish] {
         TMinimapTilePtr tile = load();
@@ -92,11 +129,9 @@ void TMinimapDiskIOAsync::saveTile(const TMinimapTilePtr& tile)
 {
     if (!tile || !tile->isChanged())
         return;
-    m_pool.start([dir = m_dir, id = tile->id(), colors = tile->colorImage(), waypoints = tile->waypointImage()] {
-        QDir().mkpath(dir);
-        const QDir out(dir);
-        colors.save(out.filePath(colorFileName(id)), "PNG");
-        waypoints.save(out.filePath(waypointFileName(id)), "PNG");
+    // The images are copied here: the tile keeps changing on this thread.
+    m_pool.start([this, id = tile->id(), colors = tile->colorImage(), waypoints = tile->waypointImage()] {
+        saveTileToFileSystem(id, colors, waypoints);
     });
 }
 
@@ -104,7 +139,8 @@ void TMinimapDiskIOAsync::importDefaultTiles(const QString& sourceDir)
 {
     setDefaultTilesDir(sourceDir);
     // CipSoft bulk copy into user AppData/minimap when empty.
-    auto copy = [dir = QDir::cleanPath(m_dir), source = QDir::cleanPath(sourceDir)] {
+    auto copy = [dir = QDir::cleanPath(m_fileSystemHelper->getMinimapDirectory().absolutePath()),
+                 source = QDir::cleanPath(sourceDir)] {
         const QStringList pattern{ QStringLiteral("Minimap_*.png") };
         if (!QDir(dir).entryList(pattern, QDir::Files).isEmpty())
             return;
@@ -149,21 +185,23 @@ QByteArray TMinimapDiskIOAsync::serializeMinimapMarkerFileContent(const tibia::p
 
 void TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible()
 {
-    auto load = [dir = m_dir, defaults = m_defaultTilesDir]() -> std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> {
-        for (const QString& folder : { dir, defaults }) {
-            if (folder.isEmpty())
-                continue;
-            QFile file(QDir(folder).filePath(markerFileName()));
-            if (!file.open(QIODevice::ReadOnly))
-                continue;
-            try {
+    // A load that throws gives no content (CIP: the exception stays in the future).
+    auto load = [this]() -> std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> {
+        try {
+            if (m_fileSystemHelper->getMinimapDirectory().exists(markerFileName()))
                 return std::make_shared<tibia::protobuf::minimap::MinimapMarkerFileContent>(
-                    deserializeMinimapMarkerFileContent(file.readAll()));
-            } catch (const std::exception&) {
+                    loadMinimapMarkerFileContentFromFileSystem());
+            // Host: CIP's default marker file when we have none.
+            if (m_defaultTilesDir.isEmpty())
                 return nullptr;
-            }
+            QFile file(QDir(m_defaultTilesDir).filePath(markerFileName()));
+            if (!file.open(QIODevice::ReadOnly))
+                return nullptr;
+            return std::make_shared<tibia::protobuf::minimap::MinimapMarkerFileContent>(
+                deserializeMinimapMarkerFileContent(file.readAll()));
+        } catch (const std::exception&) {
+            return nullptr;
         }
-        return nullptr;
     };
     auto finish = [this](const std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent>& content) {
         if (content)
@@ -180,14 +218,7 @@ void TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk(
 {
     if (!fileContent)
         return;
-    m_pool.start([dir = m_dir, fileContent] {
-        QDir().mkpath(dir);
-        QSaveFile file(QDir(dir).filePath(markerFileName()));
-        if (!file.open(QIODevice::WriteOnly))
-            return;
-        file.write(serializeMinimapMarkerFileContent(*fileContent));
-        file.commit();
-    });
+    m_pool.start([this, fileContent] { saveMinimapMarkerFileContentToFileSystem(*fileContent); });
 }
 
 }

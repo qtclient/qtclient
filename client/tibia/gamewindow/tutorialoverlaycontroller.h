@@ -36,9 +36,10 @@ class TTutorialOverlayController final : public cip::tibia::gamewindow::TTutoria
 public:
     using THint = input::TGameActionAddHintAtTutorialMarker::THint;
 
-    /// `dialogPlaceholder`: where the overlay items go (in `engine`);
-    /// `gameWindowItem`: the area the mouse filters cover.
-    TTutorialOverlayController(QQmlEngine* engine, QQuickItem* dialogPlaceholder, QQuickItem* gameWindowItem,
+    /// `overlayParentItem`: the game window's tutorialOverlay item, where the
+    /// overlay items go (in `engine`); `gameWindowItem` (host: stands in for
+    /// the client window): the area the mouse filters cover.
+    TTutorialOverlayController(QQmlEngine* engine, QQuickItem* overlayParentItem, QQuickItem* gameWindowItem,
                                input::TEventFilterManager* eventFilterManager, QObject* parent = nullptr);
     ~TTutorialOverlayController() override;
 
@@ -70,7 +71,7 @@ private:
     QQuickItem* createOverlayItem(const QString& qmlFile);
 
     QQmlEngine* m_engine = nullptr;
-    QQuickItem* m_dialogPlaceholder = nullptr;
+    QQuickItem* m_overlayParentItem = nullptr;
     /// The tutorial marker items seen, by marker id.
     std::map<int, QQuickItem*> m_markerItems;
     QQuickItem* m_gameWindowItem = nullptr;

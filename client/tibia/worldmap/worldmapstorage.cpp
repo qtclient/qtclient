@@ -12,6 +12,7 @@
 #include "appearances/appearancetype.h"
 #include "appearances/creatureplaceholderappearanceinstance.h"
 #include "clockservice.h"
+#include "iclockservice.h"
 
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
@@ -35,6 +36,17 @@ TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* 
     // removeUnawareThings → ensureStorage(), which re-enters while g_worldMapStorage
     // is still null (stack overflow). Callers init after setInstance / ensureStorage.
     m_sessionState.ensureMissileFloorsSized();
+}
+
+TWorldMapStorage::TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
+                                   std::shared_ptr<shared::IClockService> clock, QObject* parent)
+    : cip::tibia::worldmap::TWorldMapStorage(parent)
+    , m_speedCalculator(speedCalculator ? speedCalculator.get() : &m_ownSpeedCalculator)
+    , m_sharedSpeedCalculator(std::move(speedCalculator))
+    , m_clock(std::move(clock))
+{
+    m_sessionState.ensureMissileFloorsSized();
+    qRegisterMetaType<TWorldMapCoordinate>("TWorldMapCoordinate");
 }
 
 TWorldMapStorage::~TWorldMapStorage()
@@ -429,7 +441,7 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
     }
     const TWorldMapExtent step(target.x - origin.x, target.y - origin.y, target.z - origin.z);
     const qint64 duration = m_speedCalculator->stepDuration(creature.speed(), step, groundSpeedAt(to));
-    const qint64 now = tibia::shared::TClockService::frameMillis();
+    const qint64 now = m_clock ? m_clock->nowMillis() : tibia::shared::TClockService::frameMillis();
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }
 

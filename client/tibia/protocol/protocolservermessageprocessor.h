@@ -15,7 +15,6 @@ class GameserverMessage;
 namespace tibia {
 namespace protocol {
 
-struct ClassicReader;
 class TProtobufServerMessageTranslator;
 class TProtocolMessageQueue;
 
@@ -28,9 +27,9 @@ class TProtocolMessageQueue;
 /// classic server messages, protobuf server messages and classic client
 /// messages, all read from the stream the translator reads.
 ///
-/// Host: the live packet path hands the classic server message's bytes in a
-/// reader, and the translator gives no message when one does not read; the
-/// processor then returns null.
+/// Host: the translator gives no message after a product message (outside the
+/// CIP protocol) or when the rest of the stream does not read; nothing is
+/// enqueued then.
 class TProtocolServerMessageProcessor : public sessiondump::TSessiondumpMessageConsumer
 {
 public:
@@ -38,10 +37,8 @@ public:
                                     std::shared_ptr<TProtocolMessageQueue> ProtocolMessageQueue, bool Strict);
     ~TProtocolServerMessageProcessor() override;
 
-    /// The message read and enqueued; null when it does not read.
-    virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> processServerMessage(
-        ClassicReader& Reader, const qint64& Timestamp, uint32_t PacketNumber, network::EConnectionType ConnectionType);
-    /// Host: a classic server message read from the translator's stream.
+    /// A classic server message read from the translator's stream (a live
+    /// packet's, or a classic session dump's).
     void processServerMessage(const uint64_t& Timestamp, uint32_t PacketNumber,
                               network::EConnectionType ConnectionType) override;
     /// A classic client message read from the translator's stream.

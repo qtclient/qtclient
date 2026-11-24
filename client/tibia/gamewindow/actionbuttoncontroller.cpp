@@ -55,17 +55,22 @@ QString durationText(const qint64 seconds)
 
 }
 
-TActionButtonController::TActionButtonController(TActionBarController* bar, const int buttonId, const int multiActionIndex, QObject* parent)
+TActionButtonController::TActionButtonController(spells::TSpellInfoStorage* SpellInfoStorage,
+                                                 game::TPassiveAbilityInfoStorage* PassiveAbilityInfoStorage, const uint8_t ActionBarID,
+                                                 const uint ActionButtonID, QObject* parent)
     : Base(parent)
-    , m_bar(bar)
+    , m_spellInfoStorage(SpellInfoStorage)
+    , m_passiveAbilityInfoStorage(PassiveAbilityInfoStorage)
 {
-    m_actionBarID = uint(bar->actionBarId());
-    m_actionButtonID = uint(buttonId);
-    m_multiActionIndex = multiActionIndex;
+    m_actionBarID = ActionBarID;
+    m_actionButtonID = ActionButtonID;
+    m_multiActionIndex = -1;
     m_isEnabled = true;
-    // A spell button redraws when the spell table changes.
-    if (spells::TSpellInfoStorage* spellInfo = spells::TSpellInfoStorage::instance())
-        connect(spellInfo, &spells::TSpellInfoStorage::spellModificationsApplied, this, &TActionButtonController::onSpellDataModified);
+    if (m_spellInfoStorage) {
+        connect(m_spellInfoStorage, &spells::TSpellInfoStorage::spellModificationsApplied, this, &TActionButtonController::onSpellDataModified);
+        connect(m_spellInfoStorage, &spells::TSpellInfoStorage::activeSpellsChanged, this, &Base::highlightChanged);
+    }
+    connect(this, &Base::changed, this, &Base::highlightChanged);
 }
 
 void TActionButtonController::onSpellDataModified()
@@ -150,7 +155,8 @@ void TActionButtonController::createMultiActions(const int count)
         return;
     reset();
     for (int i = 0; i < count; ++i) {
-        auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
+        auto* child = new TActionButtonController(m_spellInfoStorage, m_passiveAbilityInfoStorage, uint8_t(m_actionBarID), m_actionButtonID, this);
+        child->m_multiActionIndex = i;
         child->connectToGameSession(m_gameSession);
         connect(child, &Base::publishGameAction, this, &Base::publishGameAction);
         connect(child, &Base::changed, this, &Base::changed);
@@ -166,9 +172,23 @@ void TActionButtonController::createMultiActions(const int count)
 
 void TActionButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_gameSession = GameSession;
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    m_cooldownStorage = session ? session->cooldownStorage() : nullptr;
+    m_gameSession.reset();
+    m_clock.reset();
+    m_cooldownStorage.reset();
+    m_playerData.reset();
+    m_objectInfoStorage.reset();
+    m_appearanceInstanceFactory.reset();
+    if (GameSession) {
+        m_gameSession = GameSession;
+        m_clock = m_gameSession->clockService();
+        if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+            m_cooldownStorage = session->cooldownStorage();
+            m_playerData = session->playerData();
+            m_objectInfoStorage = session->objectAppearanceInstanceInfoStorage();
+            m_appearanceInstanceFactory = session->appearanceInstanceFactory();
+        }
+    }
+    // Host: the slots show their own cooldowns, so they follow the session too.
     for (TActionButtonController* child : m_children)
         child->connectToGameSession(m_gameSession);
 }
@@ -183,7 +203,7 @@ void TActionButtonController::setSpell(const int spellId, const QString& paramet
     m_spellId = spellId;
     m_spellParameters = parameters;
     m_castType = castType;
-    if (const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId)) {
+    if (const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr) {
         m_spellIconUrl = spells::TSpellInfoStorage::iconUrl(*spell);
         m_text = parameters.isEmpty() ? spell->words : spell->words + QLatin1Char(' ') + parameters;
     }
@@ -263,7 +283,7 @@ void TActionButtonController::setPassiveAbility(const int passiveAbility)
     reset();
     clearMultiActions();
     m_type = PASSIVEABILITY;
-    if (const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance()) {
+    if (const game::TPassiveAbilityInfoStorage* storage = m_passiveAbilityInfoStorage) {
         if (const std::optional<game::TPassiveAbilityInfo> info = storage->findInfo(static_cast<uint8_t>(passiveAbility))) {
             if (!info->flag)
                 m_progressType = ANCHORED_COOLDOWN;
@@ -280,7 +300,7 @@ void TActionButtonController::setPassiveAbility(const int passiveAbility)
 QString TActionButtonController::passiveAbilityName() const
 {
     const TActionButtonController* slot = shown();
-    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    const game::TPassiveAbilityInfoStorage* storage = m_passiveAbilityInfoStorage;
     if (!storage || !game::TPassiveAbilityInfoStorage::isKnownPassiveAbility(static_cast<uint8_t>(slot->m_passiveAbility)))
         return {};
     return storage->info(static_cast<uint8_t>(slot->m_passiveAbility)).name;
@@ -340,7 +360,7 @@ QString TActionButtonController::tooltipRows() const
         rows += row("actionbar_tooltip_label_action", qtTrId("none"));
         break;
     case SPELL:
-        if (const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_spellId)) {
+        if (const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(m_spellId) : nullptr) {
             rows += row("actionbar_tooltip_label_action", qtTrId("actionbar_tooltip_spell_action").arg(spell->name));
             QString formula = spell->words;
             if (!m_spellParameters.isEmpty())
@@ -424,7 +444,7 @@ game::TCooldown TActionButtonController::currentCooldown(const qint64 now) const
         return storage->passiveCooldown(now);
     if (m_type == OBJECT) {
         // A rune waits for the multi-use cooldown and its spell's.
-        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(int(m_objectID)))
+        if (m_spellInfoStorage && m_spellInfoStorage->runeSpellOfObject(int(m_objectID)))
             return storage->objectCooldown(uint16_t(int(m_objectID)), now);
         if (isMultiUse(int(m_objectID)))
             return storage->multiUseCooldown(now);
@@ -517,8 +537,7 @@ uint8_t TPrioritySolverAdapter::upgradeTier() const { return static_cast<uint8_t
 
 TActionButtonController* TActionButtonController::currentMultiAction() const
 {
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    if (!session || !session->cooldownStorage() || !session->playerData() || !session->objectAppearanceInstanceInfoStorage())
+    if (!m_gameSession || !m_cooldownStorage || !m_playerData || !m_objectInfoStorage || !m_clock)
         return nullptr;
     std::vector<TPrioritySolverAdapter> adapters;
     adapters.reserve(m_children.size());
@@ -529,9 +548,8 @@ TActionButtonController* TActionButtonController::currentMultiAction() const
     }
     // Host: the ping is a qtclient static.
     const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
-    const input::TMultiActionPrioritySolver solver(session->cooldownStorage().get(), session->playerData().get(),
-                                                   session->objectAppearanceInstanceInfoStorage().get(),
-                                                   session->clockService()->nowMillis(), latency);
+    const input::TMultiActionPrioritySolver solver(m_cooldownStorage.get(), m_playerData.get(), m_objectInfoStorage.get(),
+                                                   m_clock->nowMillis(), latency);
     const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));
     return chosen ? chosen->button() : nullptr;
 }

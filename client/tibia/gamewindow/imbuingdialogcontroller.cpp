@@ -159,14 +159,35 @@ QHash<int, QByteArray> TImbuementSlotsListModel::roleNames() const
     return { { SlotIndexRole, "slotIndex" }, { SlotImbuementIdRole, "imbuementId" }, { SlotImageSourceRole, "imageSource" }, { SlotCategoryRole, "category" } };
 }
 
-TQmlAstralSource::TQmlAstralSource(const QString& name, const uint needed, const uint owned, const uint objectTypeId, QObject* parent)
+TQmlAstralSource::TQmlAstralSource(const QString& name, const uint needed, const uint owned, appearances::TAppearanceInstancePtr object,
+                                   QObject* parent)
     : cip::tibia::imbuing::TQmlAstralSource(parent)
+    , m_object(std::move(object))
 {
     m_name = name;
-    m_objectID = objectTypeId;
     // "owned/needed", nothing for a source that takes none.
     m_resourceString = needed == 0 ? QStringLiteral("") : qtTrId("imbuing_resource_count").arg(container::ammoText(owned)).arg(needed);
     m_hasEnoughToImbue = needed <= owned;
+}
+
+uint TQmlAstralSource::objectID() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlTypeId(m_object);
+}
+
+uint TQmlAstralSource::objectCount() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(m_object);
+}
+
+cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType TQmlAstralSource::liquidType() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(m_object);
+}
+
+cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection TQmlAstralSource::hookDirection() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(m_object);
 }
 
 TQmlImbuementData::TQmlImbuementData(const TImbuement& imbuement, const QList<QObject*>& astralSources, const bool enoughAstralSources,
@@ -672,7 +693,8 @@ void TImbuingDialogController::selectImbuement(const uint32_t imbuementId)
         const auto it = std::find_if(owned.begin(), owned.end(),
                                      [&source](const TImbuementSource& o) { return o.objectTypeId == source.objectTypeId; });
         const uint ownedCount = it != owned.end() ? it->count : 0;
-        astralSources.append(new imbuing::TQmlAstralSource(source.name, source.count, ownedCount, source.objectTypeId));
+        astralSources.append(new imbuing::TQmlAstralSource(source.name, source.count, ownedCount,
+                                                           appearances::TAppearanceInstanceFactory::createObject(source.objectTypeId)));
     }
     replaceObject(m_selectedImbuement, new imbuing::TQmlImbuementData(*imbuement, astralSources, enough, this));
 }

@@ -64,12 +64,16 @@ namespace {
 
 }
 
-TTaskboardDialogController::TTaskboardDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem)
+TTaskboardDialogController::TTaskboardDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                                       std::shared_ptr<shared::IClockService> ClockService,
+                                                       QQmlEngine* engine, QQuickItem* dialogParentItem)
     : TDialogController(QStringLiteral("taskboard/TaskboardDialog.qml"), engine, dialogParentItem)
     , m_bounty(new TBountyTasksController(engine, dialogParentItem, this))
     , m_weekly(new TWeeklyTasksController(this))
     , m_shop(new TTaskboardShopController(engine, dialogParentItem, this))
     , m_notOnMain(new TMessageDialogController(engine, dialogParentItem, this))
+    , m_gameActionMapper(std::move(GameActionMapper))
+    , m_clockService(std::move(ClockService))
 {
     m_bountyTaskController = m_bounty;
     m_weeklyTaskController = m_weekly;

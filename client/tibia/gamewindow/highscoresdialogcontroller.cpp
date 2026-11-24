@@ -59,7 +59,6 @@ THighscoresData::THighscoresData(std::vector<THighscoreEntry> entries, QObject* 
     : cip::tibia::highscores::THighscoresData(parent)
     , m_model(std::move(entries))
 {
-    m_highscoreEntryModel = &m_model;
 }
 
 }

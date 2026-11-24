@@ -938,12 +938,8 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
     const auto coordinate = [](const ProtocolCoordinate& position) {
         return worldmap::TWorldMapCoordinate(static_cast<int>(position.x()), static_cast<int>(position.y()), static_cast<int>(position.z()));
     };
-    if (m.data_type() == 0) {
-        // Host: the minimap marker part belongs to the minimap's protocol handler.
-        const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()), static_cast<short>(m.position().z()));
-        tibia::game::processAddAutomapFlag(pos, static_cast<uint8_t>(m.icon()), m.text());
+    if (m.data_type() == 0) // a static marker: the minimap's protocol message handler adds it
         return;
-    }
     TCyclopediaMapStorage* storage = m_storages.cyclopediaMap.get();
     switch (m.data_type()) {
     case 1: { // the main areas and the discovered and discoverable subareas

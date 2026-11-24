@@ -16,6 +16,12 @@ namespace tibia {
 namespace game {
 class IGameSession;
 }
+namespace input {
+class TGameActionMapper;
+}
+namespace shared {
+class IClockService;
+}
 namespace taskboard {
 struct TWeeklyTaskData;
 }
@@ -40,7 +46,9 @@ class TTaskboardDialogController final : public TDialogController<cip::tibia::ga
 public:
     /// CipSoft also passes the game window's mouse mapper and clock on to the
     /// weekly tab; qtclient's weekly tab follows the control scheme itself.
-    TTaskboardDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem);
+    TTaskboardDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                               std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* engine,
+                               QQuickItem* dialogParentItem);
     ~TTaskboardDialogController() override;
 
     QObject* bountyTaskController() const override;
@@ -73,6 +81,9 @@ private:
     TMessageDialogController* m_notOnMain = nullptr;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The weekly tab's mouse mapping and clock (CipSoft hands them to the weekly tasks controller).
+    std::shared_ptr<input::TGameActionMapper> m_gameActionMapper;
+    std::shared_ptr<shared::IClockService> m_clockService;
 
 public Q_SLOTS:
     /// The router's game actions: OPEN_TASKBOARD_DIALOG opens its tab.

@@ -32,12 +32,12 @@ void showHint(const TTutorialOverlayItemController& overlayItem, const TTutorial
 
 }
 
-TTutorialOverlayController::TTutorialOverlayController(QQmlEngine* engine, QQuickItem* dialogPlaceholder,
+TTutorialOverlayController::TTutorialOverlayController(QQmlEngine* engine, QQuickItem* overlayParentItem,
                                                        QQuickItem* gameWindowItem,
                                                        input::TEventFilterManager* eventFilterManager, QObject* parent)
     : cip::tibia::gamewindow::TTutorialOverlayController(parent)
     , m_engine(engine)
-    , m_dialogPlaceholder(dialogPlaceholder)
+    , m_overlayParentItem(overlayParentItem)
     , m_gameWindowItem(gameWindowItem)
     , m_eventFilterManager(eventFilterManager)
 {
@@ -54,14 +54,14 @@ QQuickItem* TTutorialOverlayController::createOverlayItem(const QString& qmlFile
     if (!item)
         return nullptr;
     item->setParent(this);
-    if (m_dialogPlaceholder)
-        item->setParentItem(m_dialogPlaceholder);
+    if (m_overlayParentItem)
+        item->setParentItem(m_overlayParentItem);
     return item;
 }
 
 void TTutorialOverlayController::createMouseTrail()
 {
-    if (!m_dialogPlaceholder)
+    if (!m_overlayParentItem)
         return;
     QQuickItem* item = createOverlayItem(QStringLiteral("tutorial/TutorialOverlayMouseTrailAnimation.qml"));
     m_mouseTrail = std::make_shared<TTutorialOverlayMouseTrailAnimationController>(item);
@@ -165,7 +165,7 @@ void TTutorialOverlayController::update()
                 createOverlayItem(QStringLiteral("tutorial/TutorialOverlayTemplate.qml")));
             m_overlayItems[markerID] = overlayItem;
         }
-        const QPointF position = marker->mapToItem(m_dialogPlaceholder, QPointF(0, 0));
+        const QPointF position = marker->mapToItem(m_overlayParentItem, QPointF(0, 0));
         const QSizeF size = marker->boundingRect().size();
         const QRectF rect(std::floor(position.x()), std::floor(position.y()), std::floor(size.width()),
                           std::floor(size.height()));

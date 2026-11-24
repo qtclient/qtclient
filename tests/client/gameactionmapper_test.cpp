@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 using tibia::input::EGameAction;
@@ -32,45 +33,83 @@ bool hasType(const std::vector<A>& types, const A type)
 
 }
 
-// CIP Classic rules (0x1077b2668) + lootSchemeIndex 0 (Loot: Right):
-// right-click use/open with QUICK_LOOT injected first; left-click only walks.
+constexpr int Classic = TGameActionMapper::ClassicControlScheme;
+constexpr int Legacy = TGameActionMapper::LegacyControlScheme;
+constexpr int Smart = TGameActionMapper::LeftSmartClickControlScheme;
+
+// Classic + Loot: Right: right click puts quick loot right after use; the
+// shift+right quick loot rule is gone; left click only walks.
 TEST(GameActionMapper, ClassicLootRightWorldMapRuleTypes)
 {
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/0);
+    const TGameActionMapper mapper(Classic, TGameActionMapper::LootRight);
 
     const std::vector<A> left = mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0);
     ASSERT_EQ(left.size(), 1u);
     EXPECT_EQ(left.front(), A::SET_PLAYER_MOVEMENT_INTENT);
 
     const std::vector<A> right = mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, 0);
-    ASSERT_FALSE(right.empty());
-    EXPECT_EQ(right.front(), A::QUICK_LOOT);
-    EXPECT_TRUE(hasType(right, A::OPEN));
-    EXPECT_TRUE(hasType(right, A::OPEN_IN_NEW_WINDOW));
-    EXPECT_TRUE(hasType(right, A::USE));
-    EXPECT_TRUE(hasType(right, A::USE_WITH));
-    EXPECT_FALSE(hasType(right, A::SET_PLAYER_MOVEMENT_INTENT));
-    EXPECT_FALSE(hasType(right, A::SMART_CLICK));
+    const std::vector<A> expected = { A::ATTACK_CREATURE, A::STOP_ATTACKING_CREATURE, A::START_TALKING_TO_NPC, A::USE, A::QUICK_LOOT,
+                                      A::USE_ON_CREATURE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW,
+                                      A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE };
+    EXPECT_EQ(right, expected);
+
+    EXPECT_TRUE(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier).empty());
 }
 
+// Classic + Loot: Right: containers get a right click without quick loot; the
+// left click keeps the classic container quick loot.
 TEST(GameActionMapper, ClassicLootRightContainerContext)
 {
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/0);
+    const TGameActionMapper mapper(Classic, TGameActionMapper::LootRight);
 
-    // Left is not the loot chord → Classic container left QUICK_LOOT is stripped.
-    const std::vector<A> left = mapper.ruleTypes(TGameActionMapper::ContainerContext, Qt::LeftButton, 0);
-    EXPECT_TRUE(left.empty());
-
-    // Right falls through to world-map use/open and injects QUICK_LOOT.
     const std::vector<A> right = mapper.ruleTypes(TGameActionMapper::ContainerContext, Qt::RightButton, 0);
     ASSERT_FALSE(right.empty());
-    EXPECT_EQ(right.front(), A::QUICK_LOOT);
+    EXPECT_EQ(right.front(), A::ATTACK_CREATURE);
     EXPECT_TRUE(hasType(right, A::OPEN));
+    EXPECT_FALSE(hasType(right, A::QUICK_LOOT));
+
+    const std::vector<A> left = mapper.ruleTypes(TGameActionMapper::ContainerContext, Qt::LeftButton, 0);
+    EXPECT_EQ(left, std::vector<A>{ A::QUICK_LOOT });
+}
+
+TEST(GameActionMapper, ClassicLootShiftRightKeepsTheTable)
+{
+    const TGameActionMapper mapper(Classic, TGameActionMapper::LootShiftRight);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier),
+              std::vector<A>{ A::QUICK_LOOT });
+    EXPECT_FALSE(hasType(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, 0), A::QUICK_LOOT));
+}
+
+TEST(GameActionMapper, ClassicLootLeftPutsQuickLootFirstOnLeftClick)
+{
+    const TGameActionMapper mapper(Classic, TGameActionMapper::LootLeft);
+    const std::vector<A> left = mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0);
+    EXPECT_EQ(left, (std::vector<A>{ A::QUICK_LOOT, A::SET_PLAYER_MOVEMENT_INTENT }));
+    EXPECT_TRUE(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier).empty());
+}
+
+// The loot scheme rewrites only the classic rules.
+TEST(GameActionMapper, LegacyIgnoresTheLootScheme)
+{
+    const TGameActionMapper mapper(Legacy, TGameActionMapper::LootRight);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier),
+              std::vector<A>{ A::QUICK_LOOT });
+}
+
+// A new control scheme drops the loot rewrite.
+TEST(GameActionMapper, SetControlSchemeResetsTheRules)
+{
+    TGameActionMapper mapper(Classic, TGameActionMapper::LootLeft);
+    mapper.setControlScheme(Classic);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0),
+              std::vector<A>{ A::SET_PLAYER_MOVEMENT_INTENT });
+    EXPECT_EQ(mapper.controlScheme(), Classic);
+    EXPECT_THROW(mapper.setControlScheme(0), std::out_of_range);
 }
 
 TEST(GameActionMapper, SmartLeftClickIsNotClassic)
 {
-    const TGameActionMapper smart(/*controlScheme=*/2, /*lootScheme=*/0);
+    const TGameActionMapper smart(Smart, TGameActionMapper::LootRight);
     const std::vector<A> left = smart.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0);
     ASSERT_EQ(left.size(), 1u);
     EXPECT_EQ(left.front(), A::SMART_CLICK);
@@ -79,7 +118,7 @@ TEST(GameActionMapper, SmartLeftClickIsNotClassic)
 // CipSoft Classic: context menu is Ctrl+click (Cmd on macOS → MetaModifier).
 TEST(GameActionMapper, ClassicMenuRequiresCtrlOrMeta)
 {
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/1); // shift+right loot, not plain right
+    const TGameActionMapper mapper(Classic, TGameActionMapper::LootShiftRight);
 
     const std::vector<A> plainRight =
         mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, 0);
@@ -93,49 +132,4 @@ TEST(GameActionMapper, ClassicMenuRequiresCtrlOrMeta)
     const std::vector<A> metaRight =
         mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::MetaModifier);
     EXPECT_TRUE(hasType(metaRight, A::CONTEXT_MENU));
-}
-
-// CIP Loot: Right — Shift+Right uses/opens the field object (no attack), so a
-// ladder under a creature climbs instead of attacking.
-TEST(GameActionMapper, ClassicLootRightShiftRightIsForceUse)
-{
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/0);
-    const std::vector<A> types =
-        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
-    ASSERT_FALSE(types.empty());
-    EXPECT_EQ(types.front(), A::USE);
-    EXPECT_TRUE(hasType(types, A::USE_ON_CREATURE));
-    EXPECT_TRUE(hasType(types, A::USE_WITH));
-    EXPECT_TRUE(hasType(types, A::OPEN));
-    EXPECT_TRUE(hasType(types, A::OPEN_IN_NEW_WINDOW));
-    EXPECT_FALSE(hasType(types, A::ATTACK_CREATURE));
-    EXPECT_FALSE(hasType(types, A::QUICK_LOOT));
-}
-
-TEST(GameActionMapper, ClassicLootShiftRightKeepsQuickLootOnShiftRight)
-{
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/1);
-    const std::vector<A> types =
-        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
-    ASSERT_FALSE(types.empty());
-    EXPECT_EQ(types.front(), A::QUICK_LOOT);
-    EXPECT_FALSE(hasType(types, A::USE));
-}
-
-TEST(GameActionMapper, ClassicLootLeftClearsShiftRight)
-{
-    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/2);
-    const std::vector<A> types =
-        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
-    EXPECT_TRUE(types.empty());
-}
-
-TEST(GameActionMapper, LegacyLootRightShiftRightIsForceUse)
-{
-    const TGameActionMapper mapper(/*controlScheme=*/1, /*lootScheme=*/0);
-    const std::vector<A> types =
-        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
-    ASSERT_FALSE(types.empty());
-    EXPECT_EQ(types.front(), A::USE);
-    EXPECT_FALSE(hasType(types, A::ATTACK_CREATURE));
 }

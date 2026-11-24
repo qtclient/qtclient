@@ -85,7 +85,9 @@ qtclient_add_port_test(client_phaseanimator_tests
 qtclient_add_port_test(client_movementpathplanner_tests
     movementpathplanner_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/input/movementpathplanner.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/minimap/waypointsectors.cpp
 )
+target_link_libraries(client_movementpathplanner_tests PRIVATE Qt6::Gui)
 
 # CIP TGameActionMapper Classic + Loot: Right. Compiles mapper.cpp alone; the
 # test stubs filterActions so gameaction.cpp is not required.
@@ -665,6 +667,10 @@ qtclient_add_port_test(client_networkquality_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/network/networkqualityprotocolmessagehandler.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/network/networkqualityprotocolmessagehandler.h
     ${CMAKE_SOURCE_DIR}/client/tibia/protocol/protocolclientmessageprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/protobufclientmessagetranslator.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/protocolwriter.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/unencryptedrawmessagestream.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacket.cpp
 )
 set_target_properties(client_networkquality_tests PROPERTIES AUTOMOC ON)
@@ -697,3 +703,13 @@ qtclient_add_port_test(client_waypointsectors_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/minimap/waypointsectors.cpp
 )
 target_link_libraries(client_waypointsectors_tests PRIVATE Qt6::Gui)
+# Wave 15: CipSoft's sliding FPS counter (TGameClient +0x678).
+qtclient_add_port_test(client_slidingfpscounter_tests
+    slidingfpscounter_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/systemsurvey/slidingfpscounter.cpp
+)
+# Wave 15: the proficiency shape option tables.
+qtclient_add_port_test(client_proficiencyshapeoptions_tests
+    proficiencyshapeoptions_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/proficiency/proficiencycatalogue.cpp
+)

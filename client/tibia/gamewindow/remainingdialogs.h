@@ -3,6 +3,7 @@
 #include "store/storestorage.h"
 
 #include "crashreportdata.h"
+#include "game/skillswidgetentrydata.h"
 
 #include "authentication/authenticationjsondocumenthelper.h"
 #include "client/gamecore.h"
@@ -417,6 +418,8 @@ private:
     static TMultiOfflineTrainingDialogController* s_instance;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
+    /// Fills the skill rows (precise percent on).
+    game::TSkillsWidgetEntryUpdater m_skillsWidgetEntryUpdater;
 };
 
 /// CIP TOutfitMemorialDialogController — OutfitMemorialDialog.qml.

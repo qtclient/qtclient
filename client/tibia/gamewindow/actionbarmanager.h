@@ -54,8 +54,8 @@ public:
     /// Every group restores the bars of its saved configuration.
     void restoreLastAktionBarConfiguration();
 
-    /// The default use of an object on a button: Equip for wearable
-    /// non-multi-use objects, SelectUseTarget for multi-use, otherwise Use.
+    /// The default use of an object on a button: Equip for clothes that are
+    /// not containers; otherwise SelectUseTarget for multi-use, else Use.
     static config::EUseType defaultUseType(int objectId);
 
     /// Per frame: ticks every group.

@@ -14,6 +14,18 @@
 #include <tuple>
 #include <vector>
 
+#include <memory>
+
+class QQmlEngine;
+class QQuickItem;
+
+namespace tibia::appearances {
+class TAppearanceInstanceFactory;
+}
+namespace tibia::config {
+class TClientOptions;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -85,7 +97,10 @@ class TConfigureCreaturePodiumDialogController final
 public:
     using RaceRow = std::tuple<uint16_t, std::string, Outfit>;
 
-    explicit TConfigureCreaturePodiumDialogController(QObject* parent = nullptr);
+    /// The dialog is made with `Engine` under `DialogParentItem`.
+    TConfigureCreaturePodiumDialogController(std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                             config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                             QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// Fills the skin list from the ConfigureCreaturePodium message and shows the dialog.
     void open(const Outfit& selected, uint16_t selectedRace, bool bossPodium, const std::vector<RaceRow>& races, const Position& pos,
@@ -105,6 +120,9 @@ private:
     /// The preview shows `outfit` (selectedBossOutfitChanged).
     void setPreset(const Outfit& outfit);
 
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    /// clientSettingSmoothFiltering reads its antialiasing mode.
+    config::TClientOptions* m_pClientOptions;
     TBossSkinModel m_skins;
     TBossSkinSortProxyModel m_proxy;
     qmlcomponents::TOutfitPresetQmlType* m_preset = nullptr;

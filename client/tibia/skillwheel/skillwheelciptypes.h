@@ -22,6 +22,7 @@ class TCharacterInfoStorage;
 }
 namespace game {
 class TPlayerData;
+class TPremiumTimeStorage;
 }
 namespace input {
 class IGameAction;
@@ -56,8 +57,9 @@ public:
     TSkillWheelGameActionHandler(std::shared_ptr<TSkillWheelProtocolMessageHandler> pProtocolMessageHandler,
                                  const std::weak_ptr<creatures::TCreature>& pPlayerWeak);
 
-    /// The login session's premium flag (CIP: the premium time storage).
-    void setSessionPremium(bool premium) { m_sessionPremium = premium; }
+    /// The session's premium time storage: without premium time the own
+    /// wheel can be requested even when the player is not Premium.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
 
     /// CIP: SAVE_SKILL_WHEEL sends its configuration, REQUEST_OWN_SKILL_WHEEL the own request,
     /// REQUEST_SKILL_WHEEL the creature's.
@@ -73,14 +75,14 @@ public:
 
 public Q_SLOTS:
     /// REQUEST_OWN_SKILL_WHEEL: from level 51 the server is asked when the
-    /// player is Premium or the login session is not; otherwise a vocation
+    /// player is Premium or the premium time storage has no premium; otherwise a vocation
     /// offers the preview message, none the no-wheel message.
     void handleRequestOnwSkillWheelGameAction() override;
 
 private:
     std::shared_ptr<TSkillWheelProtocolMessageHandler> m_pProtocolMessageHandler;
     uint32_t m_playerId = 0;
-    bool m_sessionPremium = false;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 };
 
 /// CIP `skillwheel::TSkillWheelProtocolMessageHandler`: the skill wheel and gem atelier messages.

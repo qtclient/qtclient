@@ -140,6 +140,7 @@ void TGameWindowController::setShowEmailAsPlainText(const bool v)
 TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRouter> GameActionRouter,
                                              std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
                                              QQmlEngine* Engine, config::TClientOptions* ClientOptions, QQuickItem* ClientWindow,
+                                             std::shared_ptr<input::TEventFilterManager> EventFilterManager,
                                              const QUrl& HintsUrl, const QUrl& ClientServicesUrl,
                                              std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
                                              std::shared_ptr<shared::IClockService> ClockService, QObject* parent)
@@ -149,6 +150,7 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     , m_pEngine(Engine)
     , m_pClientOptions(ClientOptions)
     , m_container(ClientWindow)
+    , m_pEventFilterManager(std::move(EventFilterManager))
     , m_pStatusBarController(std::make_unique<TStatusBarController>(ClientOptions))
     , m_hintsUrl(HintsUrl)
     , m_fileSystemHelper(std::move(TibiaFileSystemHelper))
@@ -164,7 +166,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
           ClientServicesUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper, m_pClockService))
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
     , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
-    , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
     // CIP: the status bar controller's game actions are the game window controller's.
@@ -175,7 +176,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
             &TGameWindowController::onLiveInformationReceived);
     connect(m_newsDialog.get(), &TNewsDialogController::publishGameAction, this, &TGameWindowController::publishGameAction);
-    connect(m_newsButton.get(), &TNewsButtonController::publishGameAction, this, &TGameWindowController::publishGameAction);
     // CIP (TGameClient): the storage saves through the disk cache and starts
     // from what it holds.
     connect(m_newsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_newsDiskIO.get(),
@@ -244,6 +244,8 @@ TGameWindowController::~TGameWindowController()
 {
     // CIP also releases its native window helper and the keep-renderer prompt here; qtclient's
     // prompt lives in app/sessionbootstrap and has no native helper.
+    if (m_pEventFilterManager)
+        m_pEventFilterManager->disableDiscardingUnhandledMouseButtons();
     clearEventModels();
 }
 
@@ -268,6 +270,8 @@ std::unique_ptr<QObject> TGameWindowController::createGameWindow(QQmlEngine* eng
     connect(this, &TGameWindowController::releaseFocusFromChatInput, item,
             [item] { QMetaObject::invokeMethod(item, "releaseFocusFromChatInput"); });
     setGameWindowItem(item);
+    if (m_pEventFilterManager)
+        m_pEventFilterManager->enableDiscardingUnhandledMouseButtons();
     return object;
 }
 
@@ -580,8 +584,13 @@ void TGameWindowController::showGameScreen()
     // keeps its state.
     if (m_liveInfoUploader)
         m_liveInfoUploader->stopUpdateTimer();
-    if (m_gameWindowState != QLatin1String("INGAME"))
+    if (m_gameWindowState != QLatin1String("INGAME")) {
+        if (m_pEventFilterManager) {
+            m_pEventFilterManager->enableKeyboardShortcuts();
+            m_pEventFilterManager->enableMovementKeys();
+        }
         setScreen(QStringLiteral("INGAME"), false, Qt::black);
+    }
     // CIP: the start screen's key filter goes; the game screen is announced.
     QCoreApplication::instance()->removeEventFilter(this);
     // CIP: the looping sounds play again.

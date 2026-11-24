@@ -1,5 +1,6 @@
 #pragma once
 
+#include "appearances/appearanceinstance.h"
 #include "tutorial/sessiondumphintbase.h"
 
 #include <QJsonDocument>
@@ -36,6 +37,9 @@ public:
 
     /// The outfit of the male or the female tutorial character.
     TSessiondumpOutfit outfit(bool male) const;
+    /// The tutorial character's outfit instance, looking north: the male or
+    /// the female outfit with its colours and addons.
+    std::shared_ptr<appearances::TOutfitAppearanceInstance> createOutfitInstance(bool male) const;
     virtual std::vector<THintPtr> hints() const;
     /// Adds a hint, keeping the hints sorted by timestamp (stable).
     virtual void addHint(const THintPtr& hint);
@@ -58,6 +62,24 @@ private:
     TSessiondumpOutfit m_femaleOutfit;
     std::vector<THintPtr> m_hints;
 };
+
+// Host: inline and not virtual, so translation units that never create the
+// outfit (the hints tests) need not link the appearance factory.
+inline std::shared_ptr<appearances::TOutfitAppearanceInstance> TSessiondumpHints::createOutfitInstance(const bool male) const
+{
+    const TSessiondumpOutfit& outfit = male ? m_maleOutfit : m_femaleOutfit;
+    Outfit look;
+    look.setCategory(ThingCategoryCreature);
+    look.setId(outfit.lookType);
+    look.setHead(outfit.head);
+    look.setBody(outfit.torso);
+    look.setLegs(outfit.legs);
+    look.setFeet(outfit.detail);
+    look.setAddons(uint8_t((outfit.addon1 ? 1 : 0) | (outfit.addon2 ? 2 : 0)));
+    using appearances::TAppearanceInstanceFactory;
+    return TAppearanceInstanceFactory::createOutfit(
+        TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, outfit.lookType), look, 0);
+}
 
 }
 }

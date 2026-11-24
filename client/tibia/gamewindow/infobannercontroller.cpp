@@ -1,16 +1,39 @@
 #include "gamewindow/infobannercontroller.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
+
+#include <QVariantMap>
 
 namespace tibia::gamewindow {
 
-TInfoBannerController::TInfoBannerController(QQuickItem* mapWindowPane, QObject* parent)
+// dialogmanager.cpp: an item of `qmlFile` under `parentItem`, owned by `owner`.
+QQuickItem* createItem(QQmlEngine* engine, const QString& qmlFile, QQuickItem* parentItem, QObject* owner, const QVariantMap& properties);
+
+TInfoBannerController::TInfoBannerController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* ParentItem,
+                                             QQuickItem* MapWindowPane, QObject* parent)
     : cip::tibia::gamewindow::TInfoBannerController(parent)
-    , m_mapWindowPane(mapWindowPane)
+    , m_clientOptions(ClientOptions)
+    , m_engine(Engine)
+    , m_parentItem(ParentItem)
+    , m_mapWindowPane(MapWindowPane)
 {
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            &TInfoBannerController::onShowInfoBannerOptionChanged);
+    createInfoBannerWrapper();
+    if (!m_clientOptions)
+        return;
+    connect(m_clientOptions, &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+        if (id == config::EClientOption::gameWindowShowInfoBanner)
+            onShowInfoBannerOptionChanged();
+    });
     onShowInfoBannerOptionChanged();
+}
+
+void TInfoBannerController::createInfoBannerWrapper()
+{
+    if (m_infoBannerWrapper)
+        return;
+    m_infoBannerWrapper =
+        createItem(m_engine, QStringLiteral("tutorial/InfoBannerWrapper.qml"), m_parentItem, this,
+                   { { QStringLiteral("controller"), QVariant::fromValue<QObject*>(this) } });
 }
 
 QQuickItem* TInfoBannerController::mapWindowPane()
@@ -18,24 +41,13 @@ QQuickItem* TInfoBannerController::mapWindowPane()
     return m_mapWindowPane;
 }
 
-void TInfoBannerController::enqueue(const cip::tibia::qmlcomponents::enums::EInfoBannerType type, const QJsonValue& extra)
-{
-    if (!m_showInfoBanner)
-        return;
-    Q_EMIT showInfoBanner(type, extra);
-    Q_EMIT displayDataChanged();
-}
-
-void TInfoBannerController::clearQueue()
-{
-    Q_EMIT clearInfoBannerQueue();
-}
-
 void TInfoBannerController::onShowInfoBannerOptionChanged()
 {
-    m_showInfoBanner = app::ClientOptions::load().options().value(QLatin1String("gameWindowShowInfoBanner")).toBool(true);
+    if (!m_clientOptions)
+        return;
+    m_showInfoBanner = m_clientOptions->boolOption(config::EClientOption::gameWindowShowInfoBanner);
     if (!m_showInfoBanner)
-        clearQueue();
+        Q_EMIT clearInfoBannerQueue();
 }
 
 }

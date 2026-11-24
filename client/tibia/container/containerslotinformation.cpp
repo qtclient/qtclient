@@ -171,6 +171,12 @@ uint TContainerSlotQmlInformation::objectCount() const
     return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(m_appearance.appearance);
 }
 
+/// CIP: the slot's object type can be wielded in both hands; false for an empty slot.
+bool TContainerSlotQmlInformation::hasDualWielding() const
+{
+    return m_appearance.appearance && m_appearance.dualWield;
+}
+
 uint TContainerSlotQmlInformation::upgradeTier() const
 {
     return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlUpgradeTier(m_appearance.appearance);

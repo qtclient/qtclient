@@ -9,6 +9,7 @@
 #include "authentication/loginrequestuploader.h"
 #include "config/characterconfigurationmanager.h"
 #include "game/gameservergamesession.h"
+#include "minimap/minimapmarkergameactionhandler.h"
 #include "input/gameactionptr.h"
 #include "runtime/gamehost.h"
 #include "qtconnectionwrapper.h"
@@ -30,6 +31,7 @@
 namespace tibia::systemsurvey {
 class TFPSHistory;
 class TFPSHistoryController;
+class TSlidingFPSCounter;
 }
 #include <optional>
 
@@ -77,6 +79,7 @@ class TSelectOutfitDialogController;
 class TServerModalDialogController;
 class TShowImageDialogController;
 class TShowSpellBookDialogController;
+class TSidebarManager;
 class TSoulSealsDialogController;
 class TStashDialogController;
 class TTaskboardDialogController;
@@ -277,6 +280,8 @@ public:
     runtime::TGameHost* gameHost() const { return m_gameHost; }
     /// Tick-to-swap durations for the FPS indicator's currentFrameCount.
     worldmap::TFrameDurationRing* frameDurations() const { return m_frameDurations.get(); }
+    /// CIP: the frame rate over the last second (read by the FPS indicator and the options).
+    systemsurvey::TSlidingFPSCounter* slidingFPSCounter() const { return m_pSlidingFPSCounter.get(); }
     /// The active game session's storages (null while no session is played).
     worldmap::TAmbientLightStorage* ambientLight() const;
     worldmap::TWorldMapStorage* worldMapStorage() const;
@@ -286,8 +291,8 @@ public:
     worldmap::TWorldmapProtocolMessageHandler* worldmapProtocol() const;
     /// Speech bubbles and screen messages; null before start.
     chat::TTextStorage* textStorage() const;
-    /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
-    void setMessageIgnoreList(chat::TWhiteBlacklist* list);
+    /// CIP +0x2c8: the client's white/blacklist (chat filter, map bubbles, the white/blacklist dialog).
+    const std::shared_ptr<chat::TWhiteBlacklist>& whiteBlacklist() const { return m_pWhiteBlacklist; }
         effects::TEffectStorage* effectStorage() const;
     /// Host shim until the game window's widgets connect to the session: the
     /// current session's sidebars.json, statusBarData.json and actionbars.json
@@ -456,6 +461,23 @@ public Q_SLOTS:
     /// CIP: with options tracking on, the client options go to the
     /// fpsHistoryRecipient once per login; off drops the uploader.
     void onOptionsTrackingActiveChanged(bool OptionsTrackingActive);
+    /// CIP: once per frame, before the scene graph syncs: the frame rate
+    /// limit, the frame statistics, the predicted time of the next frame for
+    /// the client's and the session's per-frame updates, then (during a
+    /// session) the game window's per-frame steps.
+    void onBeforeRenderFrameMainThread() override;
+    /// CIP (render thread): the frame was shown: its render time goes into
+    /// the render time ring; then, on the main thread, the session's player
+    /// movement intent handler updates, a pending screenshot is taken on the
+    /// game screen (dropping the FPS drops logger's frames when it was).
+    void onRenderThreadFrameSwapped();
+    /// CIP: the current session's player movement intent handler updates.
+    void wakeUpPlayerMovementIntentHandler();
+    /// CIP: the session's own character arrived: the sidebars check their
+    /// bounds, the character's hotkey set is tried, the FPS drops logger
+    /// follows its position; on the next event loop pass the connecting
+    /// dialog closes and the game screen shows.
+    void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);
 
 public:
     /// CIP: the launcher found the package up to date (the application's
@@ -558,13 +580,18 @@ private:
     /// The game window controllers' connectors, in CipSoft's order (the
     /// connector calls of setCurrentGameSession); in gameclientgamewindow.cpp.
     void connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The game window's sidebar manager; null before the game window exists
+    /// (in gameclientgamewindow.cpp).
+    gamewindow::TSidebarManager* sidebarManager() const;
     /// The game window's keyboard status; null before the game window exists.
     input::TKeyboardStatusStorage* keyboardStatusStorage() const;
     /// The game window's disconnect reaction; null before the game window exists.
     gamewindow::TGameSessionDisconnectReactionController* gameSessionDisconnectReactionController() const;
     void fail(const QString& message);
-    /// Once per frame, before the scene graph syncs (CIP:).
-    void tick();
+    /// CIP: under the render time lock: the render time measurement starts,
+    /// a frame starts on the sliding frame counter and the FPS history's
+    /// counter, and the FPS drops logger gets the last frame's duration.
+    void updateFrameStatistics();
     /// The frame-rate limiter; false when this frame comes too early.
     bool frameSlotReached(qint64 nowMicros);
 
@@ -576,6 +603,23 @@ private:
     QTimer m_idleTick;
     QTimer m_frameLimitTimer;
     std::unique_ptr<worldmap::TFrameDurationRing> m_frameDurations;
+    /// CIP +0x678: the frame rate over the last second (the FPS indicator's
+    /// and the options' frame rate).
+    std::shared_ptr<systemsurvey::TSlidingFPSCounter> m_pSlidingFPSCounter;
+    /// CIP: count, shortest, longest and mean of a per-frame step's duration
+    /// (microseconds).
+    struct TDurationStatistics
+    {
+        quint64 count = 0;
+        qint64 minimum = 0;
+        qint64 maximum = 0;
+        qint64 average = 0;
+        void add(qint64 Duration);
+    };
+    /// CIP +0x890: the session's per-frame update.
+    TDurationStatistics m_sessionFrameUpdateDurations;
+    /// CIP +0x8b0: the game window's per-frame steps.
+    TDurationStatistics m_gameWindowFrameUpdateDurations;
     std::shared_ptr<systemsurvey::TFPSHistory> m_fpsHistory;
     std::shared_ptr<systemsurvey::TFPSHistoryController> m_fpsHistoryController;
     /// CIP +0xaa8: reports frame rate drops while FPS tracking is on.
@@ -609,7 +653,9 @@ private:
     /// owns; each new session's manager takes them.
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     /// The chat pane's ignore list, applied to each session's message handler.
-    chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
+    std::shared_ptr<chat::TWhiteBlacklist> m_pWhiteBlacklist;
+    /// CIP +0x298: the minimap marker game actions (delete marker).
+    std::shared_ptr<minimap::TMinimapMarkerGameActionHandler> m_pMinimapMarkerGameActionHandler;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;

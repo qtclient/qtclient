@@ -1059,9 +1059,8 @@ void TStoreDialogController::showMessage(TMessageDialogController* dialog, const
     dialog->showMessage(caption, message);
 }
 
-TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, QObject* parent)
+TStoreButtonController::TStoreButtonController(QObject* parent)
     : cip::tibia::gamewindow::TStoreButtonController(parent)
-    , m_dialog(dialog)
 {
     connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TStoreButtonController::changed);
     connect(&m_highlightTimer, &shared::THighlightTimer::timeout, this, &TStoreButtonController::onHighlightStoreButtonEnds);

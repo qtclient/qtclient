@@ -123,34 +123,56 @@ TNPCTradeProtocolMessageHandler::~TNPCTradeProtocolMessageHandler()
 
 void TNPCTradeProtocolMessageHandler::sendClose()
 {
-    tibia::game::closeNpcTrade();
+    Q_EMIT sendCloseNPCTrade(::tibia::protobuf::protocol::GameclientMessageCloseNPCTrade());
     if (m_storage)
         m_storage->setTraderInventory({}, {});
 }
 
 void TNPCTradeProtocolMessageHandler::sendLook(const TNPCTradeGood& good)
 {
-    if (good.typeId() != 0)
-        tibia::game::inspectNpcTrade(good.typeId(), good.countOrSubType());
+    if (good.typeId() == 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageLookNPCTrade message;
+    message.set_object_id(good.typeId());
+    message.set_count(static_cast<uint8_t>(good.countOrSubType()));
+    Q_EMIT sendLookNPCTrade(message);
 }
 
 void TNPCTradeProtocolMessageHandler::sendInspect(const TNPCTradeGood& good)
 {
-    if (good.typeId() != 0)
-        tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, good.typeId(), good.countOrSubType());
+    if (good.typeId() == 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageInspectObject message;
+    message.set_inspection_type(tibia::client::INSPECT_NPCTRADE);
+    message.mutable_object_identifier()->set_type_id(good.typeId());
+    message.mutable_object_identifier()->set_data(static_cast<uint8_t>(good.countOrSubType()));
+    Q_EMIT sendInspectObject(message);
 }
 
 void TNPCTradeProtocolMessageHandler::sendBuy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity,
                                               const bool withBackpacks)
 {
-    if (good.typeId() != 0)
-        tibia::game::buyItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreCapacity, withBackpacks);
+    if (good.typeId() == 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageBuyObject message;
+    message.set_object_id(good.typeId());
+    message.set_subtype(static_cast<uint8_t>(good.countOrSubType()));
+    message.set_amount(static_cast<uint16_t>(amount));
+    message.set_ignore_capacity(ignoreCapacity);
+    message.set_in_backpacks(withBackpacks);
+    Q_EMIT sendBuyObject(message);
 }
 
 void TNPCTradeProtocolMessageHandler::sendSell(const TNPCTradeGood& good, const int amount, const bool ignoreEquipped)
 {
-    if (good.typeId() != 0)
-        tibia::game::sellItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreEquipped);
+    if (good.typeId() == 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageSellObject message;
+    message.set_object_id(good.typeId());
+    message.set_subtype(static_cast<uint8_t>(good.countOrSubType()));
+    message.set_amount(static_cast<uint16_t>(amount));
+    message.set_ignore_equipped(ignoreEquipped);
+    Q_EMIT sendSellObject(message);
 }
 
 void TNPCTradeProtocolMessageHandler::handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& message)
@@ -217,12 +239,12 @@ TPlayerTradeProtocolMessageHandler::~TPlayerTradeProtocolMessageHandler() = defa
 
 void TPlayerTradeProtocolMessageHandler::acceptTrade()
 {
-    tibia::game::acceptTrade();
+    Q_EMIT sendAcceptTrade(::tibia::protobuf::protocol::GameclientMessageAcceptTrade());
 }
 
 void TPlayerTradeProtocolMessageHandler::rejectTrade()
 {
-    tibia::game::rejectTrade();
+    Q_EMIT sendRejectTrade(::tibia::protobuf::protocol::GameclientMessageRejectTrade());
     m_storage.reset();
 }
 
@@ -230,7 +252,21 @@ void TPlayerTradeProtocolMessageHandler::lookTrade(const int index, const int si
 {
     if (static_cast<unsigned>(side) >= 2)
         throw std::runtime_error("unhandled enum value");
-    tibia::game::inspectTrade(side != 0, static_cast<uint8_t>(index));
+    ::tibia::protobuf::protocol::GameclientMessageLookTrade message;
+    message.set_counter_offer(side != 0 ? 1u : 0u);
+    message.set_index(static_cast<uint32_t>(index));
+    Q_EMIT sendLookTrade(message);
+}
+
+void TPlayerTradeProtocolMessageHandler::inspectTrade(const int index, const int side)
+{
+    if (static_cast<unsigned>(side) >= 2)
+        throw std::runtime_error("unhandled enum value");
+    ::tibia::protobuf::protocol::GameclientMessageInspectObject message;
+    message.set_inspection_type(tibia::client::INSPECT_PLAYERTRADE);
+    message.set_trade_side(side != 0 ? 1u : 0u);
+    message.set_trade_index(static_cast<uint32_t>(index));
+    Q_EMIT sendInspectObject(message);
 }
 
 void TPlayerTradeProtocolMessageHandler::handleOwnOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageOwnOffer& OwnOfferMessage)

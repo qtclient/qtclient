@@ -143,6 +143,12 @@ public:
     void handleRemoveVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action);
     void handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameActionRequestVipGroupUpdate& action);
 
+Q_SIGNALS:
+    void sendAddBuddy(const ::tibia::protobuf::protocol::GameclientMessageAddBuddy& AddBuddyMessage);
+    void sendRemoveBuddy(const ::tibia::protobuf::protocol::GameclientMessageRemoveBuddy& RemoveBuddyMessage);
+    void sendEditBuddy(const ::tibia::protobuf::protocol::GameclientMessageEditBuddy& EditBuddyMessage);
+    void sendBuddyGroup(const ::tibia::protobuf::protocol::GameclientMessageBuddyGroup& BuddyGroupMessage);
+
 private:
     TVipStorage* m_storage;
 

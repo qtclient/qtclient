@@ -170,13 +170,17 @@ config::EClientOption clientOptionOf(const EActionBarOption option)
 
 TActionBarController::TActionBarController(const uint8_t actionBarId, const EActionBarPosition position,
                                            const config::EClientOption lockedOption, config::TClientOptions* clientOptions,
-                                           chat::TChatModeManager* chatModeManager, const int buttonCount, QQmlEngine* engine,
-                                           QQuickItem* container, QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* parent)
+                                           chat::TChatModeManager* chatModeManager, spells::TSpellInfoStorage* spellInfoStorage,
+                                           game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage, const int buttonCount,
+                                           QQmlEngine* engine, QQuickItem* container, QQuickItem* gameWindowItem,
+                                           QQuickItem* mapWindowPane, QObject* parent)
     : cip::tibia::gamewindow::TActionBarController(parent)
     , m_lockedOption(lockedOption)
     , m_buttonsDisplayOptionsPage(config::actionBarsBindings(), nullptr)
     , m_clientOptions(clientOptions)
     , m_chatModeManager(chatModeManager)
+    , m_spellInfoStorage(spellInfoStorage)
+    , m_passiveAbilityInfoStorage(passiveAbilityInfoStorage)
 {
     m_actionBarId = actionBarId;
     m_position = position;
@@ -193,7 +197,7 @@ TActionBarController::TActionBarController(const uint8_t actionBarId, const EAct
     m_objectInfosTimer.setInterval(0);
     m_objectInfosTimer.setSingleShot(true);
     for (int id = 1; id <= buttonCount; ++id) {
-        auto* button = new TActionButtonController(this, id, -1, this);
+        auto* button = new TActionButtonController(m_spellInfoStorage, m_passiveAbilityInfoStorage, actionBarId, uint(id), this);
         m_connections.add(connect(button, &TActionButtonController::publishGameAction, this, &TActionBarController::publishGameAction));
         m_connections.add(connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu));
         m_buttons.push_back(button);
@@ -993,16 +997,19 @@ void TActionBarController::setNumVisibleSlots(const int Amount)
     m_numVisibleSlots = std::min(Amount, int(m_buttons.size()));
 }
 
-TActionBarGroup::TActionBarGroup(const EActionBarPosition position, QQuickItem* container, QQmlEngine* engine, QQuickItem* gameWindowItem,
-                                 QQuickItem* mapWindowPane, config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
-                                 QObject* parent)
+TActionBarGroup::TActionBarGroup(QQuickItem* container, QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                                 config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
+                                 spells::TSpellInfoStorage* spellInfoStorage, game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                                 const EActionBarPosition position, QObject* parent)
     : cip::tibia::gamewindow::TActionBarGroup(parent)
     , m_container(container)
     , m_engine(engine)
-    , m_gameWindowItem(gameWindowItem)
+    , m_dialogParentItem(dialogParentItem)
     , m_mapWindowPane(mapWindowPane)
     , m_clientOptions(clientOptions)
     , m_chatModeManager(chatModeManager)
+    , m_spellInfoStorage(spellInfoStorage)
+    , m_passiveAbilityInfoStorage(passiveAbilityInfoStorage)
     , m_position(position)
 {
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -1098,8 +1105,9 @@ void TActionBarGroup::createActionBar(const uint8_t actionBarId)
     if (!barContainer)
         return;
     auto bar = std::make_unique<TActionBarController>(actionBarId, positionOfBar(actionBarId), clientOptionOf(leftOf(LockOptions, m_position)),
-                                                      m_clientOptions, m_chatModeManager, TActionBarController::ButtonCount, m_engine,
-                                                      barContainer, m_gameWindowItem, m_mapWindowPane, this);
+                                                      m_clientOptions, m_chatModeManager, m_spellInfoStorage, m_passiveAbilityInfoStorage,
+                                                      TActionBarController::ButtonCount, m_engine, barContainer, m_dialogParentItem,
+                                                      m_mapWindowPane, this);
     connect(bar.get(), &TActionBarController::publishGameAction, this, &TActionBarGroup::publishGameAction);
     TActionBarController* created = m_bars.emplace(actionBarId, std::move(bar)).first->second.get();
     created->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);

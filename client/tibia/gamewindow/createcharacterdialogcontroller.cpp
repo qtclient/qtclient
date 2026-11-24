@@ -1,5 +1,6 @@
 #include "createcharacterdialogcontroller.h"
 
+#include "authentication/authenticationprocesscontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "shared/tibiafilesystemhelper.h"
 
@@ -325,11 +326,30 @@ QString TWorldSelectionSortProxyModel::worldTransferType(const QModelIndex& inde
     return roleText(index, WorldSelectionModel::TransferTypeRole);
 }
 
+TCreateCharacterDialogController::TCreateCharacterDialogController(
+    QQmlEngine* Engine, QQuickItem* DialogParentItem, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+    std::shared_ptr<authentication::TAuthenticationProcessController> Authentication, const QUrl& ServiceUrl, QObject* parent)
+    : TDialogController(QStringLiteral("createaccountandcharacter/CreateCharacterDialog.qml"), Engine, DialogParentItem, parent)
+    , m_tibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
+    , m_authentication(std::move(Authentication))
+    , m_serviceUrl(ServiceUrl)
+    , m_network(new QNetworkAccessManager(this))
+    , m_proxy(new TWorldSelectionSortProxyModel(this))
+    , m_error(new TMessageDialogController(Engine, DialogParentItem, this))
+{
+    initialize();
+}
+
 TCreateCharacterDialogController::TCreateCharacterDialogController(const QString& qmlFile, QObject* parent)
     : TDialogController(qmlFile, parent)
     , m_network(new QNetworkAccessManager(this))
     , m_proxy(new TWorldSelectionSortProxyModel(this))
     , m_error(new TMessageDialogController(this))
+{
+    initialize();
+}
+
+void TCreateCharacterDialogController::initialize()
 {
     m_worldsModel = m_proxy;
     m_characterSexMale = true;
@@ -479,7 +499,7 @@ void TCreateCharacterDialogController::createCharacter(const QString& CharacterN
     if (m_pending > 0)
         return;
     QJsonObject request{
-        { QStringLiteral("SessionKey"), m_sessionKey },
+        { QStringLiteral("SessionKey"), m_authentication ? m_authentication->loginData().sessionKey : m_sessionKey },
         { QStringLiteral("Type"), QStringLiteral("createCharacter") },
         { QStringLiteral("CharacterName"), CharacterName },
         { QStringLiteral("CharacterSex"), CharacterSexMale ? QStringLiteral("male") : QStringLiteral("female") },

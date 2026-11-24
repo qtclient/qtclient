@@ -37,6 +37,15 @@ class TMonsterRaceStorage;
 }
 
 namespace tibia {
+namespace appearances {
+class TAppearancesManager;
+}
+namespace config {
+class TClientOptions;
+}
+namespace input {
+class TGameActionMapper;
+}
 namespace mods {
 class InstanceBackend;
 }
@@ -59,7 +68,14 @@ class TCyclopediaDialogController final : public TDialogController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    explicit TCyclopediaDialogController(QObject* parent = nullptr);
+    /// CipSoft's arguments: the appearances manager and the client options (the
+    /// item info and monster pages), the game action mapper (the map page), and
+    /// the engine and dialog parent item of the dialog and its pages' message
+    /// boxes. qtclient's item info, monster, character info and map pages do not
+    /// take theirs yet.
+    TCyclopediaDialogController(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                                config::TClientOptions* ClientOptions, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TCyclopediaDialogController() override;
 
     TCyclopediaMapDialogController* mapDialog() const { return m_map; }

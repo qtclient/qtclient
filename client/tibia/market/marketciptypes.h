@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QByteArray>
 #include <QObject>
 
@@ -55,6 +57,12 @@ public:
     /// CIP: one offer of a browse message.
     static TMarketOffer offerFrom(const ::tibia::protobuf::protocol::ProtocolMarketOffer& source, EMarketOfferType type);
 
+Q_SIGNALS:
+    void sendMarketLeave(const ::tibia::protobuf::protocol::GameclientMessageMarketLeave& MarketLeaveMessage);
+    void sendMarketBrowse(const ::tibia::protobuf::protocol::GameclientMessageMarketBrowse& MarketBrowseMessage);
+    void sendMarketCancel(const ::tibia::protobuf::protocol::GameclientMessageMarketCancel& MarketCancelMessage);
+    void sendMarketAccept(const ::tibia::protobuf::protocol::GameclientMessageMarketAccept& MarketAcceptMessage);
+    void sendMarketCreate(const ::tibia::protobuf::protocol::GameclientMessageMarketCreate& MarketCreateMessage);
 
 private:
     TMarketStorage* m_storage = nullptr;

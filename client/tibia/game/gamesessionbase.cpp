@@ -1,5 +1,6 @@
 #include "game/gamesessionbase.h"
 #include "appearances/appearanceinstance.h"
+#include "iclockservice.h"
 
 #include "game/gamesession.h"
 #include "game/gamesessionmetainfo.h"
@@ -45,6 +46,10 @@
 #include "reporting/reportingciptypes.h"
 #include "friends/friendsciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "minimap/minimapmarkerstorage.h"
+#include "minimap/minimapprotocolmessagehandler.h"
+#include "minimap/minimaptilestorage.h"
 #include "creatures/creaturesciptypes.h"
 #include "creatures/creaturesgameactionhandler.h"
 #include "creatures/inspectplayergameactionprovider.h"
@@ -141,8 +146,44 @@ std::shared_ptr<container::TInventoryContainer> TGameSessionBase::inventoryConta
     return m_containerStorage ? m_containerStorage->inventoryContainer() : nullptr;
 }
 
+qint64 TGameSessionBase::nowMillis() const
+{
+    return clockService()->nowMillis();
+}
+
 TGameSessionBase::TGameSessionBase(QObject* parent)
+    : TGameSessionBase(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                       nullptr, nullptr, parent)
+{
+}
+
+TGameSessionBase::TGameSessionBase(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+                                   std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+                                   std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                                   std::shared_ptr<config::TClientOptions> clientOptions,
+                                   std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+                                   std::shared_ptr<shared::TTibiaUrlTools> urlTools,
+                                   std::shared_ptr<shared::IClockService> clientClockService,
+                                   std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage,
+                                   std::shared_ptr<sound::TSoundController> soundController,
+                                   std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
+                                   spells::TSpellInfoStorage* spellInfoStorage,
+                                   TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                                   proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent)
     : IGameSession(parent)
+    , m_tibiaFileSystemHelper(std::move(tibiaFileSystemHelper))
+    , m_urlTools(std::move(urlTools))
+    , m_appearancesManager(std::move(appearancesManager))
+    , m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
+    , m_clientOptions(std::move(clientOptions))
+    , m_clientClockService(std::move(clientClockService))
+    , m_keyboardShortcutHandler(std::move(keyboardShortcutHandler))
+    , m_spellInfoStorage(spellInfoStorage)
+    , m_passiveAbilityInfoStorage(passiveAbilityInfoStorage)
+    , m_proficiencyStorage(proficiencyStorage)
+    , m_itemPriceStorage(std::move(itemPriceStorage))
+    , m_soundController(std::move(soundController))
+    , m_clipboardHelper(std::move(clipboardHelper))
     , m_worldMapViewport(std::make_shared<worldmap::TWorldMapViewport>())
     , m_creatureMovementSpeedCalculator(std::make_shared<creatures::TCreatureMovementSpeedCalculator>())
     , m_worldMapCamera(std::make_shared<renderer::TWorldMapCamera>())
@@ -152,6 +193,10 @@ TGameSessionBase::TGameSessionBase(QObject* parent)
     , m_outfitDialogStorage(std::make_shared<TOutfitDialogStorage>())
     , m_gameActionRouter(std::make_shared<TGameActionRouter>())
 {
+    // The view keeps a field left and above and two right and below the
+    // visible area.
+    m_worldMapViewport->setHorizontalBorder(1, 2);
+    m_worldMapViewport->setVerticalBorder(1, 2);
 }
 
 void TGameSessionBase::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
@@ -499,9 +544,7 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
         std::make_shared<skillwheel::TSkillWheelGameActionHandler>(m_skillWheelProtocolMessageHandler, m_playerCreature);
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_skillWheelGameActionHandler.get(),
             &skillwheel::TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage);
-    // Host: the tutorial markers' handler (CipSoft's tutorial session makes it)
-    // and the action bar's handler (the game client's in CipSoft).
-    m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
+    // Host: the action bar's handler (the game client's in CipSoft).
     m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
         spells::TSpellInfoStorage::instance(), m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage,
         clockService());
@@ -553,8 +596,6 @@ void TGameSessionBase::connectGameActionHandlers()
             &protocol::TProtocolMessageQueue::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_gatherAllGameActionHandler.get(),
             &input::TGatherAllGameActionHandler::handleGameAction);
-    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
-            &effects::TEffectGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_actionButtonGameActionHandler.get(),
             &input::TActionButtonGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_battleListGameActionHandler.get(),
@@ -638,6 +679,27 @@ void centerViewportOnCreature(const std::weak_ptr<creatures::TCreature>& creatur
 }
 
 void TGameSessionBase::updatePlayerMovementIntentHandler() {}
+
+void TGameSessionBase::setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
+                                          std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
+                                          std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage)
+{
+    // CIP v14 (game::TSessiondumpGameSession::v14): the tile storage and the
+    // cyclopedia map data go to the cyclopedia map storage and the world map
+    // GA provider there; qtclient's game client wires those itself today.
+    Q_UNUSED(tileStorage);
+    Q_UNUSED(cyclopediaMapStaticDataStorage);
+    // Without a marker storage the minimap protocol message handler goes; with
+    // one the session makes it over the session clock, linked from the queue's
+    // Cyclopedia map data.
+    m_minimapProtocolMessageHandler.reset();
+    if (!markerStorage || !m_protocolMessageQueue)
+        return;
+    m_minimapProtocolMessageHandler =
+        std::make_shared<minimap::TMinimapProtocolMessageHandler>(std::move(markerStorage), clockService());
+    connect(m_protocolMessageQueue.get(), &protocol::TProtocolMessageQueue::receivedCyclopediaMapDataMessage,
+            m_minimapProtocolMessageHandler.get(), &minimap::TMinimapProtocolMessageHandler::handleCyclopediaMapDataMessage);
+}
 
 void TGameSessionBase::onPrepareNextFrameToRender(const qint64 NextFramePredictedTimestamp)
 {
@@ -1198,7 +1260,6 @@ void TGameSessionBase::releaseStorages()
     m_renderVolumeProvider.reset();
     m_creatureProtocolMessageHandler.reset();
     m_effectProtocolMessageHandler.reset();
-    m_effectGameActionHandler.reset();
     m_effectStorage.reset();
     m_textStorage.reset();
     m_gatherAllGameActionHandler.reset();

@@ -15,7 +15,9 @@
 #include "shared/tibiafilesystemhelper.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
-#include "worldmap/nextframetimestamppredictor.h"
+#include "minimap/minimapdiskio.h"
+#include "minimap/minimaptilestorage.h"
+#include "systemsurvey/slidingfpscounter.h"
 
 #include <tibia/game/gamesession.h>
 
@@ -105,11 +107,21 @@ QString localFile(const QString& url)
 
 }
 
-TOptionsMenuDialogController::TOptionsMenuDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
-                                                           QQuickItem* DialogParentItem, QObject* parent)
+TOptionsMenuDialogController::TOptionsMenuDialogController(
+    config::TClientOptions* ClientOptions, systemsurvey::TSlidingFPSCounter* SlidingFPSCounter,
+    std::shared_ptr<shared::TTibiaFileSystemHelper> FileSystemHelper, input::TEventFilterManager* EventFilterManager,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+    std::shared_ptr<minimap::TMinimapDiskIOAsync> MinimapTileDiskIO, std::shared_ptr<minimap::TMinimapTileStorage> MinimapTileStorage,
+    spells::TSpellInfoStorage* SpellInfoStorage, QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), Engine, DialogParentItem, parent)
     , m_clientOptions(ClientOptions)
-    , m_clientOptionsModeSwitcher(ClientOptions, this)
+    , m_pSlidingFPSCounter(SlidingFPSCounter)
+    , m_pFileSystemHelper(std::move(FileSystemHelper))
+    , m_pMinimapTileDiskIO(std::move(MinimapTileDiskIO))
+    , m_pMinimapTileStorage(std::move(MinimapTileStorage))
+    , m_pEventFilterManager(EventFilterManager)
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_pSpellInfoStorage(SpellInfoStorage)
     , m_optionPageQmlWrapperBase(this)
 {
     auto* actionBars = new config::TActionBarsOptionsPage(config::actionBarsBindings(), this);
@@ -199,16 +211,9 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(config::TClientOption
 
 void TOptionsMenuDialogController::onBeforeRenderFrame()
 {
-    // CIP: the frame rate of the next-frame predictor (TGameClient::onBeforeRenderFrameMainThread);
-    // qtclient samples the frame-duration ring once a second while the dialog is shown.
-    (void)m_frames.exchange(0);
-    double fps = 0.0;
-    if (m_frameDurations) {
-        const qint64 averageNs = m_frameDurations->averageNs();
-        if (averageNs > 0)
-            fps = 1'000'000'000.0 / static_cast<double>(averageNs);
-    }
-    setFrameRate(fps);
+    // The client's frame rate over the last second. Host: CipSoft's client calls
+    // this before every frame; qtclient polls it once a second while shown.
+    setFrameRate(m_pSlidingFPSCounter ? m_pSlidingFPSCounter->framesPerSecond() : 0.0);
 }
 
 void TOptionsMenuDialogController::setFrameRate(const double frameRate)
@@ -221,15 +226,11 @@ void TOptionsMenuDialogController::setFrameRate(const double frameRate)
 
 QString TOptionsMenuDialogController::currentFrameRate() const { return QString::number(m_frameRate, 'f', 2); }
 
-TOptionsMenuDialogController::~TOptionsMenuDialogController()
-{
-    disconnect(m_frameConnection);
-}
+TOptionsMenuDialogController::~TOptionsMenuDialogController() = default;
 
 void TOptionsMenuDialogController::setGameClient(client::TGameClient* client)
 {
     m_gameClient = client;
-    m_clientOptionsModeSwitcher.connectToGameSession([client] { return client ? client->sidebarOptions() : nullptr; });
 }
 
 bool TOptionsMenuDialogController::handleGameAction(const input::IGameAction& action)
@@ -310,19 +311,6 @@ void TOptionsMenuDialogController::setInGame(const bool inGame)
     Q_EMIT gameSessionChanged();
 }
 
-void TOptionsMenuDialogController::setWindow(QQuickWindow* window)
-{
-    disconnect(m_frameConnection);
-    m_window = window;
-    if (window)
-        m_frameConnection = connect(window, &QQuickWindow::frameSwapped, this, [this] { ++m_frames; }, Qt::DirectConnection);
-}
-
-void TOptionsMenuDialogController::setFrameDurations(worldmap::TFrameDurationRing* ring)
-{
-    m_frameDurations = ring;
-}
-
 void TOptionsMenuDialogController::addProductPage(const int category, config::TOptionsPage* page)
 {
     m_pages.push_back({ static_cast<EDialogCategories>(category), page });
@@ -330,7 +318,6 @@ void TOptionsMenuDialogController::addProductPage(const int category, config::TO
 
 void TOptionsMenuDialogController::afterShow()
 {
-    m_frames = 0;
     m_frameRateTimer.start();
 }
 
@@ -492,9 +479,8 @@ void TOptionsMenuDialogController::openFaqUrl()
 
 void TOptionsMenuDialogController::openScreenshotDirectory()
 {
-    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/screenshots");
-    QDir().mkpath(directory);
-    QDesktopServices::openUrl(QUrl::fromLocalFile(directory));
+    if (m_pFileSystemHelper)
+        shared::TTibiaFileSystemHelper::openDirectoryInFileBrowser(m_pFileSystemHelper->getScreenshotsDirectory());
 }
 
 void TOptionsMenuDialogController::openHelpChannel()
@@ -567,8 +553,11 @@ void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputF
 
 void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFilename)
 {
-    if (m_gameClient)
-        m_gameClient->saveMinimapToDisk();
+    if (m_pMinimapTileStorage)
+        m_pMinimapTileStorage->saveAllTilesToDisk();
+    // Host: qtclient's tile writes are asynchronous; the archive needs them done.
+    if (m_pMinimapTileDiskIO)
+        m_pMinimapTileDiskIO->waitForDone();
     try {
         exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
     } catch (const std::exception& e) {

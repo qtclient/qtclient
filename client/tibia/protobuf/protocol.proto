@@ -822,6 +822,13 @@ message ProtocolMapPoint {
   optional uint32 state = 2;
 }
 
+// CIP protobuf::protocol::CyclopediaMapDataStaticMarker (map data type 0): position, u8 icon, string text.
+message CyclopediaMapDataStaticMarker {
+  optional string text = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 icon = 3;
+}
+
 // u16 race, bool, u8.
 message ProtocolSubAreaMonster {
   optional uint32 race_id = 1;
@@ -3752,6 +3759,7 @@ message GameserverMessageCyclopediaMapData {
   optional bool flag = 13;
   optional uint32 target = 14;
   optional uint64 donation_goal = 15;
+  optional CyclopediaMapDataStaticMarker static_marker = 16;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaMapData gameserver_message_cyclopedia_map_data = 221;
   }

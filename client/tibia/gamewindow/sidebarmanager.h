@@ -28,7 +28,7 @@ class TSidebarController final : public cip::tibia::gamewindow::TSidebarControll
 {
     Q_OBJECT
 public:
-    TSidebarController(uint sidebarId, QQuickItem* placeholder, QObject* parent = nullptr);
+    TSidebarController(uint sidebarId, QQmlEngine* engine, QQuickItem* placeholder, QObject* parent = nullptr);
     ~TSidebarController() override;
 
     QQuickItem* item() const { return m_item; }
@@ -57,6 +57,7 @@ public:
     void setTriggerCheckBoundsEnabled(bool enabled);
 
 private:
+    QQmlEngine* m_engine = nullptr;
     QPointer<QQuickItem> m_item;
     QPointer<QQuickItem> m_upperPane;
     QPointer<QQuickItem> m_lowerPane;
@@ -74,8 +75,11 @@ class TSidebarManager final : public cip::tibia::gamewindow::TSidebarManager
 public:
     enum Side { Right = 0, Left = 1 };
 
-    TSidebarManager(QQuickItem* rightPlaceholder, QObject* rightManagerItem, QQuickItem* leftPlaceholder, QObject* leftManagerItem,
-                    QObject* parent = nullptr);
+    TSidebarManager(QQmlEngine* engine, QQuickItem* rightPlaceholder, QObject* rightManagerItem, QQuickItem* leftPlaceholder,
+                    QObject* leftManagerItem, QObject* parent = nullptr);
+
+    /// The engine the sidebars (and the widgets the widgets manager opens) are created with.
+    QQmlEngine* engine() const { return m_engine; }
     ~TSidebarManager() override;
 
     int sidebarCount(Side side) const { return side == Right ? m_rightCount : m_leftCount; }
@@ -141,6 +145,7 @@ private:
     void removeSidebar(Side side);
     QQuickItem* placeholder(Side side) const { return side == Right ? m_rightPlaceholder : m_leftPlaceholder; }
 
+    QQmlEngine* m_engine = nullptr;
     QPointer<QQuickItem> m_rightPlaceholder;
     QPointer<QQuickItem> m_leftPlaceholder;
     std::map<uint, std::unique_ptr<TSidebarController>> m_sidebars;

@@ -83,9 +83,9 @@ private:
     std::vector<THighscoreEntry> m_entries;
     int m_page = 0;
     int m_totalPages = 0;
-    int m_selectedIndex = -1;
+    int m_selectedIndex = 0;
     bool m_showLoyaltyTitle = false;
-    int m_valueType = 1;
+    int m_valueType = 0;
     uint m_lastUpdate = 0;
 };
 

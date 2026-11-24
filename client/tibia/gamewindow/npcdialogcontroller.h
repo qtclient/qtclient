@@ -36,6 +36,10 @@ class TChatChannelStorage;
 namespace game {
 class IGameSession;
 }
+namespace input {
+class TEventFilterManager;
+class TGameActionMapper;
+}
 }
 
 namespace tibia {
@@ -102,13 +106,13 @@ class TNpcDialogController final : public TDialogControllerWithFocusHandlingBase
 {
     Q_OBJECT
 public:
-    /// CipSoft's arguments: the client options (NPC dialog rectangle), the chat
-    /// controller (+0x138: ChatInput's history and chat mode, typed lines, the
-    /// conversation pane's channel), the QML engine and the dialog parent item
-    /// the dialog and the trade are made with. CipSoft also passes the mouse
-    /// input mapper (to the NPCs channel controller) and the game window's root
-    /// focus manager (parent of the trade's); qtclient has neither.
-    TNpcDialogController(config::TClientOptions* ClientOptions, TChatController* ChatController, QQmlEngine* Engine,
+    /// The client options (NPC dialog rectangle), the game action mapper (the
+    /// NPCs channel's clicks), the chat controller (+0x138: ChatInput's history
+    /// and chat mode, typed lines, the conversation pane's channel), the event
+    /// filter manager (the trade's focus), the QML engine and the dialog parent
+    /// item the dialog and the trade are made with.
+    TNpcDialogController(config::TClientOptions* ClientOptions, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                         TChatController* ChatController, input::TEventFilterManager* EventFilterManager, QQmlEngine* Engine,
                          QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TNpcDialogController() override;
     /// CIP connector: the dialog closes; then it follows `GameSession`'s NPC
@@ -211,6 +215,10 @@ private:
     QPointer<TChatController> m_chatControl;
     /// CIP +0x128.
     config::TClientOptions* m_clientOptions;
+    /// CipSoft hands these to the NPCs channel controller and the trade's focus
+    /// manager; qtclient's take neither yet.
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    input::TEventFilterManager* m_pEventFilterManager;
     QPointer<chat::TChatChannelStorage> m_chatStorage;
     std::optional<TRemoteNpcSession> m_remote;
     int m_savedChatMode = 0;

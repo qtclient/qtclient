@@ -1,10 +1,11 @@
 #include "screenshot/screenshotciptypes.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "game/gamesession.h"
 #include "input/gameactionhandlers.h"
 #include "shared/tibiafilesystemhelper.h"
+#include "clockservice.h"
 
 #include <cip_options.h>
 
@@ -28,13 +29,9 @@ constexpr size_t BacklogCapacity = 5;
 constexpr int ScreenshotSavedMessageMode = 0x1e;
 constexpr int ScreenshotSavedSoundEffect = 0xad5;
 
-bool optionEnabled(const O option)
+bool optionEnabled(const config::TClientOptions* clientOptions, const O option)
 {
-    const auto name = cip::ClientOptionNames[static_cast<size_t>(option)];
-    return app::ClientOptions::load()
-        .options()
-        .value(QLatin1String(name.data(), static_cast<qsizetype>(name.size())))
-        .toBool();
+    return clientOptions && clientOptions->boolOption(option);
 }
 
 uint s_nextOutstandingScreenshotId = 0;
@@ -85,19 +82,24 @@ TOutstandingScreenshot::TOutstandingScreenshot(const QSharedPointer<QQuickItemGr
     connect(m_grabResult.data(), &QQuickItemGrabResult::ready, this, [this]() { Q_EMIT ready(m_id); });
 }
 
-TScreenshotManager::TScreenshotManager(QObject* parent)
+TScreenshotManager::TScreenshotManager(config::TClientOptions* clientOptions,
+                                       std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                       std::shared_ptr<shared::TClockService> clockService, QQuickItem* contentItem,
+                                       QQuickItem* mapWindowPane, QObject* parent)
     : cip::tibia::screenshot::TScreenshotManager(parent)
-    , m_fileSystemHelper(&files::data())
+    , m_pClientOptions(clientOptions)
+    , m_pFileSystemHelper(std::move(fileSystemHelper))
+    , m_pClockService(std::move(clockService))
+    , m_rootItem(contentItem)
+    , m_mapWindow(mapWindowPane ? mapWindowPane->findChild<QQuickItem*>(QStringLiteral("mapWindow")) : nullptr)
 {
     s_instance = this;
     m_backlogTimer.setInterval(BacklogIntervalMs);
     m_backlogTimer.setSingleShot(false);
     connect(&m_backlogTimer, &QTimer::timeout, this, &TScreenshotManager::onBacklockUpdateTriggered);
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            [this](const QString& name) {
-                if (name.startsWith(QLatin1String("scre")))
-                    onScreenshotMangerOptionsChanged();
-            });
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::screenshotMangerOptionsChanged, this,
+                &TScreenshotManager::onScreenshotMangerOptionsChanged);
 }
 
 TScreenshotManager::~TScreenshotManager()
@@ -111,19 +113,9 @@ TScreenshotManager* TScreenshotManager::instance()
     return s_instance;
 }
 
-void TScreenshotManager::configure(QQuickWindow* window, QQuickItem* mapWindow)
+bool TScreenshotManager::isScreenshotEnabled(const int event) const
 {
-    m_rootItem = window ? window->contentItem() : nullptr;
-    m_mapWindow = mapWindow;
-    // CIP takes a pending screenshot once per rendered frame.
-    if (window)
-        connect(window, &QQuickWindow::frameSwapped, this, &TScreenshotManager::takeScreenshotIfEventIsWainting,
-                Qt::UniqueConnection);
-}
-
-bool TScreenshotManager::isScreenshotEnabled(const int event)
-{
-    const bool automatic = optionEnabled(O::screenshotsAutoScreenshotsEnabled);
+    const bool automatic = optionEnabled(m_pClientOptions, O::screenshotsAutoScreenshotsEnabled);
     O option;
     switch (event) {
     case EVENT_ACHIEVEMENT: option = O::screenshotsAchievementEnabled; break;
@@ -148,7 +140,7 @@ bool TScreenshotManager::isScreenshotEnabled(const int event)
     }
     if (!automatic)
         return false;
-    return optionEnabled(option);
+    return optionEnabled(m_pClientOptions, option);
 }
 
 void TScreenshotManager::requestScreenshot(const int event)
@@ -187,13 +179,13 @@ void TScreenshotManager::clearBacklog()
 
 void TScreenshotManager::startBacklogTimerIfNeeded()
 {
-    if (!m_backlogTimer.isActive() && m_gameSession && optionEnabled(O::screenshotsUseBacklog))
+    if (!m_backlogTimer.isActive() && m_gameSession && optionEnabled(m_pClientOptions, O::screenshotsUseBacklog))
         m_backlogTimer.start();
 }
 
 void TScreenshotManager::onScreenshotMangerOptionsChanged()
 {
-    if (!optionEnabled(O::screenshotsUseBacklog)) {
+    if (!optionEnabled(m_pClientOptions, O::screenshotsUseBacklog)) {
         clearBacklog();
         return;
     }
@@ -243,7 +235,7 @@ bool TScreenshotManager::takeScreenshotIfEventIsWainting()
 
 void TScreenshotManager::grabScreenshot(const int event)
 {
-    QQuickItem* item = optionEnabled(O::screnshotsOnlyGameWindow) ? m_mapWindow.data() : m_rootItem.data();
+    QQuickItem* item = optionEnabled(m_pClientOptions, O::screnshotsOnlyGameWindow) ? m_mapWindow.data() : m_rootItem.data();
     m_grabResult = item ? item->grabToImage() : QSharedPointer<QQuickItemGrabResult>();
     if (!m_grabResult)
         return;
@@ -272,7 +264,7 @@ void TScreenshotManager::processReadyScreenshot(const uint screenshotId)
     image.setText(QStringLiteral("Creation Time"),
                   QDateTime::currentDateTime().toString(QStringLiteral("yyyy:MM:dd hh:mm:ss")));
     if (outstanding->eventType() == EVENT_BACKLOG) {
-        if (optionEnabled(O::screenshotsUseBacklog)) {
+        if (optionEnabled(m_pClientOptions, O::screenshotsUseBacklog)) {
             m_backlog.push_back(image);
             if (m_backlog.size() > BacklogCapacity)
                 m_backlog.pop_front();
@@ -289,7 +281,7 @@ void TScreenshotManager::processReadyScreenshot(const uint screenshotId)
 void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, const QString& eventName)
 {
     const QString part = QStringLiteral("_%1");
-    QString fileName = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd_hhmmsszzz%1%2%3.png"));
+    QString fileName = m_pClockService->currentDateTime().toString(QStringLiteral("yyyy-MM-dd_hhmmsszzz%1%2%3.png"));
     QString characterPart;
     if (m_gameSession) {
         const std::string characterName = game::localPlayerName();
@@ -298,16 +290,16 @@ void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, cons
     }
     fileName = fileName.arg(characterPart).arg(part.arg(eventName));
     if (images.size() == 1) {
-        m_fileSystemHelper->writeScreenshot(fileName.arg(QString()), images.front());
+        m_pFileSystemHelper->writeScreenshot(fileName.arg(QString()), images.front());
     } else {
         fileName = fileName.arg(part);
         for (size_t i = 0; i < images.size(); ++i)
-            m_fileSystemHelper->writeScreenshot(fileName.arg(i + 1), images[i]);
+            m_pFileSystemHelper->writeScreenshot(fileName.arg(i + 1), images[i]);
     }
 
     const QString text = qtTrId("screenshot_saved")
                              .arg(eventName)
-                             .arg(QDir::toNativeSeparators(m_fileSystemHelper->getScreenshotsDirectory().path()));
+                             .arg(QDir::toNativeSeparators(m_pFileSystemHelper->getScreenshotsDirectory().path()));
     auto message = std::make_shared<input::TGameActionAddTextMessage>(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(ScreenshotSavedMessageMode));
     auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ ScreenshotSavedSoundEffect });
     // Saving runs on the thread pool; actions are published on the manager's thread.

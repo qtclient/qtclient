@@ -410,11 +410,11 @@ THousSortOption::THousSortOption(const QString& text, const int order, QObject* 
     m_sortOrder = static_cast<cip::tibia::qmlcomponents::enums::EHousSortOrder>(order);
 }
 
-THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
+THousesInfoDialogController::THousesInfoDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::THousesInfoDialogController(parent)
     , m_proxy(new THousesSortProxyModel(this))
-    , m_resultDialog(new TMessageDialogController(this))
-    , m_confirmDialog(new TMessageDialogController(this))
+    , m_resultDialog(new TMessageDialogController(Engine, DialogParentItem, this))
+    , m_confirmDialog(new TMessageDialogController(Engine, DialogParentItem, this))
 {
     m_model = m_proxy->houses();
     m_housesModel = m_proxy;

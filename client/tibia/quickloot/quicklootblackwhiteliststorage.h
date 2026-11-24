@@ -41,9 +41,11 @@ public:
     const std::set<uint16_t>& list(int listType) const;
     bool isListed(uint16_t objectType) const;
     bool isListFull() const;
-    /// Adds to or removes from the active list (the managed containers
-    /// handler sends it on configurationChangedFromUserInput).
-    void setListed(uint16_t objectType, bool listed);
+    /// Adds to the active list unless it is full or holds the type already (the managed
+    /// containers handler sends it on configurationChangedFromUserInput); true when added.
+    bool addItem(uint16_t objectType);
+    /// Removes from the active list.
+    void removeItem(uint16_t objectType);
     /// Switches the active list.
     void setListType(int listType);
     /// Replaces both lists and the active type.

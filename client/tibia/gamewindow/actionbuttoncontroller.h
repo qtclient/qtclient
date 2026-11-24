@@ -6,15 +6,28 @@
 
 #include <cip_gen.h>
 
+#include <cstdint>
 #include <memory>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace container {
+class TObjectAppearanceInstanceInfoStorage;
+}
+namespace shared {
+class IClockService;
+}
 namespace game {
 class IGameSession;
+class TPassiveAbilityInfoStorage;
+class TPlayerData;
+}
+namespace spells {
+class TSpellInfoStorage;
 }
 namespace gamewindow {
-
-class TActionBarController;
 
 /// One button of an action bar, or one slot of a multi-action button
 /// (CIP: TActionButtonController; setters spell, 
@@ -25,10 +38,12 @@ class TActionButtonController final : public cip::tibia::gamewindow::TActionButt
 {
     Q_OBJECT
 public:
-    /// `multiActionIndex` -1 for a bar button.
-    TActionButtonController(TActionBarController* bar, int buttonId, int multiActionIndex, QObject* parent = nullptr);
+    /// Button `ActionButtonID` of bar `ActionBarID`, not a multi-action slot.
+    /// A spell button redraws when the spell table is modified; the
+    /// highlight follows the active spells.
+    TActionButtonController(spells::TSpellInfoStorage* SpellInfoStorage, game::TPassiveAbilityInfoStorage* PassiveAbilityInfoStorage,
+                            uint8_t ActionBarID, uint ActionButtonID, QObject* parent = nullptr);
 
-    TActionBarController* bar() const { return m_bar; }
     bool isMultiActionChild() const { return m_multiActionIndex >= 0; }
     /// The slot's index in its button, -1 for a bar button.
     int multiActionIndex() const override { return m_multiActionIndex < 0 ? -1 : m_multiActionIndex; }
@@ -83,7 +98,9 @@ public:
     config::EUseType useType() const { return shown()->m_useType; }
     bool useEquipSmartMode() const { return shown()->m_useEquipSmartMode; }
     int passiveAbility() const { return shown()->m_passiveAbility; }
-    /// Takes the session whose cooldowns the button shows (its slots too).
+    /// Drops the old session and its storages, then takes the session's
+    /// cooldowns, clock, player data, object infos and appearance instance
+    /// factory.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Whether the button can be used now (the bar's enable conditions);
     /// announces a change.
@@ -157,9 +174,14 @@ private:
     QString tooltipRows() const;
     game::TCooldown currentCooldown(qint64 now) const;
 
-    TActionBarController* m_bar;
+    spells::TSpellInfoStorage* m_spellInfoStorage;
+    game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
+    std::shared_ptr<shared::IClockService> m_clock;
+    std::shared_ptr<game::TPlayerData> m_playerData;
+    std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> m_objectInfoStorage;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
     QList<QKeySequence> m_hotkeys;
     int m_spellId = 0;
     int m_passiveAbility = 0;

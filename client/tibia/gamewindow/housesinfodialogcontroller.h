@@ -14,6 +14,9 @@
 #include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace cyclopedia {
 class TCyclopediaProtocolMessageHandler;
@@ -152,7 +155,8 @@ class THousesInfoDialogController final : public cip::tibia::gamewindow::THouses
 {
     Q_OBJECT
 public:
-    explicit THousesInfoDialogController(QObject* parent = nullptr);
+    /// The result and confirmation boxes open under `DialogParentItem`.
+    THousesInfoDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~THousesInfoDialogController() override;
 
     /// CIP connector: the session's houses storage and the action results of

@@ -62,39 +62,62 @@ void TMarketProtocolMessageHandler::sendBrowseItem(const uint16_t typeId, const 
 {
     if (typeId == 0)
         return;
-    tibia::game::browseMarket(tibia::client::MARKETREQUEST_ITEM_BROWSE, typeId, tier.value_or(0));
+    GameclientMessageMarketBrowse message;
+    message.set_browse_type(tibia::client::MARKETREQUEST_ITEM_BROWSE);
+    message.set_object_id(typeId);
+    if (tier)
+        message.set_tier(*tier);
+    Q_EMIT sendMarketBrowse(message);
 }
 
 void TMarketProtocolMessageHandler::sendBrowseOwnOffers()
 {
-    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_OFFERS, 0, 0);
+    GameclientMessageMarketBrowse message;
+    message.set_browse_type(tibia::client::MARKETREQUEST_OWN_OFFERS);
+    Q_EMIT sendMarketBrowse(message);
 }
 
 void TMarketProtocolMessageHandler::sendBrowseHistory()
 {
-    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_HISTORY, 0, 0);
+    GameclientMessageMarketBrowse message;
+    message.set_browse_type(tibia::client::MARKETREQUEST_OWN_HISTORY);
+    Q_EMIT sendMarketBrowse(message);
 }
 
 void TMarketProtocolMessageHandler::sendLeave()
 {
-    tibia::game::leaveMarket();
+    Q_EMIT sendMarketLeave(GameclientMessageMarketLeave());
 }
 
 void TMarketProtocolMessageHandler::sendCancel(const uint32_t timestamp, const uint16_t counter)
 {
-    tibia::game::cancelMarketOffer(timestamp, counter);
+    GameclientMessageMarketCancel message;
+    message.set_timestamp(timestamp);
+    message.set_counter(counter);
+    Q_EMIT sendMarketCancel(message);
 }
 
 void TMarketProtocolMessageHandler::sendAccept(const uint32_t timestamp, const uint16_t counter, const uint32_t amount)
 {
-    tibia::game::acceptMarketOffer(timestamp, counter, static_cast<uint16_t>(amount));
+    GameclientMessageMarketAccept message;
+    message.set_timestamp(timestamp);
+    message.set_counter(counter);
+    message.set_amount(amount);
+    Q_EMIT sendMarketAccept(message);
 }
 
 void TMarketProtocolMessageHandler::sendCreate(const EMarketOfferType type, const uint16_t typeId, const std::optional<uint8_t> tier,
                                                const uint32_t amount, const uint64_t piecePrice, const bool anonymous)
 {
-    tibia::game::createMarketOffer(type == EMarketOfferType::BUY ? 0 : 1, typeId, tier.value_or(0), static_cast<uint16_t>(amount), piecePrice,
-                                   anonymous ? 1 : 0);
+    GameclientMessageMarketCreate message;
+    message.set_offer_type(type == EMarketOfferType::BUY ? 0 : 1);
+    message.set_object_id(typeId);
+    if (tier)
+        message.set_tier(*tier);
+    message.set_amount(amount);
+    message.set_price(piecePrice);
+    message.set_anonymous(anonymous);
+    Q_EMIT sendMarketCreate(message);
 }
 
 void TMarketProtocolMessageHandler::handleMarketEnterMessage(const GameserverMessageMarketEnter& message)

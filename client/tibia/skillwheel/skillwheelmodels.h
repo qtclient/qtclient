@@ -49,6 +49,10 @@ public:
     /// cannot be dismantled.
     void setConfiguration(const std::optional<TWheel>& configuration, const std::optional<TWheel>& serverConfiguration,
                           const TGrades& basicGrades, const TGrades& supremeGrades);
+    /// The shown wheel, the server's wheel, the gems and the grades at once; the
+    /// rows change only when one of them differs.
+    void setConfiguration(const TWheel& configuration, const TWheel& serverConfiguration, const std::vector<TGem>& gems,
+                          const TGrades& basicGrades, const TGrades& supremeGrades);
     const TGem* gem(int row) const;
     int rowOfGem(int gemId) const;
     /// The gem's role values by role name; empty when no gem has that id.

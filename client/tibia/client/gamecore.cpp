@@ -204,20 +204,15 @@ void setClientVersion(const int version)
     tibia::game::setProtocolVersion(static_cast<uint16_t>(it != olderProtocol.end() ? it->second : version));
 }
 
-namespace {
-
-/// CipSoft `TTibiaFileSystemHelper` resources directory: QDir(applicationDirPath);
-/// cdUp; cd("./Resources"). QDir::cd leaves the directory unchanged when there is
-/// no Resources, so the same rule gives `Contents/Resources` on macOS
-/// (`Contents/MacOS/..`) and the package root on Linux, Windows and /play
-/// (`bin/..`). See docs/reverse-engineering/cip-package-layout.md.
-QString cipResourcesDirectory()
+QDir resourcesDirectory()
 {
     QDir directory(QCoreApplication::applicationDirPath());
     directory.cdUp();
     directory.cd(QStringLiteral("./Resources"));
-    return directory.absolutePath();
+    return directory;
 }
+
+namespace {
 
 bool catalogAt(const QString& assetsDir)
 {
@@ -226,7 +221,7 @@ bool catalogAt(const QString& assetsDir)
 
 QString resolveCipResourcesDir()
 {
-    const QString resources = cipResourcesDirectory();
+    const QString resources = resourcesDirectory().absolutePath();
     if (catalogAt(QDir(resources).filePath(QStringLiteral("assets"))))
         return resources;
 

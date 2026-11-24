@@ -12,8 +12,12 @@
 #include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace config {
+class TClientOptions;
 class TSidebarOptions;
 }
 }
@@ -34,7 +38,13 @@ class TSkillWheelStorage;
 namespace tibia {
 namespace gamewindow {
 
+class TBosstiaryButtonController;
+class TCyclopediaButtonController;
 class TMessageDialogController;
+class TNewsButtonController;
+class TSocialButtonController;
+class TSocialDialogController;
+class TStoreButtonController;
 
 /// buttonsModel: the buttons clientoptions.json's
 /// controlButtonsOptions.enabledButtons lists, in its order (CIP:
@@ -59,9 +69,9 @@ private:
 /// The control buttons panel, ButtonBarPanel.qml (CIP: TButtonBarController,
 /// ctor). Its buttons publish game actions (widgets toggle through
 /// TOGGLE_WIDGET); the checked state follows the sidebar widgets manager's
-/// widgetVisible / widgetHidden. The store, news (Compendium), social,
-/// cyclopedia and bosstiary button controllers belong to their dialogs, which
-/// set them here.
+/// widgetVisible / widgetHidden. The bar owns the social, news (Compendium),
+/// store, cyclopedia and bosstiary button controllers and the logout question,
+/// and forwards the buttons' game actions as its own.
 class TButtonBarController final : public TSidebarPanelController<cip::tibia::gamewindow::TButtonBarController>
 {
     Q_OBJECT
@@ -70,7 +80,10 @@ public:
     /// at ProductShortcutIdBase so they never collide with CIP EButtons.
     static constexpr int ProductShortcutIdBase = 1000;
 
-    explicit TButtonBarController(QObject* parent = nullptr);
+    /// The social button opens the social dialog; the logout question is made
+    /// with the engine and the dialog parent item.
+    TButtonBarController(config::TClientOptions* ClientOptions, TSocialDialogController* SocialDialog, QQmlEngine* Engine,
+                         QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TButtonBarController() override;
 
     /// Register a product shortcut for Options → Display Shortcuts and the
@@ -92,14 +105,11 @@ public:
 
     /// sidebarPanelsOptions.controlButtonsVisible.
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// The button controller properties are constant: each setter emits
+    /// Host (pack ABI): a pack's own social button replaces the bar's. The
+    /// button controller properties are constant, so this emits
     /// buttonControllersChanged, on which the panel item rebinds
     /// panelController to re-read them.
-    void setStoreButtonController(QObject* controller);
-    void setNewsButtonController(QObject* controller);
     void setSocialButtonController(QObject* controller);
-    void setCyclopediaButtonController(QObject* controller);
-    void setBosstiaryButtonController(QObject* controller);
     void setAttentionStorage(mods::AttentionBackend* storage);
     /// Relays the storage's premiumTimeChanged as premiumTimeChanged (a
     /// previous storage's relay is dropped), then announces it once.
@@ -200,18 +210,22 @@ Q_SIGNALS:
     void buttonControllersChanged();
 
 private:
-    void setButtonController(QObject*& member, QObject* controller);
-
     /// CIP : TOGGLE_WIDGET.
     void toggleWidget(int widgetType);
     void setWidgetVisible(int widgetType, bool visible);
 
+    QPointer<config::TClientOptions> m_pClientOptions;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::unique_ptr<TMessageDialogController> m_logoutQuestion;
+    std::unique_ptr<TSocialButtonController> m_socialButton;
+    std::unique_ptr<TNewsButtonController> m_newsButton;
+    std::unique_ptr<TStoreButtonController> m_storeButton;
+    std::unique_ptr<TCyclopediaButtonController> m_cyclopediaButton;
+    std::unique_ptr<TBosstiaryButtonController> m_bosstiaryButton;
     TButtonBarModel m_model;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<config::TSidebarOptions> m_options;
     QPointer<skillwheel::TSkillWheelStorage> m_skillWheelStorage;
-    shared::TQtConnectionManager m_gameSessionConnections;
-    QPointer<TMessageDialogController> m_logoutQuestion;
     QPointer<mods::AttentionBackend> m_attention;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 

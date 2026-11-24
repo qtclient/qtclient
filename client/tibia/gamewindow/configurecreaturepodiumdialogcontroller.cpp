@@ -1,5 +1,5 @@
 #include "configurecreaturepodiumdialogcontroller.h"
-#include "gamewindow/smoothfiltering.h"
+#include "config/clientoptions.h"
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -177,8 +177,12 @@ bool TBossSkinSortProxyModel::filterAcceptsRow(const int sourceRow, const QModel
     return index.data(TBossSkinModel::OutfitNameRole).toString().contains(m_outfitNameFilter, Qt::CaseInsensitive);
 }
 
-TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("outfitdialog/ConfigureCreaturePodiumDialog.qml"), parent)
+TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogController(
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory, config::TClientOptions* ClientOptions,
+    QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("outfitdialog/ConfigureCreaturePodiumDialog.qml"), Engine, DialogParentItem, parent)
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_pClientOptions(ClientOptions)
     , m_proxy(&m_skins)
     , m_preset(new qmlcomponents::TOutfitPresetQmlType(this))
 {
@@ -312,7 +316,10 @@ void TConfigureCreaturePodiumDialogController::onControllerFinished() { dialog()
 QVariantMap TConfigureCreaturePodiumDialogController::initialDialogProperties() const
 {
     QVariantMap properties = TDialogController::initialDialogProperties();
-    properties.insert(QStringLiteral("clientSettingSmoothFiltering"), smoothFilteringEnabled());
+    properties.insert(QStringLiteral("clientSettingSmoothFiltering"),
+                      m_pClientOptions
+                          && m_pClientOptions->antialiasingMode()
+                                 == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
     return properties;
 }
 

@@ -204,6 +204,7 @@ void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::T
     m_movementLook = static_cast<uint8_t>(look);
     const qint64 restartAfter = m_movementTween.endTime() + 1000;
     setDirection(static_cast<uint8_t>(look));
+    updateOutfitPatterns(false);
 
     const bool atOrigin = worldmap::TWorldMapCoordinate(m_position) == origin;
     const bool ended = m_movementTween.isFinished();
@@ -253,7 +254,6 @@ void TCreature::update(const qint64 nowMs)
         m_outfitIdleAnimator->update(nowMs);
     if (m_mountIdleAnimator)
         m_mountIdleAnimator->update(nowMs);
-    updateOutfitPatterns();
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
 }
@@ -346,19 +346,47 @@ void TCreature::updateCoveredField()
 void TCreature::rebuildOutfitAppearance()
 {
     TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
-    m_outfitAppearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
-    if (m_outfitAppearance)
-        m_outfitAppearance->linkCreature(m_creatureId);
-    if (const auto outfitInstance =
-            std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), true);
+    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
+    if (appearance)
+        appearance->linkCreature(m_creatureId);
+    setOutfitAppearance(appearance);
 }
 
-void TCreature::updateOutfitPatterns()
+void TCreature::updateOutfitPatterns(const bool force)
 {
     if (const auto outfitInstance =
             std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), false);
+        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), force);
+    if (m_mountAppearance)
+        m_mountAppearance->setPatterns(m_patternX, m_movementLook, 0, force);
+}
+
+void TCreature::setOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance)
+{
+    if (appearance == m_outfitAppearance)
+        return;
+    m_outfitAppearance = appearance;
+    updateOutfitPatterns(true);
+}
+
+void TCreature::setMountAppearance(const std::shared_ptr<appearances::TOutfitAppearanceInstance>& appearance)
+{
+    if (appearance == m_mountAppearance)
+        return;
+    m_mountAppearance = appearance;
+    updateOutfitPatterns(true);
+}
+
+void TCreature::setMovementLook(const uint8_t look)
+{
+    m_movementLook = look;
+    updateOutfitPatterns(false);
+}
+
+void TCreature::setMounted(const bool mounted)
+{
+    m_mounted = mounted;
+    updateOutfitPatterns(false);
 }
 
 void TCreature::syncLocalPlayerStats()
@@ -503,7 +531,7 @@ void TCreature::setDirection(const uint8_t direction)
 
     m_direction = direction;
     m_patternX = patternX;
-    updateOutfitPatterns();
+    updateOutfitPatterns(false);
 }
 
 void TCreature::attachEffect(const AttachedEffectPtr& effect)

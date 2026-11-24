@@ -26,26 +26,6 @@ std::optional<QByteArray> readFile(const TSoundFile& file)
     }
 }
 
-/// The data one step closer to `target`, or nothing when it cannot get there.
-std::optional<TSoundData> convertStep(const TSoundData& data, const ESoundLoadTarget target)
-{
-    if (const auto* file = std::get_if<TSoundFile>(&data)) {
-        if (target == ESoundLoadTarget::StreamFile)
-            return std::nullopt;
-        if (auto bytes = readFile(*file))
-            return TSoundData{ std::move(*bytes) };
-        return std::nullopt;
-    }
-    if (const auto* bytes = std::get_if<QByteArray>(&data)) {
-        if (target == ESoundLoadTarget::StreamFile || target == ESoundLoadTarget::StreamMemory)
-            return std::nullopt;
-        if (auto samples = decodeSoundData(*bytes))
-            return TSoundData{ std::move(*samples) };
-        return std::nullopt;
-    }
-    return std::nullopt;
-}
-
 /// Runs `work` on the thread pool; once it finished, `done` gets its result
 /// on the owner's thread and the watcher goes. A conversion that threw holds a
 /// TSoundConcurrentException instead, which reading the result throws again.
@@ -81,31 +61,82 @@ TSoundDecompressorThreadpool::TSoundDecompressorThreadpool(QObject* parent)
     : cip::tibia::sound::TSoundDecompressorThreadpool(parent)
 {}
 
+std::optional<TLoadingSoundData> TSoundDecompressorThreadpool::loadStep(const TLoadingSoundData& data)
+{
+    if (const auto* file = std::get_if<TSoundFile>(&data)) {
+        if (auto bytes = readFile(*file))
+            return TLoadingSoundData{ std::move(*bytes) };
+        return std::nullopt;
+    }
+    if (const auto* bytes = std::get_if<QByteArray>(&data)) {
+        if (auto samples = decodeSoundData(*bytes))
+            return TLoadingSoundData{ std::move(*samples) };
+        return std::nullopt;
+    }
+    if (const auto* samples = std::get_if<TRawSoundSamples>(&data)) {
+        if (samples->empty())
+            return std::nullopt;
+        return TLoadingSoundData{ TSoundBuffer{ std::make_shared<const TRawSoundSamples>(*samples) } };
+    }
+    return std::nullopt;
+}
+
+TLoadingSoundData TSoundDecompressorThreadpool::loadUpTo(const TLoadingSoundData& data, const ESoundLoadTarget target)
+{
+    // The steps run file, bytes, samples, buffer: only a later form is reachable.
+    const auto wanted = static_cast<std::size_t>(target);
+    if (wanted <= data.index())
+        return data;
+    TLoadingSoundData loaded = data;
+    while (loaded.index() != wanted) {
+        std::optional<TLoadingSoundData> next = loadStep(loaded);
+        if (!next)
+            return data;
+        loaded = std::move(*next);
+    }
+    return loaded;
+}
+
+std::optional<TLoadingSoundData> TSoundDecompressorThreadpool::loadSoundData(const TSoundData& soundData,
+                                                                            const ESoundLoadTarget target)
+{
+    if (const auto* file = std::get_if<TSoundFile>(&soundData))
+        return loadUpTo(TLoadingSoundData{ *file }, target);
+    if (const auto* bytes = std::get_if<QByteArray>(&soundData))
+        return loadUpTo(TLoadingSoundData{ *bytes }, target);
+    if (const auto* samples = std::get_if<TRawSoundSamples>(&soundData))
+        return loadUpTo(TLoadingSoundData{ *samples }, target);
+    return std::nullopt;
+}
+
 TSoundData TSoundDecompressorThreadpool::toSoundData(const TSoundData& soundData, const ESoundLoadTarget target)
 {
-    const ESoundLoadTarget wanted = target == ESoundLoadTarget::Buffer ? ESoundLoadTarget::RawSamples : target;
-    TSoundData data = soundData;
-    for (;;) {
-        const int index = static_cast<int>(data.index());
-        if (index == static_cast<int>(wanted) || std::holds_alternative<ESoundDataState>(data))
-            return data;
-        std::optional<TSoundData> next = convertStep(data, target);
-        if (!next)
-            return ESoundDataState::Unavailable;
-        data = std::move(*next);
-    }
+    std::optional<TLoadingSoundData> loaded = loadSoundData(soundData, target);
+    if (!loaded)
+        return ESoundDataState::Unavailable;
+    if (auto* file = std::get_if<TSoundFile>(&*loaded))
+        return std::move(*file);
+    if (auto* bytes = std::get_if<QByteArray>(&*loaded))
+        return std::move(*bytes);
+    if (auto* samples = std::get_if<TRawSoundSamples>(&*loaded))
+        return std::move(*samples);
+    // A buffer is no source data.
+    return ESoundDataState::Unavailable;
 }
 
 TPlayableSoundData TSoundDecompressorThreadpool::toPlayableSoundData(const TSoundData& soundData,
                                                                      const ESoundLoadTarget target)
 {
-    TSoundData data = toSoundData(soundData, target);
-    if (auto* file = std::get_if<TSoundFile>(&data))
-        return *file;
-    if (auto* bytes = std::get_if<QByteArray>(&data))
-        return *bytes;
-    if (auto* samples = std::get_if<TRawSoundSamples>(&data))
-        return TSoundBuffer{ std::make_shared<const TRawSoundSamples>(std::move(*samples)) };
+    std::optional<TLoadingSoundData> loaded = loadSoundData(soundData, target);
+    if (!loaded)
+        return ESoundDataState::Unavailable;
+    if (auto* file = std::get_if<TSoundFile>(&*loaded))
+        return std::move(*file);
+    if (auto* bytes = std::get_if<QByteArray>(&*loaded))
+        return std::move(*bytes);
+    if (auto* buffer = std::get_if<TSoundBuffer>(&*loaded))
+        return std::move(*buffer);
+    // Raw samples do not play: only their buffer does.
     return ESoundDataState::Unavailable;
 }
 

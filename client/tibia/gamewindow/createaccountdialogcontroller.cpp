@@ -77,12 +77,19 @@ QJsonObject passwordCriterion(const QString& key, const QJsonObject& requirement
 
 }
 
-TCreateAccountDialogController::TCreateAccountDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("createaccountandcharacter/CreateAccountDialog.qml"), parent)
+TCreateAccountDialogController::TCreateAccountDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                                               std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                                               const QUrl& ServiceUrl, const QUrl& RecaptchaV2ContentUrl,
+                                                               const QUrl& RecaptchaV3ContentUrl, QObject* parent)
+    : TDialogController(QStringLiteral("createaccountandcharacter/CreateAccountDialog.qml"), Engine, DialogParentItem, parent)
     , m_network(new QNetworkAccessManager(this))
     , m_proxy(new TWorldSelectionSortProxyModel(this))
-    , m_error(new TMessageDialogController(this))
+    , m_error(new TMessageDialogController(Engine, DialogParentItem, this))
+    , m_serviceUrl(ServiceUrl)
+    , m_tibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
 {
+    m_recaptchaV2ContentUrl = RecaptchaV2ContentUrl;
+    m_recaptchaV3ContentUrl = RecaptchaV3ContentUrl;
     m_worldsModel = m_proxy;
     m_showRecaptchaV2 = false;
     m_recaptchaDisabled = false;

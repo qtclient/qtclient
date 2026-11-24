@@ -200,8 +200,15 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
         storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Outfit);
     }
     if (c.has_mount()) {
-        // A mount without a look type dismounts.
-        target.setMounted(c.mount().look_type() != 0);
+        // A mount without a look type dismounts and keeps the last mount;
+        // any other makes a new mount instance looking the creature's way.
+        if (c.mount().look_type() == 0) {
+            target.setMounted(false);
+        } else {
+            target.setMountAppearance(
+                appearances::TAppearanceInstanceFactory::createOutfitFromProtobuf(c.mount(), target.patternX()));
+            target.setMounted(true);
+        }
         storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
     }
     if (c.has_outfit() || c.has_direction())

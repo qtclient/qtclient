@@ -350,7 +350,7 @@ private:
     TBattleListController* m_party = nullptr;
     std::map<uint8_t, TBattleListController*> m_controllers;
     std::shared_ptr<game::IGameSession> m_gameSession;
-    int m_controlScheme = 0;
+    int m_controlScheme = 1; // CIP control scheme (1 classic)
     bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;
     std::vector<client::gamecore::Hook> m_hooks;

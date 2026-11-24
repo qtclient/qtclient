@@ -13,6 +13,8 @@
 #include "mods/weather_driver.h"
 #include "mods/worldview.h"
 #include "renderer/lightmodel.h"
+#include "gamewindow/contextmenucontroller.h"
+#include "renderer/renderinfo.h"
 #include "renderer/rendervolumeprovider.h"
 #include "renderer/worldgeometry.h"
 #include "worldmap/lightmap.h"
@@ -285,6 +287,9 @@ void TWorldMapRenderProvider::setViewScale(const double scale)
 
 void TWorldMapRenderProvider::setMouseTargetObject(const uint16_t typeId, const Position& field, const int stackPos)
 {
+    // The target under the mouse stays while a context menu is shown.
+    if (const gamewindow::TContextMenuController* menu = gamewindow::TContextMenuController::instance(); menu && menu->isShown())
+        return;
     m_mouseTargetTypeId = typeId;
     m_mouseTargetField = typeId ? field : Position{};
     m_mouseTargetStackPos = typeId ? stackPos : -1;
@@ -294,6 +299,8 @@ void TWorldMapRenderProvider::setMouseTargetObject(const uint16_t typeId, const 
 
 void TWorldMapRenderProvider::setMouseTargetCreatureId(const uint32_t id)
 {
+    if (const gamewindow::TContextMenuController* menu = gamewindow::TContextMenuController::instance(); menu && menu->isShown())
+        return;
     m_mouseTargetCreatureId = id;
     m_mouseTargetTypeId = 0;
     m_mouseTargetField = {};
@@ -444,9 +451,39 @@ void TWorldMapRenderProvider::sortDrawCommands(std::vector<SpriteRecord>& record
         sorted.push_back(std::move(records[index]));
 }
 
+namespace {
+
+/// The render volume holds fields, and its first and last floor's origins,
+/// moved onto its shear floor, are not below (0, 0, 0).
+bool isDrawableRenderVolume(const worldmap::TShearedWorldMapCuboid& volume)
+{
+    if (volume.getExtent().volume() == 0)
+        return false;
+    const worldmap::TWorldMapCoordinate zero(0, 0, 0);
+    if (volume.getOrigin().shiftedTowardsFloor(volume.shearFloor) < zero)
+        return false;
+    const worldmap::TWorldMapCoordinate lastFloorEnd = volume.getEnd() - worldmap::TWorldMapExtent(0, 0, 1);
+    return !(lastFloorEnd.shiftedTowardsFloor(volume.shearFloor) < zero);
+}
+
+int floorDivFieldSize(const int subfield)
+{
+    return subfield >= 0 ? subfield / 32 : -((-subfield + 31) / 32);
+}
+
+}
+
+bool TWorldMapRenderProvider::drawsLiveWorld() const
+{
+    return worldMapStorage() == worldmap::TWorldMapStorage::ensureStorage();
+}
+
 bool TWorldMapRenderProvider::build()
 {
-    m_lighting = tibia::mods::worldLightingDriver();
+    // The session's world is drawn around the local player; any other world
+    // (a preview volume) around its render volume's viewport centre.
+    const bool live = drawsLiveWorld();
+    m_lighting = live ? tibia::mods::worldLightingDriver() : nullptr;
 
     Frame& frame = m_frame;
     const int DrawWidth = drawWidth();
@@ -464,7 +501,10 @@ bool TWorldMapRenderProvider::build()
     // The objects near the player are counted anew every frame, around the
     // local player when there is one.
     m_objectCounter.reset();
-    if (!tibia::game::hasLocalPlayer() || !tibia::game::isOnline() || !tibia::game::localPlayerPosition().isValid()) {
+    const std::shared_ptr<worldmap::TWorldMapViewport> volumeViewport =
+        m_renderVolumeProvider ? m_renderVolumeProvider->worldMapViewport() : nullptr;
+    if (live ? (!tibia::game::hasLocalPlayer() || !tibia::game::isOnline() || !tibia::game::localPlayerPosition().isValid())
+             : !volumeViewport) {
         frame.sprites.clear();
         frame.creatures.clear();
         m_lights.clear();
@@ -472,15 +512,26 @@ bool TWorldMapRenderProvider::build()
     }
 
     // Cover caches invalidate per opaque cell (Map::invalidateCoverCachesFrom).
-    const uint32_t coverRevision = tibia::game::coverRevision();
-    const Position camera = tibia::game::localPlayerPosition();
+    const uint32_t coverRevision = live ? tibia::game::coverRevision() : m_coverRevision;
+    Position camera;
+    QPoint walk;
+    if (live) {
+        camera = tibia::game::localPlayerPosition();
+        walk = tibia::creatures::walkOffsetFor(tibia::game::localPlayerId());
+    } else {
+        // The field under the viewport's centre, and the centre's offset in it.
+        const worldmap::TWorldMapSubfieldCoordinate centre = volumeViewport->center();
+        const worldmap::TWorldMapCoordinate field(floorDivFieldSize(centre.subfieldX), floorDivFieldSize(centre.subfieldY),
+                                                  centre.z);
+        camera = field.toPosition();
+        walk = QPoint(centre.subfieldX - field.x * FieldSize, centre.subfieldY - field.y * FieldSize);
+    }
     const bool cameraTileMoved = m_camera != camera;
     const bool coverDirty = coverRevision != m_coverRevision;
     m_cameraTileMoved = cameraTileMoved;
     m_coverDirty = coverDirty;
     m_coverRevision = coverRevision;
     m_camera = camera;
-    const QPoint walk = tibia::creatures::walkOffsetFor(tibia::game::localPlayerId());
     frame.camera = QPoint((CenterX - (m_visibleWidth - 1) / 2) * FieldSize + walk.x(),
                           (CenterY - (m_visibleHeight - 1) / 2) * FieldSize + walk.y());
 
@@ -499,6 +550,14 @@ bool TWorldMapRenderProvider::build()
     }
     m_firstFloor = first;
     m_lastFloor = last;
+    // Nothing is drawn from an empty render volume or one that reaches below
+    // the origin (host: the frame is cleared; CipSoft keeps the last one).
+    if (m_renderVolumeProvider && !isDrawableRenderVolume(m_renderVolumeProvider->renderVolume())) {
+        frame.sprites.clear();
+        frame.creatures.clear();
+        m_lights.clear();
+        return false;
+    }
 
     frame.highlightStrength = renderer::highlightStrength();
     m_attackTarget = tibia::game::attackingCreatureId();
@@ -842,12 +901,15 @@ void TWorldMapRenderProvider::addLight(const QPoint& center, const uint8_t inten
 
 void TWorldMapRenderProvider::updateVisibleFloors(uint8_t& first, uint8_t& last)
 {
-    if (!m_renderVolumeProvider || !m_viewport) {
+    worldmap::TWorldMapViewport* viewport = m_viewport;
+    if (!viewport && m_renderVolumeProvider)
+        viewport = m_renderVolumeProvider->worldMapViewport().get();
+    if (!m_renderVolumeProvider || !viewport) {
         first = last = m_camera.z;
         return;
     }
     // The view centres on the camera's field before the volume is taken from it.
-    m_viewport->setCenter(worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(m_camera), 0, 0));
+    viewport->setCenter(worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(m_camera), 0, 0));
     m_renderVolumeProvider->updateRenderVolume();
     const worldmap::TShearedWorldMapCuboid volume = m_renderVolumeProvider->renderVolume();
     if (volume.getExtent().depth <= 0) {
@@ -1057,6 +1119,7 @@ std::vector<TWorldMapRenderProvider::FieldEntry> TWorldMapRenderProvider::fields
     const int skirtRight = left + m_visibleWidth + 2;
     const int skirtBottom = top + m_visibleHeight + 2;
     const int diagLimit = DrawWidth + DrawHeight - 1;
+    worldmap::TWorldMapStorage* storage = worldMapStorage();
     for (int z = last; z >= first; --z) {
         for (int diagonal = 0; diagonal < diagLimit; ++diagonal) {
             const int advance = diagonal >= DrawHeight ? diagonal - DrawHeight : 0;
@@ -1065,7 +1128,7 @@ std::vector<TWorldMapRenderProvider::FieldEntry> TWorldMapRenderProvider::fields
                     continue;
                 Position pos = m_camera.translated(ix - CenterX, iy - CenterY);
                 pos.coveredUp(m_camera.z - z);
-                tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(pos);
+                tibia::worldmap::TWorldMapField* tile = storage->fieldAt(pos);
                 // Cover cache keys off Map cover revision — do not pass coverDirty
                 // (that reset every cell every opaque stream frame).
                 if (!tile || !tile->isDrawable() || tile->isCompletelyCovered(first, false))
@@ -1335,9 +1398,9 @@ void TWorldMapRenderProvider::noteCreature(const worldmap::TWorldMapCoordinate& 
         return;
     m_objectCounter.addObject(field, type->getId());
     m_frameTypes.insert(type);
-    if (creature.isMounted() && creature.outfit().hasMount()) {
-        if (TAppearanceType* mount = tibia::game::rawThingType(creature.outfit().getMount(), ThingCategoryCreature))
-            m_frameTypes.insert(mount);
+    if (creature.isMounted()) {
+        if (const auto mount = creature.mountAppearance(); mount && mount->thingType())
+            m_frameTypes.insert(mount->thingType());
     }
 }
 
@@ -1481,22 +1544,18 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         : std::nullopt;
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
-        if (showOff->isVisible()) {
+        // The socket's render infos: the socket itself while it is shown, then
+        // the figure's mount and outfit.
+        renderer::TRenderInfoList infos;
+        showOff->appendRenderInfos(tile ? tile->coordinate() : worldmap::TWorldMapCoordinate(), infos);
+        for (const renderer::TRenderInfo& info : infos) {
+            if (info.kind != renderer::TRenderInfo::Self) {
+                addRenderInfo(info, dest, highlight);
+                continue;
+            }
             addObjectSprite();
             if (objectShines(*type, *appearance))
                 addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
-        }
-        // The mount, then the outfit, draw their idle sprite at the figure's
-        // displacement (addSpriteInfo takes the part type's own displacement off).
-        const tibia::worldmap::TWorldMapSubfieldExtent figure = showOff->figureRenderDisplacement();
-        for (const auto* part : { showOff->mount().get(), showOff->outfit().get() }) {
-            if (!part)
-                continue;
-            TAppearanceType* partType = part->thingType();
-            if (!partType)
-                continue;
-            const QPoint at = dest + partType->getDisplacement() - QPoint(figure.width, figure.height);
-            addSpriteInfo(partType, at, part->idleSpriteInfo(), part->idleSpriteInfo(), part->direction(), highlight);
         }
         return;
     }
@@ -1574,10 +1633,11 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     // The outfit's own light, and the mount's while riding.
     if (type->hasLight())
         addCreatureLight(type->getLight());
-    if (stored.isMounted() && outfit.hasMount()) {
-        if (TAppearanceType* mount = tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature); mount && mount->hasLight())
-            addCreatureLight(mount->getLight());
-    }
+    const std::shared_ptr<appearances::TOutfitAppearanceInstance> mountAppearance =
+        stored.isMounted() ? stored.mountAppearance() : nullptr;
+    TAppearanceType* mount = mountAppearance ? mountAppearance->thingType() : nullptr;
+    if (mount && mount->hasLight())
+        addCreatureLight(mount->getLight());
 
     const SpriteRecord::Highlight highlight = highlightOf(stored.creatureId());
     const QPoint walked = dest + stored.walkOffset();
@@ -1585,14 +1645,15 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     addAttachedEffects(stored, walked, jumped, false);
 
     if (outfit.isCreature()) {
-        // The mount is drawn while riding; the outfit then shows its mounted
-        // sprites (pattern depth 1).
-        TAppearanceType* mount = stored.isMounted() && outfit.hasMount()
-            ? tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature)
-            : nullptr;
+        // The mount instance is drawn while riding (its sprites masked with the
+        // mount's colours); the outfit then shows its mounted sprites.
         if (mount) {
             at -= mount->getDisplacement();
-            addSprites(mount, at, stored.drawnPatternX(), 0, 0, stored.mountAnimationPhase(), false, 0, highlight);
+            const int mountPhase = stored.mountAnimationPhase();
+            const int mountStampPhase =
+                m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(mountPhase) : mountPhase;
+            addSpriteInfo(mount, at, mountAppearance->spriteInfoAtPhase(mountPhase),
+                          mountAppearance->spriteInfoAtPhase(mountStampPhase), stored.drawnPatternX(), highlight);
             at += stored.displacement();
         }
         const int phase = stored.animationPhase();
@@ -1805,6 +1866,19 @@ void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint&
                 m_lighting->addFrame(peelLightingFrame(*type, anchor, stampId, xPattern));
         }
     }
+}
+
+void TWorldMapRenderProvider::addRenderInfo(const renderer::TRenderInfo& info, const QPoint& dest,
+                                            const SpriteRecord::Highlight highlight)
+{
+    if (!info.type)
+        return;
+    // The sprite's frame ends at the bottom-right of its field moved by the
+    // info's draw offset. `dest` is already lifted by the field's elevation,
+    // which is the info's depth.
+    const worldmap::TWorldMapSubfieldExtent offset = info.drawPosition().offset;
+    const QPoint at = dest + QPoint(offset.width + info.displacement.depth, offset.height + info.displacement.depth);
+    addSpriteInfo(info.type, at + info.type->getDisplacement(), info.spriteInfo, info.spriteInfo, 0, highlight);
 }
 
 void TWorldMapRenderProvider::addSequenceSprite(const appearances::TAppearanceInstance& instance, const QPoint& dest,

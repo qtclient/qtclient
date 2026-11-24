@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDir>
 #include <QString>
 #include <QStringList>
 
@@ -43,6 +44,13 @@ void resumeRealTime();
 /// Sets the client and protocol version, the qtclient features of that version
 /// (modules/game_features) and the server RSA key.
 void setClientVersion(int version);
+
+/// CIP: the package's Resources directory: the application directory's
+/// parent, its `Resources` when there is one (QDir::cd leaves the directory
+/// unchanged without one, so the same rule gives `Contents/Resources` on
+/// macOS and the package root on Linux, Windows and /play). See
+/// docs/reverse-engineering/cip-package-layout.md.
+QDir resourcesDirectory();
 
 /// Absolute CipSoft Resources directory (qtclient AppData / bundle / monorepo data/).
 /// Empty when unresolved. Used for storeimages disk cache, etc.

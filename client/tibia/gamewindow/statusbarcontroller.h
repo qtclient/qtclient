@@ -108,6 +108,11 @@ private:
     void rebuildSkillLists();
     /// The shown entries' values.
     void refreshSkills();
+    /// The experience entry: the experience, the progress to the next level
+    /// and a tooltip with the experience left; with an XP rate in the
+    /// session's XP analyser it also names the rate per hour and the time to
+    /// the next level.
+    game::SkillsWidgetEntry experienceEntry() const;
     void setDialogAnchor(DialogAnchor anchor);
     void setDialogStyle(DialogStyle style);
     /// The storage's position as an anchor: anything past Right is Invalid.

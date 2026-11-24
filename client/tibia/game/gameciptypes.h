@@ -301,11 +301,6 @@ private:
     bool m_enterWorldOnPendingState = true;
 };
 
-class TGameWorldVolumeStorage final : public ::tibia::CipTyped {
-public:
-    TGameWorldVolumeStorage() = default;
-};
-
 /// The character's outfit presets and show-off socket presets (character
 /// configuration "outfitdialog").
 class TOutfitDialogStorage final : public cip::tibia::game::TOutfitDialogStorage, public config::ICharacterConfiguration

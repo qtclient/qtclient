@@ -2862,6 +2862,29 @@
       ],
       "note": "position, u8 state."
     },
+    "CyclopediaMapDataStaticMarker": {
+      "fields": [
+        {
+          "name": "text",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "position",
+          "type": "ProtocolCoordinate",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "icon",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP protobuf::protocol::CyclopediaMapDataStaticMarker (map data type 0): position, u8 icon, string text."
+    },
     "ProtocolSubAreaMonster": {
       "fields": [
         {
@@ -10995,6 +11018,12 @@
         "name": "donation_goal",
         "type": "uint64",
         "number": 15,
+        "label": "optional"
+      },
+      {
+        "name": "static_marker",
+        "type": "CyclopediaMapDataStaticMarker",
+        "number": 16,
         "label": "optional"
       }
     ],

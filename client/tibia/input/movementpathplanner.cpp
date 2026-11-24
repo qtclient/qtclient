@@ -1,5 +1,6 @@
 #include "input/movementpathplanner.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <limits>
 #include <utility>
@@ -12,7 +13,7 @@ namespace {
 constexpr int Range = 110;
 constexpr int Side = 2 * Range + 1;
 constexpr int Infinite = std::numeric_limits<int>::max();
-constexpr quint8 Blocked = 0xff;
+constexpr int Blocked = 0xff;
 
 struct Node
 {
@@ -112,8 +113,9 @@ creatures::EMovementDirection stepBetween(const int fromX, const int fromY, cons
 }
 
 int planMovementPath(const worldmap::TWorldMapCoordinate& from, const worldmap::TWorldMapCoordinate& goal,
-                     const bool enterUnwalkableGoal, const bool allowDiagonalStep, const WaypointCost& cost,
-                     const std::vector<worldmap::TWorldMapCoordinate>& blocked,
+                     const bool enterUnwalkableGoal, const bool allowDiagonalStep,
+                     const minimap::TWaypointSectors& waypointSectors,
+                     const std::set<worldmap::TWorldMapCoordinate>& avoidedFields,
                      std::vector<creatures::EMovementDirection>& path)
 {
     path.clear();
@@ -147,13 +149,15 @@ int planMovementPath(const worldmap::TWorldMapCoordinate& from, const worldmap::
             n.y = y;
             const int fieldX = from.x + x;
             const int fieldY = from.y + y;
-            n.cost = (fieldX < 0 || fieldY < 0) ? 1 : cost(fieldX, fieldY, from.z);
+            n.cost = (fieldX < 0 || fieldY < 0)
+                ? 1
+                : waypointSectors.costAt(Position(fieldX, fieldY, static_cast<uint8_t>(from.z)));
             n.blocked = n.cost == Blocked;
             cheapest = std::min(cheapest, n.cost);
         }
     }
-    // Blocked fields other than the start and the goal, inside the range.
-    for (const worldmap::TWorldMapCoordinate& c : blocked) {
+    // The fields to avoid other than the start and the goal, inside the range.
+    for (const worldmap::TWorldMapCoordinate& c : avoidedFields) {
         if (c == from || c == goal || c.z != from.z)
             continue;
         const int dx = c.x - from.x;

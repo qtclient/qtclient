@@ -13,6 +13,7 @@ class QQuickWindow;
 namespace tibia {
 namespace assets {
 class TAssetAsyncLoader;
+class TAssetFileSystemHelper;
 class TAssetHandler;
 class TAssetManager;
 }
@@ -56,6 +57,7 @@ class TTibiaFileSystemHelper;
 namespace sprites {
 class TResourceSpritesManager;
 class TSpriteResolver;
+class TSpritesheetManager;
 }
 namespace spells {
 class TSpellInfoStorage;
@@ -137,7 +139,7 @@ public:
     std::shared_ptr<assets::TAssetManager> assetManager() const;
     /// Throws std::logic_error before it exists.
     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage() const;
-    /// The spell table; null before it exists.
+    /// The spell table.
     spells::TSpellInfoStorage* spellInfoStorage() const { return m_pSpellInfoStorage.get(); }
     /// The passive ability table.
     game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage() const { return m_pPassiveAbilityInfoStorage.get(); }
@@ -157,6 +159,9 @@ public:
     std::shared_ptr<sprites::TResourceSpritesManager> resourceSpritesManager() const { return m_pResourceSpritesManager; }
     /// The client's sprite resolver. Throws std::logic_error before it exists.
     std::shared_ptr<sprites::TSpriteResolver> spriteResolver() const;
+    /// CIP: the spritesheets the client loads and caches. Throws
+    /// std::logic_error before the storages exist.
+    std::shared_ptr<sprites::TSpritesheetManager> spritesheetManager() const;
 
     /// Where the minimap's tiles and marker file are read and written.
     /// Throws std::logic_error before it exists.
@@ -195,26 +200,37 @@ public:
     }
 
 protected:
-    /// The client is made with its QML engine, the file system helper, the
-    /// client options and the client settings; it makes the appearances, the
-    /// Cyclopedia map's static data, the passive ability table and the
-    /// proficiency storage at once. Host: without client settings the client
-    /// takes the application's (config::processTibiaConfig).
+    /// CIP: the client is made with its QML engine, the file system helper,
+    /// the client options and the client settings; it makes the spell table,
+    /// the passive ability table and the marker write timer at once. Host:
+    /// the appearances, the Cyclopedia map's static data and the proficiency
+    /// storage are made here too (see initializeStorages); without client
+    /// settings the client takes the application's (config::processTibiaConfig).
     TGameClientBase(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
                     config::TClientOptions* ClientOptions, std::shared_ptr<config::TTibiaConfig> TibiaConfig = nullptr);
-    /// The spell table. Host: qtclient's table reads spells.json when it is
-    /// made, so the client makes it once the data directories are known
-    /// (CipSoft makes an empty one with the client).
-    void createSpellInfoStorage();
 
-    /// CIP: the storages the client keeps for the whole process: the trader
-    /// storage, the resource sprites manager, the minimap tile and marker
-    /// storages and the minimap tile manager (with a disk of its own). Host:
-    /// also the spell table (spells.json is readable now); qtclient makes the
+    /// CIP: the client settings of the Resources directory: config.ini of
+    /// its conf directory, else the bundled one.
+    static std::shared_ptr<config::TTibiaConfig> createResourcesTibiaConfig();
+    /// CIP: the spritesheet manager with a decompressor thread pool and a
+    /// cache of GRAPHICS/spritesheetCacheSize spritesheets (at least 2; by
+    /// default as many 384x384 RGBA spritesheets as half the physical memory
+    /// holds, at most 512 MB, at least 350); the size is logged.
+    static std::shared_ptr<sprites::TSpritesheetManager> createSpritesheetManager(const config::TTibiaConfig& TibiaConfig);
+    /// CIP: where the assets and the sounds are read and written. Host: the
+    /// assets' and sounds' directories of qtclient's data tree (CipSoft: of
+    /// the Resources directory).
+    static std::shared_ptr<assets::TAssetFileSystemHelper> createAssetFileSystemHelper();
+
+    /// CIP: the storages the client keeps for the whole process: the
+    /// spritesheet manager (the cache size from the Resources directory's
+    /// client settings), the asset file system helper, the trader storage, the resource sprites manager,
+    /// the minimap tile and marker storages and the minimap tile manager
+    /// (with a disk of its own). Host: the sprite system draws from the
+    /// client's spritesheet manager while the client exists; qtclient makes the
     /// appearances, the Cyclopedia map's static data and the game action
     /// router with the client, because the game window's controllers use them
-    /// without a running engine (the character selection preview); the
-    /// spritesheet manager is the sprite system's.
+    /// without a running engine (the character selection preview).
     virtual void initializeStorages();
     /// CIP: the minimap's disk; CipSoft's minimap manager becomes the root
     /// context's `MinimapManager`; a marker change starts the single-shot
@@ -224,10 +240,10 @@ protected:
     /// tile storage reads the current session's fields through a world feed.
     virtual void initializeMinimap();
     /// CIP: a failed spritesheet decompression reaches the client (the
-    /// base does nothing with it); the resource sprites manager becomes the
-    /// root context's `ResourceSpritesManager`. Host: qtclient's sprite
-    /// resolver is the sprite system's (TSpriteSystem), made with it; it is
-    /// handed the minimap tile manager here.
+    /// base does nothing with it); the sprite resolver of the spritesheet
+    /// manager and the minimap tile manager; the resource sprites manager
+    /// becomes the root context's `ResourceSpritesManager`. Host: the sprite
+    /// system (TSpriteSystem) resolves through it while the client exists.
     virtual void initializeSpriteResolver();
     /// CIP: the appearance instance factory of the appearances; the
     /// instance tracker's spritesheet requests go to the spritesheet manager;
@@ -286,6 +302,7 @@ protected:
     std::shared_ptr<config::TTibiaConfig> m_pTibiaConfig;
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    std::shared_ptr<assets::TAssetFileSystemHelper> m_pAssetFileSystemHelper;
     std::shared_ptr<assets::TAssetAsyncLoader> m_pAssetAsyncLoader;
     std::shared_ptr<assets::TAssetManager> m_pAssetManager;
     std::shared_ptr<assets::TAssetHandler> m_pAssetHandler;
@@ -310,6 +327,7 @@ protected:
     std::shared_ptr<minimap::TMinimapManager> m_pMinimapManager;
     std::shared_ptr<minimap::TMinimapTileManager> m_pMinimapTileManager;
     std::shared_ptr<sprites::TSpriteResolver> m_pSpriteResolver;
+    std::shared_ptr<sprites::TSpritesheetManager> m_pSpritesheetManager;
     /// Host: the tile manager's own disk (CipSoft does not keep it); it is
     /// told where CipSoft's bundled minimap is once the assets are known.
     std::shared_ptr<minimap::TMinimapDiskIOAsync> m_pMinimapTileManagerDiskIO;

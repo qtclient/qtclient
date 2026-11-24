@@ -312,7 +312,7 @@ class TStoreButtonController final : public cip::tibia::gamewindow::TStoreButton
 {
     Q_OBJECT
 public:
-    explicit TStoreButtonController(TStoreDialogController* dialog, QObject* parent = nullptr);
+    explicit TStoreButtonController(QObject* parent = nullptr);
 
     bool highlighted() const override { return m_highlightTimer.isHighlighted(); }
 
@@ -334,7 +334,6 @@ private:
     void onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink);
     void clearDeeplink();
 
-    QPointer<TStoreDialogController> m_dialog;
     std::shared_ptr<game::IGameSession> m_gameSession;
     /// The highlight (600000 ms).
     shared::THighlightTimer m_highlightTimer{ 600000 };

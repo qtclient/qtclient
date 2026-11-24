@@ -85,15 +85,19 @@ bool TQuickLootBlackWhitelistStorage::isListed(const uint16_t objectType) const 
 
 bool TQuickLootBlackWhitelistStorage::isListFull() const { return list(m_listType).size() >= MaxListSize; }
 
-void TQuickLootBlackWhitelistStorage::setListed(const uint16_t objectType, const bool listed)
+bool TQuickLootBlackWhitelistStorage::addItem(const uint16_t objectType)
 {
     std::set<uint16_t>& active = activeList();
-    if (listed) {
-        if (isListFull() || !active.insert(objectType).second)
-            return;
-    } else if (active.erase(objectType) == 0) {
+    if (active.size() >= MaxListSize || !active.insert(objectType).second)
+        return false;
+    Q_EMIT configurationChangedFromUserInput();
+    return true;
+}
+
+void TQuickLootBlackWhitelistStorage::removeItem(const uint16_t objectType)
+{
+    if (activeList().erase(objectType) == 0)
         return;
-    }
     Q_EMIT configurationChangedFromUserInput();
 }
 

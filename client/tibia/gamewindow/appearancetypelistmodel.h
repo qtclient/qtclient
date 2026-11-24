@@ -148,6 +148,10 @@ private:
     /// dataChanged over every row for `roles`.
     void notifyRolesChanged(const QList<int>& roles);
     int count(const TAppearanceTypeEntry& entry) const;
+    /// The type the row shows: with useDisplayTypeId, the market's show-as
+    /// type of a market object; otherwise the type's cyclopedia type, or the
+    /// type itself without one.
+    uint16_t displayTypeID(const TAppearanceTypeEntry& entry) const;
 
     /// Announces the proficiency roles of every row.
     void onProficiencyTimerTimeout();
@@ -289,6 +293,9 @@ public:
 
     /// The row of the type and tier, or -1.
     int rowOf(uint16_t typeId, uint8_t tier) const;
+    /// The type's index among the accepted source rows (source order); the
+    /// last accepted index without a match, -1 when no row is accepted.
+    int acceptedIndexOf(uint16_t typeId, int tier) const;
     uint16_t typeIdAt(int row) const;
     uint8_t tierAt(int row) const;
 

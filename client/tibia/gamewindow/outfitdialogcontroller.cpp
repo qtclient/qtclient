@@ -4,6 +4,7 @@
 #include "game/selectoutfitdialogdata.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/gameaction.h"
@@ -227,12 +228,16 @@ QHash<int, QByteArray> TOutfitPresetsModel::roleNames() const
     return { { JsonDataRole, "jsondata" }, { EverythingOwnedRole, "everythingowned" } };
 }
 
-TSelectOutfitDialogController::TSelectOutfitDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("outfitdialog/OutfitDialog.qml"), parent)
+TSelectOutfitDialogController::TSelectOutfitDialogController(
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory, config::TClientOptions* ClientOptions,
+    QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("outfitdialog/OutfitDialog.qml"), Engine, DialogParentItem, parent)
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_pClientOptions(ClientOptions)
     , m_outfitsProxy(&m_outfits)
     , m_mountsProxy(&m_mounts)
     , m_summonsProxy(&m_summons)
-    , m_renameDialog(new TGenericEnterTextDialogController(this))
+    , m_renameDialog(new TGenericEnterTextDialogController(QString(), QString(), 255, Engine, DialogParentItem, this))
 {
     // View options live in the controller for the session, no file (QML
     // writes them back on every change).
@@ -416,8 +421,9 @@ QVariantMap TSelectOutfitDialogController::initialDialogProperties() const
 {
     QVariantMap properties = TDialogController::initialDialogProperties();
     properties.insert(QStringLiteral("clientSettingSmoothFiltering"),
-                      app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
-                          == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
+                      m_pClientOptions
+                          && m_pClientOptions->antialiasingMode()
+                                 == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
     return properties;
 }
 

@@ -3,6 +3,7 @@
 #include "chatcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "client/gameclient.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -1040,12 +1041,10 @@ void TOpenChatChannelDialogController::onOpenPrivateChannelTo(const QString& rec
 TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& gameClient, QObject* parent)
     : cip::tibia::gamewindow::TChatController(parent)
     , m_chatItem(chatItem)
-    , m_blacklist(gameClient.clientOptions())
-    , m_mapper(app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0))
-    , m_whiteBlacklistDialog(m_blacklist)
+    , m_mapper(config::controlSchemeForListModelIndex(
+          app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0)))
     , m_gameClient(gameClient)
 {
-    m_blacklist.loadFromOptions();
     own(this);
     own(&m_primary);
     own(&m_secondary);
@@ -1053,7 +1052,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
     connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
 
-    connect(&m_blacklist, &chat::TWhiteBlacklist::messageFiltered, this, &TChatController::onMessageFiltered);
     reloadOptions();
 
     // For 2 s after a session connects, its new channels' tabs do not become
@@ -1175,7 +1173,7 @@ void TChatController::reloadOptions()
 void TChatController::onOptionChanged(const QString& name)
 {
     if (name == QLatin1String("controlSchemeIndex"))
-        m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
+        m_mapper.setControlScheme(config::controlSchemeForListModelIndex(app::ClientOptions::load().options().value(name).toInt(0)));
     else if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow")) || name == QLatin1String("openNewPrivateMessagesInNewTab"))
         reloadOptions();
 }
@@ -1775,9 +1773,6 @@ bool TChatController::handleAction(const input::IGameAction& action)
             m_npcDialog->takeFocus();
         return true;
     }
-    case A::OPEN_WHITEBLACKLIST_DIALOG:
-        m_whiteBlacklistDialog.handleGameAction(action);
-        return true;
     case A::OPEN_INVITE_TO_CHAT_CHANNEL_DIALOG:
     case A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG:
         if (visibleAction)

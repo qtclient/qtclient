@@ -135,7 +135,7 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
         return true;
     case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
         if (TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist(); storage && listStatus)
-            storage->setListed(listStatus->typeId(), false);
+            storage->removeItem(listStatus->typeId());
         return true;
     default:
         return false;
@@ -148,7 +148,7 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
     if (!storage)
         return;
     if (!storage->isListFull()) {
-        storage->setListed(objectId, true);
+        storage->addItem(objectId);
         return;
     }
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("iteminfo_maximum_number_of_blacklisted_items"), chat::systemWhite());

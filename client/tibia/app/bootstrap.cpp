@@ -191,6 +191,11 @@ int activeGraphicsEngine()
     return s_activeGraphicsEngine;
 }
 
+bool isSoftwareGraphicsEngineActive()
+{
+    return s_activeGraphicsEngine == 3;
+}
+
 int rendererFromCommandLine()
 {
     const QStringList arguments = QCoreApplication::arguments() + tibia::platform::extraArguments();
@@ -327,11 +332,22 @@ void alignTextHinting(QQmlEngine* engine)
     style->setProperty("defaultTextFont", font);
 }
 
+std::unique_ptr<QTranslator> createClientTranslator()
+{
+    return std::make_unique<AppNameTranslator>();
+}
+
+QString clientTranslationDirectory()
+{
+    return QStringLiteral(":/strings");
+}
+
 void installTranslations()
 {
-    auto* translator = new AppNameTranslator(QCoreApplication::instance());
-    if (translator->load(QStringLiteral(":/strings/client.en.qm")))
-        QCoreApplication::installTranslator(translator);
+    std::unique_ptr<QTranslator> translator = createClientTranslator();
+    translator->setParent(QCoreApplication::instance());
+    if (translator->load(QStringLiteral("client.en"), clientTranslationDirectory()))
+        QCoreApplication::installTranslator(translator.release());
 }
 
 std::unique_ptr<QQmlEngine> createEngine()

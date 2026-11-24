@@ -92,59 +92,6 @@ void TGameSessionState::terminate()
     m_gameConnection = nullptr;
 }
 
-namespace {
-
-/// A field the planner avoids: not free (blocked or unsure) or marked avoid.
-bool isAvoidedField(tibia::worldmap::TWorldMapField& field)
-{
-    return field.walkState() != 0 || !field.isPathable();
-}
-
-/// Minimap costs, overridden by the fields the client sees: an avoided field or
-/// one with an unpassable item is blocked, else the first ground item's step
-/// cost (blocked when there is none), at most 250.
-tibia::input::WaypointCost snapshotWaypointCost()
-{
-    std::shared_ptr<tibia::minimap::TWaypointCosts> minimap = tibia::game::waypointCosts();
-    return [minimap](const int x, const int y, const int z) -> quint8 {
-        tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
-        if (tibia::worldmap::TWorldMapField* field = map->fieldAt(tibia::worldmap::TWorldMapCoordinate(x, y, z))) {
-            if (isAvoidedField(*field) || !field->isWalkable(true))
-                return tibia::minimap::TWaypointCosts::BlockedCost;
-            if (const int cost = field->movementGroundSpeed(); cost > 0)
-                return static_cast<quint8>(std::min(cost, 250));
-            return minimap ? minimap->costAt(x, y, z) : tibia::minimap::TWaypointCosts::UnknownCost;
-        }
-        // The server sends nothing for a field without ground, so an aware coordinate
-        // with no field is void, as the minimap records it once the area is seen.
-        if (tibia::game::isAwareOf({ x, y, z }))
-            return tibia::minimap::TWaypointCosts::BlockedCost;
-        return minimap ? minimap->costAt(x, y, z) : tibia::minimap::TWaypointCosts::UnknownCost;
-    };
-}
-
-/// The avoided fields in view on the player's floor.
-std::vector<tibia::worldmap::TWorldMapCoordinate> avoidedFieldsInView()
-{
-    std::vector<tibia::worldmap::TWorldMapCoordinate> fields;
-    const Position center = tibia::game::localPlayerPosition();
-    if (!center.isValid())
-        return fields;
-    tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
-    for (int dy = -8; dy <= 8; ++dy) {
-        for (int dx = -10; dx <= 10; ++dx) {
-            const tibia::worldmap::TWorldMapCoordinate c(center.x + dx, center.y + dy, center.z);
-            if (!tibia::game::isAwareOf({ c.x, c.y, c.z }))
-                continue;
-            if (tibia::worldmap::TWorldMapField* field = map->fieldAt(c); field && isAvoidedField(*field))
-                fields.push_back(c);
-        }
-    }
-    return fields;
-}
-
-}
-
 tibia::input::TPlayerMovementIntentHandler* TGameSessionState::movementIntent()
 {
     auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession());
@@ -154,8 +101,6 @@ tibia::input::TPlayerMovementIntentHandler* TGameSessionState::movementIntent()
 tibia::input::TPlayerMovementIntentHandler::Environment TGameSessionState::playerMovementIntentEnvironment()
 {
     tibia::input::TPlayerMovementIntentHandler::Environment env;
-    env.waypointCost = snapshotWaypointCost;
-    env.blockedFields = avoidedFieldsInView;
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
     };

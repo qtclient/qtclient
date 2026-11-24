@@ -2,6 +2,12 @@
 
 #include <cip_gen.h>
 
+#include <memory>
+
+namespace tibia::shared {
+class IExperienceGainChangeTracker;
+}
+
 namespace tibia {
 namespace game {
 
@@ -92,6 +98,27 @@ private:
     SkillsWidgetEntry m_entry;
 };
 
+/// Fills skills widget rows (CIP: the skills widget entry updater the skills
+/// widget, the character info dialog and the offline training dialog each
+/// own), over an experience gain change tracker. Host: the rows are built
+/// from the local player (buildSkillsWidgetEntry); the tracker is kept for
+/// the experience row's change highlight, which is not taken from it yet.
+class TSkillsWidgetEntryUpdater
+{
+public:
+    explicit TSkillsWidgetEntryUpdater(std::shared_ptr<shared::IExperienceGainChangeTracker> experienceGainChangeTracker);
+
+    /// The skill rows show the progress left with two decimals (every owner
+    /// turns it on; off by default).
+    void setPrecisePercent(bool precisePercent) { m_precisePercent = precisePercent; }
+    bool precisePercent() const { return m_precisePercent; }
+    /// Fills `entry` for its type.
+    void updateEntry(TSkillsWidgetEntryData& entry) const;
+
+private:
+    std::shared_ptr<shared::IExperienceGainChangeTracker> m_experienceGainChangeTracker;
+    bool m_precisePercent = false;
+};
 
 /// The skill's name; experience carries its short form as a length variant.
 QString skillName(SkillType type);
@@ -104,7 +131,7 @@ bool skillHasProgressBar(SkillType type);
 QString progressBarKey(SkillType type);
 /// The skills widget's entry of `type` (CIP:). The bar shows
 /// when the type has one; the widget hides it per its options.
-SkillsWidgetEntry buildSkillsWidgetEntry(SkillType type);
+SkillsWidgetEntry buildSkillsWidgetEntry(SkillType type, bool precisePercent = true);
 /// "image://skills-icons/<n>" (CIP:).
 QString skillIconSource(SkillType type);
 

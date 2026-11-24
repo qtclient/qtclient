@@ -34,17 +34,15 @@ class TCreateAccountDialogController : public TDialogController<cip::tibia::game
 {
     Q_OBJECT
 public:
-    explicit TCreateAccountDialogController(QObject* parent = nullptr);
+    /// `TibiaFileSystemHelper`: startPlaying reads the distribution marker with it;
+    /// `ServiceUrl`: the account service (CIP accountcreationclientservices.php on
+    /// the portal); the two reCAPTCHA content pages the dialog's web views load.
+    TCreateAccountDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                   std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper, const QUrl& ServiceUrl,
+                                   const QUrl& RecaptchaV2ContentUrl, const QUrl& RecaptchaV3ContentUrl, QObject* parent = nullptr);
     ~TCreateAccountDialogController() override;
 
-    /// The account service (CIP accountcreationclientservices.php on the portal).
-    void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
     void setTooltipContainer(QObject* container) { m_tooltipContainer = container; }
-    /// The file system helper startPlaying reads the distribution marker with.
-    void setTibiaFileSystemHelper(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper)
-    {
-        m_tibiaFileSystemHelper = std::move(tibiaFileSystemHelper);
-    }
 
     /// Asks the account service whether accounts can be created; `onResult`
     /// gets true for an HTTP 200 answer.

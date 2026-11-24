@@ -1,4 +1,5 @@
 #include "skillwheelcontrollers.h"
+#include "app/bootstrap.h"
 #include "skillwheel/skillwheelciptypes.h"
 #include "skillwheel/skillwheelgameactions.h"
 
@@ -9,7 +10,6 @@
 #include <QCollator>
 #include <string_view>
 #include <QJSEngine>
-#include <QQuickWindow>
 #include <limits>
 #include <numeric>
 #include <stdexcept>
@@ -83,6 +83,47 @@ int statRank(const QString& label)
 }
 
 int spentPoints(const std::array<int, SlotCount>& points) { return std::accumulate(points.begin(), points.end(), 0); }
+
+/// CIP: one slice of the trimmed points, from the centre outwards, gives up points so that the
+/// spent points reach the available ones (never below 0). The first pass (fullSlices false) takes
+/// slices with points below their maximum and keeps a reduction that cannot reach the target; the
+/// second takes full slices. A reduction that reaches the target, and every one of the second
+/// pass, stays only when the grid stays valid; true when one stayed that way.
+bool reduceSlice(std::array<int, SlotCount>& points, const int available, const bool fullSlices)
+{
+    for (const int slot : gridConfiguration().tilesFromCentre()) {
+        if (points[slot] <= 0 || (points[slot] == gridConfiguration().maxPoints(slot)) != fullSlices)
+            continue;
+        const int old = points[slot];
+        points[slot] = std::max(0, available - spentPoints(points) + old);
+        if (fullSlices || spentPoints(points) == available) {
+            if (isValid(points))
+                return true;
+            points[slot] = old;
+        }
+    }
+    return false;
+}
+
+/// CIP: a valid preset that spends more than the available points is cut down to them: cleared
+/// when none are available, else slices are reduced until it fits (the preset stays as it was when
+/// no reduction fits). True when the preset changed.
+bool trimToAvailablePoints(TWheel& preset, const int available)
+{
+    if (!isValid(preset.points) || spentPoints(preset.points) <= available)
+        return false;
+    if (available < 1) {
+        preset.points.fill(0);
+        return true;
+    }
+    std::array<int, SlotCount> trimmed = preset.points;
+    while (spentPoints(trimmed) > available) {
+        if (!reduceSlice(trimmed, available, false) && !reduceSlice(trimmed, available, true))
+            return false;
+    }
+    preset.points = trimmed;
+    return true;
+}
 
 
 }
@@ -226,11 +267,11 @@ void TSkillWheelPageController::updatePresetsInfoModelIfNeeded()
 /// CIP: the page's data goes with it.
 TSkillWheelPageController::~TSkillWheelPageController() { clearData(); }
 
-/// CIP: graphic effects need a renderer other than the software one (CIP's renderer index 3, kept
-/// from the scene graph's graphics API once the window exists).
+/// CIP: graphic effects need a renderer other than the software one (renderer index 3, the
+/// graphics engine the process started with).
 bool TSkillWheelPageController::rendererSupportsGraphicEffects() const
 {
-    return QQuickWindow::graphicsApi() != QSGRendererInterface::Software;
+    return !app::isSoftwareGraphicsEngineActive();
 }
 
 /// The mod grade points the current wheel's vocation can reach; 0 without a current wheel.
@@ -304,9 +345,10 @@ void TSkillWheelPageController::hideDialogTab()
     m_skipNextShowUpdate = false;
 }
 
-/// CIP: presets of another vocation or with an invalid grid are dropped, the vessels' gems are
-/// matched against the gem inventory (a gem that is gone leaves its vessel), at most ten presets
-/// stay. Without presets the current wheel becomes the default preset; a change is reported.
+/// CIP: presets of another vocation or with an invalid grid are dropped, the others are trimmed to
+/// the character's skill points and their vessels' gems are matched against the gem inventory (a
+/// gem that is gone leaves its vessel); at most ten presets stay. When none stays the current wheel
+/// becomes the default preset; a change is reported.
 void TSkillWheelPageController::validatePresets()
 {
     if (!hasOwnWheel())
@@ -321,6 +363,8 @@ void TSkillWheelPageController::validatePresets()
             continue;
         }
         TWheel resolved = preset;
+        if (trimToAvailablePoints(resolved, totalSkillPoints()))
+            changed = true;
         for (int vessel = 0; vessel < VesselCount; ++vessel) {
             if (!resolved.vessels[vessel])
                 continue;
@@ -336,7 +380,7 @@ void TSkillWheelPageController::validatePresets()
             break;
     }
     m_storage->setPresets(valid);
-    if (presets.empty())
+    if (valid.empty())
         ensureDefaultPreset();
     if (changed)
         showPresetsAdjustedMessage();
@@ -1259,8 +1303,9 @@ void TGemAtelierPageController::onWheelChanged()
     if (!m_storage->currentSkillWheel() || !m_storage->serverSkillWheel())
         return;
     updateSockets();
-    m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
-                             m_storage->supremeGrades());
+    // The list takes the wheels, the gems and the grades; it repaints only when one of them changed.
+    m_list->setConfiguration(*m_storage->currentSkillWheel(), *m_storage->serverSkillWheel(), m_storage->gemInventory(),
+                             m_storage->basicGrades(), m_storage->supremeGrades());
 }
 
 /// CipSoft: eight quality-typed vessels unlocked by Gem Vessel perks.

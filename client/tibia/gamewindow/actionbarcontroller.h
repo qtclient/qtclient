@@ -33,7 +33,11 @@ class TInventoryContainer;
 }
 namespace game {
 class IGameSession;
+class TPassiveAbilityInfoStorage;
 class TPlayerData;
+}
+namespace spells {
+class TSpellInfoStorage;
 }
 namespace input {
 class TGameActionActionButtonTriggered;
@@ -65,11 +69,13 @@ public:
     static constexpr int ButtonCount = 50;
 
     /// `lockedOption`: the client option that locks the bar's group.
-    /// ActionBar.qml is created in `container`.
+    /// ActionBar.qml is created in `container`. The buttons read the spell
+    /// and passive ability tables.
     TActionBarController(uint8_t actionBarId, EActionBarPosition position, config::EClientOption lockedOption,
-                         config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager, int buttonCount,
-                         QQmlEngine* engine, QQuickItem* container, QQuickItem* gameWindowItem, QQuickItem* mapWindowPane,
-                         QObject* parent = nullptr);
+                         config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
+                         spells::TSpellInfoStorage* spellInfoStorage, game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                         int buttonCount, QQmlEngine* engine, QQuickItem* container, QQuickItem* gameWindowItem,
+                         QQuickItem* mapWindowPane, QObject* parent = nullptr);
     /// Releases ActionBar.qml (its controller is cleared and it is hidden).
     ~TActionBarController() override;
 
@@ -211,6 +217,8 @@ private:
     config::TActionBarsOptionsPage m_buttonsDisplayOptionsPage;
     config::TClientOptions* m_clientOptions;
     QPointer<chat::TChatModeManager> m_chatModeManager;
+    spells::TSpellInfoStorage* m_spellInfoStorage;
+    game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
     QPointer<QQuickItem> m_item;
     shared::TQtConnectionManager m_connections;
     shared::TQtConnectionManager m_gameSessionConnections;
@@ -269,9 +277,15 @@ class TActionBarGroup final : public cip::tibia::gamewindow::TActionBarGroup
 {
     Q_OBJECT
 public:
-    TActionBarGroup(EActionBarPosition position, QQuickItem* container, QQmlEngine* engine, QQuickItem* gameWindowItem,
-                    QQuickItem* mapWindowPane, config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
-                    QObject* parent = nullptr);
+    /// The group of `position` over the bar container (its "controller"),
+    /// with what its bars are made with: the engine, the dialog parent item,
+    /// the map window pane, the client options, the chat mode manager and the
+    /// spell and passive ability tables. A changed action bars option
+    /// announces the lock and recreates the bars.
+    TActionBarGroup(QQuickItem* container, QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                    config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
+                    spells::TSpellInfoStorage* spellInfoStorage, game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                    EActionBarPosition position, QObject* parent = nullptr);
     ~TActionBarGroup() override;
 
     EActionBarPosition position() const { return m_position; }
@@ -315,10 +329,12 @@ private:
 
     QPointer<QQuickItem> m_container;
     QQmlEngine* m_engine;
-    QQuickItem* m_gameWindowItem;
+    QQuickItem* m_dialogParentItem;
     QQuickItem* m_mapWindowPane;
     config::TClientOptions* m_clientOptions;
     QPointer<chat::TChatModeManager> m_chatModeManager;
+    spells::TSpellInfoStorage* m_spellInfoStorage;
+    game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
     EActionBarPosition m_position;
     bool m_firstVisibleButtonIdCanBeSaved = true;
     std::map<uint8_t, std::unique_ptr<TActionBarController>> m_bars;

@@ -488,7 +488,9 @@ void TVipGameActionHandler::handleGameAction(const ::tibia::input::IGameAction& 
 
 void TVipGameActionHandler::handleAddNewVipGameAction(const ::tibia::input::TGameActionVip& action)
 {
-    protocol::gameclient::sendAddVip(action.vipName().toStdString());
+    ::tibia::protobuf::protocol::GameclientMessageAddBuddy message;
+    message.set_name(action.vipName().toStdString());
+    Q_EMIT sendAddBuddy(message);
 }
 
 void TVipGameActionHandler::handleRemoveVipGameAction(const ::tibia::input::TGameActionVip& action)
@@ -497,7 +499,9 @@ void TVipGameActionHandler::handleRemoveVipGameAction(const ::tibia::input::TGam
     if (!vip)
         return;
     m_storage->removeVip(vip->id);
-    protocol::gameclient::sendRemoveVip(vip->id);
+    ::tibia::protobuf::protocol::GameclientMessageRemoveBuddy message;
+    message.set_character_id(vip->id);
+    Q_EMIT sendRemoveBuddy(message);
 }
 
 void TVipGameActionHandler::handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameActionRequestVipDataUpdate& action)
@@ -512,24 +516,43 @@ void TVipGameActionHandler::handleRequestVipDataUpdateGameAction(const ::tibia::
     vip.notifyLogin = action.notifyOnLogin();
     vip.groups = action.groupIds();
     m_storage->addOrUpdateVip(vip);
-    protocol::gameclient::sendEditVip(vip.id, vip.description.toStdString(), static_cast<uint32_t>(vip.iconId), vip.notifyLogin, vip.groups);
+    ::tibia::protobuf::protocol::GameclientMessageEditBuddy message;
+    message.set_character_id(vip.id);
+    message.set_description(vip.description.toStdString());
+    message.set_icon_id(static_cast<uint32_t>(vip.iconId));
+    message.set_notify_login(vip.notifyLogin);
+    for (const auto groupId : vip.groups)
+        message.add_group_ids(groupId);
+    Q_EMIT sendEditBuddy(message);
 }
 
 void TVipGameActionHandler::handleAddNewVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action)
 {
-    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_ADD, 0, action.groupName().toStdString());
+    ::tibia::protobuf::protocol::GameclientMessageBuddyGroup message;
+    message.set_action(tibia::client::VIP_GROUP_ADD);
+    message.set_group_id(0);
+    message.set_name(action.groupName().toStdString());
+    Q_EMIT sendBuddyGroup(message);
 }
 
 void TVipGameActionHandler::handleRemoveVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action)
 {
     // An unknown name removes the default group (id 0), as CIP does.
     const TVipStorage::Group group = m_storage->groupByName(action.groupName()).value_or(TVipStorage::Group{});
-    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_REMOVE, group.id, {});
+    ::tibia::protobuf::protocol::GameclientMessageBuddyGroup message;
+    message.set_action(tibia::client::VIP_GROUP_REMOVE);
+    message.set_group_id(group.id);
+    message.set_name(std::string());
+    Q_EMIT sendBuddyGroup(message);
 }
 
 void TVipGameActionHandler::handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameActionRequestVipGroupUpdate& action)
 {
-    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_EDIT, action.vipGroup().id, action.vipGroup().name.toStdString());
+    ::tibia::protobuf::protocol::GameclientMessageBuddyGroup message;
+    message.set_action(tibia::client::VIP_GROUP_EDIT);
+    message.set_group_id(action.vipGroup().id);
+    message.set_name(action.vipGroup().name.toStdString());
+    Q_EMIT sendBuddyGroup(message);
 }
 
 namespace {

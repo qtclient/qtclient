@@ -2,6 +2,8 @@
 
 #include "input/movementpathplanner.h"
 
+#include <QImage>
+
 #include <set>
 #include <utility>
 
@@ -11,21 +13,32 @@ using tibia::worldmap::TWorldMapCoordinate;
 
 namespace {
 
+/// The minimap tile storage's waypoint costs around (1000, 1000, 7): every
+/// field of the four tiles in planning range costs 100, walls 255.
 struct Map
 {
     std::set<std::pair<int, int>> walls;
-    quint8 ground = 100;
-    WaypointCost cost() const
+    tibia::minimap::TWaypointSectors sectors() const
     {
-        return [this](const int x, const int y, int) -> quint8 { return walls.count({ x, y }) ? 0xff : ground; };
+        tibia::minimap::TWaypointSectors sectors;
+        QImage ground(256, 256, QImage::Format_Grayscale8);
+        ground.fill(100);
+        for (const int tileX : { 768, 1024 })
+            for (const int tileY : { 768, 1024 })
+                sectors.setSector(Position(tileX, tileY, 7), ground);
+        for (const auto& [x, y] : walls)
+            sectors.setCost(Position(x, y, 7), 0xff);
+        return sectors;
     }
 };
+
+const std::set<TWorldMapCoordinate> NoAvoidedFields;
 
 std::vector<EMovementDirection> plan(const Map& map, const TWorldMapCoordinate& from, const TWorldMapCoordinate& to,
                                      int* result = nullptr, bool enterUnwalkable = false)
 {
     std::vector<EMovementDirection> path;
-    const int r = planMovementPath(from, to, enterUnwalkable, false, map.cost(), {}, path);
+    const int r = planMovementPath(from, to, enterUnwalkable, false, map.sectors(), NoAvoidedFields, path);
     if (result)
         *result = r;
     return path;
@@ -47,14 +60,14 @@ TEST(MovementPathPlanner, ShortcutsAndErrors)
     Map map;
     std::vector<EMovementDirection> path;
     const TWorldMapCoordinate here(1000, 1000, 7);
-    EXPECT_EQ(planMovementPath(here, here, false, false, map.cost(), {}, path), PathAlreadyThere);
-    EXPECT_EQ(planMovementPath(here, { 1000, 1000, 6 }, false, false, map.cost(), {}, path), PathGoUpstairs);
-    EXPECT_EQ(planMovementPath(here, { 1000, 1000, 8 }, false, false, map.cost(), {}, path), PathGoDownstairs);
-    EXPECT_EQ(planMovementPath(here, { 1200, 1000, 7 }, false, false, map.cost(), {}, path), PathOutOfRange);
-    EXPECT_EQ(planMovementPath(here, { 1001, 1000, 7 }, false, false, map.cost(), {}, path), PathComplete);
+    EXPECT_EQ(planMovementPath(here, here, false, false, map.sectors(), NoAvoidedFields, path), PathAlreadyThere);
+    EXPECT_EQ(planMovementPath(here, { 1000, 1000, 6 }, false, false, map.sectors(), NoAvoidedFields, path), PathGoUpstairs);
+    EXPECT_EQ(planMovementPath(here, { 1000, 1000, 8 }, false, false, map.sectors(), NoAvoidedFields, path), PathGoDownstairs);
+    EXPECT_EQ(planMovementPath(here, { 1200, 1000, 7 }, false, false, map.sectors(), NoAvoidedFields, path), PathOutOfRange);
+    EXPECT_EQ(planMovementPath(here, { 1001, 1000, 7 }, false, false, map.sectors(), NoAvoidedFields, path), PathComplete);
     ASSERT_EQ(path.size(), 1u);
     EXPECT_EQ(path[0], EMovementDirection::East);
-    EXPECT_EQ(planMovementPath(here, { 1001, 999, 7 }, false, true, map.cost(), {}, path), PathComplete);
+    EXPECT_EQ(planMovementPath(here, { 1001, 999, 7 }, false, true, map.sectors(), NoAvoidedFields, path), PathComplete);
     EXPECT_EQ(path[0], EMovementDirection::NorthEast);
 }
 
@@ -120,17 +133,17 @@ TEST(MovementPathPlanner, NoWayWhenEnclosed)
     EXPECT_EQ(result, PathNoWay);
 }
 
-TEST(MovementPathPlanner, BlockedSetSparesStartAndGoal)
+TEST(MovementPathPlanner, AvoidedFieldsSpareStartAndGoal)
 {
     // A creature standing on the goal does not block it: the path still ends there.
     Map map;
     const TWorldMapCoordinate from(1000, 1000, 7);
     const TWorldMapCoordinate to(1003, 1000, 7);
     std::vector<EMovementDirection> path;
-    EXPECT_EQ(planMovementPath(from, to, false, false, map.cost(), { from, to }, path), PathComplete);
+    EXPECT_EQ(planMovementPath(from, to, false, false, map.sectors(), { from, to }, path), PathComplete);
     EXPECT_TRUE(walk(from, path) == to);
     // The same creature one field short of the goal is walked around.
-    EXPECT_EQ(planMovementPath(from, to, false, false, map.cost(), { { 1002, 1000, 7 } }, path), PathComplete);
+    EXPECT_EQ(planMovementPath(from, to, false, false, map.sectors(), { { 1002, 1000, 7 } }, path), PathComplete);
     EXPECT_TRUE(walk(from, path) == to);
     TWorldMapCoordinate at = from;
     for (const EMovementDirection d : path) {

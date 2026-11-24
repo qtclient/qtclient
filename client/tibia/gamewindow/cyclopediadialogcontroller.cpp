@@ -51,8 +51,11 @@ QString balanceString(const tibia::client::ResourceTypes_t type, const char* fal
 
 }
 
-TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("CyclopediaDialog.qml"), parent)
+TCyclopediaDialogController::TCyclopediaDialogController(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                                                         config::TClientOptions* ClientOptions,
+                                                         std::shared_ptr<input::TGameActionMapper> GameActionMapper, QQmlEngine* Engine,
+                                                         QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("CyclopediaDialog.qml"), Engine, DialogParentItem, parent)
     , m_bestiary(new cyclopedia::TBestiaryStorage(this))
     , m_itemInfo(new TItemInfoDialogController(this))
     , m_characterInfo(new TCharacterInfoDialogController(this))
@@ -60,10 +63,13 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     , m_bonusEffects(new TMonsterBonusEffectsDialogController(this))
     , m_bosstiary(new TBosstiaryDialogController(this))
     , m_bossSlots(new TBossSlotsDialogController(this))
-    , m_houses(new THousesInfoDialogController(this))
+    , m_houses(new THousesInfoDialogController(Engine, DialogParentItem, this))
     , m_map(new TCyclopediaMapDialogController(this))
     , m_magicalArchive(new TMagicalArchiveDialogController(this))
 {
+    Q_UNUSED(AppearancesManager);
+    Q_UNUSED(ClientOptions);
+    Q_UNUSED(GameActionMapper);
     m_itemInfoDialogController = m_itemInfo;
     m_monstersDialogController = m_monsters;
     m_characterInfoDialogController = m_characterInfo;

@@ -24,7 +24,11 @@ namespace tibia {
 namespace game {
 class IGameSession;
 }
+namespace config {
+class TClientOptions;
+}
 namespace shared {
+class TClockService;
 class TTibiaFileSystemHelper;
 }
 namespace screenshot {
@@ -81,14 +85,14 @@ public:
         EVENT_HOTKEY = 101,
     };
 
-    explicit TScreenshotManager(QObject* parent = nullptr);
+    /// `contentItem` is grabbed for full screenshots, the map window pane's
+    /// "mapWindow" child when only the game window is wanted.
+    TScreenshotManager(config::TClientOptions* clientOptions, std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                       std::shared_ptr<shared::TClockService> clockService, QQuickItem* contentItem, QQuickItem* mapWindowPane,
+                       QObject* parent = nullptr);
     ~TScreenshotManager() override;
 
     static TScreenshotManager* instance();
-
-    /// qtclient wiring: `rootItem` is grabbed for full screenshots, `mapWindow`
-    /// when only the game window is wanted.
-    void configure(QQuickWindow* window, QQuickItem* mapWindow);
     /// Drops the backlog and follows the session (none without one): the
     /// backlog only records during a session.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -102,7 +106,7 @@ public Q_SLOTS:
     void onBacklockUpdateTriggered();
 
 private:
-    static bool isScreenshotEnabled(int event);
+    bool isScreenshotEnabled(int event) const;
     void requestScreenshot(int event);
     void clearBacklog();
     void startBacklogTimerIfNeeded();
@@ -110,7 +114,9 @@ private:
     void saveScreenshots(const std::vector<QImage>& images, const QString& eventName);
     bool isDeathScreenshotDeferred() const;
 
-    shared::TTibiaFileSystemHelper* m_fileSystemHelper = nullptr;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_pFileSystemHelper;
+    std::shared_ptr<shared::TClockService> m_pClockService;
     QPointer<QQuickItem> m_rootItem;
     QPointer<QQuickItem> m_mapWindow;
     QSharedPointer<QQuickItemGrabResult> m_grabResult;

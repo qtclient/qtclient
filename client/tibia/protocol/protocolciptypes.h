@@ -4,6 +4,7 @@
 // Architecture: TR → TProtocolMessageQueue → handlers (classic bridge + native).
 
 #include "protocol/protocolmessagequeue.h"
+#include "worldmap/coordinates.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -32,8 +33,6 @@ class TIODeviceReader;
 namespace tibia {
 namespace protocol {
 
-void ownProductSurface(QObject* parent);
-
 struct ClassicReader;
 class TProtocolReader;
 
@@ -44,10 +43,8 @@ class TProtocolReader;
 /// session dump recorded.
 ///
 /// Host: the classic server message fills read a byte span (ClassicReader);
-/// the live packet path hands its span to translateServerMessage, the stream
-/// path (readGameserverMessage) peeks the stream's unread bytes into one. A
-/// known message that does not read gives null there (CipSoft's reader
-/// throws). The tier byte of objects is decided by the appearances manager's
+/// readGameserverMessage peeks the stream's unread bytes into one. A known
+/// message that does not read gives null there (CipSoft's reader throws). The tier byte of objects is decided by the appearances manager's
 /// protocol parsing set, which CipSoft's ctor copies in.
 class TProtobufServerMessageTranslator {
 public:
@@ -57,9 +54,15 @@ public:
     /// Reads the opcode and the message's fields. A message of an opcode it
     /// does not know has only the Unknown extension, with that opcode.
     virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> translateServerMessage(
-        ClassicReader& Reader) const;
+        ClassicReader& Reader);
+    /// The central position of the map the map messages read so far moved to
+    /// (its coordinate, the aware area's size and the centre's offset in it).
+    virtual worldmap::TWorldMapCentralPosition centralPosition() const;
     /// Host: translateServerMessage over the stream's unread bytes; the stream
-    /// moves past what was read.
+    /// moves past what was read. A product message outside the CIP protocol
+    /// (extended opcode, character switch) is read and handled here and gives
+    /// null. When a message does not read, the rest of the stream cannot be
+    /// read (its length is unknown): it is dropped and null is returned.
     virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> readGameserverMessage();
     /// A protobuf server message of `Size` bytes; throws std::invalid_argument
     /// when the bytes are no GameserverMessage.
@@ -81,29 +84,9 @@ public:
 private:
     std::shared_ptr<TProtocolReader> m_protocolReader;
     std::shared_ptr<shared::TIODeviceReader> m_messageReader;
+    worldmap::TWorldMapCentralPosition m_centralPosition;
 };
 
-class TProtobufClientMessageTranslator final : public ::tibia::CipTyped {
-public:
-    TProtobufClientMessageTranslator() = default;
-
-    QByteArray translateToClassic(
-        const ::tibia::protobuf::protocol::GameclientMessage& message) const;
-
-    /// The classic stack position byte of an object: the stack position on a map
-    /// field, the inventory slot, the plain container slot, the liquid or tier of
-    /// an object "anywhere"; 0 otherwise.
-    static uint8_t stackPosition(const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
-                                 const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier);
-};
-
-/// CIP `protocol::TProtocolWriter` — wire enqueue façade (bodies live on the queue).
-class TProtocolWriter final : public ::tibia::CipTyped {
-public:
-    TProtocolWriter() = default;
-};
-
-TProtobufClientMessageTranslator* clientMessageTranslator();
 /// The game client's current session's protocol message queue; null without a session.
 TProtocolMessageQueue* protocolMessageQueue();
 

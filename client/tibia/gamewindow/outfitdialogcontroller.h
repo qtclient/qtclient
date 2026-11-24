@@ -10,7 +10,16 @@
 #include <memory>
 #include <unordered_set>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 class TOutfitDialogStorage;
@@ -126,7 +135,11 @@ class TSelectOutfitDialogController final : public TDialogController<cip::tibia:
 {
     Q_OBJECT
 public:
-    explicit TSelectOutfitDialogController(QObject* parent = nullptr);
+    /// The dialog and its preset rename dialog are made with `Engine` under
+    /// `DialogParentItem`.
+    TSelectOutfitDialogController(std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                  config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                  QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TSelectOutfitDialogController() override;
 
     /// CIP v28: the dialog's item goes.
@@ -172,6 +185,8 @@ private:
     /// Clears the add-ons of each offered outfit its appearance cannot show.
     void removeUnsupportedAddOns();
 
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    config::TClientOptions* m_pClientOptions;
     std::shared_ptr<game::IGameSession> m_gameSession;
     shared::TQtConnectionManager m_gameSessionConnections;
     int m_renameIndex = -1;

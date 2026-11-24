@@ -130,6 +130,32 @@ void TInventoryGemListModel::setConfiguration(const std::optional<TWheel>& confi
         Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0));
 }
 
+void TInventoryGemListModel::setConfiguration(const TWheel& configuration, const TWheel& serverConfiguration,
+                                              const std::vector<TGem>& gems, const TGrades& basicGrades, const TGrades& supremeGrades)
+{
+    bool changed = false;
+    if (!m_configuration || !(*m_configuration == configuration)) {
+        m_configuration = configuration;
+        changed = true;
+    }
+    if (!m_serverConfiguration || !(*m_serverConfiguration == serverConfiguration)) {
+        m_serverConfiguration = serverConfiguration;
+        changed = true;
+    }
+    if (m_gems != gems) {
+        m_gems = gems;
+        changed = true;
+    }
+    if (m_basicGrades != basicGrades || m_supremeGrades != supremeGrades) {
+        m_basicGrades = basicGrades;
+        m_supremeGrades = supremeGrades;
+    } else if (!changed) {
+        return;
+    }
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0));
+}
+
 int TInventoryGemListModel::vocationIndex() const { return m_configuration ? m_configuration->vocation - 1 : 0; }
 int TInventoryGemListModel::basicGrade(const int mod) const { return gradeOf(m_basicGrades, mod); }
 int TInventoryGemListModel::supremeGrade(const int mod) const { return gradeOf(m_supremeGrades, mod); }

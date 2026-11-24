@@ -29,13 +29,13 @@ QQuickItem* createQuickItem(QQmlEngine* engine, const QString& file)
     return item;
 }
 
-TSidebarController::TSidebarController(const uint sidebarId, QQuickItem* placeholder, QObject* parent)
+TSidebarController::TSidebarController(const uint sidebarId, QQmlEngine* engine, QQuickItem* placeholder, QObject* parent)
     : cip::tibia::gamewindow::TSidebarController(parent)
+    , m_engine(engine)
 {
     m_sidebarId = sidebarId;
     m_acceptsWidgetDrops = false;
 
-    QQmlEngine* engine = qmlEngine(placeholder);
     QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/sidebar.qml")));
     m_item = qobject_cast<QQuickItem*>(component.beginCreate(engine->rootContext()));
     if (!m_item) {
@@ -111,9 +111,10 @@ void TSidebarController::setTriggerCheckBoundsEnabled(const bool enabled)
         m_item->setProperty("triggerCheckBoundsEnabled", enabled);
 }
 
-TSidebarManager::TSidebarManager(QQuickItem* rightPlaceholder, QObject* rightManagerItem, QQuickItem* leftPlaceholder, QObject* leftManagerItem,
-                                 QObject* parent)
+TSidebarManager::TSidebarManager(QQmlEngine* engine, QQuickItem* rightPlaceholder, QObject* rightManagerItem,
+                                 QQuickItem* leftPlaceholder, QObject* leftManagerItem, QObject* parent)
     : cip::tibia::gamewindow::TSidebarManager(parent)
+    , m_engine(engine)
     , m_rightPlaceholder(rightPlaceholder)
     , m_leftPlaceholder(leftPlaceholder)
 {
@@ -154,7 +155,7 @@ void TSidebarManager::addSidebar(const Side side)
 {
     int& count = side == Right ? m_rightCount : m_leftCount;
     const uint id = (side == Right ? 0 : LeftSidebarIdBase) + static_cast<uint>(count);
-    m_sidebars[id] = std::make_unique<TSidebarController>(id, placeholder(side));
+    m_sidebars[id] = std::make_unique<TSidebarController>(id, m_engine, placeholder(side));
     ++count;
     enqueueWidgetConfigurationChangedToBeEmitted();
 }

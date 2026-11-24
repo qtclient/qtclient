@@ -1,4 +1,5 @@
 #include "protocol/protocolciptypes.h"
+#include "protocol/protobufclientmessagetranslator.h"
 #include "protocol/protobufobjectpositionhelper.h"
 #include "protocol/protocolmessagequeue.h"
 #include "protocol/inventoryitemwire.h"
@@ -22,26 +23,17 @@
 
 #include <protocol.pb.h>
 
+#include <idleot/stats.h>
+
 #include <algorithm>
 #include <cstring>
+#include <format>
 #include <stdexcept>
 #include <string>
 
 namespace tibia::protocol {
 
 namespace {
-
-TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
-
-struct CipTypedKeep {
-    TProtobufClientMessageTranslator tProtobufClientMessageTranslator;
-    TProtocolWriter tProtocolWriter;
-};
-CipTypedKeep& typedKeep()
-{
-    static CipTypedKeep keep;
-    return keep;
-}
 
 using ::tibia::protobuf::protocol::GameclientMessage;
 using ::tibia::protobuf::protocol::GameserverMessage;
@@ -88,11 +80,12 @@ void writeObject(ClassicWriter& w, const ::tibia::protobuf::protocol::ObjectPosi
     w.u8(TProtobufClientMessageTranslator::stackPosition(objectPosition, objectIdentifier));
 }
 
-size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r)
+size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r,
+                            worldmap::TWorldMapCentralPosition& CentralPosition)
 {
     using namespace ::tibia::protobuf::protocol;
     if (isMapMessage(opcode))
-        return fillMapMessage(msg, opcode, r);
+        return fillMapMessage(msg, opcode, r, CentralPosition);
     if (isCreatureMessage(opcode))
         return fillCreatureMessage(msg, opcode, r);
     if (isPlayerMessage(opcode))
@@ -1906,21 +1899,6 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
 
 } // namespace
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    g_clientTranslator = &typedKeep().tProtobufClientMessageTranslator;
-    (void)parent;
-}
-
-TProtobufClientMessageTranslator* clientMessageTranslator()
-{
-    return g_clientTranslator;
-}
-
 TProtocolMessageQueue* protocolMessageQueue()
 {
     const game::TGameSessionBase* session = game::currentGameSession();
@@ -2023,7 +2001,7 @@ uint8_t TProtobufClientMessageTranslator::stackPosition(const ::tibia::protobuf:
     }
 }
 
-QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message) const
+QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message)
 {
     if (!message.has_type()) {
         return {};
@@ -2039,7 +2017,7 @@ QByteArray TProtobufClientMessageTranslator::translateToClassic(const Gameclient
     return out;
 }
 
-std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::translateServerMessage(ClassicReader& Reader) const
+std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::translateServerMessage(ClassicReader& Reader)
 {
     using ::tibia::protobuf::protocol::GameserverMessageUnknown;
     uint8_t opcode = 0;
@@ -2052,12 +2030,13 @@ std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::translateSe
         return message;
     }
     ClassicReader body{ Reader.p + Reader.i, Reader.remaining(), 0 };
-    const size_t consumed = fillStructuredServer(*message, opcode, body);
+    // A map message moves the central position only once it read completely.
+    worldmap::TWorldMapCentralPosition centralPosition = m_centralPosition;
+    const size_t consumed = fillStructuredServer(*message, opcode, body, centralPosition);
     if (consumed == 0 && !emptyStructuredServerOpcode(opcode))
         return nullptr;
     Reader.i += consumed;
-    if (isMapMessage(opcode))
-        advanceMapViewport(*message);
+    m_centralPosition = centralPosition;
     return message;
 }
 
@@ -2067,13 +2046,27 @@ TProtobufServerMessageTranslator::TProtobufServerMessageTranslator(std::shared_p
 {
 }
 
+worldmap::TWorldMapCentralPosition TProtobufServerMessageTranslator::centralPosition() const { return m_centralPosition; }
+
 std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::readGameserverMessage()
 {
     // A server message never spans more than one packet (64 KB).
     const uint32_t available = std::min<uint32_t>(m_messageReader->bytesAvailable(), 0xffff);
     const QByteArray data = m_messageReader->peekBytes(available);
     ClassicReader reader{ reinterpret_cast<const uint8_t*>(data.constData()), size_t(data.size()), 0 };
-    std::shared_ptr<GameserverMessage> message = translateServerMessage(reader);
+    std::shared_ptr<GameserverMessage> message;
+    const EProductMessage productMessage = readProductMessage(reader);
+    if (productMessage == EProductMessage::None) {
+        if (reader.remaining() > 0) {
+            const uint8_t opcode = reader.p[reader.i];
+            AutoStat stat(STATS_PACKETS, std::format("{} (0x{:02X})", opcode, opcode));
+            message = translateServerMessage(reader);
+        }
+        if (!message)
+            reader.i = reader.n;
+    } else if (productMessage == EProductMessage::Unreadable) {
+        reader.i = reader.n;
+    }
     if (reader.i > 0)
         m_messageReader->readBytes(static_cast<uint32_t>(reader.i));
     return message;
@@ -2107,18 +2100,15 @@ std::unique_ptr<GameclientMessage> newGameclientMessage(const int opcode)
 
 void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
 {
-    auto* xlat = clientMessageTranslator();
-    if (!xlat || !message)
-        return;
-    QByteArray wire = xlat->translateToClassic(*message);
-    if (wire.isEmpty())
+    if (!message || !message->has_type())
         return;
     if (auto* queue = protocolMessageQueue()) {
-        queue->enqueueClient(std::move(message), wire);
+        queue->enqueueClient(std::move(message));
         return;
     }
     // Before the queue exists: straight to the wire.
-    if (auto* processor = network::TGameserverSessionNetwork::live())
+    const QByteArray wire = TProtobufClientMessageTranslator::translateToClassic(*message);
+    if (auto* processor = network::TGameserverSessionNetwork::live(); processor && !wire.isEmpty())
         processor->writeClientFrame(wire);
 }
 

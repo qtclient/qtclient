@@ -74,16 +74,8 @@ void TProtocolMessageQueue::enqueueGameserverMessage(const std::shared_ptr<Games
 
 void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message)
 {
-    // Host side: the connection writes classic wire bytes, so encode them here.
-    const auto* translator = clientMessageTranslator();
-    enqueueGameclientMessage(message, translator && message ? translator->translateToClassic(*message) : QByteArray());
-}
-
-void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message,
-                                                     const QByteArray& wire)
-{
     ++m_clientCount;
-    m_gameclientMessages.emplace_back(message, wire);
+    m_gameclientMessages.push_back(message);
     Q_EMIT sendMessage(message);
     if (m_gameclientMessageTimer.interval() == 0) {
         fireEmitSignalForNewClientProtocolMessage();
@@ -93,9 +85,9 @@ void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<Gamec
         m_gameclientMessageTimer.start();
 }
 
-void TProtocolMessageQueue::enqueueClient(std::unique_ptr<GameclientMessage> message, const QByteArray& wire)
+void TProtocolMessageQueue::enqueueClient(std::unique_ptr<GameclientMessage> message)
 {
-    enqueueGameclientMessage(std::shared_ptr<GameclientMessage>(std::move(message)), wire);
+    enqueueGameclientMessage(std::shared_ptr<GameclientMessage>(std::move(message)));
 }
 
 void TProtocolMessageQueue::prepareAndEnqueueGameclientMessage(std::shared_ptr<GameclientMessage> pGameclientMessage,
@@ -134,14 +126,9 @@ void TProtocolMessageQueue::fireEmitSignalForNewClientProtocolMessage()
         return;
     }
     while (!m_gameclientMessages.empty()) {
-        auto [message, wire] = std::move(m_gameclientMessages.front());
+        std::shared_ptr<GameclientMessage> message = std::move(m_gameclientMessages.front());
         m_gameclientMessages.pop_front();
         Q_EMIT clientMessageReadyToProcess(message);
-        const int opcode = message && message->has_type() ? message->type()
-                                                          : (wire.isEmpty() ? -1 : int(uint8_t(wire[0])));
-        m_clientMessageBeingSent = message;
-        Q_EMIT clientMessageEnqueued(opcode, wire);
-        m_clientMessageBeingSent.reset();
     }
 }
 

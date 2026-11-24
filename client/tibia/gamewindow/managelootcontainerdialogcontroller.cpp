@@ -307,7 +307,7 @@ void TManageLootContainerDialogController::requestAddItemBlackWhitelist()
 void TManageLootContainerDialogController::removeItemFromList(const int AppearanceTypeIDRaw)
 {
     if (m_lootBlackWhitelist)
-        m_lootBlackWhitelist->setListed(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)), false);
+        m_lootBlackWhitelist->removeItem(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)));
 }
 
 void TManageLootContainerDialogController::showItemDetails(const int AppearanceTypeIDRaw)

@@ -561,11 +561,11 @@ int effectiveGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& s
 
 int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*/)
 {
-    int gradeSteps = 0;
+    int stats = 0;
     for (const TGrades* grades : { &basicGrades, &supremeGrades })
         for (const auto& [mod, grade] : *grades)
-            gradeSteps += std::max(0, grade);
-    return BonusBaseStatsPerGrade * gradeSteps;
+            stats += grade * BonusBaseStatsPerGrade;
+    return stats;
 }
 
 int bonusPromotionPoints(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*/)

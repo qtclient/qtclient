@@ -1,7 +1,9 @@
 #include "statusbarcontroller.h"
 
+#include "analysers/analyserstorages.h"
 #include "app/clientoptions.h"
 #include "appearances/appearancetype.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "game/gamesessionbase.h"
@@ -13,6 +15,8 @@
 
 #include <algorithm>
 #include <array>
+
+#include <QLocale>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
@@ -254,7 +258,7 @@ void TStatusBarController::rebuildSkillLists()
         if (!isSkillShown(i))
             continue;
         if (i == Storage::Experience) {
-            m_xpEntry->assign(game::buildSkillEntry(SkillType::Experience));
+            m_xpEntry->assign(experienceEntry());
             continue;
         }
         const SkillType type = EntryTypes[static_cast<size_t>(i)];
@@ -275,10 +279,40 @@ void TStatusBarController::rebuildSkillLists()
     delete oldRemaining;
 }
 
+game::SkillsWidgetEntry TStatusBarController::experienceEntry() const
+{
+    // Without a rate the tooltip is the experience left and the progress
+    // (exp_to_levelup_tooltip, a newline, the progress).
+    game::SkillsWidgetEntry entry = game::buildSkillEntry(SkillType::Experience);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_pGameSession.get());
+    if (!session || !session->characterConfigurationManager())
+        return entry;
+    const analysers::TProgressStorage* progress = session->characterConfigurationManager()->progressStorage();
+    if (!progress)
+        return entry;
+    const double perHour = progress->finalXp().perHour();
+    const auto perMinute = static_cast<qint64>(progress->finalXp().perMinute());
+    if (static_cast<qint64>(perHour) < 1)
+        return entry;
+    const qint64 experience = static_cast<qint64>(tibia::game::localPlayerExperience());
+    const qint64 remaining = std::max<qint64>(0, game::experienceForLevel(tibia::game::localPlayerLevel() + 1) - experience);
+    const qint64 minutes = perMinute < 1 ? 0 : remaining / perMinute;
+    const double percent = entry.progressBarValue * 100.0;
+    const QString progressText = percent <= 99.0 ? qtTrId("skill_progress_tooltip").arg(100.0 - percent, 0, 'f', 2)
+                                                 : qtTrId("skill_progress_tooltip_almost_there");
+    const QLocale english(QLocale::English);
+    entry.tooltip = qtTrId("exp_to_levelup_progress_tooltip")
+                        .arg(english.toString(remaining))
+                        .arg(english.toString(static_cast<qint64>(perHour)))
+                        .arg(qtTrId("time_hours_and_minutes").arg(minutes / 60).arg(minutes % 60))
+                        .arg(progressText);
+    return entry;
+}
+
 void TStatusBarController::refreshSkills()
 {
     if (isSkillShown(Storage::Experience))
-        m_xpEntry->assign(game::buildSkillEntry(SkillType::Experience));
+        m_xpEntry->assign(experienceEntry());
     for (qsizetype i = 0; i < m_skillList.size(); ++i)
         static_cast<game::TSkillsWidgetEntryData*>(m_skillList[i])->assign(game::buildSkillEntry(m_skillTypes[i]));
     if (m_oddSkillCount && m_remainingSkill)

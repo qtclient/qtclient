@@ -7,6 +7,7 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QQuickItem>
 #include <QTimer>
 
 #include <functional>
@@ -78,6 +79,9 @@ public:
     /// disabled menu never opens (the tutorial turns it off).
     void setEnabled(bool enabled) { m_enabled = enabled; }
     bool isEnabled() const { return m_enabled; }
+    /// A menu is open (its item exists and is visible); the world map asks
+    /// before it reacts to the mouse.
+    bool isShown() const { return m_menu && m_menu->isVisible(); }
 
 public Q_SLOTS:
     void onRequestClose() override;

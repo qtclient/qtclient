@@ -22,7 +22,6 @@
 
 class QQmlEngine;
 class QQuickItem;
-class QQuickWindow;
 
 namespace tibia {
 namespace game {
@@ -31,8 +30,24 @@ class IGameSession;
 namespace client {
 class TGameClient;
 }
-namespace worldmap {
-class TFrameDurationRing;
+namespace shared {
+class TTibiaFileSystemHelper;
+}
+namespace systemsurvey {
+class TSlidingFPSCounter;
+}
+namespace input {
+class TEventFilterManager;
+}
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace minimap {
+class TMinimapDiskIOAsync;
+class TMinimapTileStorage;
+}
+namespace spells {
+class TSpellInfoStorage;
 }
 }
 
@@ -50,12 +65,17 @@ class TOptionsMenuDialogController final : public TDialogController<cip::tibia::
 {
     Q_OBJECT
 public:
-    /// CipSoft's client options, QML engine and dialog parent item (the dialog
-    /// and its message dialogs are made with them). CipSoft's ctor also takes
-    /// the game client's file system helper, appearance instance factory,
-    /// minimap disk IO and tile storage, spell info storage and two more client
-    /// members; qtclient's pages reach those through the client (setGameClient).
-    TOptionsMenuDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+    /// The client's options, its frame rate counter, file system helper, event
+    /// filter manager, appearance instance factory, minimap disk IO and tile
+    /// storage and spell info storage; the dialog and its message dialogs are
+    /// made with the QML engine under the dialog parent item.
+    TOptionsMenuDialogController(config::TClientOptions* ClientOptions, systemsurvey::TSlidingFPSCounter* SlidingFPSCounter,
+                                 std::shared_ptr<shared::TTibiaFileSystemHelper> FileSystemHelper,
+                                 input::TEventFilterManager* EventFilterManager,
+                                 std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                 std::shared_ptr<minimap::TMinimapDiskIOAsync> MinimapTileDiskIO,
+                                 std::shared_ptr<minimap::TMinimapTileStorage> MinimapTileStorage,
+                                 spells::TSpellInfoStorage* SpellInfoStorage, QQmlEngine* Engine, QQuickItem* DialogParentItem,
                                  QObject* parent = nullptr);
     ~TOptionsMenuDialogController() override;
 
@@ -73,10 +93,6 @@ public:
     /// CIP: how the pages publish game actions. START_TARGET_SELECTION hides
     /// the dialog until TARGET_SELECTION_FINISHED.
     void processAndPublishGameActions(const input::IGameActionPtr& action);
-    /// The window whose frames currentFrameRate counts (CipSoft +0xbe0).
-    void setWindow(QQuickWindow* window);
-    /// Tick-to-swap ring for Options Graphics FPS (CipSoft).
-    void setFrameDurations(worldmap::TFrameDurationRing* ring);
     /// product: a product page (category past CIP's) loaded, applied and reset like CIP's own.
     void addProductPage(int category, config::TOptionsPage* page);
     /// The client whose minimap the minimap export saves first (CIP +0xc0).
@@ -176,8 +192,19 @@ private:
 
     /// CIP +0x80.
     config::TClientOptions* m_clientOptions;
+    /// The client's frame rate over the last second (currentFrameRate).
+    systemsurvey::TSlidingFPSCounter* m_pSlidingFPSCounter;
+    /// The screenshot directory and the export / import paths.
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_pFileSystemHelper;
+    std::shared_ptr<minimap::TMinimapDiskIOAsync> m_pMinimapTileDiskIO;
+    /// Saved to disk before the minimap export.
+    std::shared_ptr<minimap::TMinimapTileStorage> m_pMinimapTileStorage;
+    /// CipSoft hands these to its hotkeys page (key recording, the action
+    /// icons, the spell list).
+    input::TEventFilterManager* m_pEventFilterManager;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    spells::TSpellInfoStorage* m_pSpellInfoStorage;
     /// CIP config surfaces owned for the options dialog lifetime.
-    config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
 
     /// CIP's message dialogs in layout order.
@@ -196,10 +223,6 @@ private:
     bool m_hiddenForTargetSelection = false;
     client::TGameClient* m_gameClient = nullptr;
 
-    QPointer<QQuickWindow> m_window;
-    worldmap::TFrameDurationRing* m_frameDurations = nullptr;
-    QMetaObject::Connection m_frameConnection;
-    std::atomic<int> m_frames { 0 };
     QTimer m_frameRateTimer;
     /// CIP +0xbe0.
     double m_frameRate = 0.0;
@@ -210,7 +233,6 @@ public Q_SLOTS:
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
     {
         m_gameActions.handle(pGameAction);
-        m_clientOptionsModeSwitcher.handleGameAction(pGameAction);
     }
 
 private:

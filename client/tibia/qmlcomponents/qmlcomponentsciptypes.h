@@ -48,6 +48,9 @@ class TAppearanceTypeHelperQmlService final : public cip::tibia::qmlcomponents::
 public:
     using cip::tibia::qmlcomponents::TAppearanceTypeHelperQmlService::TAppearanceTypeHelperQmlService;
 
+    /// CIP: the process-wide service, created (without parent) on first use.
+    static TAppearanceTypeHelperQmlService* instance();
+
     Q_INVOKABLE QString getObjectAppearanceTypeNameForID(int ID) override;
     Q_INVOKABLE QString getObjectAppearanceTypeDescriptionForID(int ID) override;
     Q_INVOKABLE int getObjectAppearanceTypeIDByName(const QString& Name) override;

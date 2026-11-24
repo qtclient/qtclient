@@ -1,6 +1,7 @@
 #include "weeklytaskscontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "container/containergameactionprovider.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -58,13 +59,15 @@ TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
     , m_killModel(new taskboard::TMonsterKillTasksListModel(this))
     , m_deliveryModel(new taskboard::TDeliveryTasksListModel(this))
     , m_deliverTaskConfirmationDialog(new TMessageDialogController(this))
-    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
+    , m_mapper(config::controlSchemeForListModelIndex(
+          app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0)))
 {
     // Host: CipSoft passes the game window's mapper in; qtclient's follows the
     // control scheme option itself.
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String(ControlSchemeOption))
-            m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
+            m_mapper.setControlScheme(
+                config::controlSchemeForListModelIndex(app::ClientOptions::load().options().value(name).toInt(0)));
     });
     m_monsterKillTasks = m_killModel;
     m_deliveryTasks = m_deliveryModel;
@@ -300,9 +303,8 @@ void TWeeklyTasksController::deliverTask(const int taskIndex)
         return;
     const taskboard::TWeeklyDeliveryTask& task = data->deliveryTasks[static_cast<size_t>(taskIndex)];
     m_deliverTaskConfirmationDialog->setMessageDialogTextFormat(TMessageDialogController::RICH_TEXT);
-    qmlcomponents::TAppearanceTypeHelperQmlService appearanceTypeHelper;
     const QString itemName = cyclopedia::capitalizeWords(
-        QString::fromStdString(appearanceTypeHelper.getObjectAppearanceTypeNameForID(task.objectTypeId).toStdString()));
+        qmlcomponents::TAppearanceTypeHelperQmlService::instance()->getObjectAppearanceTypeNameForID(task.objectTypeId));
     const QString caption = qtTrId("taskboard_deliver_task_confirmation_caption");
     const QString text = qtTrId("taskboard_deliver_task_confirmation_text").arg(task.requiredAmount).arg(itemName);
     m_deliverTaskConfirmationDialog->setButtons(okCancelDialogButtons());

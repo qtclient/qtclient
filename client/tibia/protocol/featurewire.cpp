@@ -3522,11 +3522,13 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
         uint16_t u16v = 0;
         bool flag = false;
         switch (type) {
-        case 0: // minimap marker
-            if (!readPosition(r, m->mutable_position()) || !r.u8(u8v) || !r.string(*m->mutable_text()))
+        case 0: { // a static minimap marker
+            auto* marker = m->mutable_static_marker();
+            if (!readPosition(r, marker->mutable_position()) || !r.u8(u8v) || !r.string(*marker->mutable_text()))
                 return 0;
-            m->set_icon(u8v);
+            marker->set_icon(u8v);
             break;
+        }
         case 1: { // discovery data
             uint16_t areas = 0;
             if (!r.u16(areas))

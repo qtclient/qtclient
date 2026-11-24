@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <span>
+#include <stdexcept>
 
 namespace tibia::input {
 
@@ -12,14 +13,7 @@ constexpr uint32_t Ctrl = 0x4000000;
 constexpr uint32_t Alt = 0x8000000;
 constexpr uint32_t AnyModifiers = Shift | Ctrl | Alt;
 
-struct Rule
-{
-    int context;
-    int button;
-    uint32_t modifiers;
-    std::vector<EGameAction> types;
-};
-
+using Rule = TGameActionMapper::TRule;
 using A = EGameAction;
 
 // Rules in file order (CIP: classic, legacy,
@@ -113,13 +107,22 @@ const Rule SmartRules[] = {
     { 10, 2, 0, { A::CONTEXT_MENU } },
 };
 
+/// The table of `controlScheme` (CIP: the scheme -> rules map's at()).
 std::span<const Rule> rulesOf(const int controlScheme)
 {
     switch (controlScheme) {
-    case 1: return LegacyRules;
-    case 2: return SmartRules;
-    default: return ClassicRules;
+    case TGameActionMapper::ClassicControlScheme: return ClassicRules;
+    case TGameActionMapper::LegacyControlScheme: return LegacyRules;
+    case TGameActionMapper::LeftSmartClickControlScheme: return SmartRules;
+    default: throw std::out_of_range("map::at:  key not found");
     }
+}
+
+std::vector<Rule>::iterator findRule(std::vector<Rule>& rules, const int context, const int button, const uint32_t modifiers)
+{
+    return std::find_if(rules.begin(), rules.end(), [&](const Rule& rule) {
+        return rule.context == context && rule.button == button && rule.modifiers == modifiers;
+    });
 }
 
 int buttonOf(const Qt::MouseButton button)
@@ -145,17 +148,44 @@ int cipKeyboardModifiers(const int modifiers)
 
 }
 
-bool TGameActionMapper::isLootSchemeChord(const int cipButton, const int modifiers) const
+TGameActionMapper::TGameActionMapper(const int controlScheme, const int lootScheme)
 {
-    // lootSchemeIndex: 0 right, 1 shift+right, 2 left (CIP OptionsPageControls).
-    switch (m_lootScheme) {
-    case 0:
-        return cipButton == 2 && modifiers == 0;
-    case 2:
-        return cipButton == 1 && modifiers == 0;
-    default:
-        return cipButton == 2 && modifiers == static_cast<int>(Shift);
+    setControlScheme(controlScheme);
+    setLootScheme(lootScheme);
+}
+
+void TGameActionMapper::setControlScheme(const int controlScheme)
+{
+    const std::span<const Rule> rules = rulesOf(controlScheme);
+    m_controlScheme = controlScheme;
+    m_rules.assign(rules.begin(), rules.end());
+}
+
+void TGameActionMapper::setLootScheme(const int lootScheme)
+{
+    if (m_controlScheme != ClassicControlScheme)
+        return;
+    const std::span<const Rule> classic = rulesOf(ClassicControlScheme);
+    std::vector<Rule> rules(classic.begin(), classic.end());
+    if (lootScheme == LootRight) {
+        // Right click: quick loot right after use.
+        if (const auto right = findRule(rules, 0, 2, 0); right != rules.end()) {
+            std::vector<A>& types = right->types;
+            const auto use = std::find(types.begin(), types.end(), A::USE);
+            types.insert(use == types.end() ? use : use + 1, A::QUICK_LOOT);
+        }
+        if (const auto shiftRight = findRule(rules, 0, 2, Shift); shiftRight != rules.end())
+            rules.erase(shiftRight);
+        // Containers: a right click without quick loot, before the left click's rule.
+        rules.insert(findRule(rules, 3, 1, 0),
+                     Rule{ 3, 2, 0, { A::ATTACK_CREATURE, A::STOP_ATTACKING_CREATURE, A::START_TALKING_TO_NPC, A::USE, A::USE_ON_CREATURE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW, A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE } });
+    } else if (lootScheme == LootLeft) {
+        if (const auto left = findRule(rules, 0, 1, 0); left != rules.end())
+            left->types.insert(left->types.begin(), A::QUICK_LOOT);
+        if (const auto shiftRight = findRule(rules, 0, 2, Shift); shiftRight != rules.end())
+            rules.erase(shiftRight);
     }
+    m_rules = std::move(rules);
 }
 
 std::vector<EGameAction> TGameActionMapper::ruleTypes(const int context, const Qt::MouseButton button, const int modifiers) const
@@ -163,7 +193,7 @@ std::vector<EGameAction> TGameActionMapper::ruleTypes(const int context, const Q
     const int cipButton = buttonOf(button);
     const int cipMods = cipKeyboardModifiers(modifiers);
     const Rule* match = nullptr;
-    for (const Rule& rule : rulesOf(m_controlScheme)) {
+    for (const Rule& rule : m_rules) {
         if ((rule.context != context && rule.context != 0) || rule.button != cipButton)
             continue;
         if (rule.modifiers != AnyModifiers && rule.modifiers != static_cast<uint32_t>(cipMods))
@@ -172,26 +202,7 @@ std::vector<EGameAction> TGameActionMapper::ruleTypes(const int context, const Q
         if (rule.context != 0)
             break;
     }
-    std::vector<EGameAction> types = match ? match->types : std::vector<EGameAction>{};
-    // Overlay lootSchemeIndex: inject or strip QUICK_LOOT so the option chord wins
-    // over the hard-coded shift+right entries in the control-scheme tables.
-    const bool lootChord = isLootSchemeChord(cipButton, cipMods);
-    const bool lootContext = context == WorldMapContext || context == ContainerContext || context == 0;
-    if (lootContext && lootChord) {
-        if (std::find(types.begin(), types.end(), A::QUICK_LOOT) == types.end())
-            types.insert(types.begin(), A::QUICK_LOOT);
-    } else if (!types.empty()) {
-        types.erase(std::remove(types.begin(), types.end(), A::QUICK_LOOT), types.end());
-    }
-    // CIP lootScheme overlay (Loot: Right): world-map Shift+Right is the use/open
-    // list without attack — a ladder under a creature is usable. Hard-coded tables
-    // only store QUICK_LOOT there; Loot: Shift+Right keeps that, Loot: Left clears it.
-    if (m_lootScheme == 0 && cipButton == 2 && cipMods == static_cast<int>(Shift)
-        && match && match->context == WorldMapContext
-        && (m_controlScheme == 0 || m_controlScheme == 1)) {
-        types = { A::USE, A::USE_ON_CREATURE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW };
-    }
-    return types;
+    return match ? match->types : std::vector<EGameAction>{};
 }
 
 IGameActionPtr TGameActionMapper::map(const TGameActionList& candidates, const int context, const Qt::MouseButton button, const int modifiers) const

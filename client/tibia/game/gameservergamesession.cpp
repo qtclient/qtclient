@@ -7,6 +7,7 @@
 #include "config/characterconfigurationmanager.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionhandler.h"
+#include "creatures/creaturesciptypes.h"
 #include "creatures/creaturesgameactionhandler.h"
 #include "creatures/creaturestorage.h"
 #include "friends/friendsciptypes.h"
@@ -19,6 +20,7 @@
 #include "input/domainhandlers.h"
 #include "input/playermovementgameactionhandler.h"
 #include "input/playermovementintenthandler.h"
+#include "market/marketciptypes.h"
 #include "network/dualconnectioninfo.h"
 #include "network/gameserverconnection.h"
 #include "network/gameserverdualconnection.h"
@@ -28,7 +30,10 @@
 #include "network/gameservernetworkpacketsequenceflowprocessor.h"
 #include "network/gameservertcpconnection.h"
 #include "network/networkqualityprotocolmessagehandler.h"
+#include "protocol/protobufclientmessagetranslator.h"
 #include "protocol/protocolclientmessageprocessor.h"
+#include "protocol/protocolwriter.h"
+#include "shared/iodevicewriter.h"
 #include "protocol/protocolserverpacketprocessor.h"
 #include "protocol/protocolservermessageprocessor.h"
 #include "network/unencryptedrawmessagestream.h"
@@ -38,6 +43,7 @@
 #include "protocol/protocolreader.h"
 #include "shared/iodevicereader.h"
 #include "shared/tibiafilesystemhelper.h"
+#include "trade/tradeciptypes.h"
 #include "worldmap/worldmapgameactionhandler.h"
 
 #include "config/clientoptions.h"
@@ -51,6 +57,8 @@
 
 #include <protocol.pb.h>
 
+#include <algorithm>
+#include <chrono>
 #include <stdexcept>
 
 #include <QUrl>
@@ -287,7 +295,13 @@ void TGameserverGameSession::createNetworkStack()
     m_serverMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
     m_compressionHelper = std::make_shared<shared::TCompressionHelper>();
     m_sequenceFlowProcessor = std::make_shared<TGameserverNetworkPacketSequenceFlowProcessor>();
-    m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>();
+    // The client translator writes each message into the client message stream;
+    // the client message processor reads it back into the message's packet.
+    auto clientMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
+    m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>(
+        std::make_shared<protocol::TProtobufClientMessageTranslator>(std::make_shared<protocol::TProtocolWriter>(
+            std::make_shared<shared::TIODeviceWriter>(clientMessageStream, QDataStream::LittleEndian))),
+        clientMessageStream);
     m_rawDataProcessor = std::make_shared<network::TGameserverNetworkPacketRawDataProcessor>(
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);
     // A live game server's messages are all known: an unknown one throws.
@@ -312,14 +326,9 @@ void TGameserverGameSession::createNetworkStack()
             m_networkQualityProtocolMessageHandler.get(), &network::TNetworkQualityProtocolMessageHandler::sendConnectionPingBack);
     m_connectionManager.add(connect(sequenceFlowProcessor, &TGameserverNetworkPacketSequenceFlowProcessor::packetReady, this,
                                     &TGameserverGameSession::onPacketReady));
-    // The queue's encoded client messages become packets for the connections.
-    // Host: they pass the classic session state's view of the connection, which
-    // records them and drops them in a replay.
-    m_connectionManager.add(connect(queue, &protocol::TProtocolMessageQueue::clientMessageEnqueued, this,
-                                    [this](int, const QByteArray& frame) {
-                                        if (const auto sessionNetwork = m_sessionNetwork.lock())
-                                            sessionNetwork->writeClientFrame(frame);
-                                    }));
+    // The queue's client messages become packets for the connections.
+    m_connectionManager.add(connect(queue, &protocol::TProtocolMessageQueue::clientMessageReadyToProcess, this,
+                                    &TGameserverGameSession::onClientMessageReadyToProcess));
     connect(dualConnection, &TGameserverDualConnection::error, this, [this](const QString& ErrorDescription) {
         Q_EMIT connectionError(ErrorDescription);
         onConnectionLost(ErrorDescription, false);
@@ -354,6 +363,21 @@ void TGameserverGameSession::createSessionControllers()
     if (const std::shared_ptr<creatures::TCreature> player = playerCreature().lock())
         intent->setPlayer(player);
     connect(this, &IGameSession::playerCreatureAddedToCreatureStorage, intent, &TPlayerMovementIntentHandler::setPlayer);
+    createPlayerMovementTimer();
+}
+
+void TGameserverGameSession::createPlayerMovementTimer()
+{
+    using input::TPlayerMovementIntentHandler;
+    TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.get();
+    m_playerMovementTimer.setTimerType(Qt::PreciseTimer);
+    m_playerMovementTimer.setSingleShot(true);
+    connect(&m_playerMovementTimer, &QTimer::timeout, intent, &TPlayerMovementIntentHandler::tick);
+    // The handler asks to be called again at a time of the session's clock.
+    connect(intent, &TPlayerMovementIntentHandler::requestTimedCallback, this, [this](const std::chrono::milliseconds when) {
+        const qint64 remaining = when.count() - clockService()->nowMillis();
+        m_playerMovementTimer.start(static_cast<int>(std::max<qint64>(remaining, 0)));
+    });
 }
 
 void TGameserverGameSession::connectProtocolMessageHandlers()
@@ -487,6 +511,36 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(bossDifficultySelectionProtocolMessageHandler(),
                  &TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionDataChanged, queue,
                  &Queue::sendBossDifficultySelectionChangedMessage));
+
+    using market::TMarketProtocolMessageHandler;
+    TMarketProtocolMessageHandler* market = marketProtocolMessageHandler().get();
+    link(connect(market, &TMarketProtocolMessageHandler::sendMarketLeave, queue, &Queue::sendMarketLeave));
+    link(connect(market, &TMarketProtocolMessageHandler::sendMarketBrowse, queue, &Queue::sendMarketBrowse));
+    link(connect(market, &TMarketProtocolMessageHandler::sendMarketCancel, queue, &Queue::sendMarketCancel));
+    link(connect(market, &TMarketProtocolMessageHandler::sendMarketAccept, queue, &Queue::sendMarketAccept));
+    link(connect(market, &TMarketProtocolMessageHandler::sendMarketCreate, queue, &Queue::sendMarketCreate));
+
+    using trade::TNPCTradeProtocolMessageHandler;
+    TNPCTradeProtocolMessageHandler* npcTrade = npcTradeProtocolMessageHandler().get();
+    link(connect(npcTrade, &TNPCTradeProtocolMessageHandler::sendCloseNPCTrade, queue, &Queue::sendCloseNPCTrade));
+    link(connect(npcTrade, &TNPCTradeProtocolMessageHandler::sendLookNPCTrade, queue, &Queue::sendLookNPCTrade));
+    link(connect(npcTrade, &TNPCTradeProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+    link(connect(npcTrade, &TNPCTradeProtocolMessageHandler::sendBuyObject, queue, &Queue::sendBuyObject));
+    link(connect(npcTrade, &TNPCTradeProtocolMessageHandler::sendSellObject, queue, &Queue::sendSellObject));
+
+    using trade::TPlayerTradeProtocolMessageHandler;
+    TPlayerTradeProtocolMessageHandler* playerTrade = playerTradeProtocolMessageHandler().get();
+    link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendAcceptTrade, queue, &Queue::sendAcceptTrade));
+    link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendRejectTrade, queue, &Queue::sendRejectTrade));
+    link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendLookTrade, queue, &Queue::sendLookTrade));
+    link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+
+    using creatures::TVipGameActionHandler;
+    TVipGameActionHandler* vip = vipGameActionHandler().get();
+    link(connect(vip, &TVipGameActionHandler::sendAddBuddy, queue, &Queue::sendAddBuddy));
+    link(connect(vip, &TVipGameActionHandler::sendRemoveBuddy, queue, &Queue::sendRemoveBuddy));
+    link(connect(vip, &TVipGameActionHandler::sendEditBuddy, queue, &Queue::sendEditBuddy));
+    link(connect(vip, &TVipGameActionHandler::sendBuddyGroup, queue, &Queue::sendBuddyGroup));
 }
 
 void TGameserverGameSession::connectGameActionHandlers()
@@ -615,14 +669,12 @@ void TGameserverGameSession::sendClientFrame(const QByteArray& frame)
     if (frame.isEmpty() || !m_dualConnection || m_dualConnection->connectionsUsed() == network::EConnectionsUsed::None)
         return;
     using network::TGameserverNetworkPacket;
-    // The client message processor makes the packet of the queue's message
-    // (login: RSA; a connection ping back: XTEA to the connection it answers;
-    // else XTEA to all connections).
-    const protocol::TProtocolMessageQueue* queue = protocolMessageQueue().get();
-    const ::tibia::protobuf::protocol::GameclientMessage* message = queue ? queue->clientMessageBeingSent() : nullptr;
+    // The client message processor's packet of the queue's message (login: RSA;
+    // a connection ping back: XTEA to the connection it answers; else XTEA to
+    // all connections).
     TGameserverNetworkPacket packet(TGameserverNetworkPacket::Gameclient, frame);
-    if (message && m_clientMessageProcessor) {
-        packet = m_clientMessageProcessor->processClientMessage(*message, frame);
+    if (m_clientPacketBeingSent && m_clientPacketBeingSent->data() == frame) {
+        packet = *m_clientPacketBeingSent;
     } else {
         // Host: frames without a queue message (the product transport, frames
         // sent before the queue exists) keep the rule by opcode.
@@ -635,6 +687,20 @@ void TGameserverGameSession::sendClientFrame(const QByteArray& frame)
     m_rawDataProcessor->encodePacket(packet);
     m_dualConnection->preparePacket(packet);
     m_dualConnection->sendPacket(packet);
+}
+
+void TGameserverGameSession::onClientMessageReadyToProcess(
+    std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage)
+{
+    const auto sessionNetwork = m_sessionNetwork.lock();
+    if (!sessionNetwork || !pGameclientMessage || !m_clientMessageProcessor)
+        return;
+    const network::TGameserverNetworkPacket packet = m_clientMessageProcessor->processClientMessage(*pGameclientMessage);
+    if (packet.data().isEmpty())
+        return;
+    m_clientPacketBeingSent = &packet;
+    sessionNetwork->writeClientFrame(packet.data());
+    m_clientPacketBeingSent = nullptr;
 }
 
 void TGameserverGameSession::closeConnection()
@@ -672,6 +738,14 @@ QString TGameserverGameSession::worldName() const
 void TGameserverGameSession::updatePlayerMovementIntentHandler()
 {
     m_playerMovementIntentHandler->tick();
+}
+
+void TGameserverGameSession::setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
+                                                std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
+                                                std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage)
+{
+    TGameSessionBase::setMinimapStorages(tileStorage, std::move(markerStorage), std::move(cyclopediaMapStaticDataStorage));
+    m_playerMovementIntentHandler->setMinimapTileStorage(std::move(tileStorage));
 }
 
 void TGameserverGameSession::connectPlayerMovementIntentHandler()

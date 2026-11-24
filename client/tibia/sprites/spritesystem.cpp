@@ -6,9 +6,7 @@
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
-#include "config/clientsettings.h"
 
-#include <QDebug>
 #include <QMutex>
 #include <QMutexLocker>
 
@@ -20,6 +18,14 @@ namespace {
 
 /// The metadata manager remembers its last lookup; the renderer asks from its thread.
 QMutex& metadataMutex()
+{
+    static QMutex mutex;
+    return mutex;
+}
+
+/// The game client hands its spritesheet manager in on the GUI thread; the
+/// renderer's threads read it.
+QMutex& spritesheetsMutex()
 {
     static QMutex mutex;
     return mutex;
@@ -43,12 +49,10 @@ TSpriteSystem& TSpriteSystem::instance()
 TSpriteSystem::TSpriteSystem()
 {
     m_decompressor = std::make_shared<TSpritesheetDecompressorThreadpool>();
-    // The client settings may set the cache size (at least 2 spritesheets).
-    const uint32_t capacity = static_cast<uint32_t>(tibia::config::clientSettingAtLeast(
-        QStringLiteral("GRAPHICS"), QStringLiteral("spritesheetCacheSize"), defaultCacheCapacity(), 2));
-    qDebug() << "Using spritesheet cache size of" << capacity;
-    m_spritesheets = std::make_shared<TSpritesheetManager>(m_decompressor, std::make_shared<TSpritesheetCache>(capacity));
-    m_ownResolver = std::make_shared<TSpriteResolver>(m_spritesheets);
+    m_ownSpritesheets = std::make_shared<TSpritesheetManager>(m_decompressor,
+                                                              std::make_shared<TSpritesheetCache>(defaultCacheCapacity()));
+    m_spritesheets = m_ownSpritesheets;
+    m_ownResolver = std::make_shared<TSpriteResolver>(m_ownSpritesheets);
     m_resolver = m_ownResolver;
 }
 
@@ -59,7 +63,19 @@ void TSpriteSystem::clear()
         const QMutexLocker lock(&metadataMutex());
         m_metadata.reset();
     }
-    m_spritesheets->clear();
+    sharedSpritesheets()->clear();
+}
+
+void TSpriteSystem::setSpritesheetManager(std::shared_ptr<TSpritesheetManager> spritesheets)
+{
+    const QMutexLocker lock(&spritesheetsMutex());
+    m_spritesheets = spritesheets ? std::move(spritesheets) : m_ownSpritesheets;
+}
+
+std::shared_ptr<TSpritesheetManager> TSpriteSystem::sharedSpritesheets() const
+{
+    const QMutexLocker lock(&spritesheetsMutex());
+    return m_spritesheets;
 }
 
 void TSpriteSystem::setMetadata(std::shared_ptr<TSpritesheetsMetadataManager> metadata)
@@ -126,7 +142,7 @@ QImage TSpriteSystem::spriteImageDecoded(const uint32_t spriteId, bool& loading)
     const TSpriteFromSpritesheetInfo info = spriteInfo(spriteId);
     if (info.spritesheetId.isEmpty())
         return {};
-    const TSpritesheetPointer spritesheet = m_spritesheets->decodeNow(info.spritesheetId);
+    const TSpritesheetPointer spritesheet = sharedSpritesheets()->decodeNow(info.spritesheetId);
     if (!spritesheet) {
         loading = true;
         return {};
@@ -139,7 +155,7 @@ QImage TSpriteSystem::spriteImageDecoded(const uint32_t spriteId, bool& loading)
 bool TSpriteSystem::isSpriteReady(const uint32_t spriteId)
 {
     const TSpriteFromSpritesheetInfo info = spriteInfo(spriteId);
-    return info.spritesheetId.isEmpty() || m_spritesheets->isSpritesheetCached(info.spritesheetId);
+    return info.spritesheetId.isEmpty() || sharedSpritesheets()->isSpritesheetCached(info.spritesheetId);
 }
 
 }

@@ -30,8 +30,10 @@ QUrl urlOf(const QString& qmlFile)
     return QUrl(qmlFile.contains(QLatin1Char(':')) ? qmlFile : QLatin1String(ModuleUrl) + qmlFile);
 }
 
+}
+
 /// CIP / : an item of `qmlFile` under `parentItem`,
-/// owned by `owner`.
+/// owned by `owner` (also the info banner's wrapper maker).
 QQuickItem* createItem(QQmlEngine* engine, const QString& qmlFile, QQuickItem* parentItem, QObject* owner, const QVariantMap& properties)
 {
     QQmlComponent component(engine, urlOf(qmlFile));
@@ -49,6 +51,8 @@ QQuickItem* createItem(QQmlEngine* engine, const QString& qmlFile, QQuickItem* p
     component.completeCreate();
     return item;
 }
+
+namespace {
 
 void deleteItem(QPointer<QQuickItem>& item)
 {

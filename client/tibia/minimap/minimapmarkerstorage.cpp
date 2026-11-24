@@ -16,10 +16,10 @@ namespace {
 using A = input::EGameAction;
 using worldmap::TWorldMapCoordinate;
 
-// The actions the storage handles. // not-a-cip-table
+// The actions the storage handles (DELETE_MINIMAP_MARKER is the marker game
+// action handler's). // not-a-cip-table
 constexpr A HandledActions[] = {
     A::UPDATE_MINIMAP_MARKER,
-    A::DELETE_MINIMAP_MARKER,
 };
 
 TMinimapMarkerStorage* g_activeMarkers = nullptr;
@@ -135,10 +135,6 @@ void TMinimapMarkerStorage::bindActions()
         const input::TMinimapMarkerData& marker = action.marker();
         const auto icon = static_cast<uint8_t>(std::clamp(int(marker.icon), 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
         addMarker(TMinimapMarker(TWorldMapCoordinate(marker.coordinate), icon, marker.description, QDateTime::currentDateTimeUtc()));
-        return true;
-    });
-    m_gameActions.on(A::DELETE_MINIMAP_MARKER, [this](const input::TGameActionDeleteMinimapMarker& action) {
-        removeMarker(TWorldMapCoordinate(action.coordinate()));
         return true;
     });
 }

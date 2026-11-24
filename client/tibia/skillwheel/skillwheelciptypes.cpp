@@ -1,6 +1,7 @@
 #include "skillwheel/skillwheelciptypes.h"
 
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "game/gameciptypes.h"
 #include <vector>
 #include <map>
 #include <client/staticdata.h>
@@ -270,6 +271,11 @@ void TSkillWheelGameActionHandler::handleCreatureGameAction(const uint32_t creat
     m_pProtocolMessageHandler->requestSkillWheel(creatureId);
 }
 
+void TSkillWheelGameActionHandler::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    m_premiumTimeStorage = premiumTimeStorage;
+}
+
 void TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction(const TWheel& wheel)
 {
     m_pProtocolMessageHandler->saveSkillWheel(wheel);
@@ -279,7 +285,7 @@ void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
 {
     if (m_playerId == 0 || !tibia::game::hasLocalPlayer())
         return;
-    if (tibia::game::localPlayerLevel() > RequiredLevel - 1 && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
+    if (tibia::game::localPlayerLevel() > RequiredLevel - 1 && (tibia::game::localPlayerIsPremium() || (m_premiumTimeStorage && !m_premiumTimeStorage->isPremium()))) {
         m_pProtocolMessageHandler->requestSkillWheel(m_playerId);
         return;
     }

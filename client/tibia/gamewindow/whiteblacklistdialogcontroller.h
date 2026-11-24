@@ -7,6 +7,11 @@
 
 #include <QList>
 
+#include <memory>
+
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace chat {
 class TWhiteBlacklist;
@@ -24,7 +29,8 @@ class TWhiteBlacklistDialogController final : public TDialogController<cip::tibi
 {
     Q_OBJECT
 public:
-    explicit TWhiteBlacklistDialogController(chat::TWhiteBlacklist& lists, QObject* parent = nullptr);
+    TWhiteBlacklistDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                    std::shared_ptr<chat::TWhiteBlacklist> WhiteBlacklist, QObject* parent = nullptr);
     ~TWhiteBlacklistDialogController() override;
 
     /// OPEN_WHITEBLACKLIST_DIALOG opens the dialog.
@@ -56,7 +62,7 @@ private:
     static void clear(Entries& entries);
     void publish(const char* property, const Entries& entries);
 
-    chat::TWhiteBlacklist& m_lists;
+    std::shared_ptr<chat::TWhiteBlacklist> m_lists;
     Entries m_blacklistEntries;
     Entries m_whitelistEntries;
 };

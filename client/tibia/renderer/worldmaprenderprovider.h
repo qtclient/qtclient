@@ -51,6 +51,7 @@ class TEffectStorage;
 }
 namespace renderer {
 class TRenderVolumeProvider;
+struct TRenderInfo;
 }
 namespace worldmap {
 class TAmbientLightStorage;
@@ -311,6 +312,9 @@ private:
 
     /// The frame build: every floor's draw commands, sorted, and the light map.
     bool build();
+    /// The provider draws the session's world (its world map storage is the
+    /// live one), centred on the local player.
+    bool drawsLiveWorld() const;
     void buildLight();
     /// Shared outdoor / roof gather when weather or raycast needs it.
     void updateWorldGeometry();
@@ -396,6 +400,8 @@ private:
     static constexpr float MinEffectOpacity = 0.01f;
     /// The sprites of `info` (each layer of a layered info) at `dest`; with
     /// raycast lighting, `stamp`'s sprites stamp the light frame.
+    /// Draws one render info handed by an appearance instance on the field at `dest`.
+    void addRenderInfo(const renderer::TRenderInfo& info, const QPoint& dest, SpriteRecord::Highlight highlight);
     void addSpriteInfo(TAppearanceType* type, const QPoint& dest, const appearances::TAppearanceInstanceSpriteInfoPtr& info,
                        const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, int xPattern,
                        SpriteRecord::Highlight highlight, float opacity = 1.f, uint8_t tint = 0);

@@ -111,7 +111,13 @@ class TBossBestiaryProtocolMessageHandler;
 class TBossTrackerStorage;
 class TBosstiaryStorage;
 }
+namespace minimap {
+class TMinimapTileStorage;
+class TMinimapMarkerStorage;
+class TMinimapProtocolMessageHandler;
+}
 namespace cyclopedia {
+class TCyclopediaMapStaticDataStorage;
 class TBestiaryTrackerProtocolMessageHandler;
 class TCharacterInfoStorage;
 class TCreatureTrackerStorage;
@@ -248,6 +254,38 @@ class TWorldmapProtocolMessageHandler;
 }
 }
 
+namespace tibia::shared {
+class IClockService;
+class TTibiaClipboardHelper;
+class TTibiaFileSystemHelper;
+class TTibiaUrlTools;
+}
+namespace tibia::appearances {
+class TAppearanceInstanceFactory;
+class TAppearancesManager;
+}
+namespace tibia::config {
+class TClientOptions;
+}
+namespace tibia::input {
+class TKeyboardShortcutHandler;
+}
+namespace tibia::spells {
+class TSpellInfoStorage;
+}
+namespace tibia::proficiency {
+class TProficiencyStorage;
+}
+namespace tibia::analysers {
+class TItemPriceStorage;
+}
+namespace tibia::sound {
+class TSoundController;
+}
+namespace tibia::game {
+class TPassiveAbilityInfoStorage;
+}
+
 namespace tibia::game {
 
 /// CIP game::TGameSessionBase: a game session (live or replayed) owns its
@@ -259,7 +297,42 @@ class TGameSessionBase : public IGameSession
     Q_OBJECT
 public:
     explicit TGameSessionBase(QObject* parent = nullptr);
+    /// The objects the game client shares with every session it builds.
+    TGameSessionBase(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+                     std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+                     std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                     std::shared_ptr<config::TClientOptions> clientOptions,
+                     std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+                     std::shared_ptr<shared::TTibiaUrlTools> urlTools,
+                     std::shared_ptr<shared::IClockService> clientClockService,
+                     std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage,
+                     std::shared_ptr<sound::TSoundController> soundController,
+                     std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
+                     spells::TSpellInfoStorage* spellInfoStorage,
+                     TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                     proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent = nullptr);
     ~TGameSessionBase() override;
+
+    const std::shared_ptr<shared::TTibiaFileSystemHelper>& tibiaFileSystemHelper() const { return m_tibiaFileSystemHelper; }
+    const std::shared_ptr<shared::TTibiaUrlTools>& urlTools() const { return m_urlTools; }
+    const std::shared_ptr<appearances::TAppearancesManager>& appearancesManager() const { return m_appearancesManager; }
+    const std::shared_ptr<appearances::TAppearanceInstanceFactory>& appearanceInstanceFactory() const
+    {
+        return m_appearanceInstanceFactory;
+    }
+    const std::shared_ptr<config::TClientOptions>& clientOptions() const { return m_clientOptions; }
+    /// The game client's clock the session was built with (a session's own
+    /// clock is clockService()).
+    const std::shared_ptr<shared::IClockService>& clientClockService() const { return m_clientClockService; }
+    const std::shared_ptr<input::TKeyboardShortcutHandler>& keyboardShortcutHandler() const { return m_keyboardShortcutHandler; }
+    spells::TSpellInfoStorage* spellInfoStorage() const { return m_spellInfoStorage; }
+    TPassiveAbilityInfoStorage* passiveAbilityInfoStorage() const { return m_passiveAbilityInfoStorage; }
+    proficiency::TProficiencyStorage* proficiencyStorage() const { return m_proficiencyStorage; }
+    const std::shared_ptr<analysers::TItemPriceStorage>& itemPriceStorage() const { return m_itemPriceStorage; }
+    const std::shared_ptr<sound::TSoundController>& soundController() const { return m_soundController; }
+    const std::shared_ptr<shared::TTibiaClipboardHelper>& clipboardHelper() const { return m_clipboardHelper; }
+    /// The session clock's current time (clockService()), in milliseconds.
+    qint64 nowMillis() const;
 
     /// Keeps the meta info and builds the session's protocol message queue
     /// from its configuration.
@@ -339,7 +412,6 @@ public:
     }
     const std::shared_ptr<chat::TTextStorage>& textStorage() const { return m_textStorage; }
     const std::shared_ptr<effects::TEffectStorage>& effectStorage() const { return m_effectStorage; }
-    const std::shared_ptr<effects::TEffectGameActionHandler>& effectGameActionHandler() const { return m_effectGameActionHandler; }
     const std::shared_ptr<effects::TEffectProtocolMessageHandler>& effectProtocolMessageHandler() const
     {
         return m_effectProtocolMessageHandler;
@@ -707,6 +779,12 @@ public:
     /// Once per frame, before the world map's frame is built: the session's
     /// player movement intent handler goes on (the base session has none).
     virtual void updatePlayerMovementIntentHandler();
+    /// The game client's minimap storages and cyclopedia map data for the
+    /// session (when it becomes the current one). CIP v14: with a marker
+    /// storage the session makes its minimap protocol message handler.
+    virtual void setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
+                                    std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
+                                    std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage);
 
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
@@ -760,6 +838,20 @@ private:
     std::vector<QMetaObject::Connection> m_queueConnections;
     std::shared_ptr<const TGameSessionMetaInfo> m_metaInfo;
     std::shared_ptr<protocol::TProtocolMessageQueue> m_protocolMessageQueue;
+    // What the game client shares with the session (constructor order).
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_tibiaFileSystemHelper;
+    std::shared_ptr<shared::TTibiaUrlTools> m_urlTools;
+    std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
+    std::shared_ptr<shared::IClockService> m_clientClockService;
+    std::shared_ptr<input::TKeyboardShortcutHandler> m_keyboardShortcutHandler;
+    spells::TSpellInfoStorage* m_spellInfoStorage = nullptr;
+    TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage = nullptr;
+    proficiency::TProficiencyStorage* m_proficiencyStorage = nullptr;
+    std::shared_ptr<analysers::TItemPriceStorage> m_itemPriceStorage;
+    std::shared_ptr<sound::TSoundController> m_soundController;
+    std::shared_ptr<shared::TTibiaClipboardHelper> m_clipboardHelper;
     std::shared_ptr<worldmap::TWorldMapViewport> m_worldMapViewport;
     std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_creatureMovementSpeedCalculator;
     std::shared_ptr<renderer::TWorldMapCamera> m_worldMapCamera;
@@ -836,8 +928,9 @@ private:
     std::shared_ptr<chat::TGameMessageHandler> m_gameMessageHandler;
     std::shared_ptr<chat::TTextStorage> m_textStorage;
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
-    std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    /// CIP v14: the minimap's part of the map protocol (with a marker storage).
+    std::shared_ptr<minimap::TMinimapProtocolMessageHandler> m_minimapProtocolMessageHandler;
     std::shared_ptr<analysers::TProgressStorage> m_progressStorage;
     std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTrackingStorage;
     std::shared_ptr<analysers::TGainWasteStorage> m_gainWasteStorage;

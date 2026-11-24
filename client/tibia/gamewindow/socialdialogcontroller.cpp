@@ -273,4 +273,11 @@ void TSocialDialogController::onShowBackButton(const bool Value)
     Q_EMIT buttonVisibleChanged();
 }
 
+void TSocialDialogController::setMapStorages(minimap::TMinimapTileStorage* TileStorage, minimap::TMinimapMarkerStorage* MarkerStorage,
+                                             std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage)
+{
+    m_assemble->setMapStorages(TileStorage, MarkerStorage, StaticDataStorage);
+    m_join->setMapStorages(TileStorage, MarkerStorage, std::move(StaticDataStorage));
+}
+
 }

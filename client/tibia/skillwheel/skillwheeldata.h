@@ -55,6 +55,8 @@ struct TGem
     int basic1 = 0;
     int basic2 = 0;
     int supreme = 0;
+
+    bool operator==(const TGem&) const = default;
 };
 
 /// The gem has a second basic mod (regular and greater gems).

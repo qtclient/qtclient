@@ -279,7 +279,7 @@ private:
     QPointer<creatures::TVipStorage> m_storage;
     QPointer<TVipWidgetController> m_controller;
     QPointer<config::TSidebarOptions> m_options;
-    int m_controlScheme = 0;
+    int m_controlScheme = 1; // CIP control scheme (1 classic)
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

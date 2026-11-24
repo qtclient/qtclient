@@ -1389,6 +1389,8 @@ public:
         , m_color(color)
     {
     }
+    /// CIP: a system chat message in the console colour of message mode 30.
+    explicit TGameActionAddTextMessage(QString text);
     const QString& text() const { return m_text; }
     const QColor& color() const { return m_color; }
 

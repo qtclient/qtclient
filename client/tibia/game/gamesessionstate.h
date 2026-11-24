@@ -263,8 +263,7 @@ public:
     /// The live session's player movement intent handler (none in a session dump).
     tibia::input::TPlayerMovementIntentHandler* movementIntent();
     /// Host inputs of the live session's player movement intent handler: the
-    /// planner's waypoint costs and avoided fields, the aware range and the pack's
-    /// unreachable-goal claim.
+    /// aware range and the pack's unreachable-goal claim.
     static tibia::input::TPlayerMovementIntentHandler::Environment playerMovementIntentEnvironment();
     /// A login (or character switch) starts the character's session.
     void beginPlayerSession(std::string_view characterName);

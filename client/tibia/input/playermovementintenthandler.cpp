@@ -8,6 +8,7 @@
 #include "game/playerdata.h"
 #include "input/gameaction.h"
 #include "iclockservice.h"
+#include "minimap/minimaptilestorage.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -107,6 +108,11 @@ void TPlayerMovementIntentHandler::setPlayer(std::weak_ptr<creatures::TCreature>
     connect(m_player.get(), &creatures::TCreature::positionWasUpdated, this, &TPlayerMovementIntentHandler::onPositionChanged);
 }
 
+void TPlayerMovementIntentHandler::setMinimapTileStorage(std::shared_ptr<minimap::TMinimapTileStorage> pMinimapTileStorage)
+{
+    m_pMinimapTileStorage = std::move(pMinimapTileStorage);
+}
+
 TWorldMapCoordinate TPlayerMovementIntentHandler::predictedPosition() const
 {
     const creatures::TCreature* player = m_player.get();
@@ -119,10 +125,13 @@ void TPlayerMovementIntentHandler::handleMovementIntent(const TMovementIntentPtr
 {
     if (!intent)
         return;
-    const TMovementIntentPtr previous = std::exchange(m_intent, m_player.get() ? intent : std::make_shared<TMovementIntentStop>());
+    const TMovementIntentPtr previous =
+        std::exchange(m_intent, m_pMinimapTileStorage ? intent : std::make_shared<TMovementIntentStop>());
     switch (intent->kind()) {
     case TMovementIntentKind::Target: {
         const auto& target = static_cast<const TMovementIntentTargetCoordinate&>(*intent);
+        if (m_pMinimapTileStorage)
+            m_pMinimapTileStorage->removeUnknownAvoidedFields();
         goToAndSend(TWorldMapCoordinate(target.x(), target.y(), target.z()), target.enterUnwalkableGoal(), false);
         break;
     }
@@ -281,16 +290,15 @@ int TPlayerMovementIntentHandler::plan()
 {
     m_path.clear();
     m_replan = false;
-    if (!m_goal || !m_player.get())
+    if (!m_goal || !m_pMinimapTileStorage)
         return 0;
     if (std::abs(m_pendingX) + std::abs(m_pendingY) > 1) {
         m_waiting = true;
         return 0;
     }
-    const std::vector<TWorldMapCoordinate> blocked = m_env.blockedFields ? m_env.blockedFields()
-                                                                          : std::vector<TWorldMapCoordinate>{};
     const int result = planMovementPath(predictedPosition(), *m_goal, m_enterUnwalkableGoal, m_allowDiagonalStep,
-                                        m_env.waypointCost(), blocked, m_path);
+                                        m_pMinimapTileStorage->waypointSectors(), m_pMinimapTileStorage->avoidedFields(),
+                                        m_path);
     if (result == PathComplete && m_path.size() < 2)
         m_goal.reset();
     if (result == PathComplete || result == PathPartial) {

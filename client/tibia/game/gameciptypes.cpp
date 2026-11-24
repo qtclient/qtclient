@@ -53,14 +53,6 @@
 namespace tibia::game {
 
 namespace {
-struct CipTypedKeep {
-    TGameWorldVolumeStorage tGameWorldVolumeStorage;
-};
-CipTypedKeep& typedKeep()
-{
-    static CipTypedKeep keep;
-    return keep;
-}
 
 using Args = std::vector<std::any>;
 using client::gamecore::argBool;
@@ -752,7 +744,6 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    (void)typedKeep();
     // The game session builds its protocol message and game action handlers.
     new TPremiumTimeStorage(parent);
 }

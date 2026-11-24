@@ -61,6 +61,7 @@ public:
     ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType liquidType() const override;
     ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection hookDirection() const override;
     uint decoItemObjectID() const override;
+    bool hasDualWielding() const override;
     void setBackgroundImage(const QString& image);
     /// CIP : takes the info, signalling what changed.
     void assign(const TSlotInfo& info);

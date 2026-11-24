@@ -19,10 +19,12 @@ class TSpritesheetDecompressor;
 class TSpritesheetManager;
 
 /// Host: the client's sprite objects (CIP keeps them on the game client): the
-/// catalog's spritesheet metadata, the spritesheet manager with its cache and
-/// decompressor and the sprite resolver, for the code that reaches them
-/// process-wide. The game client's asset manager loads the spritesheets and
-/// hands the metadata and its loader in. Created on the GUI thread.
+/// catalog's spritesheet metadata, the game client's spritesheet manager and
+/// sprite resolver, for the code that reaches them process-wide. The game
+/// client hands its spritesheet manager and resolver in; its asset manager
+/// loads the spritesheets and hands the metadata and its loader in. Until the
+/// client does, the sprite system's own manager and resolver stand in.
+/// Created on the GUI thread.
 class TSpriteSystem
 {
 public:
@@ -30,6 +32,9 @@ public:
 
     /// Forgets every spritesheet, the metadata and the loader.
     void clear();
+    /// The game client's spritesheet manager (CIP: the game client base owns
+    /// it); null goes back to the sprite system's own.
+    void setSpritesheetManager(std::shared_ptr<TSpritesheetManager> spritesheets);
     /// The content catalog's spritesheet metadata, once the asset manager has read it.
     void setMetadata(std::shared_ptr<TSpritesheetsMetadataManager> metadata);
     /// The game client's sprite resolver (CIP keeps it on the game client);
@@ -40,8 +45,8 @@ public:
 
     /// Null before the asset manager has read the content catalog.
     const std::shared_ptr<TSpritesheetsMetadataManager>& metadata() const { return m_metadata; }
-    TSpritesheetManager& spritesheets() { return *m_spritesheets; }
-    const std::shared_ptr<TSpritesheetManager>& sharedSpritesheets() const { return m_spritesheets; }
+    /// The game client's spritesheet manager, else the sprite system's own.
+    std::shared_ptr<TSpritesheetManager> sharedSpritesheets() const;
     TSpriteResolver& resolver() { return *m_resolver; }
     /// Null before the game client made its loader.
     tibia::assets::TAssetAsyncLoader* assetLoader() { return m_assetLoader.get(); }
@@ -69,6 +74,8 @@ private:
 
     std::shared_ptr<TSpritesheetsMetadataManager> m_metadata;
     std::shared_ptr<TSpritesheetDecompressor> m_decompressor;
+    /// Stands in until the game client hands its manager in.
+    std::shared_ptr<TSpritesheetManager> m_ownSpritesheets;
     std::shared_ptr<TSpritesheetManager> m_spritesheets;
     /// Resolves sprites until the game client hands its resolver in.
     std::shared_ptr<TSpriteResolver> m_ownResolver;

@@ -14,6 +14,13 @@
 #include <memory>
 
 namespace tibia {
+namespace cyclopedia {
+class TCyclopediaMapStaticDataStorage;
+}
+namespace minimap {
+class TMinimapMarkerStorage;
+class TMinimapTileStorage;
+}
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
@@ -46,6 +53,11 @@ public:
 
     /// The account's premium state; premiumTimeChanged follows it.
     void setPremiumStorage(game::TPremiumTimeStorage* Storage);
+    /// The map storages: the page keeps the Cyclopedia map's static data,
+    /// which the hunting places come from (the tile and marker storages are
+    /// not used).
+    void setMapStorages(minimap::TMinimapTileStorage* TileStorage, minimap::TMinimapMarkerStorage* MarkerStorage,
+                        std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> StaticDataStorage);
 
 public Q_SLOTS:
     void onStartAssembleTeamClicked(int ActivityRowIndex) override;
@@ -60,6 +72,7 @@ public Q_SLOTS:
 
 private:
     std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_mapStaticDataStorage;
     QPointer<teamfinder::TTeamFinderProtocolMessageHandler> m_teamFinderProtocolMessageHandler;
     /// Fills the activity list: unspecified entries of each kind, the hunting places, the bosses and the quests.
     void loadActivities();

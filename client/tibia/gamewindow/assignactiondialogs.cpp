@@ -740,7 +740,10 @@ void TAssignObjectActionDialogController::setObject(const int objectId, const in
     m_hookDirection = Info::EHookDirection::NONE;
     m_canBeMultiUsed = type && type->isMultiUse();
     m_canBeEquiped = isEquipable(type);
-    m_canHaveSmartMode = m_canBeEquiped;
+    // Clothes have the smart mode, except worn containers in the backpack (3)
+    // or quiver (11) slot.
+    m_canHaveSmartMode = type && type->isCloth()
+                         && (!type->isContainer() || (type->getClothSlot() != 3 && type->getClothSlot() != 11));
     Q_EMIT objectAppearanceChanged();
     Q_EMIT changed();
 }

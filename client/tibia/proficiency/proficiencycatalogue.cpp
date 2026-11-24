@@ -123,7 +123,7 @@ TProficiencyPerk perkAtRank(TProficiencyPerk perk, const int rank)
     return perk;
 }
 
-std::vector<int> shapeOptions(const int profession)
+std::vector<int> shapeOptions(const int profession, const bool alternateTable)
 {
     if (profession < 1 || profession > RegionCount)
         return {};
@@ -131,8 +131,11 @@ std::vector<int> shapeOptions(const int profession)
     appendCommon(options);
     const int base = (profession - 1) * RegionSize;
     for (int row = 0; row < static_cast<int>(AugmentRows.size()); ++row) {
-        for (int column = 1; column <= 6; ++column)
+        for (int column = 1; column <= 6; ++column) {
+            if (alternateTable && profession == 1 && column == 5)
+                continue;
             options.push_back(base + row * 10 + column);
+        }
     }
     return options;
 }

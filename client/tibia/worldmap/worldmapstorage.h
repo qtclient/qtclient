@@ -23,6 +23,9 @@ namespace tibia {
 namespace creatures {
 class TCreature;
 }
+namespace shared {
+class IClockService;
+}
 namespace input {
 class TLocationWorldMapCoordinateWithStackPositionContext;
 }
@@ -40,6 +43,10 @@ public:
     /// one of its own when none is given (the fallback storage).
     explicit TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator = nullptr,
                               QObject* parent = nullptr);
+    /// The session's storage: steps take their duration from `speedCalculator`
+    /// and start at `clock`'s time; no fields and an empty stored volume yet.
+    TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
+                     std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
     ~TWorldMapStorage() override;
 
     /// CIP session hub (null before/after gameclient install).
@@ -182,6 +189,9 @@ private:
     TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
+    std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_sharedSpeedCalculator;
+    /// Host: without a clock (the raw-pointer constructor) steps start at the frame clock.
+    std::shared_ptr<shared::IClockService> m_clock;
     int m_storedVolumeMarginLeft = 0;
     int m_storedVolumeMarginRight = 0;
     int m_storedVolumeMarginTop = 0;

@@ -78,7 +78,17 @@ class TQmlAstralSource final : public cip::tibia::imbuing::TQmlAstralSource
 {
     Q_OBJECT
 public:
-    TQmlAstralSource(const QString& name, uint needed, uint owned, uint objectTypeId, QObject* parent = nullptr);
+    TQmlAstralSource(const QString& name, uint needed, uint owned, appearances::TAppearanceInstancePtr object,
+                     QObject* parent = nullptr);
+
+    uint objectID() const override;
+    uint objectCount() const override;
+    cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType liquidType() const override;
+    cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection hookDirection() const override;
+
+private:
+    /// The source's object; the object properties read it.
+    appearances::TAppearanceInstancePtr m_object;
 };
 
 /// The selected imbuement; owns its astral sources.

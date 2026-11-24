@@ -73,11 +73,13 @@ public:
     /// Where the top-left field of the volume is drawn.
     QPoint centerLayerStretchedPixelOffset() const;
 
-private:
+public:
     /// The volume's size: the fields between the view's corners on the top
     /// layer (a corner inside a field takes that field), widened by the
     /// additional rows and columns, over the shown layers.
     worldmap::TWorldMapExtent volumeExtent() const;
+
+private:
     void updateMatrix();
 
     /// Zero-interval single shot: collects the changes of one turn into one

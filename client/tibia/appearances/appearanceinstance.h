@@ -3,6 +3,7 @@
 #include "animation/animator.h"
 #include "appearances/appearanceinstancespritesequence.h"
 #include "appearances/genericstorage.h"
+#include "renderer/renderinfo.h"
 #include "shared/cip_typed.h"
 #include "tibia/client/outfit.h"
 #include "worldmap/coordinates.h"
@@ -124,6 +125,9 @@ public:
         : TAppearanceInstance(type, animationStartMs)
     {
     }
+    /// CIP v12: appends what the object draws on `coordinate`: its current
+    /// sprite with its displacement and movement offset.
+    virtual void appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate, renderer::TRenderInfoList& infos) const;
 
     uint16_t count() const { return m_count; }
     uint8_t subType() const { return m_subType; }
@@ -341,10 +345,11 @@ public:
     /// is one, else the outfit's, with the socket's elevation as depth; none
     /// without an outfit.
     worldmap::TWorldMapSubfieldExtent figureDisplacement() const;
-    /// CIP v12's figure offset: figureDisplacement, less the socket type's
-    /// elevation on both axes while the socket is drawn. The mount and then
-    /// the outfit draw their idle sprite with it.
-    worldmap::TWorldMapSubfieldExtent figureRenderDisplacement() const;
+    /// CIP v12: the socket's own render info while it is shown; then the
+    /// mount's and the outfit's idle sprite (drawn for the socket's type) at
+    /// the figure's displacement plus the socket type's elevation on both
+    /// axes while the socket is shown.
+    void appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate, renderer::TRenderInfoList& infos) const override;
 
 private:
     bool m_visible = false;

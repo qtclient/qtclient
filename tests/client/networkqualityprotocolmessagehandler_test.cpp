@@ -1,5 +1,9 @@
 #include "network/networkqualityprotocolmessagehandler.h"
+#include "network/unencryptedrawmessagestream.h"
+#include "protocol/protobufclientmessagetranslator.h"
 #include "protocol/protocolclientmessageprocessor.h"
+#include "protocol/protocolwriter.h"
+#include "shared/iodevicewriter.h"
 
 #include "iclockservice.h"
 
@@ -15,6 +19,18 @@
 using tibia::network::EConnectionType;
 using tibia::network::TNetworkQualityProtocolMessageHandler;
 using namespace tibia::protobuf::protocol;
+
+// Test double of the classic encoding (protocolciptypes.cpp is not linked): the type byte, then
+// the connection of a connection ping back.
+QByteArray tibia::protocol::TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message)
+{
+    QByteArray data(1, static_cast<char>(message.type()));
+    if (message.HasExtension(GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back))
+        data.append(static_cast<char>(
+            message.GetExtension(GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back)
+                .connection_type()));
+    return data;
+}
 
 namespace {
 
@@ -184,29 +200,38 @@ TEST(ProtocolClientMessageProcessor, SendsAConnectionPingBackOnTheConnectionOfIt
 {
     using tibia::network::EConnectionsUsed;
     using tibia::network::TGameserverNetworkPacket;
-    tibia::protocol::TProtocolClientMessageProcessor processor;
+    auto messageStream = std::make_shared<tibia::network::TUnencryptedRawMessageStream>();
+    auto translator = std::make_shared<tibia::protocol::TProtobufClientMessageTranslator>(
+        std::make_shared<tibia::protocol::TProtocolWriter>(
+            std::make_shared<tibia::shared::TIODeviceWriter>(messageStream, QDataStream::LittleEndian)));
+    tibia::protocol::TProtocolClientMessageProcessor processor(translator, messageStream);
     GameclientMessage message;
     message.set_type(28);
     message.MutableExtension(GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back)
         ->set_connection_type(1);
-    TGameserverNetworkPacket packet = processor.processClientMessage(message, QByteArray("\x1c", 1));
+    TGameserverNetworkPacket packet = processor.processClientMessage(message);
     EXPECT_EQ(packet.encryptionType(), TGameserverNetworkPacket::Xtea);
     EXPECT_EQ(packet.connectionsUsed(), EConnectionsUsed::Secondary);
-    EXPECT_EQ(packet.data(), QByteArray("\x1c", 1));
+    EXPECT_EQ(packet.data(), QByteArray("\x1c\x01", 2));
 
+    // The stream holds only the message being processed: the bytes read back are dropped.
     message.MutableExtension(GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back)
         ->set_connection_type(0);
-    EXPECT_EQ(processor.processClientMessage(message, {}).connectionsUsed(), EConnectionsUsed::Primary);
+    packet = processor.processClientMessage(message);
+    EXPECT_EQ(packet.connectionsUsed(), EConnectionsUsed::Primary);
+    EXPECT_EQ(packet.data(), QByteArray("\x1c\x00", 2));
+    EXPECT_EQ(messageStream->size(), 0);
 
     GameclientMessage login;
     login.set_type(11);
-    packet = processor.processClientMessage(login, {});
+    packet = processor.processClientMessage(login);
     EXPECT_EQ(packet.encryptionType(), TGameserverNetworkPacket::LoginRsa);
     EXPECT_EQ(packet.connectionsUsed(), EConnectionsUsed::None);
 
     GameclientMessage walk;
     walk.set_type(101);
-    packet = processor.processClientMessage(walk, {});
+    packet = processor.processClientMessage(walk);
+    EXPECT_EQ(packet.data(), QByteArray("\x65", 1));
     EXPECT_EQ(packet.encryptionType(), TGameserverNetworkPacket::Xtea);
     EXPECT_EQ(packet.connectionsUsed(), EConnectionsUsed::PrimaryAndSecondary);
 }

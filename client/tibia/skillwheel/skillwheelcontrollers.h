@@ -335,7 +335,7 @@ class TFragmentWorkshopPageController final : public cip::tibia::gamewindow::TFr
 public:
     explicit TFragmentWorkshopPageController(TSkillWheelStorage* storage, QObject* parent = nullptr);
 
-    int modCount() const override { return m_list->rowCount(); }
+    int modCount() const override { return m_storage ? static_cast<int>(m_storage->modList().size()) : 0; }
     bool canBeChanged() const override { return m_storage->changeState() == 1; }
     int bonusBaseStats() const override;
     int bonusPromotionPoints() const override;

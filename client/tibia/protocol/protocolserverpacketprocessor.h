@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 namespace tibia::network {
@@ -16,11 +17,7 @@ class TProtocolServerMessageProcessor;
 /// packet to the session's message stream and has the server message processor
 /// read messages from it until it is read to the end, then drops what was read.
 /// Every message carries the packet's time, sequence number and connection.
-///
-/// Host: the classic translator reads a byte span, so the stream's unread
-/// bytes are handed to it at once; the product messages outside the CIP
-/// protocol are read here, between the CIP ones; and a message that does not
-/// read, or one of an unknown opcode, ends the packet (its length is unknown).
+/// Once stopped it takes no more packets.
 class TProtocolServerPacketProcessor
 {
 public:

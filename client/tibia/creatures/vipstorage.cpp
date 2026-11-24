@@ -17,8 +17,6 @@ using A = input::EGameAction;
 
 /// The status line colour of the VIP login notice.
 const QColor LoginNoticeColor(0xf0, 0xf0, 0xf0);
-/// The console colour (message mode) of the VIP login notice.
-constexpr int LoginNoticeMessageMode = 30;
 /// Icons above this are stored as 0.
 constexpr uint8_t MaxIconId = 10;
 
@@ -83,8 +81,7 @@ void TVipStorage::updateVipState(const uint32_t id, const int state)
     if (vip.notifyLogin && isLoggedOut(vip.state) && isLoggedIn(state)) {
         const QString text = qtTrId("speech_volume_vip_has_logged_in").arg(vip.name);
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(text));
-        auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(LoginNoticeMessageMode));
-        Q_EMIT publishGameAction(message);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(text));
     }
     vip.state = state;
     Q_EMIT vipStateChanged(id, state);

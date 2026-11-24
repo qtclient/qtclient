@@ -400,15 +400,11 @@ public:
     virtual void enqueueGameserverMessage(const std::shared_ptr<GameserverMessage>& message);
     virtual void enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message);
 
-    // Host side: the client message translator hands over owned messages; the client
-    // wire bytes travel with their message to the connection.
-    void enqueueClient(std::unique_ptr<GameclientMessage> message, const QByteArray& wire);
+    /// Host: a client message built outside the queue's typed slots.
+    void enqueueClient(std::unique_ptr<GameclientMessage> message);
 
     /// The server message being dispatched, or the last one dispatched.
     const GameserverMessage* lastServerMessage() const { return m_lastGameserverMessage.get(); }
-    /// Host: the client message whose bytes clientMessageEnqueued is handing on;
-    /// null outside that signal.
-    const GameclientMessage* clientMessageBeingSent() const { return m_clientMessageBeingSent.get(); }
 
     int clientCount() const { return m_clientCount; }
 
@@ -608,10 +604,8 @@ Q_SIGNALS:
     // </gen_dispatch.py: server message signals>
     void clientMessageReadyToProcess(std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage);
 
-    // Host side: qtclient's handlers still pick server messages by opcode, and the
-    // connection writes the client wire bytes the translator produced.
+    // Host side: qtclient's handlers still pick server messages by opcode.
     void serverMessageEnqueued(int opcode);
-    void clientMessageEnqueued(int opcode, const QByteArray& wire);
 
 public Q_SLOTS:
     /// The queue takes no game actions; game code sends through the typed slots below.
@@ -793,11 +787,10 @@ private:
     void registerServerMessages();
     template <typename TExtension, typename TMessage>
     void registerServerMessage(const TExtension& extension, void (TProtocolMessageQueue::*signal)(const TMessage&));
-    void enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message, const QByteArray& wire);
     void dispatchGameserverMessage(const std::shared_ptr<GameserverMessage>& message);
 
     std::deque<std::shared_ptr<GameserverMessage>> m_gameserverMessages;
-    std::deque<std::pair<std::shared_ptr<GameclientMessage>, QByteArray>> m_gameclientMessages;
+    std::deque<std::shared_ptr<GameclientMessage>> m_gameclientMessages;
     QTimer m_gameserverMessageTimer;
     QTimer m_gameclientMessageTimer;
     std::shared_ptr<TProtocolMessageQueueConfiguration> m_configuration;
@@ -806,7 +799,6 @@ private:
     std::unordered_map<int, std::function<void(const GameserverMessage&)>> m_gameserverMessageHandlers;
 
     std::shared_ptr<GameserverMessage> m_lastGameserverMessage;
-    std::shared_ptr<GameclientMessage> m_clientMessageBeingSent;
     int m_clientCount = 0;
 };
 

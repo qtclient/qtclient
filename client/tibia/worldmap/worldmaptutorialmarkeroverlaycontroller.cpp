@@ -1,7 +1,10 @@
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "qmlcomponents/tutorialhelper.h"
-#include "renderer/worldmaprenderprovider.h"
+#include "renderer/worldmapcamera.h"
+#include "worldmap/coordinates.h"
+#include "worldmap/worldmapviewport.h"
 
 #include <client/position.h>
 
@@ -29,45 +32,47 @@ TWorldMapTutorialMarkerOverlayController* TWorldMapTutorialMarkerOverlayControll
     return s_instance;
 }
 
-void TWorldMapTutorialMarkerOverlayController::setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider)
+void TWorldMapTutorialMarkerOverlayController::setSession(const std::shared_ptr<game::IGameSession>& session)
 {
-    if (m_provider == provider)
+    // Host: the map window has no frame tick that updates the overlay; the
+    // camera's change stands for it.
+    if (m_camera)
+        disconnect(m_camera.get(), nullptr, this, nullptr);
+    const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
+    if (!base) {
+        m_viewport.reset();
+        m_camera.reset();
+        update();
         return;
-    if (m_provider)
-        disconnect(m_provider, nullptr, this, nullptr);
-    m_provider = provider;
-    if (m_provider) {
-        connect(m_provider, &qmlcomponents::TWorldMapRenderProvider::overlaysAdvanced, this,
+    }
+    m_viewport = base->worldMapViewport();
+    m_camera = base->worldMapCamera();
+    if (m_camera) {
+        connect(m_camera.get(), &renderer::TWorldMapCamera::cameraViewportChanged, this,
                 &TWorldMapTutorialMarkerOverlayController::update);
     }
 }
 
-QPoint TWorldMapTutorialMarkerOverlayController::overlayPosFor(const Position& field) const
-{
-    if (!m_provider || !field.isValid())
-        return {};
-    const auto& frame = m_provider->frame();
-    if (!frame.valid)
-        return {};
-    const QPoint mapPixel = m_provider->mapPixelOf(field);
-    return QPoint(mapPixel.x() - frame.camera.x(), mapPixel.y() - frame.camera.y());
-}
-
 void TWorldMapTutorialMarkerOverlayController::update()
 {
-    if (!m_overlay || !m_provider)
+    if (!m_viewport || !m_camera)
         return;
+    const qreal size = static_cast<qreal>(m_camera->scaleFactor()) * 32.0;
     for (const auto& [markerId, field] : m_markerFields) {
+        const QPoint projected =
+            TWorldMapSubfieldCoordinate::fromField(TWorldMapCoordinate(field), 0, 0).projectedToLayer(0);
+        const QPointF position = m_camera->matrix().map(QPointF(projected));
         QPointer<qmlcomponents::TTutorialMarkerQuickItem>& item = m_markerItems[markerId];
         if (!item) {
+            if (!m_overlay)
+                continue;
             item = new qmlcomponents::TTutorialMarkerQuickItem(m_overlay);
-            item->setWidth(32);
-            item->setHeight(32);
             item->setMarkerID(markerId);
             item->setZ(999);
             item->setVisible(true);
         }
-        item->setPosition(overlayPosFor(field));
+        item->setPosition(position);
+        item->setSize(QSizeF(size, size));
     }
 }
 

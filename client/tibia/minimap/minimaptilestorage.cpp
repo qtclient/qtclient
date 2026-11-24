@@ -120,11 +120,32 @@ void TMinimapTileStorage::setField(const Position& coord, const TMinimapFieldDat
 {
     const Position id = TMinimapTile::idOf(coord);
     ensureLoaded(id).setField(coord, field.color, field.cost, field.blocked);
-    // The planner reads a blocked field as impassable.
-    m_waypointSectors.setCost(coord, field.blocked ? 0xff : field.cost);
+    // The planner reads a field to avoid and a blocked field as impassable.
+    uint8_t cost = field.cost;
+    if (field.avoid) {
+        m_avoidedFields.insert(worldmap::TWorldMapCoordinate(coord));
+        cost = 0xff;
+    } else {
+        m_avoidedFields.erase(worldmap::TWorldMapCoordinate(coord));
+        if (field.blocked)
+            cost = 0xff;
+    }
+    m_waypointSectors.setCost(coord, cost);
     m_changed.insert(coordinateKey(id));
     if (!m_notifyTimer.isActive())
         m_notifyTimer.start();
+}
+
+void TMinimapTileStorage::removeUnknownAvoidedFields()
+{
+    if (!m_world)
+        return;
+    for (auto it = m_avoidedFields.begin(); it != m_avoidedFields.end();) {
+        if (m_world->isKnown(it->toPosition()))
+            ++it;
+        else
+            it = m_avoidedFields.erase(it);
+    }
 }
 
 TMinimapTile& TMinimapTileStorage::ensureLoaded(const Position& id)
@@ -148,6 +169,36 @@ void TMinimapTileStorage::createTile(const Position& id)
 {
     m_tiles[coordinateKey(id)] = std::make_shared<TMinimapTile>(id);
     Q_EMIT startLoadingMinimapTileFromDisk(id);
+}
+
+void TMinimapTileStorage::reloadTiles(const Position& from, const Position& to)
+{
+    // The tile origins from `from`'s tile up to the first one past `to`.
+    const auto origins = [](const int first, const int last) {
+        std::set<int> values;
+        if (first > last + TMinimapTile::Size)
+            return values;
+        int value = first;
+        bool more = true;
+        while (more) {
+            values.insert(value);
+            more = value <= last;
+            value += TMinimapTile::Size;
+        }
+        return values;
+    };
+    const Position first = TMinimapTile::idOf(from);
+    const std::set<int> xs = origins(first.x, to.x);
+    const std::set<int> ys = origins(first.y, to.y);
+    std::vector<Position> ids;
+    for (const int x : xs) {
+        for (const int y : ys)
+            ids.emplace_back(x, y, from.z);
+    }
+    m_changed.clear();
+    m_tiles.clear();
+    for (const Position& id : ids)
+        createTile(TMinimapTile::idOf(id));
 }
 
 TMinimapTilePtr TMinimapTileStorage::tileAt(const Position& coord) const

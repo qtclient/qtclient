@@ -110,6 +110,14 @@ QColor TColorHelperQmlService::createColorFromName(const QString& Name)
     return QColor::fromString(Name);
 }
 
+TAppearanceTypeHelperQmlService* TAppearanceTypeHelperQmlService::instance()
+{
+    static TAppearanceTypeHelperQmlService* service = nullptr;
+    if (!service)
+        service = new TAppearanceTypeHelperQmlService();
+    return service;
+}
+
 QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeNameForID(const int ID)
 {
     if (TAppearanceType* type = objectType(ID))

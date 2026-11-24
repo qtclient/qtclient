@@ -38,9 +38,6 @@ constexpr int BestiaryProgressCompleted = 4;
 /// The level whose level up also shows the promotion hint.
 constexpr int PromotionHintLevel = 20;
 
-/// The chat message mode of the info texts.
-constexpr int InfoTextMessageMode = 30;
-
 /// The screenshot is taken this long after the event.
 constexpr std::chrono::milliseconds AutomaticScreenshotDelay(100);
 
@@ -232,8 +229,7 @@ void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMe
         });
     }
     if (!text.isEmpty()) {
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(
-            input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(InfoTextMessageMode)));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(text));
     }
 }
 

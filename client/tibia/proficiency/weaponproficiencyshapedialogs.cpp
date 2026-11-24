@@ -559,7 +559,7 @@ void TWeaponProficiencyShapeOptionsDialogController::handleGameAction(
     if (profession < 1 || profession > 5)
         return;
     std::vector<TProficiencyPerk> perks;
-    for (const int index : shapeOptions(profession)) {
+    for (const int index : shapeOptions(profession, false)) {
         if (const std::optional<TProficiencyPerk> perk = shapePerk(index))
             perks.push_back(*perk);
     }

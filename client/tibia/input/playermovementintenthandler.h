@@ -32,6 +32,9 @@ class TCreatureStorage;
 namespace tibia::game {
 class TPlayerData;
 }
+namespace tibia::minimap {
+class TMinimapTileStorage;
+}
 namespace tibia::shared {
 class IClockService;
 }
@@ -59,10 +62,6 @@ public:
     /// Host inputs qtclient computes outside the session's objects.
     struct Environment
     {
-        /// Waypoint costs for one plan.
-        std::function<WaypointCost()> waypointCost;
-        /// Fields other creatures block.
-        std::function<std::vector<worldmap::TWorldMapCoordinate>()> blockedFields;
         /// Whether the client is aware of the field (the world map session state).
         std::function<bool(const worldmap::TWorldMapCoordinate&)> isInView;
         /// qtclient pack extension, not CipSoft: a map target (no entering an unwalkable goal)
@@ -86,11 +85,16 @@ public:
                                  std::shared_ptr<game::TPlayerData> pPlayerData, Environment environment,
                                  QObject* parent = nullptr);
 
+    /// CIP v12: the minimap tile storage the planner reads (its waypoint costs
+    /// and the fields to avoid); the session hands it over.
+    void setMinimapTileStorage(std::shared_ptr<minimap::TMinimapTileStorage> pMinimapTileStorage);
+
     /// CIP v16: the player's new movement intent. A target coordinate plans a
-    /// path there; a direction is held: it steps now and repeats until another
-    /// intent (after a turn the turn's direction counts as held); a rotation
-    /// turns the player; a stop ends the held direction. Without a player the
-    /// intent kept for the next one is a stop.
+    /// path there (after the tile storage dropped the avoided fields the world
+    /// no longer knows); a direction is held: it steps now and repeats until
+    /// another intent (after a turn the turn's direction counts as held); a
+    /// rotation turns the player; a stop ends the held direction. Without a
+    /// tile storage the intent kept for the next one is a stop.
     void handleMovementIntent(const TMovementIntentPtr& intent);
     /// One step in `direction`.
     void step(creatures::EMovementDirection direction);
@@ -172,6 +176,8 @@ private:
     Environment m_env;
     /// +0x90: the player's creature (setPlayer).
     std::shared_ptr<creatures::TCreature> m_player;
+    /// +0xb0: the minimap tile storage (setMinimapTileStorage).
+    std::shared_ptr<minimap::TMinimapTileStorage> m_pMinimapTileStorage;
     std::optional<worldmap::TWorldMapCoordinate> m_goal;
     bool m_enterUnwalkableGoal = false;
     bool m_allowDiagonalStep = false;

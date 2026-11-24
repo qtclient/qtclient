@@ -35,7 +35,8 @@ struct TSoundBuffer
     bool empty() const { return !samples || samples->empty(); }
 };
 
-/// Decodes an Ogg Vorbis file in memory (CIP: sf::SoundBuffer::loadFromMemory).
+/// Decodes an Ogg Vorbis file in memory (CIP: sf::SoundBuffer::loadFromMemory)
+/// into raw samples: the decoded samples, their sample rate and channel count.
 std::optional<TRawSoundSamples> decodeSoundData(const QByteArray& data);
 
 /// One playing voice (CIP: sf::Sound for a buffer, sf::Music for a stream).

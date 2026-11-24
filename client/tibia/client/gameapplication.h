@@ -33,6 +33,7 @@ namespace client {
 
 class TGameClient;
 class TPreventCloseEventFilter;
+class TTranslationLoader;
 
 /// CIP client::TGameApplicationBase: the process's application with what the
 /// client shares for the whole run: the QML engine, the file system helper
@@ -40,18 +41,23 @@ class TPreventCloseEventFilter;
 ///
 /// Host: CipSoft's base is a QApplication; qtclient's tip has no Qt Widgets,
 /// so it is a QGuiApplication. The QML engine is app::createEngine's (handed
-/// over with setQmlEngine) and the translations are app::installTranslations.
+/// over with setQmlEngine).
 class TGameApplicationBase : public QGuiApplication
 {
     Q_OBJECT
 public:
-    /// CIP: the application on the command line, with the file system helper
-    /// and the client settings (config.ini) it opens; Direct3D's vblank thread
+    /// CIP: the application on the command line, with the file system helper,
+    /// the client settings (config.ini) it opens and the translation loader
+    /// (nothing loaded yet); Direct3D's vblank thread
     /// is turned off unless the environment says otherwise. The client options
     /// come with initialize. Host: the client settings are also installed for
     /// config::clientSetting* (callers without a path to the application).
     TGameApplicationBase(int& argc, char** argv);
     ~TGameApplicationBase() override;
+
+    /// CIP: the step main takes right before the application is made. It does
+    /// nothing in the pinned macOS build (a platform step of other builds).
+    static void prepareProcess();
 
     /// CIP: the process setup once the application exists and before any
     /// window: Quick Controls style, the client options, the GPU blacklist,
@@ -79,12 +85,15 @@ public:
     const std::shared_ptr<config::TTibiaConfig>& tibiaConfig() const { return m_pTibiaConfig; }
     /// Host: qtclient's client options are the process-wide config object.
     config::TClientOptions* clientOptions() const { return m_pClientOptions; }
+    /// CIP: the application's translation (made with the file system helper).
+    TTranslationLoader* translationLoader() const { return m_pTranslationLoader.get(); }
 
 protected:
     std::unique_ptr<QQmlEngine> m_pEngine;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_pTibiaFileSystemHelper;
     std::shared_ptr<config::TTibiaConfig> m_pTibiaConfig;
     config::TClientOptions* m_pClientOptions = nullptr;
+    std::unique_ptr<TTranslationLoader> m_pTranslationLoader;
 };
 
 /// CIP client::TGameApplication: the application that shows the client
@@ -117,7 +126,8 @@ public:
     /// the client options' save errors), the client options saved once, and
     /// the command line.
     void initialize() override;
-    /// CIP: the default locale and clientwindow.qml in the QML engine; the
+    /// CIP: the default locale, the translation (a warning when it does not
+    /// load) and clientwindow.qml in the QML engine; the
     /// window's content item is the `clientRootQmlObject` context property,
     /// its colour the client's dark blue; then the window is connected and
     /// the game client is made in it. Host: `HostWindowSetup` runs qtclient's

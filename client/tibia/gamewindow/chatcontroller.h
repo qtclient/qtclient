@@ -307,13 +307,9 @@ public:
     int chatMode() const override { return m_mode.chatMode(); }
     /// The chat's mode manager (the action bars follow its chat mode).
     chat::TChatModeManager& chatModeManager() { return m_mode; }
-    /// The white/blacklist dialog the chat opens.
-    TWhiteBlacklistDialogController& whiteBlacklistDialog() { return m_whiteBlacklistDialog; }
 
     /// The current session's channels, or null.
     chat::TChatChannelStorage* storage() const { return m_chatChannelStorage.get(); }
-    /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
-    chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
     /// CIP connector: the open channels are stored and the tabs, the input
     /// and the dialogs are cleared; then the tabs show `GameSession`'s
     /// channels, and its login opens the channels from the options.
@@ -429,7 +425,6 @@ private:
     void showRecentlyTraded(const QString& name);
 
     QPointer<QQuickItem> m_chatItem;
-    chat::TWhiteBlacklist m_blacklist;
     /// The current session's channels' actions (made by the connector).
     std::shared_ptr<chat::TChatGameActionProvider> m_actionProvider;
     chat::TChatModeManager m_mode;
@@ -446,7 +441,6 @@ private:
     TChatChannelTabController m_tabs;
     TOpenChatChannelDialogController m_openDialog;
     input::TGameActionMapper m_mapper;
-    TWhiteBlacklistDialogController m_whiteBlacklistDialog;
     TGenericEnterTextDialogController m_inviteDialog;
     TGenericEnterTextDialogController m_excludeDialog;
     /// CIP +0x438: "recently traded" and the account data warning.

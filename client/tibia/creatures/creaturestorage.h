@@ -187,6 +187,14 @@ public:
     const Outfit& outfit() const { return m_outfit; }
     const Position& position() const { return m_position; }
     appearances::TAppearanceInstancePtr outfitAppearance() const { return m_outfitAppearance; }
+    /// Replaces the outfit instance; on a change the outfit and the mount draw
+    /// the creature's look again.
+    void setOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance);
+    /// The mount drawn under the creature while it rides (kept while dismounted).
+    std::shared_ptr<appearances::TOutfitAppearanceInstance> mountAppearance() const { return m_mountAppearance; }
+    /// Replaces the mount instance; on a change the outfit and the mount draw
+    /// the creature's look again.
+    void setMountAppearance(const std::shared_ptr<appearances::TOutfitAppearanceInstance>& appearance);
     uint8_t direction() const { return m_direction; }
     uint16_t speed() const { return m_speed; }
     Light light() const { return m_light; }
@@ -230,12 +238,15 @@ public:
     /// The look of the last step: each step turns from it, while a turn from
     /// the server changes only the look (`patternX`).
     uint8_t movementLook() const { return m_movementLook; }
+    /// The look the moving sprites draw; the outfit and the mount follow it.
+    void setMovementLook(uint8_t look);
     /// The outfit's pattern depth: the mounted sprites while riding.
     uint8_t patternZ() const { return m_mounted ? 1 : 0; }
     /// The creature rides its mount: the outfit shows its mounted sprites and
     /// the mount is drawn under it.
     bool isMounted() const { return m_mounted; }
-    void setMounted(bool mounted) { m_mounted = mounted; }
+    /// The outfit shows its mounted sprites; the mount keeps its own.
+    void setMounted(bool mounted);
     /// The outfit's / the mount's phase to draw: the walking cycle while the
     /// moving sprites show, the standing sequence's phase otherwise.
     uint16_t animationPhase() const;
@@ -329,8 +340,9 @@ Q_SIGNALS:
 
 private:
     void rebuildOutfitAppearance();
-    /// The outfit instance draws the creature's direction, movement look and mount.
-    void updateOutfitPatterns();
+    /// The outfit draws the creature's look, movement look and mounted sprites;
+    /// the mount draws the looks without a mount of its own.
+    void updateOutfitPatterns(bool force);
     static QColor informationColorForHealthPercent(uint8_t healthPercent);
     void restartWalkAnimators();
     void refreshWalkAnimators();
@@ -362,6 +374,7 @@ private:
     Position m_position;
     std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance> m_placeholderAppearance;
     appearances::TAppearanceInstancePtr m_outfitAppearance;
+    std::shared_ptr<appearances::TOutfitAppearanceInstance> m_mountAppearance;
     uint8_t m_direction{ 2 };
     uint16_t m_speed{ 0 };
     Light m_light{ 0, 2 };

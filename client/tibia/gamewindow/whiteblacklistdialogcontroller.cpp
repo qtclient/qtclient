@@ -16,9 +16,11 @@ const QString NewEntryName = QStringLiteral("new entry");
 
 }
 
-TWhiteBlacklistDialogController::TWhiteBlacklistDialogController(chat::TWhiteBlacklist& lists, QObject* parent)
-    : TDialogController(QStringLiteral("WhiteBlacklistDialog.qml"), parent)
-    , m_lists(lists)
+TWhiteBlacklistDialogController::TWhiteBlacklistDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                                                 std::shared_ptr<chat::TWhiteBlacklist> WhiteBlacklist,
+                                                                 QObject* parent)
+    : TDialogController(QStringLiteral("WhiteBlacklistDialog.qml"), Engine, DialogParentItem, parent)
+    , m_lists(std::move(WhiteBlacklist))
 {
     m_blacklistActive = true;
     m_whitelistActive = true;
@@ -38,11 +40,11 @@ void TWhiteBlacklistDialogController::handleGameAction(const input::IGameAction&
 
 void TWhiteBlacklistDialogController::open()
 {
-    m_blacklistActive = m_lists.blacklistActive();
-    m_whitelistActive = m_lists.whitelistActive();
-    m_ignoreYelling = m_lists.ignoreYelling();
-    m_ignorePrivateMessages = m_lists.ignorePrivateMessages();
-    m_allowVips = m_lists.allowVips();
+    m_blacklistActive = m_lists->blacklistActive();
+    m_whitelistActive = m_lists->whitelistActive();
+    m_ignoreYelling = m_lists->ignoreYelling();
+    m_ignorePrivateMessages = m_lists->ignorePrivateMessages();
+    m_allowVips = m_lists->allowVips();
     Q_EMIT displayDataChanged();
     dialog()->create();
     fill(m_blacklistEntries, true);
@@ -53,7 +55,7 @@ void TWhiteBlacklistDialogController::open()
 void TWhiteBlacklistDialogController::fill(Entries& entries, const bool blacklist)
 {
     clear(entries);
-    for (const auto& entry : blacklist ? m_lists.blacklist() : m_lists.whitelist()) {
+    for (const auto& entry : blacklist ? m_lists->blacklist() : m_lists->whitelist()) {
         auto* item = new QmlEntry;
         item->setName(entry.name);
         item->setPermanently(entry.permanently);
@@ -117,7 +119,7 @@ void TWhiteBlacklistDialogController::removeEntryAtIndexFromWhitelist(const int 
 
 void TWhiteBlacklistDialogController::onOkClicked()
 {
-    m_lists.setFlags(m_blacklistActive, m_whitelistActive, m_ignoreYelling, m_ignorePrivateMessages, m_allowVips);
+    m_lists->setFlags(m_blacklistActive, m_whitelistActive, m_ignoreYelling, m_ignorePrivateMessages, m_allowVips);
     const auto collect = [](const Entries& entries) {
         chat::TWhiteBlacklist::Entries result;
         for (QObject* object : entries) {
@@ -127,7 +129,7 @@ void TWhiteBlacklistDialogController::onOkClicked()
         }
         return result;
     };
-    m_lists.setLists(collect(m_whitelistEntries), collect(m_blacklistEntries));
+    m_lists->setLists(collect(m_whitelistEntries), collect(m_blacklistEntries));
     close();
 }
 

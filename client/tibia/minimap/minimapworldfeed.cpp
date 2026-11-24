@@ -69,6 +69,9 @@ TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
         const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
         return type && type->getCategory() != ThingCategoryCreature && type->isNotWalkable();
     });
+
+    // A walk state other than free, an object to avoid or a creature.
+    data.avoid = tile->walkState() != 0 || !tile->isPathable() || tile->hasCreatures();
     return data;
 }
 

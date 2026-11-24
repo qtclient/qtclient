@@ -1079,13 +1079,36 @@ worldmap::TWorldMapSubfieldExtent TShowOffSocketAppearanceInstance::figureDispla
     return { standing.width, standing.height, elevation() };
 }
 
-worldmap::TWorldMapSubfieldExtent TShowOffSocketAppearanceInstance::figureRenderDisplacement() const
+void TObjectAppearanceInstance::appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate,
+                                                  renderer::TRenderInfoList& infos) const
+{
+    infos.push_back({ .type = m_type, .spriteInfo = currentSpriteInfo(), .coordinate = coordinate,
+                      .displacement = displacement(), .movementOffset = movementOffset(),
+                      .kind = renderer::TRenderInfo::Self, .isCreature = isCreature() });
+}
+
+void TShowOffSocketAppearanceInstance::appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate,
+                                                         renderer::TRenderInfoList& infos) const
 {
     int socketElevation = 0;
-    if (m_visible)
+    if (m_visible) {
+        TObjectAppearanceInstance::appendRenderInfos(coordinate, infos);
         socketElevation = thingType() ? thingType()->getElevation() : 0;
-    const worldmap::TWorldMapSubfieldExtent figure = figureDisplacement();
-    return { figure.width - socketElevation, figure.height - socketElevation, figure.depth };
+    }
+    const worldmap::TWorldMapSubfieldExtent standing = figureDisplacement();
+    // The socket's elevation lifts the figure (added to its displacement).
+    const worldmap::TWorldMapSubfieldExtent figure(standing.width + socketElevation, standing.height + socketElevation,
+                                                   standing.depth);
+    if (m_mount) {
+        infos.push_back({ .type = m_type, .spriteInfo = m_mount->idleSpriteInfo(), .coordinate = coordinate,
+                          .displacement = figure, .movementOffset = worldmap::TWorldMapSubfieldExtent(0, 0, 0),
+                          .kind = renderer::TRenderInfo::FigureMount, .isCreature = false });
+    }
+    if (m_outfit) {
+        infos.push_back({ .type = m_type, .spriteInfo = m_outfit->idleSpriteInfo(), .coordinate = coordinate,
+                          .displacement = figure, .movementOffset = worldmap::TWorldMapSubfieldExtent(0, 0, 0),
+                          .kind = renderer::TRenderInfo::FigureOutfit, .isCreature = false });
+    }
 }
 
 }

@@ -7,6 +7,9 @@
 
 #include <memory>
 
+namespace tibia::effects {
+class TEffectGameActionHandler;
+}
 namespace tibia::tutorial {
 class TSessiondumpHints;
 class TSessiondumpHintsProcessor;
@@ -40,6 +43,11 @@ public:
     /// hints URL) for the hints processor.
     void startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry) override;
 
+protected:
+    /// The base's game action providers and handlers, then the effect game
+    /// action handler (the tutorial's effects on the map), fed by the router.
+    void createGameActionProvidersAndHandlers() override;
+
 public Q_SLOTS:
     /// Publishes CHANGE_TUTORIAL_MODE_ENABLED (off).
     virtual void onDisconnected();
@@ -49,6 +57,9 @@ protected Q_SLOTS:
     /// announce the player paused and are processed; with none due the player
     /// resumes. Then the sessiondump session's tick.
     void onSessiondumpTimerElapsed() override;
+    /// The player's basic data arrived: the player's creature gets the
+    /// tutorial character's name and its (male or female) tutorial outfit.
+    void onPlayerDataBasicReceived();
 
 private:
     std::shared_ptr<const TTutorialSessiondumpGameSessionMetaInfo> m_tutorialMetaInfo;
@@ -56,6 +67,7 @@ private:
     std::shared_ptr<tutorial::TSessiondumpHints> m_sessiondumpHints;
     std::shared_ptr<tutorial::TTutorialProgressUploader> m_tutorialProgressUploader;
     std::shared_ptr<tutorial::TTutorialSessiondumpGameActionHandler> m_tutorialSessiondumpGameActionHandler;
+    std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
 };
 
 }

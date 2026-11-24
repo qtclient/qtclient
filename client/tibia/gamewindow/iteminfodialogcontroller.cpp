@@ -627,8 +627,12 @@ void TItemInfoDialogController::requestItemTracking(const bool TrackItem)
 void TItemInfoDialogController::requestItemBlackWhitelisting(const bool BlackWhitelistItem)
 {
     // The storage's list change tells QML.
-    if (m_typeId != 0 && lootBlackWhitelist())
-        lootBlackWhitelist()->setListed(m_typeId, BlackWhitelistItem);
+    if (m_typeId != 0 && lootBlackWhitelist()) {
+        if (BlackWhitelistItem)
+            lootBlackWhitelist()->addItem(static_cast<uint16_t>(m_typeId));
+        else
+            lootBlackWhitelist()->removeItem(static_cast<uint16_t>(m_typeId));
+    }
 }
 
 void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()

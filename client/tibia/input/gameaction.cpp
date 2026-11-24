@@ -124,6 +124,11 @@ std::shared_ptr<TGameActionOpenNewsDialog> TGameActionOpenNewsDialog::withCatego
     return action;
 }
 
+TGameActionAddTextMessage::TGameActionAddTextMessage(QString text)
+    : TGameActionAddTextMessage(EGameAction::ADD_SYSTEM_CHAT_MESSAGE, std::move(text), chat::consoleColor(30))
+{
+}
+
 namespace gameactions {
 
 std::optional<bool> TGameActionSoundTrigger::pauseLoopingSounds() const

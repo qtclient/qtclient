@@ -73,15 +73,26 @@ constexpr std::pair<int, const char*> WidgetTypeNames[] = {
 }
 
 TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TContainerStorageController* containers,
-                                               QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                               std::shared_ptr<input::TGameActionMapper> gameActionMapper,
+                                               input::TEventFilterManager* eventFilterManager, config::TClientOptions* clientOptions,
+                                               std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                               std::shared_ptr<news::TNewsStorage> newsStorage,
+                                               spells::TSpellInfoStorage* spellInfoStorage, QQuickItem* dialogParentItem,
                                                analysers::TAnalyserStorages* analyserStorages, QObject* parent)
     : cip::tibia::gamewindow::TSidebarWidgetsManager(parent)
     , m_sidebars(sidebars)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
     , m_containers(containers)
-    , m_battleLists(std::make_unique<TBattleListControllerStorage>(sidebars, gameWindowItem, engine))
+    , m_pGameActionMapper(std::move(gameActionMapper))
+    , m_eventFilterManager(eventFilterManager)
+    , m_pClientOptions(clientOptions)
+    , m_pFileSystemHelper(std::move(fileSystemHelper))
+    , m_newsStorage(std::move(newsStorage))
+    , m_spellInfoStorage(spellInfoStorage)
+    , m_dialogParentItem(dialogParentItem)
+    , m_battleLists(std::make_unique<TBattleListControllerStorage>(sidebars, dialogParentItem, sidebars->engine()))
 {
+    QQmlEngine* const engine = sidebars->engine();
+    QQuickItem* const gameWindowItem = dialogParentItem;
     // CIP sidebar base carriers.
     new TSidebarWidgetControllerBase(gameWindowItem, engine, this);
     new TSidebarWidgetControllerWithFocusHandling(gameWindowItem, engine, this);
@@ -101,7 +112,7 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TConta
 
     registerWidget(Skills, { [this]() -> TSidebarWidget* {
                                 if (!m_skills) {
-                                    m_skills = new TSkillsWidgetController(m_gameWindowItem, m_engine);
+                                    m_skills = new TSkillsWidgetController(m_dialogParentItem, m_sidebars->engine());
                                     connect(m_skills, &TSkillsWidgetController::publishGameAction, this,
                                             &TSidebarWidgetsManager::publishGameAction);
                                     m_skills->connectToGameSession(m_gameSession);
@@ -282,7 +293,7 @@ void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IG
 void TSidebarWidgetsManager::onPlayerTradeWidgetOpenRequest()
 {
     onPlayerTradeWidgetCloseRequest();
-    m_playerTrade = new TPlayerTradeController(m_gameWindowItem, m_engine);
+    m_playerTrade = new TPlayerTradeController(m_dialogParentItem, m_sidebars->engine());
     connect(m_playerTrade, &TPlayerTradeController::widgetClosed, this, &TSidebarWidgetsManager::onPlayerTradeWidgetCloseRequest,
             Qt::QueuedConnection);
     connect(m_playerTrade, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::publishGameAction, this,
@@ -312,7 +323,7 @@ void TSidebarWidgetsManager::onDepotSearchWidgetOpenRequest()
 {
     if (m_depotSearch)
         return;
-    m_depotSearch = new TDepotSearchWidgetController(m_gameWindowItem, m_engine);
+    m_depotSearch = new TDepotSearchWidgetController(m_dialogParentItem, m_sidebars->engine());
     connect(m_depotSearch, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
             &TSidebarWidgetsManager::onDepotSearchWidgetCloseRequest, Qt::QueuedConnection);
     connect(m_depotSearch, &TDepotSearchWidgetController::publishGameAction, this, &TSidebarWidgetsManager::publishGameAction);
@@ -649,9 +660,18 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
     const auto savedCount = static_cast<int>(saved.openWidgetsOrderPerSidebar.size());
     const int wanted = std::max(1, savedCount);
     // qtclient: a pack layout that does not put the sidebars beside the map
-    // (a phone sheet) states the width they get as `sidebarRestoreWidth`.
-    const qreal roomOverride = m_gameWindowItem ? m_gameWindowItem->property("sidebarRestoreWidth").toReal() : 0.0;
-    const qreal width = roomOverride > 0.0 ? roomOverride : (m_gameWindowItem ? m_gameWindowItem->width() : 0.0);
+    // (a phone sheet) states the width they get as the game window's
+    // `sidebarRestoreWidth` (an ancestor of the dialog parent item, which
+    // fills the game window's width).
+    qreal roomOverride = 0.0;
+    for (const QQuickItem* item = m_dialogParentItem; item; item = item->parentItem()) {
+        const QVariant restoreWidth = item->property("sidebarRestoreWidth");
+        if (restoreWidth.isValid()) {
+            roomOverride = restoreWidth.toReal();
+            break;
+        }
+    }
+    const qreal width = roomOverride > 0.0 ? roomOverride : (m_dialogParentItem ? m_dialogParentItem->width() : 0.0);
     const int total = (wanted * 176 + 240 <= width || width <= 0.0) ? wanted : 1;
     const int left = saved.leftSidebarCount < total ? saved.leftSidebarCount : 0;
     const int right = total - left;

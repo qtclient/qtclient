@@ -2,6 +2,7 @@
 
 #include "minimap/minimaptile.h"
 #include "minimap/waypointsectors.h"
+#include "worldmap/coordinates.h"
 
 #include <cip_gen.h>
 
@@ -24,6 +25,9 @@ struct TMinimapFieldData
     /// Ground speed, 0xfe without ground.
     uint8_t cost = 0xfe;
     bool blocked = true;
+    /// The planner keeps off the field: a creature or an object to avoid on
+    /// it, or a walk state other than free.
+    bool avoid = false;
 };
 
 /// The fields the client knows (CIP: the world storage the minimap reads).
@@ -43,9 +47,8 @@ public:
 /// The minimap tiles near the visible area and the player (CIP:
 /// TMinimapTileStorage, vtable). Fields of the player's floor are
 /// recorded as the server describes them; tiles leaving the area are written
-/// to disk and dropped. pathfinder avoid tiles live on mapsession (`setPathAvoid`); qtclient
-/// pathfinding reads Indexed8 waypoint costs via `TWaypointCosts` (CIP
-/// TWaypointCostMap) snapshotted into session pathfind (`newFindPath`).
+/// to disk and dropped. The player movement intent handler plans on its
+/// waypoint costs and its fields to avoid.
 class TMinimapTileStorage final : public cip::tibia::minimap::TMinimapTileStorage
 {
     Q_OBJECT
@@ -75,6 +78,10 @@ public:
     void loadTileContaining(const Position& coord);
     /// A tile not stored yet is created empty and asked for from disk.
     void loadTile(const Position& id);
+    /// Drops every stored tile (unsaved, its changes forgotten) and asks for
+    /// the tiles of `from`'s floor from `from` to one tile past `to` from disk
+    /// again (the minimap controller's answer to reloadVisibleMinimap).
+    void reloadTiles(const Position& from, const Position& to);
     const Tiles& tiles() const { return m_tiles; }
     TMinimapTilePtr tileAt(const Position& coord) const;
 
@@ -84,6 +91,10 @@ public:
     /// pair has no data, and is then read from disk again to merge the user's tile.
     void loadDefaultMinimapTilesFromResources(const QString& directory);
 
+    /// The fields the path planner keeps off (recorded by setField).
+    const std::set<worldmap::TWorldMapCoordinate>& avoidedFields() const { return m_avoidedFields; }
+    /// Drops the fields to avoid the world no longer knows.
+    void removeUnknownAvoidedFields();
     /// The waypoint costs of the stored tiles, per tile, as the path planner
     /// reads them.
     const TWaypointSectors& waypointSectors() const { return m_waypointSectors; }
@@ -106,6 +117,9 @@ Q_SIGNALS:
     void startSavingMinimapTileToDisk(const TMinimapTilePtr& tile);
     /// Batched per event loop turn.
     void minimapTileChanged(const TMinimapTilePtr& tile);
+    /// The tiles on disk were replaced (an options import): the visible
+    /// minimap reads them again.
+    void reloadVisibleMinimap();
 
 private:
     /// loadTile, then the stored tile.
@@ -120,6 +134,7 @@ private:
 
     const IMinimapWorld* m_world = nullptr;
     Tiles m_tiles;
+    std::set<worldmap::TWorldMapCoordinate> m_avoidedFields;
     std::set<uint64_t> m_changed;
     QTimer m_notifyTimer;
     TWaypointSectors m_waypointSectors;

@@ -42,6 +42,7 @@
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/targetselectioncontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/sidebarmanager.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/createaccountdialogcontroller.h"
 #include "gamewindow/createcharacterdialogcontroller.h"
@@ -116,6 +117,7 @@
 #include "systemsurvey/fpshistorycontroller.h"
 #include "systemsurvey/fpshistorytojsonconverter.h"
 #include "systemsurvey/fpshistoryuploader.h"
+#include "systemsurvey/slidingfpscounter.h"
 #include "controllers/characterselectioncontroller.h"
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
@@ -346,6 +348,7 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     : cip::tibia::client::TGameClient(parent)
     , ::tibia::client::TGameClientBase(Engine, std::move(TibiaFileSystemHelper), ClientOptions, std::move(TibiaConfig))
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
+    , m_pSlidingFPSCounter(std::make_shared<systemsurvey::TSlidingFPSCounter>(1000, shared::TClockService::process()))
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
     , m_sessiondumpCatalogLoader(std::move(DownloadPool))
 {
@@ -399,7 +402,6 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     network::ownProductSurface(this);
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
-    protocol::ownProductSurface(this);
     questlog::ownProductSurface(this);
     screenshot::ownProductSurface(this);
     spells::ownProductSurface(this);
@@ -423,12 +425,13 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
 
 
 
-    // CIP: . The frame itself is afterAnimating → tick → TNextFrameUpdater.
+    // CIP: the frame rate limit's timer and the timer of a window that shows
+    // no frames both prepare the next frame.
     m_frameLimitTimer.setTimerType(Qt::PreciseTimer);
     m_frameLimitTimer.setSingleShot(true);
-    connect(&m_frameLimitTimer, &QTimer::timeout, this, &TGameClient::tick);
+    connect(&m_frameLimitTimer, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
     m_idleTick.setSingleShot(true);
-    connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
+    connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
 }
 
 void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
@@ -732,14 +735,6 @@ chat::TTextStorage* TGameClient::textStorage() const
 effects::TEffectStorage* TGameClient::effectStorage() const
 {
     return activeSession() ? activeSession()->effectStorage().get() : nullptr;
-}
-
-void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
-{
-    m_messageIgnoreList = list;
-    // A game window made after the session: its lists reach the current one.
-    if (game::TGameSessionBase* session = activeSession())
-        session->setWhiteBlacklist(list);
 }
 
 void TGameClient::shutdown()
@@ -1243,10 +1238,14 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         return;
     if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
         linkGameActionRouters(*m_pGameActionRouter, *current);
-        current->setWhiteBlacklist(m_messageIgnoreList);
+        current->setWhiteBlacklist(m_pWhiteBlacklist.get());
+        // CIP: the session gets the client's minimap storages (session v14).
+        current->setMinimapStorages(minimapTileStorage(), minimapMarkerStorage(), cyclopediaMapStaticDataStorage());
     }
     setMinimapWorldmapProtocolHandler(worldmapProtocol());
     connectToCurrentGameSession();
+    connect(m_currentGameSession.get(), &game::IGameSession::playerCreatureAddedToCreatureStorage, this,
+            &TGameClient::onPlayerCreatureAddedToCreatureStorage);
     m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::disconnected);
     m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connectionError);
     m_gameSessionDisconnected.resetEmitCount();
@@ -1274,9 +1273,6 @@ void TGameClient::onWorldEntered()
 {
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
-    // Host: the connecting dialog has done its job once the world shows.
-    if (m_pConnectingDialogController)
-        m_pConnectingDialogController->dialog()->close();
     // The map handler keeps the minimap's floor and fields current.
     setMinimapWorldmapProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
@@ -1380,19 +1376,88 @@ void TGameClient::onWorldLeft()
 void TGameClient::setWindow(QQuickWindow* window)
 {
 
-    // CIP: .
-    connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
-    connect(window, &QQuickWindow::frameSwapped, this, [ring = m_frameDurations.get()] { ring->finish(); }, Qt::DirectConnection);
-    // CIP onRenderThreadFrameSwapped: every swapped frame starts a frame of the FPS counter.
-    connect(window, &QQuickWindow::frameSwapped, this, [this] {
-        if (m_fpsHistory)
-            m_fpsHistory->fpsCounter()->startNewFrame();
-    }, Qt::DirectConnection);
+    // CIP: the window's frames drive the client.
+    connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::onBeforeRenderFrameMainThread);
+    connect(window, &QQuickWindow::frameSwapped, this, &TGameClient::onRenderThreadFrameSwapped, Qt::DirectConnection);
+}
+
+void TGameClient::onRenderThreadFrameSwapped()
+{
+    // The render time ring has a lock of its own.
+    m_frameDurations->finish();
+    QMetaObject::invokeMethod(this, [this] {
+        if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
+            session->updatePlayerMovementIntentHandler();
+        screenshot::TScreenshotManager* screenshotManager = screenshot::TScreenshotManager::instance();
+        gamewindow::TGameWindowController* gameWindow = gameWindowController();
+        if (screenshotManager && gameWindow && gameWindow->gameWindowState() == QLatin1String("INGAME")
+            && screenshotManager->takeScreenshotIfEventIsWainting() && m_pFPSDropsLogger)
+            m_pFPSDropsLogger->resetFrameDurations();
+    }, Qt::QueuedConnection);
+}
+
+void TGameClient::wakeUpPlayerMovementIntentHandler()
+{
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
+        session->updatePlayerMovementIntentHandler();
+}
+
+void TGameClient::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<creatures::TCreature> pPlayer)
+{
+    if (gamewindow::TSidebarManager* sidebar = sidebarManager())
+        sidebar->emitCheckBounds();
+    const std::shared_ptr<creatures::TCreature> player = pPlayer.lock();
+    if (!player)
+        return;
+    gameActionRouter()->handleGameAction(std::make_shared<input::TGameActionTryToSwitchHotkeySet>(player->name(), false));
+    if (m_pFPSDropsLogger)
+        connect(player.get(), &creatures::TCreature::positionWasUpdated, m_pFPSDropsLogger.get(),
+                &game::FPSDropsLogger::setPlayerPosition, Qt::QueuedConnection);
+    QTimer::singleShot(0, this, [this] {
+        if (m_pConnectingDialogController)
+            m_pConnectingDialogController->dialog()->close();
+        if (gamewindow::TGameWindowController* gameWindow = gameWindowController())
+            gameWindow->showGameScreen();
+    });
+}
+
+void TGameClient::updateFrameStatistics()
+{
+    m_frameDurations->start();
+    m_pSlidingFPSCounter->startNewFrame();
+    if (m_fpsHistory)
+        m_fpsHistory->fpsCounter()->startNewFrame();
+    if (m_pFPSDropsLogger)
+        m_pFPSDropsLogger->addFrameDuration(m_pSlidingFPSCounter->lastFrameDuration());
+}
+
+void TGameClient::TDurationStatistics::add(const qint64 Duration)
+{
+    if (count == 0) {
+        average = Duration;
+        minimum = Duration;
+        maximum = Duration;
+        count = 1;
+        return;
+    }
+    average = static_cast<qint64>((static_cast<quint64>(average) * count + static_cast<quint64>(Duration)) / (count + 1));
+    if (Duration < minimum)
+        minimum = Duration;
+    if (maximum < Duration)
+        maximum = Duration;
+    ++count;
 }
 
 void TGameClient::initialize()
 {
     ::tibia::client::TGameClientBase::initialize();
+    // CIP: the client's white/blacklist.
+    m_pWhiteBlacklist = std::make_shared<chat::TWhiteBlacklist>(clientOptions());
+    m_pWhiteBlacklist->loadFromOptions();
+    // CIP: the marker game actions reach the client's marker storage.
+    m_pMinimapMarkerGameActionHandler = std::make_shared<minimap::TMinimapMarkerGameActionHandler>(minimapMarkerStorage());
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
+            m_pMinimapMarkerGameActionHandler.get(), &minimap::TMinimapMarkerGameActionHandler::handleGameAction);
     // CIP: the marker file is read once the minimap is up.
     minimapTileDiskIO()->loadMinimapMarkerFileContentFromDiskIfPossible();
     // CIP: the assets start loading once the client is initialized.
@@ -1429,31 +1494,42 @@ void TGameClient::onWindowSizeChanged()
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>(0, 0));
 }
 
-void TGameClient::tick()
+void TGameClient::onBeforeRenderFrameMainThread()
 {
-    // notifyCameraMove / QML during tween advance must not re-enter NFU: a nested
-    // tick would resumeRealTime while the outer advance still holds the predicted
-    // clock, collapsing DurationTween measurements and desyncing feet.
+    // Host: QML that runs during the next frame updater's advance must not
+    // re-enter it (a nested frame would resume the real-time movement clock
+    // while the outer advance still holds the predicted one).
     if (m_inTick)
         return;
     m_inTick = true;
 
+    // Host: the engine's network and dispatcher work.
     gamecore::poll();
-    updateWithTimestamp(static_cast<qint64>(shared::TClockService::frameMillis()));
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;
         return;
     }
+    qint64 start = gamecore::nowMicros();
 
-    // Shown one tick-to-swap time from now, on average over the last frames.
-    const qint64 offsetMicros = m_frameDurations->averageNs() / 1000;
-    m_frameDurations->start();
-    m_predictor->setOffset(offsetMicros);
-    beforeRenderFrameGameWindow();
-    if (m_started)
-        if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
-            session->onPrepareNextFrameToRender(m_predictor->predict());
+    // The next frame shows one render time from now (the mean of the last
+    // frames' render times).
+    const qint64 renderTimeMicros = m_frameDurations->averageNs() / 1000;
+    updateFrameStatistics();
+    m_predictor->setOffset(renderTimeMicros);
+    const qint64 nextFrameTimestamp = m_predictor->predict();
+    // Host: the appearance animations and sounds run on the frame clock.
+    updateWithTimestamp(static_cast<qint64>(shared::TClockService::frameMillis()));
+    auto* session = m_started ? dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()) : nullptr;
+    if (session) {
+        session->onPrepareNextFrameToRender(nextFrameTimestamp);
+        m_sessionFrameUpdateDurations.add(gamecore::nowMicros() - start);
+        session->updatePlayerMovementIntentHandler();
+        start = gamecore::nowMicros();
+        beforeRenderFrameGameWindow();
+        m_gameWindowFrameUpdateDurations.add(gamecore::nowMicros() - start);
+        session->updatePlayerMovementIntentHandler();
+    }
     m_inTick = false;
 }
 

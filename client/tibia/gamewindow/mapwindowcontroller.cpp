@@ -2,6 +2,7 @@
 #include "game/gamesessionbase.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "renderer/worldmaprenderprovider.h"
 #include <QQuickItem>
@@ -10,6 +11,7 @@
 #include "gamewindow/draganddropcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/lenshelpmanager.h"
 #include "qmlcomponents/numericaleffectoverlay.h"
 #include "qmlcomponents/speechbubbleoverlay.h"
 #include "renderer/lightmappainteditem.h"
@@ -109,11 +111,16 @@ constexpr A ContextMenuOrder[] = {
 
 }
 
-TMapWindowController::TMapWindowController(QQuickItem* pane, const bool softwareRenderer,
-                                           std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent)
+TMapWindowController::TMapWindowController(QQmlEngine* engine, QQuickItem* pane, config::TClientOptions* clientOptions,
+                                           std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                           qmlcomponents::TLenshelpManager* lenshelpManager, const bool softwareRenderer,
+                                           QObject* parent)
     : cip::tibia::gamewindow::TMapWindowController(parent)
+    , m_pEngine(engine)
     , m_pane(pane)
+    , m_pClientOptions(clientOptions)
     , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_pLenshelpManager(lenshelpManager)
     , m_softwareRenderer(softwareRenderer)
 {
     // The pane knows its controller; its items are found by objectName.
@@ -131,18 +138,15 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
             m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
     }
 
-    const QJsonObject options = app::ClientOptions::load().options();
-    m_highlightMouseTarget = options.value(QLatin1String("mouseHighlightTarget")).toBool(true);
     refreshClassicView();
     onMapWindowControllerOptionsChanged();
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            &TMapWindowController::onMapWindowControllerOptionsChanged);
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::mapWindowControllerOptionsChanged, this,
+                &TMapWindowController::onMapWindowControllerOptionsChanged);
+    // Host: the pack's classic / immersive view and the target highlight options.
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        const QJsonObject options = app::ClientOptions::load().options();
         if (name == QLatin1String("modImmersiveGameView") || name == QLatin1String("modClassicGameView"))
             refreshClassicView();
-        else if (name == QLatin1String("mouseHighlightTarget"))
-            m_highlightMouseTarget = options.value(name).toBool(true);
         else if (name == QLatin1String("gameWindowShowAttackAnimation") || name == QLatin1String("gameWindowShowTargetHighlight"))
             applyTargetHighlightOption();
     });
@@ -270,12 +274,15 @@ void TMapWindowController::syncFov()
 
 void TMapWindowController::onMapWindowControllerOptionsChanged()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    const bool showNumericalEffects = options.value(QLatin1String("gameWindowShowTextualEffects")).toBool(true);
-    const auto antialiasingMode = static_cast<cip::tibia::qmlcomponents::enums::EAntialiasingMode>(
-        options.value(QLatin1String("antialiasingMode")).toInt());
-    const bool scaleOnlyByEvenMultiples = options.value(QLatin1String("gameWindowScaleOnlyByEvenMultiples")).toBool();
-    const bool useLightMap = options.value(QLatin1String("lightEffectsEnabled")).toBool(true) && !m_softwareRenderer;
+    if (!m_pClientOptions)
+        return;
+    using config::EClientOption;
+    const bool showNumericalEffects = m_pClientOptions->boolOption(EClientOption::gameWindowShowTextualEffects);
+    const auto antialiasingMode =
+        static_cast<cip::tibia::qmlcomponents::enums::EAntialiasingMode>(m_pClientOptions->antialiasingMode());
+    const bool scaleOnlyByEvenMultiples = m_pClientOptions->boolOption(EClientOption::gameWindowScaleOnlyByEvenMultiples);
+    // The light map needs a hardware renderer.
+    const bool useLightMap = m_pClientOptions->boolOption(EClientOption::lightEffectsEnabled) && !m_softwareRenderer;
     if (showNumericalEffects == m_showNumericalEffects && antialiasingMode == m_antialiasingMode
         && scaleOnlyByEvenMultiples == m_mapWindowScaleOnlyByEvenMultiples && useLightMap == m_useLightMap)
         return;
@@ -613,9 +620,10 @@ void TMapWindowController::updateMouseTarget()
     }
 
     const QPoint mapPixel = toMapPixel(m_hoverPosition);
+    const bool highlightMouseTarget = m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::mouseHighlightTarget);
     // CIP v21 baseplate: field under the cursor whenever Highlight Mouse Target is on.
-    m_provider->setMouseHighlightEnabled(m_highlightMouseTarget);
-    if (m_highlightMouseTarget && m_provider->camera().isValid())
+    m_provider->setMouseHighlightEnabled(highlightMouseTarget);
+    if (highlightMouseTarget && m_provider->camera().isValid())
         m_provider->setMouseHighlightField(m_provider->fieldAt(mapPixel, m_provider->camera().z));
     else
         m_provider->clearMouseHighlightField();
@@ -624,7 +632,7 @@ void TMapWindowController::updateMouseTarget()
     // CIP : with mouseHighlightTarget on, the creature under the
     // mouse (none off creatures) is the temporarily selected one, like a
     // hovered battle-list entry.
-    if (m_highlightMouseTarget) {
+    if (highlightMouseTarget) {
         for (const input::IGameActionPtr& candidate : candidates) {
             if (candidate->gameActionType() == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
                 Q_EMIT publishGameAction(candidate);
@@ -640,20 +648,55 @@ void TMapWindowController::updateMouseTarget()
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
         m_provider->setMouseTargetObject(0, {}, -1);
         // Keep the baseplate field — empty tiles still show the square.
-        return;
+    } else {
+        // CipSoft map hover sets the layer shape from the mapped left-click action
+        // (cursorShapeOf → Crosshair for MOVE_OBJECT). mouseAnimatedCursor is owned
+        // by TMouseCursorController (static vs animated cursor frames), not here.
+        if (cursor)
+            cursor->setLayerShape(Cursor::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
+        const auto target = worldmap::TWorldMapGameActionProvider::mouseTargetOf(action);
+        if (target.creatureId)
+            m_provider->setMouseTargetCreatureId(target.creatureId);
+        else if (target)
+            m_provider->setMouseTargetObject(target.typeId, target.field, target.stackPos);
+        else
+            m_provider->setMouseTargetObject(0, {}, -1);
     }
-    // CipSoft map hover sets the layer shape from the mapped left-click action
-    // (cursorShapeOf → Crosshair for MOVE_OBJECT). mouseAnimatedCursor is owned
-    // by TMouseCursorController (static vs animated cursor frames), not here.
-    if (cursor)
-        cursor->setLayerShape(Cursor::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
-    const auto target = worldmap::TWorldMapGameActionProvider::mouseTargetOf(action);
-    if (target.creatureId)
-        m_provider->setMouseTargetCreatureId(target.creatureId);
-    else if (target)
-        m_provider->setMouseTargetObject(target.typeId, target.field, target.stackPos);
-    else
-        m_provider->setMouseTargetObject(0, {}, -1);
+    updateLenshelpAtMouseCursor(candidates);
+}
+
+void TMapWindowController::updateLenshelpAtMouseCursor(const input::TGameActionList& candidates)
+{
+    if (!m_gameSession)
+        return;
+    std::shared_ptr<const input::TGameActionShowLenshelp> show;
+    if (m_pLenshelpManager && m_pLenshelpManager->isEnabled()) {
+        for (const input::IGameActionPtr& candidate : candidates) {
+            if (candidate && candidate->gameActionType() == input::EGameAction::LENSHELP_SHOW) {
+                show = std::dynamic_pointer_cast<const input::TGameActionShowLenshelp>(candidate);
+                if (show)
+                    break;
+            }
+        }
+    }
+    const bool shown = show != nullptr;
+    if (shown) {
+        // The field's top-left in the map window, in scene coordinates, framed
+        // by 2 pixels on each side.
+        const qmlcomponents::TWorldMapRenderProvider::Frame& frame = m_provider->frame();
+        const double mapW = frame.visibleWidth * qmlcomponents::TWorldMapRenderProvider::FieldSize;
+        const double mapH = frame.visibleHeight * qmlcomponents::TWorldMapRenderProvider::FieldSize;
+        const qmlcomponents::MapCoverScale cover =
+            qmlcomponents::MapCoverScale::placed(m_mapWindow->width(), m_mapWindow->height(), mapW, mapH, frame.viewScale);
+        const QPoint pixel = m_provider->mapPixelOf(show->coordinate()) - frame.camera;
+        const QPointF scene = m_mapWindow->mapToScene(cover.toPaneRounded(pixel.x(), pixel.y()));
+        const double size = cover.scale * qmlcomponents::TWorldMapRenderProvider::FieldSize + 4.0;
+        const QRectF rect(scene.x() - 2.0, scene.y() - 2.0, size, size);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowLenshelp>(show->lensHelpId(), show->coordinate(), rect));
+    } else if (m_lenshelpShown) {
+        Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSimple>(input::EGameAction::LENSHELP_HIDE));
+    }
+    m_lenshelpShown = shown;
 }
 
 void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY, const int mouseButton, const int keyboardModifiers)
@@ -822,7 +865,7 @@ void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGam
         m_numericalEffects->setSources(provider, session ? session->numericalEffectRenderProvider() : nullptr,
                                        session ? session->renderVolumeProvider() : nullptr);
     if (m_tutorialMarkers)
-        m_tutorialMarkers->setRenderProvider(provider);
+        m_tutorialMarkers->setSession(GameSession);
     if (!session) {
         m_viewport = nullptr;
         m_actions.reset();

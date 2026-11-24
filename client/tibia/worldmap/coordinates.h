@@ -479,7 +479,14 @@ public:
     TWorldMapExtent size;
     TWorldMapExtent offset;
 
-    TWorldMapCentralPosition() = default;
+    /// Field (10, 8, 7) in an 18 × 14 area, 8 columns and 6 rows from its
+    /// top-left field.
+    TWorldMapCentralPosition()
+        : center(10, 8, 7)
+        , size(18, 14, 0)
+        , offset(8, 6, 0)
+    {
+    }
     TWorldMapCentralPosition(const TWorldMapCoordinate& center_, const TWorldMapExtent& size_, const TWorldMapExtent& offset_)
         : center(center_)
         , size(size_)
