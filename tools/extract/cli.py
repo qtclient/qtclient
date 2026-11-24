@@ -469,7 +469,7 @@ def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> No
     log(
         f"game tables → {dest} ({len(tables['spells.json'])} spells, "
         f"{len(tables['charms.json'])} charms, "
-        f"{len(tables['wheel.json']['supreme_mods'])} supreme gem mods)"
+        f"{len(tables.get('wheel.json', {}).get('supreme_mods', []))} supreme gem mods)"
     )
 
 

@@ -178,3 +178,32 @@ TEST(SkillWheelVessels, ActiveModsCountUnlockedVesselsOnly)
     EXPECT_DOUBLE_EQ(mods.basicStats[0].second, 2.0);
     EXPECT_EQ(mods.damageHealing, 1);
 }
+
+TEST(SkillWheelVessels, ActiveModsListEveryAugmentationOfTheSupremeMod)
+{
+    TWheel wheel;
+    wheel.vocation = 1;
+    wheel.points = vesselSlices(3); // vessel 2 holds greater gems
+    // Supreme mod 25 (Divine Dazzle) has two augmentations: type 10 (0, 1, 2, 2 by grade)
+    // and type 5 (1, 1, 1, 2).
+    ASSERT_TRUE(tibia::skillwheel::socketGem(wheel, gem(9, 2, 3, 4, 25), 2));
+
+    // Grade 0: the type 10 augmentation has no value there and is left out.
+    tibia::skillwheel::TGrades basic;
+    tibia::skillwheel::TGrades supreme;
+    auto mods = tibia::skillwheel::activeMods(wheel, basic, supreme);
+    ASSERT_EQ(mods.augmentations.size(), 1u);
+    EXPECT_EQ(mods.augmentations[0].augType, 5);
+    EXPECT_DOUBLE_EQ(mods.augmentations[0].value, 1.0);
+
+    // Grade 3: both, ordered by (mod, spell, type).
+    supreme[25] = 3;
+    mods = tibia::skillwheel::activeMods(wheel, basic, supreme);
+    ASSERT_EQ(mods.augmentations.size(), 2u);
+    EXPECT_EQ(mods.augmentations[0].spellId, 238);
+    EXPECT_EQ(mods.augmentations[0].augType, 5);
+    EXPECT_DOUBLE_EQ(mods.augmentations[0].value, 2.0);
+    EXPECT_EQ(mods.augmentations[1].augType, 10);
+    EXPECT_DOUBLE_EQ(mods.augmentations[1].value, 2.0);
+    EXPECT_EQ(mods.augmentations[1].count, 1);
+}

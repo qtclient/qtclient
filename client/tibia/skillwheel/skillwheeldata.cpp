@@ -14,6 +14,8 @@
 #include <stdexcept>
 #include <cmath>
 #include <optional>
+#include <span>
+#include <tuple>
 
 namespace tibia::skillwheel {
 
@@ -31,15 +33,25 @@ struct TBasicMod
     TBasicEffect effects[2];
 };
 
+/// One augmentation of a supreme mod: the spell it changes, how, and its value by grade.
 struct TSupremeAugmentation
 {
+    int mod;
     int spellId;
     int augType;
     double values[4];
-    bool valid;
 };
 
 #include "skillwheelmodtables.inc"
+
+/// CIP's per-mod augmentation list (array::at over the supreme mods).
+std::span<const TSupremeAugmentation> supremeAugmentations(const int mod)
+{
+    if (mod < 0 || mod >= static_cast<int>(std::size(SupremeCategories)))
+        throw std::out_of_range("array::at");
+    const auto [first, last] = std::ranges::equal_range(SupremeAugmentations, mod, {}, &TSupremeAugmentation::mod);
+    return { first, last };
+}
 
 /// One augmentation of a conviction perk's level (CIP: an element of the
 /// level lists, of which renders the map's first spell).
@@ -966,7 +978,9 @@ QString supremeModValueText(const double value, const int mod)
         return formatValue(static_cast<int>(value * 100.0), 4);
     if (category == 5)
         return formatValue(static_cast<int>(value), 1);
-    const int augType = SupremeAugmentations[mod].augType;
+    // The format follows the mod's first augmentation.
+    const auto augs = supremeAugmentations(mod);
+    const int augType = augs.empty() ? 0 : augs.front().augType;
     if (augType == 2 || augType == 3 || augType == 16 || augType == 17)
         return formatValue(static_cast<int>(value * 10000.0), 5);
     return formatValue(static_cast<int>(value), augType == 6 ? 8 : 7);
@@ -1089,19 +1103,27 @@ TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TG
             mods.supremeStats.emplace_back(mod, value);
     }
 
+    // Every augmentation of a greater gem's supreme mod that its grade gives a value, summed per
+    // (mod, spell, type) in that order (CIP keeps them in an ordered map).
+    const auto key = [](const TActiveMods::TAugmentation& a) { return std::tuple(a.mod, a.spellId, a.augType); };
     for (const TGem* gem : greater) {
         if (!gem)
             continue;
         const int mod = gem->supreme;
-        if (mod < 0 || mod >= SupremeModCount || !SupremeAugmentations[mod].valid)
+        if (mod < 0 || mod >= SupremeModCount)
             continue;
-        const TSupremeAugmentation& aug = SupremeAugmentations[mod];
-        auto it = std::ranges::find(mods.augmentations, mod, &TActiveMods::TAugmentation::mod);
-        if (it == mods.augmentations.end())
-            it = mods.augmentations.insert(std::ranges::upper_bound(mods.augmentations, mod, {}, &TActiveMods::TAugmentation::mod),
-                                           { mod, aug.spellId, aug.augType, 0.0, 0 });
-        it->value += aug.values[std::clamp(supremeGrade(mod), 0, 3)];
-        ++it->count;
+        const int grade = std::clamp(supremeGrade(mod), 0, 3);
+        for (const TSupremeAugmentation& aug : supremeAugmentations(mod)) {
+            const double value = aug.values[grade];
+            if (value == 0.0)
+                continue;
+            const auto wanted = std::tuple(mod, aug.spellId, aug.augType);
+            auto it = std::ranges::lower_bound(mods.augmentations, wanted, {}, key);
+            if (it == mods.augmentations.end() || key(*it) != wanted)
+                it = mods.augmentations.insert(it, { mod, aug.spellId, aug.augType, 0.0, 0 });
+            it->value += value;
+            ++it->count;
+        }
     }
 
     for (const TGem* gem : greater) {
@@ -1177,9 +1199,10 @@ QString supremeModName(const int mod, const bool withPerk, const bool multiStrin
         case 3: return qtTrId("mana_leech");
         case 4: {
             // The mod's first augmentation names the spell.
-            if (!SupremeAugmentations[mod].valid)
+            const auto augs = supremeAugmentations(mod);
+            if (augs.empty())
                 return qtTrId("dummy_unknown");
-            const auto* spell = spells::TSpellInfoStorage::instance()->spell(SupremeAugmentations[mod].spellId);
+            const auto* spell = spells::TSpellInfoStorage::instance()->spell(augs.front().spellId);
             if (!spell)
                 return qtTrId("dummy_unknown");
             const QString shortName = qtTrId("perk_name_prefix_augmentation_short").arg(spell->name);
@@ -1219,9 +1242,9 @@ QString supremeModEffect(const int mod, const int grade)
             const bool hasMomentum = std::ranges::find(MomentumMods, mod) != std::end(MomentumMods);
             const double momentum = hasMomentum ? MomentumByGrade[checkedGrade()] : 0.0;
             QStringList lines;
-            const TSupremeAugmentation& aug = SupremeAugmentations[mod];
-            if (aug.valid && aug.values[checkedGrade()] != 0.0)
-                lines << augmentationDescription(aug.values[checkedGrade()], aug.spellId, aug.augType, true);
+            for (const TSupremeAugmentation& aug : supremeAugmentations(mod))
+                if (aug.values[checkedGrade()] != 0.0)
+                    lines << augmentationDescription(aug.values[checkedGrade()], aug.spellId, aug.augType, true);
             if (hasMomentum && momentum > 0.0)
                 lines << qtTrId("augmentation_description_momentum").arg(momentum);
             return lines.join(u'\n');
