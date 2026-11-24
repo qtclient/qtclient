@@ -13,24 +13,47 @@ namespace {
 
 using C = SpecialCondition;
 
-QList<SpecialCondition> parseList(const QJsonValue& value)
+/// One [variant index, value] entry; nullopt for a non-array entry or an
+/// unknown variant index. EPlayerKillerFlag is a byte enum: only the low byte
+/// of its value is kept.
+std::optional<SpecialCondition> parseCondition(const QJsonValue& entry)
+{
+    if (!entry.isArray())
+        return std::nullopt;
+    const QJsonArray pair = entry.toArray();
+    const int type = pair.at(0).toInt();
+    const int value = pair.at(1).toInt();
+    switch (type) {
+    case C::PlayerStateFlag:
+    case C::PlayerStateClient:
+    case C::RottenBloodState:
+    case C::Generic:
+        return SpecialCondition{ type, value };
+    case C::PlayerKillerFlag:
+        return SpecialCondition{ type, value & 0xff };
+    default:
+        return std::nullopt;
+    }
+}
+
+QList<SpecialCondition> parseList(const QJsonArray& array)
 {
     QList<SpecialCondition> list;
-    for (const QJsonValue& entry : value.toArray()) {
-        const QJsonArray pair = entry.toArray();
-        if (pair.size() != 2)
-            continue;
-        const SpecialCondition condition{ pair.at(0).toInt(-1), pair.at(1).toInt(-1) };
-        if (SpecialConditionsOptions::isKnown(condition))
-            list.append(condition);
+    for (const QJsonValue& entry : array) {
+        if (const auto condition = parseCondition(entry))
+            list.append(*condition);
     }
     return list;
 }
 
-QSet<SpecialCondition> parseSet(const QJsonValue& value)
+QSet<SpecialCondition> parseSet(const QJsonArray& array)
 {
-    const QList<SpecialCondition> list = parseList(value);
-    return { list.begin(), list.end() };
+    QSet<SpecialCondition> set;
+    for (const QJsonValue& entry : array) {
+        if (const auto condition = parseCondition(entry))
+            set.insert(*condition);
+    }
+    return set;
 }
 
 }
@@ -95,12 +118,27 @@ SpecialConditionsOptions SpecialConditionsOptions::fromJson(const QJsonObject& j
     SpecialConditionsOptions o;
     o.showInHUD = json.value(QLatin1String("showInHUD")).toBool(true);
     o.showInBar = json.value(QLatin1String("showInBar")).toBool(true);
-    o.visibleInHUD = parseSet(json.value(QLatin1String("visibleInHUD")));
-    o.visibleInBar = parseSet(json.value(QLatin1String("visibleInBar")));
-    o.specialConditionsOrder = parseList(json.value(QLatin1String("specialConditionsOrder")));
-    if (o.specialConditionsOrder.isEmpty())
-        o.specialConditionsOrder = known();
+    o.visibleInHUD = parseSet(json.value(QLatin1String("visibleInHUD")).toArray());
+    o.visibleInBar = parseSet(json.value(QLatin1String("visibleInBar")).toArray());
+    o.specialConditionsOrder = parseList(json.value(QLatin1String("specialConditionsOrder")).toArray());
+    o.fixSpecialConditionsOrder();
     return o;
+}
+
+void SpecialConditionsOptions::fixSpecialConditionsOrder()
+{
+    // No stored order at all: the whole section falls back to the defaults.
+    if (specialConditionsOrder.isEmpty()) {
+        *this = defaults();
+        return;
+    }
+    // Drop entries this client does not know, then append every known
+    // condition the stored order misses, in the default order.
+    specialConditionsOrder.removeIf([](const SpecialCondition& condition) { return !isKnown(condition); });
+    for (const SpecialCondition& condition : known()) {
+        if (!specialConditionsOrder.contains(condition))
+            specialConditionsOrder.append(condition);
+    }
 }
 
 QJsonObject SpecialConditionsOptions::toJson() const

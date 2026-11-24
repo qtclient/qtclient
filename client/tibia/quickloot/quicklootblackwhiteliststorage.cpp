@@ -1,7 +1,5 @@
 #include "quicklootblackwhiteliststorage.h"
 
-#include "quickloot/quicklootciptypes.h"
-
 #include <QJsonArray>
 
 #include <stdexcept>
@@ -96,7 +94,6 @@ void TQuickLootBlackWhitelistStorage::setListed(const uint16_t objectType, const
     } else if (active.erase(objectType) == 0) {
         return;
     }
-    sendActiveList();
     Q_EMIT configurationChangedFromUserInput();
 }
 
@@ -106,7 +103,6 @@ void TQuickLootBlackWhitelistStorage::setListType(const int listType)
     if (m_listType == next)
         return;
     m_listType = next;
-    sendActiveList();
     Q_EMIT configurationChangedFromUserInput();
 }
 
@@ -121,15 +117,9 @@ void TQuickLootBlackWhitelistStorage::replaceLists(const int listType, std::set<
     m_listType = listType == Whitelist ? Whitelist : Blacklist;
     m_blacklist = std::move(blacklist);
     m_whitelist = std::move(whitelist);
-    sendActiveList();
     Q_EMIT configurationChangedFromUserInput();
 }
 
 std::set<uint16_t>& TQuickLootBlackWhitelistStorage::activeList() { return m_listType == Whitelist ? m_whitelist : m_blacklist; }
-
-void TQuickLootBlackWhitelistStorage::sendActiveList() const
-{
-    TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist(m_listType, list(m_listType));
-}
 
 }

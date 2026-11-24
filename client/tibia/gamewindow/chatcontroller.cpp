@@ -682,36 +682,51 @@ TChatChannelTabController::TChatChannelTabController(QObject* parent)
 
 void TChatChannelTabController::setChannelStorage(chat::TChatChannelStorage* storage)
 {
-    if (m_storage)
+    if (m_storage) {
         disconnect(m_storage, nullptr, this, nullptr);
-    beginResetModel();
-    m_rows.clear();
-    m_renderInfos.clear();
-    m_storage = storage;
-    if (storage) {
-        m_rows = storage->channels();
-        for (chat::TChatChannel* channel : m_rows)
-            addRenderInfo(channel);
+        m_storage = nullptr;
     }
-    m_currentRowId = 0;
-    endResetModel();
-    Q_EMIT currentRowIdChanged();
-    updateButtonHighlights();
+    removeAllTabs();
     if (!storage)
         return;
-    connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TChatChannelTabController::onChannelAdded);
-    connect(storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatChannelTabController::onChannelRemoved);
-    connect(storage, &chat::TChatChannelStorage::entryAddedToChannel, this, &TChatChannelTabController::onEntryAddedToChatChannel);
-    connect(storage, &chat::TChatChannelStorage::channelsMoved, this, [this] {
-        beginResetModel();
-        m_rows = m_storage->channels();
-        endResetModel();
-    });
+    m_storage = storage;
+    const std::vector<TChatChannel*> channels = storage->channels();
+    removeAllTabs();
+    if (!channels.empty()) {
+        beginInsertRows({}, 0, static_cast<int>(channels.size()) - 1);
+        for (TChatChannel* channel : channels)
+            addRenderInfo(channel);
+        endInsertRows();
+        setCurrentRow(0);
+    }
+    connect(storage, &chat::TChatChannelStorage::newChatChannelOpened, this, &TChatChannelTabController::onAddNewChatChannelTab);
+    connect(storage, &chat::TChatChannelStorage::chatChannelReopend, this, &TChatChannelTabController::onChatChannelReopend);
+    connect(storage, &chat::TChatChannelStorage::chatChannelRemoved, this, &TChatChannelTabController::onChatChannelRemoved);
+    connect(storage, &chat::TChatChannelStorage::entryAddedToChatChannel, this, &TChatChannelTabController::onEntryAddedToChatChannel);
+}
+
+void TChatChannelTabController::removeAllTabs()
+{
+    setCurrentRow(-1);
+    if (const int count = rowCount(); count != 0) {
+        beginRemoveRows({}, 0, count - 1);
+        m_rows.clear();
+        m_renderInfos.clear();
+        endRemoveRows();
+    }
 }
 
 chat::TChatChannel* TChatChannelTabController::channelAt(const int row) const
 {
     return row >= 0 && row < static_cast<int>(m_rows.size()) ? m_rows[static_cast<size_t>(row)] : nullptr;
+}
+
+std::vector<chat::TChatChannelIdentifier> TChatChannelTabController::identifiers() const
+{
+    std::vector<chat::TChatChannelIdentifier> result;
+    for (const TChatChannel* channel : m_rows)
+        result.push_back(channel->identifier());
+    return result;
 }
 
 int TChatChannelTabController::rowOf(const chat::TChatChannel* channel) const
@@ -720,20 +735,40 @@ int TChatChannelTabController::rowOf(const chat::TChatChannel* channel) const
     return it == m_rows.end() ? -1 : static_cast<int>(it - m_rows.begin());
 }
 
-chat::TChatChannel* TChatChannelTabController::currentChannel() const
+int TChatChannelTabController::rowOf(const chat::TChatChannelIdentifier& identifier) const
 {
-    return channelAt(m_currentRowId);
+    const auto it = std::find_if(m_rows.begin(), m_rows.end(),
+                                 [&](const TChatChannel* channel) { return channel->identifier().sameChannel(identifier); });
+    return it == m_rows.end() ? -1 : static_cast<int>(it - m_rows.begin());
 }
 
-void TChatChannelTabController::makeCurrent(chat::TChatChannel* channel)
+chat::TChatChannel* TChatChannelTabController::currentChannel() const
 {
-    if (const int row = rowOf(channel); row >= 0)
-        setCurrentRow(row);
+    return m_currentRowId == -1 ? nullptr : channelAt(m_currentRowId);
+}
+
+void TChatChannelTabController::setMakeNewTabsCurrent(const bool makeNewTabsCurrent)
+{
+    m_makeNewTabsCurrent = makeNewTabsCurrent;
+}
+
+void TChatChannelTabController::resetTabHighlight(const chat::TChatChannelIdentifier& identifier)
+{
+    const int row = rowOf(identifier);
+    if (row < 0)
+        return;
+    if (TChatChannelTabRenderInfo* info = renderInfo(channelAt(row)))
+        info->resetTabHighlight();
 }
 
 int TChatChannelTabController::rowCount(const QModelIndex&) const
 {
     return static_cast<int>(m_rows.size());
+}
+
+int TChatChannelTabController::currentRowId() const
+{
+    return m_currentRowId;
 }
 
 QVariant TChatChannelTabController::data(const QModelIndex& index, const int role) const
@@ -764,6 +799,34 @@ uint TChatChannelTabController::highlightOf(const int row) const
     return info ? info->tabHighlight() : NONE;
 }
 
+uint TChatChannelTabController::leftButtonHighlight() const
+{
+    uint result = NONE;
+    for (uint row = 0; row < m_hiddenLeft; ++row) {
+        if (static_cast<uint>(rowCount()) <= row)
+            return result;
+        const uint highlight = highlightOf(static_cast<int>(row));
+        if (highlight == FLASH_NEW_ENTRY)
+            return FLASH_NEW_ENTRY;
+        if (highlight == NEW_ENTRY)
+            result = NEW_ENTRY;
+    }
+    return result;
+}
+
+uint TChatChannelTabController::rightButtonHighlight() const
+{
+    uint result = NONE;
+    for (uint row = static_cast<uint>(rowCount()) - m_hiddenRight; row < static_cast<uint>(rowCount()); ++row) {
+        const uint highlight = highlightOf(static_cast<int>(row));
+        if (highlight == FLASH_NEW_ENTRY)
+            return FLASH_NEW_ENTRY;
+        if (highlight == NEW_ENTRY)
+            result = NEW_ENTRY;
+    }
+    return result;
+}
+
 TChatChannelTabRenderInfo* TChatChannelTabController::renderInfo(const chat::TChatChannel* channel) const
 {
     const auto it = m_renderInfos.find(channel);
@@ -775,6 +838,7 @@ void TChatChannelTabController::addRenderInfo(chat::TChatChannel* channel)
     auto info = std::make_unique<TChatChannelTabRenderInfo>(channel);
     connect(info.get(), &TChatChannelTabRenderInfo::tabHighlightChanged, this, &TChatChannelTabController::onTabHighlightChanged);
     m_renderInfos[channel] = std::move(info);
+    m_rows.push_back(channel);
 }
 
 void TChatChannelTabController::onTabHighlightChanged(chat::TChatChannel* channel)
@@ -783,7 +847,11 @@ void TChatChannelTabController::onTabHighlightChanged(chat::TChatChannel* channe
     if (row < 0)
         return;
     Q_EMIT dataChanged(index(row), index(row), { TabHighlightRole });
-    updateButtonHighlights();
+    if (static_cast<uint>(row) < m_hiddenLeft)
+        Q_EMIT leftButtonHighlightChanged();
+    if (static_cast<uint>(row) < static_cast<uint>(rowCount()) - m_hiddenRight)
+        return;
+    Q_EMIT rightButtonHighlightChanged();
 }
 
 void TChatChannelTabController::setCurrentRow(const int row)
@@ -827,98 +895,107 @@ void TChatChannelTabController::onMakePreviousChannelCurrent()
         setCurrentRow((m_currentRowId + count - 1) % count);
 }
 
+void TChatChannelTabController::onMakeChannelWithChatChannelIdentifierCurrent(const chat::TChatChannelIdentifier& identifier)
+{
+    if (const int row = rowOf(identifier); row >= 0)
+        setCurrentRow(row);
+}
+
 void TChatChannelTabController::onChannelTabClicked(const int rowId, const int mouseButtonRaw, const int keyboardModifiersRaw)
 {
     if (TChatChannel* channel = channelAt(rowId))
         Q_EMIT tabClicked(channel, mouseButtonRaw, keyboardModifiersRaw);
 }
 
-void TChatChannelTabController::setNumberOfHiddenTabs(const uint hiddenLeft, const uint hiddenRight)
+void TChatChannelTabController::setNumberOfHiddenTabs(uint hiddenLeft, uint hiddenRight)
 {
-    m_hiddenLeft = hiddenLeft;
-    m_hiddenRight = hiddenRight;
-    updateButtonHighlights();
+    // At most every tab is hidden on either side.
+    hiddenLeft = std::min(hiddenLeft, static_cast<uint>(rowCount()));
+    hiddenRight = std::min(hiddenRight, static_cast<uint>(rowCount()));
+    if (m_hiddenLeft != hiddenLeft) {
+        m_hiddenLeft = hiddenLeft;
+        Q_EMIT leftButtonHighlightChanged();
+    }
+    if (m_hiddenRight != hiddenRight) {
+        m_hiddenRight = hiddenRight;
+        Q_EMIT rightButtonHighlightChanged();
+    }
 }
 
 void TChatChannelTabController::moveTab(const int sourceIndex, const int targetIndex)
 {
-    TChatChannel* current = currentChannel();
-    if (m_storage)
-        m_storage->moveChannel(sourceIndex, targetIndex);
-    if (const int row = rowOf(current); row >= 0 && row != m_currentRowId) {
-        m_currentRowId = row;
-        Q_EMIT currentRowIdChanged();
-    }
-    updateButtonHighlights();
-}
-
-void TChatChannelTabController::onChannelAdded(chat::TChatChannel* channel, const bool makeCurrent)
-{
-    int row = rowOf(channel);
-    if (row < 0) {
-        row = static_cast<int>(m_rows.size());
-        beginInsertRows({}, row, row);
-        m_rows.push_back(channel);
-        addRenderInfo(channel);
-        endInsertRows();
-    }
-    if (makeCurrent)
-        setCurrentRow(row);
+    // The dragged tab moves to the target position and becomes current; the
+    // channel storage keeps its order.
+    const int count = rowCount();
+    if (sourceIndex == targetIndex || sourceIndex < 0 || targetIndex < 0 || sourceIndex >= count || targetIndex >= count)
+        return;
+    const int destination = sourceIndex < targetIndex ? targetIndex + 1 : targetIndex;
+    beginMoveRows({}, sourceIndex, sourceIndex, {}, destination);
+    const auto rows = m_rows.begin();
+    if (sourceIndex < targetIndex)
+        std::rotate(rows + sourceIndex, rows + sourceIndex + 1, rows + targetIndex + 1);
     else
-        updateButtonHighlights();
+        std::rotate(rows + targetIndex, rows + sourceIndex, rows + sourceIndex + 1);
+    endMoveRows();
+    setCurrentRow(targetIndex);
 }
 
-void TChatChannelTabController::onChannelRemoved(chat::TChatChannel* channel)
+void TChatChannelTabController::onAddNewChatChannelTab(const chat::TChatChannelIdentifier& identifier, const bool forceMakeCurrent)
 {
-    const int row = rowOf(channel);
+    TChatChannel* channel = m_storage ? m_storage->find(identifier) : nullptr;
+    if (!channel)
+        return;
+    const int row = rowCount();
+    beginInsertRows({}, row, row);
+    addRenderInfo(channel);
+    endInsertRows();
+    if ((forceMakeCurrent || channel->makeCurrentOnOpen()) && m_makeNewTabsCurrent)
+        setCurrentRow(rowCount() - 1);
+}
+
+void TChatChannelTabController::onChatChannelReopend(const chat::TChatChannelIdentifier& identifier, const bool forceMakeCurrent)
+{
+    if (m_storage) {
+        const TChatChannel* channel = m_storage->find(identifier);
+        if (!(channel && channel->makeCurrentOnOpen()) && !forceMakeCurrent)
+            return;
+    }
+    onMakeChannelWithChatChannelIdentifierCurrent(identifier);
+}
+
+void TChatChannelTabController::onChatChannelRemoved(const chat::TChatChannelIdentifier& identifier)
+{
+    const int row = rowOf(identifier);
     if (row < 0)
         return;
-    const bool wasCurrent = row == m_currentRowId;
-    m_renderInfos.erase(channel);
     beginRemoveRows({}, row, row);
+    m_renderInfos.erase(m_rows[static_cast<size_t>(row)]);
     m_rows.erase(m_rows.begin() + row);
     endRemoveRows();
-    if (wasCurrent || row < m_currentRowId) {
-        m_currentRowId = std::clamp(m_currentRowId - 1, 0, std::max(0, rowCount() - 1));
-        Q_EMIT currentRowIdChanged();
+    // The current tab's successor (or the new last tab) becomes current; a
+    // current tab after it moves up with it.
+    int current = m_currentRowId;
+    if (current == row) {
+        current = row - (rowCount() <= row ? 1 : 0);
+    } else {
+        if (current <= row)
+            return;
+        current = current - 1;
     }
-    setCurrentRow(m_currentRowId);
+    setCurrentRow(current);
 }
 
-void TChatChannelTabController::onEntryAddedToChatChannel(chat::TChatChannel* channel, const bool /*fromOthers*/)
+void TChatChannelTabController::onEntryAddedToChatChannel(const chat::TChatChannelIdentifier& identifier)
 {
     // NPC conversations and channels shown in the secondary pane do not flash;
     // the current tab ignores it.
-    TChatChannelTabRenderInfo* info = renderInfo(channel);
-    if (!info || channel->identifier().type == chat::TChatChannelIdentifier::Npc || channel->isShownAsSecondaryChannel())
+    const int row = rowOf(identifier);
+    const TChatChannel* channel = m_storage ? m_storage->find(identifier) : nullptr;
+    const bool secondary = channel && channel->isShownAsSecondaryChannel();
+    if (identifier.type == chat::TChatChannelIdentifier::Npc || row < 0 || secondary)
         return;
-    info->setTabHighlight(TChatChannelTabRenderInfo::FLASH_NEW_ENTRY);
-}
-
-void TChatChannelTabController::updateButtonHighlights()
-{
-    const auto strongest = [this](const int from, const int to) {
-        uint result = NONE;
-        for (int row = from; row < to; ++row) {
-            const uint h = highlightOf(row);
-            if (h == FLASH_NEW_ENTRY)
-                return h;
-            if (h == NEW_ENTRY)
-                result = NEW_ENTRY;
-        }
-        return result;
-    };
-    const int count = rowCount();
-    const uint left = strongest(0, std::min<int>(static_cast<int>(m_hiddenLeft), count));
-    const uint right = strongest(std::max(0, count - static_cast<int>(m_hiddenRight)), count);
-    if (left != m_leftButtonHighlight) {
-        m_leftButtonHighlight = left;
-        Q_EMIT leftButtonHighlightChanged();
-    }
-    if (right != m_rightButtonHighlight) {
-        m_rightButtonHighlight = right;
-        Q_EMIT rightButtonHighlightChanged();
-    }
+    if (TChatChannelTabRenderInfo* info = renderInfo(channelAt(row)))
+        info->setTabHighlight(TChatChannelTabRenderInfo::FLASH_NEW_ENTRY);
 }
 
 // ---------------------------------------------------------------------------
@@ -991,6 +1068,11 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_blacklist, &chat::TWhiteBlacklist::messageFiltered, this, &TChatController::onMessageFiltered);
     reloadOptions();
 
+    // For 2 s after a session connects, its new channels' tabs do not become
+    // current.
+    m_makeNewTabsCurrentTimer.setInterval(2000);
+    m_makeNewTabsCurrentTimer.setSingleShot(true);
+    connect(&m_makeNewTabsCurrentTimer, &QTimer::timeout, this, [this] { m_tabs.setMakeNewTabsCurrent(true); });
     // CIP / : both console buttons flash for 1000 ms.
     m_ignoredFlashTimer.setSingleShot(true);
     m_ignoredFlashTimer.setInterval(1000);
@@ -1147,8 +1229,10 @@ void TChatController::storeOpenChannels() const
     QJsonObject chatOptions = app::ClientOptions::load().root().value(QLatin1String("chatOptions")).toObject();
     QJsonArray ids;
     bool loot = false;
-    for (const TChatChannel* channel : m_chatChannelStorage->channels()) {
-        const TChatChannelIdentifier& identifier = channel->identifier();
+    for (const TChatChannelIdentifier& identifier : m_tabs.identifiers()) {
+        const TChatChannel* channel = m_chatChannelStorage->find(identifier);
+        if (!channel)
+            continue;
         if (identifier.type == TChatChannelIdentifier::Loot)
             loot = true;
         else if (identifier.type == TChatChannelIdentifier::ChannelId && !channel->isOwnPrivateChannel() && !identifier.isGuildChannel()
@@ -1158,6 +1242,11 @@ void TChatController::storeOpenChannels() const
     chatOptions.insert(QLatin1String("openChannels"), ids);
     chatOptions.insert(QLatin1String("lootChannelOpen"), loot);
     app::ClientOptions::storeAll({ { QStringLiteral("chatOptions"), chatOptions } });
+}
+
+void TChatController::closeMessageDialog()
+{
+    m_messageDialog.dialog()->close();
 }
 
 void TChatController::onMessageFiltered()
@@ -1598,8 +1687,10 @@ void TChatController::setSecondary(chat::TChatChannel* channel)
     const bool wasShown = m_secondary.channel() != nullptr;
     if (TChatChannel* previous = m_secondary.channel())
         previous->setShownAsSecondaryChannel(false);
-    if (channel)
+    if (channel) {
         channel->setShownAsSecondaryChannel(true);
+        m_tabs.resetTabHighlight(channel->identifier());
+    }
     m_secondary.setChannel(channel);
     if (wasShown != (channel != nullptr) && m_chatItem)
         m_chatItem->setProperty("secondaryChatChannelModel", QVariant::fromValue<QObject*>(channel ? &m_secondary : nullptr));
@@ -1882,7 +1973,7 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
     m_openDialog.dialog()->close();
     m_inviteDialog.dialog()->close();
     m_excludeDialog.dialog()->close();
-    m_messageDialog.dialog()->close();
+    closeMessageDialog();
     m_history.clear();
     m_historyIndex = 0;
     if (m_chatItem)
@@ -1891,6 +1982,7 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
         disconnect(connection);
     m_gameSessionConnections.clear();
     m_tabs.setChannelStorage(nullptr);
+    m_tabs.setMakeNewTabsCurrent(false);
     m_mode.onGameSessionDisconnected();
     m_channelListRequested = false;
     m_actionProvider.reset();
@@ -1926,6 +2018,7 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
                                                    this, &TChatController::onChannelListReceived));
         m_gameSessionConnections.push_back(
             connect(m_gameSession.get(), &game::IGameSession::gameLoginSuccessful, this, &TChatController::openChannelsFromConfig));
+        m_makeNewTabsCurrentTimer.start();
         m_gameSessionConnections.push_back(
             connect(m_gameSession.get(), &game::IGameSession::worldTypeSet, this, &TChatController::exivaOptionsAvailableChanged));
     } else {

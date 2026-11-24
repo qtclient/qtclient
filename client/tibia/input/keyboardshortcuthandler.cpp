@@ -238,8 +238,10 @@ IGameActionPtr TKeyboardShortcutHandler::createGameAction(const config::TActionS
     switch (setting.kind) {
     case config::TActionSetting::TEXT: {
         auto text = std::make_shared<TGameActionSetCurrentChatChannelInputText>(setting.text, setting.sendAutomatically);
-        if (spells::TSpellInfoStorage* spells = spells::TSpellInfoStorage::instance(); spells && spells->spellOfText(setting.text))
-            text->setSpell(true, setting.spellCastType);
+        if (spells::TSpellInfoStorage* spells = spells::TSpellInfoStorage::instance(); spells && spells->spellOfText(setting.text)) {
+            text->setIsSpell(true);
+            text->setSpellCastOptionalTargetType(setting.spellCastType);
+        }
         return text;
     }
     case config::TActionSetting::ACTION:

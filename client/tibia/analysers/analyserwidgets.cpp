@@ -882,30 +882,13 @@ QHash<int, QByteArray> TGainWasteModel::roleNames() const
 
 void TGainWasteModel::setItems(std::vector<TGainWasteStorage::Item> items)
 {
-    size_t row = 0;
-    size_t from = 0;
-    while (row < m_items.size() || from < items.size()) {
-        if (from >= items.size() || (row < m_items.size() && m_items[row].itemId < items[from].itemId)) {
-            beginRemoveRows({}, static_cast<int>(row), static_cast<int>(row));
-            m_items.erase(m_items.begin() + static_cast<std::ptrdiff_t>(row));
-            endRemoveRows();
-        } else if (row >= m_items.size() || items[from].itemId < m_items[row].itemId) {
-            beginInsertRows({}, static_cast<int>(row), static_cast<int>(row));
-            m_items.insert(m_items.begin() + static_cast<std::ptrdiff_t>(row), std::move(items[from]));
-            endInsertRows();
-            ++row;
-            ++from;
-        } else {
-            TGainWasteStorage::Item& current = m_items[row];
-            if (current.count != items[from].count || current.price != items[from].price || current.name != items[from].name) {
-                current = std::move(items[from]);
-                const QModelIndex changed = index(static_cast<int>(row));
-                Q_EMIT dataChanged(changed, changed);
-            }
-            ++row;
-            ++from;
-        }
-    }
+    using Item = TGainWasteStorage::Item;
+    const auto less = [](const Item& a, const Item& b) { return a.itemId < b.itemId; };
+    const auto sameKey = [](const Item& a, const Item& b) { return a.itemId == b.itemId; };
+    const auto equal = [](const Item& a, const Item& b) {
+        return a.itemId == b.itemId && a.name == b.name && a.count == b.count && a.price == b.price;
+    };
+    mergeSortedItems(m_items, std::move(items), less, sameKey, equal);
 }
 
 // ----------------------------------------------------------------------------------------------

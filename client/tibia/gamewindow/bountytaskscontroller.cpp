@@ -58,22 +58,6 @@ std::vector<uint32_t> assignedRaceIds(const std::vector<taskboard::TBountyPrefer
     return raceIds;
 }
 
-// Host: the preferred-slot model is not ported yet; it takes display rows,
-// which the bounty data is turned into here.
-
-QString raceCaption(const uint16_t raceId)
-{
-    if (raceId == 0)
-        return QStringLiteral("Any Creature");
-    const RaceType& race = tibia::game::raceData(raceId);
-    if (race.name.empty())
-        return QStringLiteral("Unknown");
-    QString name = QString::fromStdString(race.name);
-    if (!name.isEmpty())
-        name[0] = name[0].toUpper();
-    return name;
-}
-
 QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<taskboard::TBountyPreferredMonsterSlot>& slots,
                                                               int& clearCost)
 {
@@ -90,8 +74,6 @@ QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<
         row.canBeUnlocked = slot.nextToUnlock;
         row.preferredMonsterRaceId = static_cast<int>(slot.preferredRaceId);
         row.avoidedMonsterRaceId = static_cast<int>(slot.avoidedRaceId);
-        row.preferredMonsterRaceName = raceCaption(static_cast<uint16_t>(slot.preferredRaceId));
-        row.avoidedMonsterRaceName = raceCaption(static_cast<uint16_t>(slot.avoidedRaceId));
         if (slot.nextToUnlock && unlockCost == 0)
             unlockCost = slot.unlockCost;
         if (slot.unlocked && clearCost == 0 && slot.unlockCost > 0)

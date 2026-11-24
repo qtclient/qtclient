@@ -177,6 +177,35 @@ public:
     const TSpellInfo* runeSpellOfObject(int objectId) const;
     const std::map<int, TSpellInfo>& spells() const { return m_spells; }
 
+    /// Walks the spell table; a spell is read with the server's modifications
+    /// applied, once, on its first dereference.
+    class TSpellIterator
+    {
+    public:
+        TSpellIterator(const TSpellInfoStorage* storage, std::map<int, TSpellInfo>::const_iterator node)
+            : m_storage(storage)
+            , m_node(node)
+        {
+        }
+        /// The spell under the iterator with the modifications applied.
+        const TSpellInfo& operator*() const;
+        const TSpellInfo* operator->() const { return &**this; }
+        /// The next spell of the table (the cached spell is dropped).
+        TSpellIterator& operator++();
+        /// Two iterators are equal on the same table node.
+        bool operator==(const TSpellIterator& other) const { return m_node == other.m_node; }
+        bool operator!=(const TSpellIterator& other) const { return !(*this == other); }
+
+    private:
+        const TSpellInfoStorage* m_storage = nullptr;
+        std::map<int, TSpellInfo>::const_iterator m_node;
+        mutable std::optional<TSpellInfo> m_spell;
+    };
+    /// The first spell of the table.
+    TSpellIterator begin() const;
+    /// Past the last spell of the table.
+    TSpellIterator end() const;
+
     /// One server change of a spell's data: the modification type and its value.
     struct TSpellModification
     {

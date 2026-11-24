@@ -250,6 +250,7 @@ public:
 
     const std::shared_ptr<worldmap::TWorldMapViewport>& worldMapViewport() const { return m_worldMapViewport; }
     const std::shared_ptr<renderer::TRenderVolumeProvider>& renderVolumeProvider() const { return m_renderVolumeProvider; }
+    const std::shared_ptr<renderer::TNextFrameUpdater>& nextFrameUpdater() const { return m_nextFrameUpdater; }
     const std::shared_ptr<creatures::TCreatureMovementSpeedCalculator>& creatureMovementSpeedCalculator() const
     {
         return m_creatureMovementSpeedCalculator;
@@ -576,22 +577,27 @@ protected Q_SLOTS:
     virtual void onCharacterConfigurationLoaded() const {}
 
 protected:
-    /// CIP: the session's storages (world map, creatures, containers, ...).
-    void createStorages();
-    /// CIP: the protocol message handlers that fill them.
-    void createProtocolMessageHandlers();
-    /// CIP: what draws the world (the world map's frame, its picker and HUD
-    /// anchors) and advances it before each frame.
-    void createRenderProviders();
-    /// CIP: the object sounds and the session's sound provider, when the
-    /// client plays sound.
-    void createSoundProviders();
-    /// CIP: the game action providers (what is offered where) and handlers.
-    void createGameActionProvidersAndHandlers();
-    /// CIP: connects the session's message queue to its handlers' typed slots.
-    void connectProtocolMessageHandlers();
-    /// CIP: the game action handlers, on the session's game action router.
-    void createGameActionHandlers();
+    // The session's builders, in the order a session's initialize runs them.
+    /// The session's storages (world map, creatures, containers, ...) and the
+    /// character configuration manager that saves some of them; throws when the
+    /// meta info is not set.
+    virtual void createStorages();
+    /// The protocol message handlers that fill the storages.
+    virtual void createProtocolMessageHandlers();
+    /// What draws the world (the world map's frame and HUD anchors) and
+    /// advances it before each frame.
+    virtual void createRenderProviders();
+    /// The object sounds and the session's sound provider, when the client
+    /// plays sound.
+    virtual void createSoundProviders();
+    /// The game action providers (what is offered where) and the game action
+    /// handlers.
+    virtual void createGameActionProvidersAndHandlers();
+    /// Connects the session's message queue to its handlers' typed slots.
+    virtual void connectProtocolMessageHandlers();
+    /// Connects the game action handlers to the session's game action router,
+    /// and what publishes game actions to it.
+    virtual void connectGameActionHandlers();
 
 private:
     void releaseStorages();

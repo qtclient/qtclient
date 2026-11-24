@@ -8,6 +8,7 @@
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -702,16 +703,24 @@ void TDepotSearchWidgetController::emptySlotAreaExited()
         cursor->onExitRegion(Cursor::ContainerNoDrop);
 }
 
-void TDepotSearchWidgetController::slotStartDrag(const int StorageLocation, const int SlotIDRaw, QObject*)
+void TDepotSearchWidgetController::slotStartDrag(const int StorageLocation, const int SlotIDRaw, QObject* pSource)
 {
-    // CIP drags a slot's MOVE_OBJECT; depot search slots offer none.
-    Q_UNUSED(StorageLocation);
-    Q_UNUSED(SlotIDRaw);
+    // A depot or inbox slot drags its MOVE_OBJECT.
+    if (!m_session || (StorageLocation != Depot && StorageLocation != Inbox))
+        return;
+    const input::TGameActionList candidates = input::filterActions(slotActions(StorageLocation, SlotIDRaw), { A::MOVE_OBJECT });
+    for (const input::IGameActionPtr& candidate : candidates) {
+        if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(candidate)) {
+            if (TDragAndDropController* dnd = TDragAndDropController::instance())
+                dnd->startDrag(move, pSource);
+            return;
+        }
+    }
 }
 
 void TDepotSearchWidgetController::slotTargetSelected(const int StorageLocation, const int SlotIDRaw)
 {
-    if (StorageLocation != Depot && StorageLocation != Inbox)
+    if (!m_session || (StorageLocation != Depot && StorageLocation != Inbox))
         return;
     const input::TGameActionList candidates = input::filterActions(slotActions(StorageLocation, SlotIDRaw), { A::TARGET_SELECTED });
     if (!candidates.empty())

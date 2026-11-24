@@ -85,35 +85,10 @@ void localPlayerSetExperienceRate(const tibia::client::ExperienceRate_t type, co
     playerDataAuthorityWrite([&](TPlayerData& data) { data.setExperienceRate(type, value); });
 }
 
-void localPlayerSetMagicLevel(const uint16_t magicLevel, const uint16_t magicLevelPercent)
+void localPlayerSetSkill(const int skillType, const double level, const double baseLevel, const double loyalty,
+                        const double percent)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setMagicLevel(magicLevel, magicLevelPercent); });
-}
-
-void localPlayerSetBaseMagicLevel(const uint16_t baseMagicLevel)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setBaseMagicLevel(baseMagicLevel); });
-}
-
-void localPlayerSetMagicLevelDetail(const uint16_t loyaltyLevel, const uint16_t percentHundredths)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setMagicLevelDetail(loyaltyLevel, percentHundredths); });
-}
-
-void localPlayerSetSkill(const tibia::client::Skill skill, const uint16_t level, const uint16_t levelPercent)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSkillLevel(skill, level, levelPercent); });
-}
-
-void localPlayerSetSkillDetail(const tibia::client::Skill skill, const uint16_t loyaltyLevel,
-                               const uint16_t percentHundredths)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSkillDetail(skill, loyaltyLevel, percentHundredths); });
-}
-
-void localPlayerSetBaseSkill(const tibia::client::Skill skill, const uint16_t baseLevel)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSkillBaseLevel(skill, baseLevel); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateSkill(skillType, level, baseLevel, loyalty, percent); });
 }
 
 void localPlayerSetBaseSpeed(const uint16_t baseSpeed)

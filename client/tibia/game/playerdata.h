@@ -16,6 +16,7 @@
 #include <set>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace tibia {
@@ -45,6 +46,16 @@ struct TPlayerSpeeds
 
 /// The blessings a player holds (values of tibia::client::Blessings).
 using TBlessings = std::set<int>;
+
+/// A skill as the server reports it: the level, the base level, the loyalty
+/// bonus and the percent to the next level.
+struct TSkill
+{
+    double level = 0.0;
+    double baseLevel = 0.0;
+    double loyalty = 0.0;
+    double percent = 0.0;
+};
 
 /// The player-state flags (EPlayerStateFlag bits 0..29) and the counter the
 /// state message carries along.
@@ -163,6 +174,16 @@ public:
     void setMaxManaShield(int maxManaShield);
     bool magicShieldVocation() const { return m_magicShieldVocation; }
     void setMagicShieldVocation(bool enabled);
+    /// The skill of `skillType`; throws std::out_of_range for a type the
+    /// player data does not keep.
+    TSkill skill(int skillType) const;
+    /// Stores the skill (an unchanged one, NaN-safe, is ignored); throws
+    /// std::out_of_range for a type the player data does not keep.
+    void setSkill(int skillType, double level, double baseLevel, double loyalty, double percent);
+    /// The special magic levels: (damage type, extra levels) per element.
+    const std::vector<std::pair<int, int>>& specialMagicLevels() const { return m_specialMagicLevels; }
+    /// Stores them when they differ.
+    void setSpecialMagicLevels(const std::vector<std::pair<int, int>>& specialMagicLevels);
     const std::unordered_set<uint16_t>& knownSpells() const { return m_knownSpells; }
     void clearKnownSpells();
     void addKnownSpell(uint16_t spellId);
@@ -193,14 +214,17 @@ public:
     uint8_t blessVisualState() const { return static_cast<uint8_t>(m_blessingsVisualState); }
     /// The blessings as the protocol's bit mask.
     uint16_t blessingMask() const;
-    uint16_t magicLevel() const { return m_magicLevel; }
-    uint16_t magicLevelPercent() const { return m_magicLevelPercent; }
-    uint16_t baseMagicLevel() const { return m_baseMagicLevel; }
-    uint16_t magicLevelLoyalty() const { return m_magicLevelLoyalty; }
-    uint16_t magicLevelPercentHundredths() const { return m_magicLevelPercentHundredths; }
+    /// The magic level skill (type 4) in the protocol's units.
+    uint16_t magicLevel() const;
+    uint16_t magicLevelPercent() const;
+    uint16_t baseMagicLevel() const;
+    uint16_t magicLevelLoyalty() const;
+    uint16_t magicLevelPercentHundredths() const;
     /// The known spells in ascending id order.
     std::vector<uint16_t> spells() const;
 
+    /// The fighting skills and fishing (tibia::client::Fist..Fishing) in the
+    /// protocol's units; 0 for any other skill.
     uint16_t skillLevel(tibia::client::Skill skill) const;
     uint16_t skillBaseLevel(tibia::client::Skill skill) const;
     uint16_t skillLoyaltyLevel(tibia::client::Skill skill) const;
@@ -244,12 +268,10 @@ public:
     /// `blessings`: the protocol's bit mask.
     void updateBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
     void updateSoul(uint8_t soul);
-    void setMagicLevel(uint16_t magicLevel, uint16_t magicLevelPercent);
-    void setBaseMagicLevel(uint16_t baseMagicLevel);
-    void setMagicLevelDetail(uint16_t loyaltyLevel, uint16_t percentHundredths);
-    void setSkillLevel(tibia::client::Skill skill, uint16_t level, uint16_t levelPercent);
-    void setSkillDetail(tibia::client::Skill skill, uint16_t loyaltyLevel, uint16_t percentHundredths);
-    void setSkillBaseLevel(tibia::client::Skill skill, uint16_t baseLevel);
+    /// Stores a skill of the skills message through setSkill and fires
+    /// onMagicLevelChange / onBaseMagicLevelChange (magic level) or
+    /// onSkillChange / onBaseSkillChange (fighting skills, fishing).
+    void updateSkill(int skillType, double level, double baseLevel, double loyalty, double percent);
     void setExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value);
     void updateBaseSpeed(uint16_t baseSpeed);
     void setRegenerationTime(uint16_t regenerationTime);
@@ -261,14 +283,6 @@ public:
     void clear();
 
 private:
-    struct SkillSnapshot {
-        uint16_t level{ 0 };
-        uint16_t baseLevel{ 0 };
-        uint16_t levelPercent{ 0 };
-        uint16_t loyaltyLevel{ 0 };
-        uint16_t percentHundredths{ 0 };
-    };
-
     /// Starts the coalescing timer unless it already runs.
     void scheduleChangeNotification();
     void onChangeTimerElapsed();
@@ -313,18 +327,16 @@ private:
     int m_maxManaShield = 0;
     bool m_magicShieldVocation = false;
     std::unordered_set<uint16_t> m_knownSpells;
+    /// The skills by skill type (4 magic level, 10..16 shielding, distance,
+    /// club, sword, axe, fist, fishing, and 21..24), all present from the start.
+    std::map<int, TSkill> m_skills;
+    std::vector<std::pair<int, int>> m_specialMagicLevels;
     QTimer m_changeTimer;
     uint8_t m_harmony = 0;
     bool m_serene = false;
 
     // qtclient session data.
     std::string m_name;
-    uint16_t m_magicLevel{ 0 };
-    uint16_t m_magicLevelPercent{ 0 };
-    uint16_t m_baseMagicLevel{ 0 };
-    uint16_t m_magicLevelLoyalty{ 0 };
-    uint16_t m_magicLevelPercentHundredths{ 0 };
-    std::array<SkillSnapshot, tibia::client::LastSkill> m_skills{};
     uint8_t m_rottenBloodState{ 0 };
     std::map<tibia::client::ResourceTypes_t, uint64_t> m_otherResources;
     /// Resource types reported at least once (the product hook fires on the first report).

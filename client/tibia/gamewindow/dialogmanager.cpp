@@ -116,6 +116,12 @@ bool TDialogStackController::contains(const TDialog* dialog) const
     return std::find(m_dialogs.begin(), m_dialogs.end(), dialog) != m_dialogs.end();
 }
 
+bool TDialogStackController::hasDialogWithoutPersonalMouseShield() const
+{
+    return std::any_of(m_dialogs.begin(), m_dialogs.end(),
+                       [](const TDialog* dialog) { return !dialog->hooks()->hasPersonalMouseShield(); });
+}
+
 void TDialogStackController::dialogTookFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)

@@ -56,11 +56,24 @@ TLoginRequestUploader::TLoginRequestUploader(QObject* parent)
     connect(this, &TLoginRequestUploader::finished, this, &TLoginRequestUploader::onFinished);
 }
 
+TLoginRequestUploader::TLoginRequestUploader(const QUrl& Url, QObject* parent)
+    : TLoginRequestUploader(parent)
+{
+    m_loginUrl = Url;
+}
+
 TLoginRequestUploader::~TLoginRequestUploader() = default;
+
+void TLoginRequestUploader::uploadLoginRequest(const TLoginRequestData& LoginData)
+{
+    post(m_loginUrl, m_helper->createLoginRequest(LoginData).object(), m_clientRevision);
+}
 
 void TLoginRequestUploader::login(const QUrl& url, const TLoginRequestData& data, const QString& clientRevision)
 {
-    post(url, m_helper->createLoginRequest(data).object(), clientRevision);
+    m_loginUrl = url;
+    m_clientRevision = clientRevision;
+    uploadLoginRequest(data);
 }
 
 void TLoginRequestUploader::abort()
@@ -121,9 +134,12 @@ void TLoginRequestUploader::post(const QUrl& url, QJsonObject body, const QStrin
         QJsonParseError parseError{};
         const auto doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
         if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            if (reply->error() != QNetworkReply::NoError)
-                Q_EMIT loginFailed(tr("Could not reach the login service: %1").arg(reply->errorString()));
-            else
+            if (reply->error() != QNetworkReply::NoError) {
+                // TJsonDocumentUploaderBase: a network error keeps its text, code 0.
+                m_errorCode = 0;
+                m_errorMessage = tr("Could not reach the login service: %1").arg(reply->errorString());
+                Q_EMIT loginFailed(m_errorMessage);
+            } else
                 Q_EMIT loginFailedDueToInvalidServerResponse();
             return;
         }

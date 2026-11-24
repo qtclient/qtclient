@@ -79,7 +79,6 @@ using ::tibia::protobuf::protocol::GameserverMessageUnlockedSpells;
 using ::tibia::protobuf::protocol::GameserverMessageBlessings;
 using ::tibia::protobuf::protocol::GameserverMessageOutfit;
 using ::tibia::protobuf::protocol::GameserverMessageInspectionList;
-using ::tibia::protobuf::protocol::GameserverMessageGameEvent;
 using ::tibia::protobuf::protocol::GameserverMessageOutfitMemorial;
 using ::tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium;
 using ::tibia::protobuf::protocol::GameserverMessageEditList;
@@ -301,53 +300,6 @@ void TGameProtocolMessageHandler::handleSpellDataModificationMessage(const Games
     tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
 }
 
-void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMessageGameEvent& m)
-{
-    const auto type = static_cast<tibia::client::ClientEventType_t>(m.event_type());
-    const auto small = static_cast<uint8_t>(m.small_value());
-    const auto value = static_cast<uint16_t>(m.value());
-    switch (m.event_type()) {
-    case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
-        if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
-            if (tibia::game::hasLocalPlayer()) {
-                Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(static_cast<int>(small)));
-            }
-        } else {
-            tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));
-        }
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_ACHIEVEMENT:
-    case tibia::client::CLIENT_EVENT_TYPE_TITLE:
-        tibia::game::notify("onClientEvent", type, m.text());
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_SKILL:
-        tibia::game::notify("onClientEvent", type, small, value);
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_BESTIARY:
-    case tibia::client::CLIENT_EVENT_TYPE_BOSSTIARY:
-        tibia::game::notify("onClientEvent", type, value, small);
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_QUEST:
-        tibia::game::notify("onClientEvent", type, m.text(), small);
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_COSMETIC:
-        tibia::game::notify("onClientEvent", type, value, m.text(), small);
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_PROFICIENCY:
-        tibia::game::notify("onClientEvent", type, value, m.text());
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_SPELL_UNLOCKED:
-        tibia::game::notify("onClientEvent", type, static_cast<uint32_t>(m.large_value()));
-        break;
-    case tibia::client::CLIENT_EVENT_TYPE_LEADER_MONSTER:
-        tibia::game::notify("onClientEvent", type, value, static_cast<uint32_t>(m.large_value()));
-        break;
-    default:
-        tibia::game::notify("onClientEvent", type, value);
-        break;
-    }
-}
-
 TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, const bool allowAllToInspectPlayer,
                                                              QObject* parent)
     : cip::tibia::game::TPlayerProtocolMessageHandler(parent)
@@ -408,27 +360,31 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
 void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message)
 {
-    // SkillInfo.percent is the percent (hundredths / 100).
-    const auto hundredths = [](const ::tibia::protobuf::protocol::SkillInfo& skill) {
-        return static_cast<uint16_t>(std::lround(skill.percent() * 100.0f));
+    // Level, base level, loyalty and percent of each skill, by skill type.
+    const auto setSkill = [](const int skillType, const ::tibia::protobuf::protocol::SkillInfo& skill) {
+        tibia::game::localPlayerSetSkill(skillType, static_cast<double>(skill.level()), static_cast<double>(skill.base()),
+                                         static_cast<double>(skill.loyalty()), static_cast<double>(skill.percent()));
     };
-    const auto& magic = message.magic_level();
-    tibia::game::localPlayerSetMagicLevelDetail(static_cast<uint16_t>(magic.loyalty()), hundredths(magic));
-    tibia::game::localPlayerSetMagicLevel(static_cast<uint16_t>(magic.level()), static_cast<uint16_t>(magic.percent()));
-    tibia::game::localPlayerSetBaseMagicLevel(static_cast<uint16_t>(magic.base()));
-    const ::tibia::protobuf::protocol::SkillInfo* const skills[] = {
-        &message.fist(), &message.club(), &message.sword(), &message.axe(),
-        &message.distance(), &message.shielding(), &message.fishing()
-    };
-    for (int i = 0; i < 7; ++i) {
-        const auto skill = static_cast<tibia::client::Skill>(tibia::client::Fist + i);
-        const auto& entry = *skills[i];
-        tibia::game::localPlayerSetSkillDetail(skill, static_cast<uint16_t>(entry.loyalty()), hundredths(entry));
-        tibia::game::localPlayerSetSkill(skill, static_cast<uint16_t>(entry.level()), static_cast<uint16_t>(entry.percent()));
-        tibia::game::localPlayerSetBaseSkill(skill, static_cast<uint16_t>(entry.base()));
-    }
+    setSkill(4, message.magic_level());
+    setSkill(14, message.axe());
+    setSkill(12, message.club());
+    setSkill(11, message.distance());
+    setSkill(15, message.fist());
+    setSkill(10, message.shielding());
+    setSkill(13, message.sword());
+    setSkill(16, message.fishing());
     tibia::game::localPlayerSetBaseCapacity(message.capacity().base() / 100);
     tibia::game::localPlayerSetTotalCapacity(message.capacity().level() / 100);
+    // The special magic levels: the protocol's damage types 0..11 are the
+    // client's; any other throws.
+    std::vector<std::pair<int, int>> specialMagicLevels;
+    for (const auto& boost : message.magic_skill_boosts()) {
+        if (boost.type() < 0 || boost.type() > 11)
+            throw std::runtime_error("unhandled enum value");
+        specialMagicLevels.emplace_back(boost.type(), boost.value());
+    }
+    if (TPlayerData* data = currentPlayerData())
+        data->setSpecialMagicLevels(specialMagicLevels);
     // CipSoft: TPlayerSkillStats keeps the message (offence / defence / misc stats).
     if (TPlayerSkillStats* stats = tibia::game::currentPlayerSkillStats())
         stats->setPlayerSkills(message);
@@ -921,30 +877,6 @@ void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const Gameserve
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 
-void TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& m)
-{
-    using namespace ::tibia::protobuf::protocol;
-    // The dialog derives the backpack and item loss itself (0xff: everything).
-    const auto rawLoss = [](const uint32_t loss, const uint32_t tenth) { return static_cast<uint8_t>(tenth == 100 ? 0xff : loss); };
-    BlessDialogData data;
-    data.totalBless = static_cast<uint8_t>(m.blessings_size());
-    for (const auto& b : m.blessings())
-        data.blesses.push_back({ .blessBitwise = static_cast<uint16_t>(b.blessing()), .playerBlessCount = static_cast<uint8_t>(b.count()),
-                                 .store = static_cast<uint8_t>(b.store_count()) });
-    data.premium = m.premium() ? 1 : 0;
-    data.promotion = static_cast<uint8_t>(m.promotion());
-    data.pvpMinXpLoss = static_cast<uint8_t>(m.pvp_min_xp_loss());
-    data.pvpMaxXpLoss = static_cast<uint8_t>(m.pvp_max_xp_loss());
-    data.pveExpLoss = static_cast<uint8_t>(m.pve_xp_loss());
-    data.equipPvpLoss = rawLoss(m.equip_pvp_loss(), m.equip_pvp_loss_tenth());
-    data.equipPveLoss = rawLoss(m.equip_pve_loss(), m.equip_pve_loss_tenth());
-    data.skull = m.skull() ? 1 : 0;
-    data.aol = m.amulet_of_loss() ? 1 : 0;
-    for (const auto& h : m.history())
-        data.logs.push_back({ .timestamp = h.timestamp(), .colorMessage = static_cast<uint8_t>(h.color()), .historyMessage = h.text() });
-    Q_EMIT requestBlessingsDialog(data);
-}
-
 void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& m)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -989,6 +921,15 @@ void TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelecti
         case 0: Q_EMIT openBossDifficultySelectionDialog(data); break;
         default: break;
     }
+}
+
+void TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionPreview(const uint32_t Context, const uint32_t Difficulty)
+{
+    ::tibia::protobuf::protocol::GameclientMessageBossDifficultySelection message;
+    message.set_context(Context);
+    message.set_action(2);
+    message.set_difficulty(Difficulty);
+    Q_EMIT sendDifficultySelectionDataChanged(message);
 }
 
 namespace {

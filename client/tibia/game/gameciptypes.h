@@ -27,7 +27,6 @@ namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageVocationSpecificPlayerData;
-class GameserverMessageBlessingsDialog;
 class GameserverMessageBossDifficultySelection;
 class GameserverMessageEditList;
 class GameserverMessageEditGuildMessage;
@@ -55,7 +54,6 @@ class GameserverMessageBlessings;
 class GameserverMessageClientCheck;
 class GameserverMessageConfigureCreaturePodium;
 class GameserverMessageDead;
-class GameserverMessageGameEvent;
 class GameserverMessageHirelingNameChange;
 class GameserverMessageInspectionList;
 class GameserverMessageLoginChallenge;
@@ -75,6 +73,7 @@ class GameserverMessageSessionDumpStart;
 class GameserverMessageSessionEndInformation;
 class GameserverMessageShowMultiOfflineTrainingDialog;
 class GameclientMessageEnterWorld;
+class GameclientMessageBossDifficultySelection;
 class GameclientMessageClientDetails;
 class GameclientMessageGoNorth;
 class GameclientMessageGoEast;
@@ -118,19 +117,6 @@ class TCooldownStorage;
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-class TBlessingsProtocolMessageHandler final : public cip::tibia::game::TBlessingsProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TBlessingsProtocolMessageHandler::TBlessingsProtocolMessageHandler;
-
-    void handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& message);
-
-Q_SIGNALS:
-    /// CIP requestBlessingsDialog: the blessings dialog's data.
-    void requestBlessingsDialog(const BlessDialogData& BlessingDialogData);
-};
-
 /// What an update of the boss difficulty dialog carries: the selected
 /// difficulty and the modifiers it brings.
 struct TBossDifficultySelectionDialogUpdateData
@@ -165,10 +151,15 @@ public:
     using cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler::TBossDifficultySelectionProtocolMessageHandler;
 
     void handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& message);
+    /// Asks the server to preview `Difficulty` in the dialog of `Context`
+    /// (selection action 2).
+    void sendDifficultySelectionPreview(uint32_t Context, uint32_t Difficulty);
 
 Q_SIGNALS:
     void openBossDifficultySelectionDialog(const TBossDifficultySelectionDialogData& BossDifficultySelectionDialogData);
     void updateBossDifficultySelectionDialog(const TBossDifficultySelectionDialogUpdateData& BossDifficultySelectionDialogData);
+    void sendDifficultySelectionDataChanged(
+        const ::tibia::protobuf::protocol::GameclientMessageBossDifficultySelection& BossDifficultySelectionCommandMessage);
 };
 
 class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditTextProtocolMessageHandler
@@ -194,15 +185,6 @@ Q_SIGNALS:
                                const QString& TextAuthor, const QString& TextDate, bool RecentlyTraded);
     /// CIP requestEditListDialog: the list with its edit id and list type.
     void requestEditListDialog(uint32_t EditIdentifier, uint8_t EditListType, const QString& Text);
-};
-
-class TGameEventProtocolMessageHandler final : public cip::tibia::game::TGameEventProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TGameEventProtocolMessageHandler::TGameEventProtocolMessageHandler;
-
-    void handleGameEventMessage(const ::tibia::protobuf::protocol::GameserverMessageGameEvent& message);
 };
 
 /// CIP `game::TGameProtocolMessageHandler`: the login, session end, death and

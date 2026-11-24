@@ -22,6 +22,7 @@
 #include <variant>
 #include <memory>
 #include <span>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -620,12 +621,23 @@ public:
     EGameAction gameActionType() const override { return EGameAction::BROWSE_FIELD; }
 };
 
-/// CIP input::TGameActionMoveUp (MOVE_UP).
+/// CIP input::TGameActionMoveUp (MOVE_UP): an object in a container moved to
+/// the parent container.
 class TGameActionMoveUp final : public TObjectGameAction
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
+    /// CIP +0x28: a byte the container slot actions set to 0xff; the handler
+    /// does not read it (it moves with a count of 0xff itself).
+    explicit TGameActionMoveUp(const TObjectGameActionContext& object, uint8_t count = 0xff)
+        : TObjectGameAction(object)
+        , m_count(count)
+    {
+    }
     EGameAction gameActionType() const override { return EGameAction::MOVE_UP; }
+    uint8_t count() const { return m_count; }
+
+private:
+    uint8_t m_count;
 };
 
 /// CIP input::TGameActionConfigureShowOffSocket (CONFIGURE_SHOW_OFF_SOCKET).
@@ -817,8 +829,9 @@ public:
     bool sendAutomatically() const { return m_sendAutomatically; }
     /// The text casts a spell (+0x21) with this ESpellCastOptionalTargetType (+0x24).
     bool isSpell() const { return m_isSpell; }
+    void setIsSpell(bool isSpell) { m_isSpell = isSpell; }
     int spellCastOptionalTargetType() const { return m_spellCastOptionalTargetType; }
-    TGameActionSetCurrentChatChannelInputText& setSpell(bool isSpell, int spellCastOptionalTargetType);
+    void setSpellCastOptionalTargetType(int type) { m_spellCastOptionalTargetType = type; }
 
 private:
     QString m_text;
@@ -2344,22 +2357,19 @@ private:
 };
 
 /// CIP input::TGameActionBuyHirelingNameOrSexChange (BUY_HIRELING_NAME_OR_SEX_CHANGE):
-/// the store's open parameters (qtclient opens the store's front page; CIP
-/// passes open action 1, detail 7).
+/// opens the store on the premium/boosts page (open action 1) at detail 7.
 class TGameActionBuyHirelingNameOrSexChange final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionBuyHirelingNameOrSexChange(uint32_t creatureId)
+    TGameActionBuyHirelingNameOrSexChange()
         : TGameActionSimple(EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
-        , m_creatureId(creatureId)
+        , m_parameters{ 1, 7, {} }
     {
     }
     const TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
-    uint32_t creatureId() const { return m_creatureId; }
 
 private:
     TStoreOpenParameters m_parameters;
-    uint32_t m_creatureId;
 };
 
 /// CIP input::TGameActionExaltationForgeFusion (EXALTATION_FORGE_FUSION).
@@ -2813,12 +2823,100 @@ public:
     bool accountIsEmpty() const { return m_value; }
 };
 
-/// CIP input::gameactions::TGameActionGameEvent (GAME_EVENT).
-class TGameActionGameEvent final : public TGameActionWithValue<EGameAction::GAME_EVENT, int>
+/// CIP input::gameactions::TGameActionGameEvent (GAME_EVENT): one game event of
+/// the server (game::TGameEventProtocolMessageHandler), as a variant of its kinds.
+class TGameActionGameEvent final : public TGameActionSimple
 {
 public:
-    using TGameActionWithValue::TGameActionWithValue;
-    int gameEvent() const { return m_value; }
+    /// A simple event that shows an info banner (protocol value 9..16).
+    struct TSimple
+    {
+        int event = 0;
+    };
+    struct TAchievement
+    {
+        std::string name;
+    };
+    struct TTitle
+    {
+        std::string name;
+    };
+    struct TLevelUp
+    {
+        uint16_t level = 0;
+    };
+    struct TSkillUp
+    {
+        int skill = 0;
+        uint16_t level = 0;
+    };
+    struct TBestiaryProgress
+    {
+        uint16_t raceId = 0;
+        uint8_t progress = 0;
+    };
+    struct TBosstiaryProgress
+    {
+        uint16_t raceId = 0;
+        uint8_t progress = 0;
+    };
+    /// state: 0 started, 1 completed.
+    struct TQuestProgress
+    {
+        std::string questName;
+        int state = 0;
+    };
+    /// part: 0..3.
+    struct TOutfitPartUnlocked
+    {
+        uint16_t outfitId = 0;
+        std::string name;
+        int part = 0;
+    };
+    struct TWeaponProficiency
+    {
+        uint16_t objectId = 0;
+        std::string name;
+    };
+    struct TBountyTaskFinished
+    {
+        uint16_t raceId = 0;
+    };
+    struct TWeeklyTaskSpecificCreatureFinished
+    {
+        uint16_t raceId = 0;
+    };
+    struct TSpellUnlocked
+    {
+        uint32_t spellId = 0;
+    };
+    struct TLeaderMonsterKilled
+    {
+        uint16_t raceId = 0;
+        uint32_t charmPoints = 0;
+    };
+    struct TSubAreaUnlocked
+    {
+        uint32_t subAreaId = 0;
+    };
+    struct TAreaUnlocked
+    {
+        uint32_t areaId = 0;
+    };
+    using TEvent = std::variant<TSimple, TAchievement, TTitle, TLevelUp, TSkillUp, TBestiaryProgress, TBosstiaryProgress,
+                                TQuestProgress, TOutfitPartUnlocked, TWeaponProficiency, TBountyTaskFinished,
+                                TWeeklyTaskSpecificCreatureFinished, TSpellUnlocked, TLeaderMonsterKilled,
+                                TSubAreaUnlocked, TAreaUnlocked>;
+
+    explicit TGameActionGameEvent(TEvent Event)
+        : TGameActionSimple(EGameAction::GAME_EVENT)
+        , m_event(std::move(Event))
+    {
+    }
+    const TEvent& event() const { return m_event; }
+
+private:
+    TEvent m_event;
 };
 }
 
@@ -3029,45 +3127,42 @@ private:
     uint32_t m_targetCreatureId;
 };
 
-/// CIP input::TGameActionCrossHairSpell / TGameActionSpellAtMouseCursor: a spell (+0x38)
-/// cast at a selected target or the mouse cursor. qtclient carries the words, the
-/// talk mode (tibia::client::MessageMode) and the ESpellCastOptionalTargetType.
+/// CIP input::TGameActionCrossHairSpell / TGameActionSpellAtMouseCursor: a spell
+/// (+0x38) cast at a selected target or the mouse cursor. The chat
+/// handler makes it from the spell id and then sets the spoken words (+0x40)
+/// and the talk mode (+0x58; qtclient: a tibia::client::MessageMode).
 class TGameActionTargetedSpell : public IGameAction
 {
 public:
-    TGameActionTargetedSpell(EGameAction type, uint16_t spellId, QString words, int talkMode, int spellCastType,
-                             std::optional<TObjectGameActionContext> target = {})
+    TGameActionTargetedSpell(EGameAction type, uint16_t spellId, std::optional<TObjectGameActionContext> target = {})
         : m_type(type)
-        , m_spellId(spellId)
-        , m_words(std::move(words))
-        , m_talkMode(talkMode)
-        , m_spellCastType(spellCastType)
         , m_target(std::move(target))
+        , m_spellId(spellId)
+        , m_talkMode(0)
     {
     }
     EGameAction gameActionType() const override { return m_type; }
     uint16_t spellId() const { return m_spellId; }
     const QString& words() const { return m_words; }
+    void setWords(const QString& words) { m_words = words; }
     int talkMode() const { return m_talkMode; }
-    int spellCastType() const { return m_spellCastType; }
+    void setTalkMode(int talkMode) { m_talkMode = talkMode; }
     const std::optional<TObjectGameActionContext>& target() const { return m_target; }
 
 private:
     EGameAction m_type;
+    std::optional<TObjectGameActionContext> m_target;
     uint16_t m_spellId;
     QString m_words;
     int m_talkMode;
-    int m_spellCastType;
-    std::optional<TObjectGameActionContext> m_target;
 };
 
 /// CIP input::TGameActionCrossHairSpell (CROSSHAIR_SPELL).
 class TGameActionCrossHairSpell final : public TGameActionTargetedSpell
 {
 public:
-    TGameActionCrossHairSpell(uint16_t spellId, QString words, int talkMode, int spellCastType,
-                              std::optional<TObjectGameActionContext> target = {})
-        : TGameActionTargetedSpell(EGameAction::CROSSHAIR_SPELL, spellId, std::move(words), talkMode, spellCastType, std::move(target))
+    explicit TGameActionCrossHairSpell(uint16_t spellId, std::optional<TObjectGameActionContext> target = {})
+        : TGameActionTargetedSpell(EGameAction::CROSSHAIR_SPELL, spellId, std::move(target))
     {
     }
 };
@@ -3076,8 +3171,8 @@ public:
 class TGameActionSpellAtMouseCursor final : public TGameActionTargetedSpell
 {
 public:
-    TGameActionSpellAtMouseCursor(uint16_t spellId, QString words, int talkMode, int spellCastType)
-        : TGameActionTargetedSpell(EGameAction::SPELL_AT_MOUSE_CURSOR, spellId, std::move(words), talkMode, spellCastType)
+    explicit TGameActionSpellAtMouseCursor(uint16_t spellId)
+        : TGameActionTargetedSpell(EGameAction::SPELL_AT_MOUSE_CURSOR, spellId)
     {
     }
 };
@@ -3161,31 +3256,35 @@ public:
 class TGameActionStashStowContainerContent final : public TObjectGameAction
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
+    explicit TGameActionStashStowContainerContent(const TObjectGameActionContext& object)
+        : TObjectGameAction(object)
+        , m_stashConfirmed(false)
+    {
+    }
     EGameAction gameActionType() const override { return EGameAction::STASH_STOW_CONTAINER_CONTENT; }
     /// CIP +0x30: the stow needs no confirmation any more (set on the stow sent).
     bool isStashConfirmed() const { return m_stashConfirmed; }
     void setStashConfirmed(bool confirmed) const { m_stashConfirmed = confirmed; }
 
 private:
-    mutable bool m_stashConfirmed = false;
+    mutable bool m_stashConfirmed;
 };
 
 /// CIP input::TGameActionStashStowStack (STASH_STOW_STACK): a stack and how many
-/// of it are stowed.
+/// of it are stowed (a byte, +0x30).
 class TGameActionStashStowStack final : public TObjectGameAction
 {
 public:
-    TGameActionStashStowStack(const TObjectGameActionContext& object, int amount)
+    TGameActionStashStowStack(const TObjectGameActionContext& object, uint8_t amount)
         : TObjectGameAction(object)
         , m_amount(amount)
     {
     }
     EGameAction gameActionType() const override { return EGameAction::STASH_STOW_STACK; }
-    int amount() const { return m_amount; }
+    uint8_t amount() const { return m_amount; }
 
 private:
-    int m_amount;
+    uint8_t m_amount;
 };
 
 /// CIP input::TGameActionStashRetrieve (STASH_RETRIEVE): type (+0xc), amount (+0x10)
@@ -3257,20 +3356,40 @@ private:
     bool m_smartMode;
 };
 
-/// CIP input::TGameActionInspectObject (INSPECT_OBJECT).
-class TGameActionInspectObject final : public TObjectGameAction
+/// CIP input::TGameActionInspectObject (INSPECT_OBJECT): the inspected object's
+/// location (+0x10).
+class TGameActionInspectObject final : public gameactions::TGameActionSimple
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
-    EGameAction gameActionType() const override { return EGameAction::INSPECT_OBJECT; }
+    explicit TGameActionInspectObject(TGameActionContextPtr location)
+        : TGameActionSimple(EGameAction::INSPECT_OBJECT)
+        , m_location(std::move(location))
+    {
+    }
+    const TGameActionContextPtr& location() const { return m_location; }
+    /// qtclient's readers: the classic position of the location.
+    Position position() const { return protocolPosition(m_location.get()); }
+
+private:
+    TGameActionContextPtr m_location;
 };
 
-/// CIP input::TGameActionOpenParentContainer (OPEN_PARENT_CONTAINER).
-class TGameActionOpenParentContainer final : public TObjectGameAction
+/// CIP input::TGameActionOpenParentContainer (OPEN_PARENT_CONTAINER): the
+/// location (+0x10) whose parent container opens.
+class TGameActionOpenParentContainer final : public gameactions::TGameActionSimple
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
-    EGameAction gameActionType() const override { return EGameAction::OPEN_PARENT_CONTAINER; }
+    explicit TGameActionOpenParentContainer(TGameActionContextPtr location)
+        : TGameActionSimple(EGameAction::OPEN_PARENT_CONTAINER)
+        , m_location(std::move(location))
+    {
+    }
+    const TGameActionContextPtr& location() const { return m_location; }
+    /// qtclient's readers: the classic position of the location.
+    Position position() const { return protocolPosition(m_location.get()); }
+
+private:
+    TGameActionContextPtr m_location;
 };
 
 /// CIP input::TGameActionQuickLoot (QUICK_LOOT).

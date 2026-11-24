@@ -2,8 +2,9 @@
 #include "game/gamesessionbase.h"
 #include "input/keyboardshortcuthandler.h"
 
-#include "app/clientoptions.h"
 #include "config/clientoptions.h"
+#include "game/gameactionrouter.h"
+#include "game/gameciptypes.h"
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbuttoncontroller.h"
@@ -18,8 +19,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
-#include <QQuickItem>
-#include <QQuickWindow>
 
 #include <algorithm>
 #include <tibia/game/gamesession.h>
@@ -30,49 +29,31 @@ namespace tibia::gamewindow {
 namespace {
 
 using Setting = config::TActionSetting;
-using A = input::EGameAction;
-using P = EActionBarPosition;
 
 }
 
-TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QQmlEngine* engine,
-                                     chat::TChatModeManager* chatModeManager, QObject* parent)
+TActionBarManager::TActionBarManager(config::TClientOptions* clientOptions, game::TPremiumTimeStorage* premiumTimeStorage,
+                                     spells::TSpellInfoStorage* spellInfoStorage, QObject* parent)
     : cip::tibia::gamewindow::TActionBarManager(parent)
-    , m_gameWindowItem(gameWindowItem)
-    , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
+    , m_clientOptions(clientOptions)
+    , m_premiumTimeStorage(premiumTimeStorage)
+    , m_spellInfoStorage(spellInfoStorage)
 {
-    connect(m_targetSelection, &TTargetSelectionController::publishGameAction, this, &TActionBarManager::publishGameAction);
-    if (gameWindowItem) {
-        const std::array<std::pair<P, const char*>, 3> containers{ { { P::ActionBarPositionBottom, "bottomActionBars" },
-                                                                    { P::ActionBarPositionLeft, "leftActionBars" },
-                                                                    { P::ActionBarPositionRight, "rightActionBars" } } };
-        for (const auto& [position, name] : containers) {
-            auto* container = gameWindowItem->findChild<QQuickItem*>(QLatin1String(name));
-            addGroup(std::make_unique<TActionBarGroup>(position, container, engine, gameWindowItem, mapWindowPane,
-                                                       config::TClientOptions::instance(), chatModeManager, this));
-        }
-        restoreLastAktionBarConfiguration();
-        // Host: the frame the groups tick on.
-        const auto connectFrame = [this](QQuickWindow* window) {
-            disconnect(m_frameConnection);
-            if (window)
-                m_frameConnection = connect(window, &QQuickWindow::afterAnimating, this, [this] { tick(game::TCooldownStorage::now()); });
-        };
-        connect(gameWindowItem, &QQuickItem::windowChanged, this, connectFrame);
-        connectFrame(gameWindowItem->window());
-    }
 }
 
-TActionBarManager::~TActionBarManager()
-{
-    disconnect(m_frameConnection);
-}
+TActionBarManager::~TActionBarManager() = default;
 
-void TActionBarManager::addGroup(std::unique_ptr<TActionBarGroup> group)
+void TActionBarManager::addGroup(std::shared_ptr<TActionBarGroup> group)
 {
-    connect(group.get(), &TActionBarGroup::publishGameAction, this, &TActionBarManager::publishGameAction);
     const EActionBarPosition position = group->position();
     m_groups[position] = std::move(group);
+}
+
+void TActionBarManager::connectToGameActionRouter(const std::shared_ptr<game::TGameActionRouter>& router)
+{
+    game::TInternalGameActionRouter* internalRouter = router->internalRouter();
+    for (const auto& [position, group] : m_groups)
+        connect(group.get(), &TActionBarGroup::publishGameAction, internalRouter, &game::TInternalGameActionRouter::handleGameActionInternal);
 }
 
 void TActionBarManager::restoreLastAktionBarConfiguration()
@@ -85,8 +66,6 @@ void TActionBarManager::handleGameAction(const input::IGameActionPtr& pGameActio
 {
     for (const auto& [position, group] : m_groups)
         group->handleGameAction(pGameAction);
-    if (m_targetSelection)
-        m_targetSelection->handleGameAction(pGameAction);
 }
 
 void TActionBarManager::tick(const qint64 now)
@@ -107,14 +86,6 @@ void TActionBarManager::connectToGameSession(const std::shared_ptr<game::IGameSe
                                             &TActionBarManager::onReceivedUnlockedSpell);
 }
 
-TActionBarController* TActionBarManager::bar(const int actionBarId) const
-{
-    for (const auto& [position, group] : m_groups)
-        if (TActionBarController* found = group->managesBar(uint8_t(actionBarId)) ? group->bar(uint8_t(actionBarId)) : nullptr)
-            return found;
-    return nullptr;
-}
-
 void TActionBarManager::onWorldEntered()
 {
     if (tibia::game::hasLocalPlayer()) {
@@ -132,17 +103,16 @@ void TActionBarManager::onWorldEntered()
 
 void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    if (!options.value(QLatin1String("actionButtonAutoInsertSpells")).toBool(true))
+    if (!m_clientOptions || !m_clientOptions->boolOption(config::EClientOption::actionButtonAutoInsertSpells))
         return;
-    spells::TSpellInfoStorage* storage = spells::TSpellInfoStorage::instance();
-    const spells::TSpellInfo* spell = storage->spell(spellId);
+    const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
     if (!spell)
         return;
     const auto casts = [&](const Setting& setting) {
-        const spells::TSpellInfo* cast = setting.kind == Setting::TEXT ? storage->spellOfText(setting.text) : nullptr;
+        const spells::TSpellInfo* cast = setting.kind == Setting::TEXT ? m_spellInfoStorage->spellOfText(setting.text) : nullptr;
         return cast && cast->id == spellId;
     };
+    // Host: the hotkey options keep the current hotkey set the bars apply.
     for (const auto& [key, setting] : config::THotkeyOptions::instance()->currentSet().mappings) {
         if (casts(setting))
             return;
@@ -150,16 +120,16 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
             if (casts(slot))
                 return;
     }
-    const bool newlyUnlocked = !spell->premium
-                               || (tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium());
+    const bool newlyUnlocked = !spell->premium || (m_premiumTimeStorage && m_premiumTimeStorage->isPremium());
     for (const int actionBarId : { 1, 4, 7, 2, 5, 8, 3, 6, 9 }) {
-        for (const auto& [position, group] : m_groups) {
-            if (group->locked())
-                continue;
-            for (TActionBarController* bar : group->bars())
-                if (bar->actionBarId() == actionBarId && bar->insertSpell(spellId, newlyUnlocked))
-                    return;
-        }
+        // The bar of the last unlocked group that has it.
+        TActionBarController* bar = nullptr;
+        for (const auto& [position, group] : m_groups)
+            if (!group->locked())
+                if (TActionBarController* found = group->managesBar(uint8_t(actionBarId)) ? group->bar(uint8_t(actionBarId)) : nullptr)
+                    bar = found;
+        if (bar && bar->insertSpell(spellId, newlyUnlocked))
+            return;
     }
 }
 

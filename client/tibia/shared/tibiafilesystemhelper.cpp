@@ -1,6 +1,7 @@
 #include "shared/tibiafilesystemhelper.h"
 
 #include "filesystemhelper.h"
+#include "platform/platform.h"
 #include "shared/sharedciptypes.h"
 
 #include <QCoreApplication>
@@ -90,6 +91,9 @@ const QString kBoostedCreatureJson = QStringLiteral("boostedcreature.json");
 const QString kSystemSurveyTxt = QStringLiteral("systemsurvey.txt");
 const QString kEventScheduleJson = QStringLiteral("eventschedule.json");
 const QString kAssetsJsonSha256 = QStringLiteral("assets.json.sha256");
+const QString kLauncherExecutableName = QStringLiteral("Tibia");
+const QString kClientExecutableName = QStringLiteral("client");
+const QString kForcePatchMarkerName = QStringLiteral("FORCE_PATCH");
 constexpr const char* kImageFormat = "PNG";
 
 /// <app>/../Resources (macOS bundle resources).
@@ -456,6 +460,82 @@ QJsonDocument TTibiaFileSystemHelper::readJsonFileOrEmptyObject(const QString& f
     if (!error)
         return document;
     return QJsonDocument::fromJson(QByteArrayLiteral("{}"));
+}
+
+QDir TTibiaFileSystemHelper::getPackageRootDirectory()
+{
+    // Walk up from the application directory until the launcher executable is
+    // a file there; a default QDir when the file system root is reached.
+    QDir directory(QCoreApplication::applicationDirPath());
+    while (!QFileInfo(directory.absoluteFilePath(kLauncherExecutableName)).isFile()) {
+        if (!directory.cdUp())
+            return QDir(QString());
+    }
+    return directory;
+}
+
+QDir TTibiaFileSystemHelper::getLauncherDirectory()
+{
+    const QDir packageRoot = getPackageRootDirectory();
+    return QDir(QFileInfo(packageRoot.absoluteFilePath(kLauncherExecutableName)).canonicalPath());
+}
+
+bool TTibiaFileSystemHelper::startLauncherDetached(const QStringList& arguments)
+{
+    const QDir launcherDirectory = getLauncherDirectory();
+    const QString program = launcherDirectory.absoluteFilePath(kLauncherExecutableName);
+    QDir pluginDirectory(launcherDirectory);
+    pluginDirectory.cd(QStringLiteral("../PlugIns"));
+    qputenv("QT_QPA_PLATFORM_PLUGIN_PATH", pluginDirectory.canonicalPath().toLocal8Bit());
+    return tibia::platform::startDetached(program, arguments, {}, launcherDirectory.absolutePath());
+}
+
+bool TTibiaFileSystemHelper::startLauncher(const ELauncherStartReason reason, const QString& patchPath)
+{
+    QStringList arguments;
+    switch (reason) {
+    case LAUNCHER_START_FIRST_LAUNCH:
+        arguments.append(QStringLiteral("--first-launch"));
+        break;
+    case LAUNCHER_START_SKIP_SELFUPDATE:
+        arguments.append(QStringLiteral("--skip-selfupdate"));
+        break;
+    case LAUNCHER_START_SHOW_UI:
+        arguments.append(QStringLiteral("--show-ui"));
+        break;
+    case LAUNCHER_START_PATCH:
+        arguments.append(QStringLiteral("--patch"));
+        arguments.append(patchPath);
+        break;
+    default:
+        break;
+    }
+    return startLauncherDetached(arguments);
+}
+
+bool TTibiaFileSystemHelper::startLauncherToPatchClient()
+{
+    const QString clientPath = QCoreApplication::applicationDirPath() + QLatin1Char('/') + kClientExecutableName;
+    return startLauncher(LAUNCHER_START_PATCH, QDir::toNativeSeparators(clientPath));
+}
+
+void TTibiaFileSystemHelper::createForcePatchMarker()
+{
+    QDir directory = resourcesDirectory();
+    directory.cdUp();
+    directory.cdUp();
+    QFile file(directory.absoluteFilePath(kForcePatchMarkerName));
+    (void)file.open(QIODevice::WriteOnly);
+    file.close();
+}
+
+bool TTibiaFileSystemHelper::hasForcePatchMarker()
+{
+    QDir directory = resourcesDirectory();
+    directory.cdUp();
+    directory.cdUp();
+    const QFile file(directory.absoluteFilePath(kForcePatchMarkerName));
+    return file.exists();
 }
 
 void TTibiaFileSystemHelper::init(const char* argv0)

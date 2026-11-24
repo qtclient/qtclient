@@ -37,6 +37,9 @@ public:
     void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
     void setTooltipContainer(QObject* container) { m_tooltipContainer = container; }
 
+    /// Asks the account service whether accounts can be created; `onResult`
+    /// gets true for an HTTP 200 answer.
+    void checkIfAccountCreationEnabled(std::function<void(bool)> onResult);
     /// Closes the dialog and asks for the worlds; the answer shows it.
     void showDialog() override;
     bool eventFilter(QObject* watched, QEvent* event) override;

@@ -3,6 +3,7 @@
 #include <QLoggingCategory>
 
 #include <algorithm>
+#include <iterator>
 
 Q_LOGGING_CATEGORY(lcSoundObjects, "sound.ambience.objectsounds", QtFatalMsg)
 
@@ -82,14 +83,8 @@ void TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged(const
         entry.player = createActivePlayer();
     TActiveSoundPlayer* player = entry.player;
 
-    // The loop of the largest count the objects reach.
-    std::optional<uint16_t> soundId;
-    if (count != 0 && !entry.stream.loopingSoundIdByCount.empty()) {
-        auto upper = entry.stream.loopingSoundIdByCount.upper_bound(static_cast<uint32_t>(count));
-        if (upper != entry.stream.loopingSoundIdByCount.begin())
-            soundId = std::prev(upper)->second;
-    }
-    if (!soundId) {
+    // No objects or no loops: stop.
+    if (count == 0 || entry.stream.loopingSoundIdByCount.empty()) {
         if (player->isPlaying()) {
             qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
                                     << "stop playing" << soundManager()->soundName(player->currentSoundId())
@@ -98,11 +93,24 @@ void TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged(const
         }
         return;
     }
+    // The loop of the largest count threshold the objects reach; below the
+    // smallest threshold: stop.
+    auto upper = entry.stream.loopingSoundIdByCount.upper_bound(static_cast<uint32_t>(count));
+    if (upper == entry.stream.loopingSoundIdByCount.begin()) {
+        if (player->isPlaying()) {
+            qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
+                                    << "stop playing" << soundManager()->soundName(player->currentSoundId())
+                                    << "for object sound" << streamId << " because " << count << " is below threshold";
+            player->fadeOut();
+        }
+        return;
+    }
+    const uint16_t soundId = std::prev(upper)->second;
 
-    std::optional<TPlayableSound> playable = soundManager()->playableSound(*soundId);
-    if (!playable || (!playable->isReady() && !playable->isLoading())) {
+    std::optional<TPlayableSound> playable = soundManager()->playableSound(soundId);
+    if (!playable || !playable->isReady()) {
         qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
-                                << "stop playing" << soundManager()->soundName(*soundId) << "for object sound "
+                                << "stop playing" << soundManager()->soundName(soundId) << "for object sound "
                                 << streamId << " due to invalid EffectInfo";
         player->fadeOut();
         return;

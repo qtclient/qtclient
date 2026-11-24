@@ -515,6 +515,8 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
     onHotkeyOptionsChanged();
     for (TActionButtonController* button : m_buttons)
         button->connectToGameSession(m_gameSession);
+    if (m_passiveAbilityDialog)
+        m_passiveAbilityDialog->connectToGameSession(m_gameSession);
 }
 
 void TActionBarController::tick(const qint64 now)

@@ -41,16 +41,16 @@ public:
     const std::set<uint16_t>& list(int listType) const;
     bool isListed(uint16_t objectType) const;
     bool isListFull() const;
-    /// Adds to or removes from the active list and sends it to the server.
+    /// Adds to or removes from the active list (the managed containers
+    /// handler sends it on configurationChangedFromUserInput).
     void setListed(uint16_t objectType, bool listed);
-    /// Switches the active list and sends it.
+    /// Switches the active list.
     void setListType(int listType);
-    /// Replaces both lists and the active type, and sends the active list.
+    /// Replaces both lists and the active type.
     void replaceLists(int listType, std::set<uint16_t> blacklist, std::set<uint16_t> whitelist);
 
 private:
     std::set<uint16_t>& activeList();
-    void sendActiveList() const;
 
     int m_listType = Blacklist;
     std::set<uint16_t> m_blacklist;

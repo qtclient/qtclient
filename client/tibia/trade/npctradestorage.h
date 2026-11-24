@@ -9,11 +9,21 @@
 #include <QString>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <variant>
 #include <vector>
 
 namespace tibia {
+namespace config {
+class TSidebarOptions;
+}
+namespace container {
+class TInventoryContainer;
+}
+namespace game {
+class TPlayerData;
+}
 namespace trade {
 
 /// One good of the NPC's offer (CIP: the 0x38-byte entry of the open trade
@@ -63,7 +73,12 @@ public:
     /// The trade currency: an object type or a name; none is gold.
     using TCurrency = std::variant<uint16_t, QString>;
 
-    explicit TNPCTradeStorage(QObject* parent = nullptr);
+    /// Follows the player data (free capacity), the inventory (re-announced
+    /// as playerInventoryChanged) and the sidebar's NPC trade options (the
+    /// goods are announced again).
+    explicit TNPCTradeStorage(std::shared_ptr<game::TPlayerData> playerData = {},
+                              std::shared_ptr<container::TInventoryContainer> inventoryContainer = {},
+                              std::shared_ptr<config::TSidebarOptions> sidebarOptions = {}, QObject* parent = nullptr);
     /// The session's handler the trade requests go to (it registers itself).
     void setProtocolMessageHandler(TNPCTradeProtocolMessageHandler* handler) { m_protocolMessageHandler = handler; }
 
@@ -114,6 +129,9 @@ public Q_SLOTS:
     void onPlayerDataChanged();
 
 private:
+    std::shared_ptr<game::TPlayerData> m_playerData;
+    std::shared_ptr<container::TInventoryContainer> m_inventoryContainer;
+    std::shared_ptr<config::TSidebarOptions> m_sidebarOptions;
     TNPCTradeProtocolMessageHandler* m_protocolMessageHandler = nullptr;
     bool m_open = false;
     QString m_npcName;
@@ -123,7 +141,6 @@ private:
     std::map<uint16_t, uint16_t> m_playerGoods;
     std::optional<TCurrency> m_currency;
     int m_questFlagCurrencyBalance = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

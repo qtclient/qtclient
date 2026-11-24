@@ -3,7 +3,10 @@
 #include "app/clientoptions.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "taskboard/taskboardweeklytasksstorage.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
 #include "mods/attention_backend.h"
@@ -457,13 +460,21 @@ void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
     uint16_t typeId = 0;
     if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-        const container::TInventorySlot& left = inventory->slotAt(tibia::client::InventorySlotLeft);
+        const container::TInventorySlot& left = inventory->leftHandSlot();
         if (!left.empty())
             typeId = static_cast<uint16_t>(left.typeId);
     }
     Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(typeId));
 }
-void TButtonBarController::onTaskboardDialogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); }
+void TButtonBarController::onTaskboardDialogButtonClicked()
+{
+    // Opens on the weekly results (tab 1) once this week's progress is finished.
+    int tab = 0;
+    if (game::TGameSessionBase* session = game::currentGameSession())
+        if (const auto& weeklyTasks = session->taskboardWeeklyTasksStorage(); weeklyTasks && weeklyTasks->weeklyTaskData().progressFinished == 1)
+            tab = 1;
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(tab));
+}
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
 void TButtonBarController::onManageShortcutsClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
 

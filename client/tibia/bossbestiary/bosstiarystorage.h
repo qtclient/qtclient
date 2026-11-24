@@ -26,18 +26,22 @@ struct TBosstiaryEntry
 struct TBossSlot
 {
     bool unlocked = false;
-    /// The boss points needed to unlock the slot (locked slots only).
-    int unlockBosspoints = 0;
-    bool hasBoss = false;
     int raceId = 0;
     QString name;
+    /// The boss details below are set for every unlocked slot.
     int category = 0;
     quint32 kills = 0;
     int lootBonus = 0;
     int killBonus = 0;
+    /// The protocol's race repeat value (0..3).
+    int raceRepeat = 0;
     quint32 removePrice = 0;
     /// The slot's boss is today's boosted boss.
     bool inactive = false;
+    /// The slot carries boss details (it is unlocked).
+    bool hasBoss = false;
+    /// The boss points needed to unlock the slot (locked slots only).
+    int unlockBosspoints = 0;
     bool operator==(const TBossSlot&) const = default;
 };
 
@@ -56,10 +60,12 @@ struct TBossSlotsData
     int maximumBosspoints = 0;
     int currentLootBonus = 0;
     int nextLootBonus = 0;
+    /// The message lists bosses a slot can be set to.
+    bool hasUnlockedBosses = false;
+    std::vector<TAssignableBoss> assignable;
     TBossSlot first;
     TBossSlot second;
     TBossSlot boosted;
-    std::vector<TAssignableBoss> assignable;
     bool operator==(const TBossSlotsData&) const = default;
 };
 

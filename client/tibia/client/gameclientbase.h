@@ -78,10 +78,10 @@ public:
     TGameClientBase& operator=(const TGameClientBase&) = delete;
 
     /// CIP: the client's setup steps, in CipSoft's order: the storages, the
-    /// sound system, the assets; then `initialized`.
-    /// Host: CipSoft's QML context, sprite resolver, appearance instance
-    /// factory and minimap steps have no counterpart here yet (qtclient's
-    /// sprite system is the engine's, its minimap is the game session's).
+    /// sound system, the QML context, the assets; then `initialized`.
+    /// Host: CipSoft's sprite resolver, appearance instance factory and
+    /// minimap steps have no counterpart here yet (qtclient's sprite system
+    /// is the engine's, its minimap is the game session's).
     virtual void initialize();
 
     /// The client version the assets and the login are made for.
@@ -149,6 +149,12 @@ protected:
     /// router with the client, because the game window's controllers use
     /// them without a running engine (the character selection preview).
     virtual void initializeStorages();
+    /// CIP: what the QML engine's root context offers the client's QML: the
+    /// store balance helper (`storeAndResourceBalanceHelper`). Host: the mouse
+    /// cursor and text copy controllers CipSoft makes here come with the
+    /// engine (app::createEngine); the Appearance type helper reads the
+    /// appearances through their instance().
+    virtual void initializeQmlContext();
     /// CIP: the assets: the Cyclopedia map's static data asks the asset
     /// loading for its files, the client version is set and the assets, the
     /// static data, the Cyclopedia map and the sound bank are read. Host:

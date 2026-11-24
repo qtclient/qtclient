@@ -400,7 +400,10 @@ void TChatGameActionHandler::handleSendTalkChatMessageWithSpeechVolumeGameAction
     const int castType = pGameAction->spellCastOptionalTargetType();
     const auto spellId16 = static_cast<uint16_t>(spellId);
     if (castType == static_cast<int>(CastType::AtMousePosition) && (crossHairTarget || aimAtTarget)) {
-        Q_EMIT publishGameAction(std::make_shared<I::TGameActionSpellAtMouseCursor>(spellId16, pGameAction->text(), mode, castType));
+        auto spell = std::make_shared<I::TGameActionSpellAtMouseCursor>(spellId16);
+        spell->setWords(pGameAction->text());
+        spell->setTalkMode(mode);
+        Q_EMIT publishGameAction(spell);
         return;
     }
     // At the target or on yourself: the cast type is the aim mode.
@@ -410,7 +413,10 @@ void TChatGameActionHandler::handleSendTalkChatMessageWithSpeechVolumeGameAction
         return;
     }
     if (crossHairTarget && (castType == static_cast<int>(CastType::None) || castType == static_cast<int>(CastType::Crosshair))) {
-        Q_EMIT publishGameAction(std::make_shared<I::TGameActionCrossHairSpell>(spellId16, pGameAction->text(), mode, castType));
+        auto spell = std::make_shared<I::TGameActionCrossHairSpell>(spellId16);
+        spell->setWords(pGameAction->text());
+        spell->setTalkMode(mode);
+        Q_EMIT publishGameAction(spell);
         return;
     }
     if (!crossHairTarget && aimAtTarget

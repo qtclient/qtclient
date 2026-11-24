@@ -8,6 +8,8 @@
 #include <QtMath>
 
 #include <algorithm>
+#include <cmath>
+#include <optional>
 #include <string_view>
 
 namespace tibia::game {
@@ -32,10 +34,51 @@ uint8_t percentOf(const int value, const int maximum)
     return static_cast<uint8_t>(percent);
 }
 
+/// The skill types of the skills message: magic level, shielding, distance,
+/// club, sword, axe, fist, fishing.
+constexpr int MagicLevelSkill = 4;
+
+/// The skill type of a fighting skill or fishing; 0 for the others.
+int skillTypeOf(const tibia::client::Skill skill)
+{
+    switch (skill) {
+        case tibia::client::Fist: return 15;
+        case tibia::client::Club: return 12;
+        case tibia::client::Sword: return 13;
+        case tibia::client::Axe: return 14;
+        case tibia::client::Distance: return 11;
+        case tibia::client::Shielding: return 10;
+        case tibia::client::Fishing: return 16;
+        default: return 0;
+    }
+}
+
+/// The client skill of a skill type (the reverse of skillTypeOf).
+std::optional<tibia::client::Skill> clientSkillOf(const int skillType)
+{
+    switch (skillType) {
+        case 15: return tibia::client::Fist;
+        case 12: return tibia::client::Club;
+        case 13: return tibia::client::Sword;
+        case 14: return tibia::client::Axe;
+        case 11: return tibia::client::Distance;
+        case 10: return tibia::client::Shielding;
+        case 16: return tibia::client::Fishing;
+        default: return std::nullopt;
+    }
+}
+
+/// The protocol's units of a skill: whole levels, the percent truncated or in
+/// hundredths.
+uint16_t wholeOf(const double value) { return static_cast<uint16_t>(value); }
+uint16_t hundredthsOf(const double percent) { return static_cast<uint16_t>(std::lround(percent * 100.0)); }
+
 } // namespace
 
 TPlayerData::TPlayerData(QObject* parent)
     : cip::tibia::game::TPlayerData(parent)
+    , m_skills{ { 4, {} }, { 14, {} }, { 12, {} }, { 11, {} }, { 15, {} }, { 10, {} },
+                { 13, {} }, { 16, {} }, { 21, {} }, { 22, {} }, { 23, {} }, { 24, {} } }
 {
     m_changeTimer.setInterval(0);
     m_changeTimer.setSingleShot(true);
@@ -384,6 +427,26 @@ void TPlayerData::addKnownSpell(const uint16_t spellId)
     scheduleChangeNotification();
 }
 
+TSkill TPlayerData::skill(const int skillType) const { return m_skills.at(skillType); }
+
+void TPlayerData::setSkill(const int skillType, const double level, const double baseLevel, const double loyalty,
+                           const double percent)
+{
+    const TSkill& current = m_skills.at(skillType);
+    if (current.level == level && current.baseLevel == baseLevel && current.loyalty == loyalty && current.percent == percent)
+        return;
+    m_skills[skillType] = TSkill{ level, baseLevel, loyalty, percent };
+    scheduleChangeNotification();
+}
+
+void TPlayerData::setSpecialMagicLevels(const std::vector<std::pair<int, int>>& specialMagicLevels)
+{
+    if (m_specialMagicLevels == specialMagicLevels)
+        return;
+    m_specialMagicLevels = specialMagicLevels;
+    scheduleChangeNotification();
+}
+
 uint8_t TPlayerData::healthPercent() const
 {
     return percentOf(health(), maxHealth());
@@ -638,56 +701,6 @@ void TPlayerData::updateSoul(const uint8_t soul)
         notify("onSoulChange", soul, oldSoul);
 }
 
-void TPlayerData::setMagicLevel(const uint16_t magicLevel, const uint16_t magicLevelPercent)
-{
-    if (m_magicLevel == magicLevel && m_magicLevelPercent == magicLevelPercent)
-        return;
-    const uint16_t oldMagicLevel = m_magicLevel;
-    const uint16_t oldMagicLevelPercent = m_magicLevelPercent;
-    m_magicLevel = magicLevel;
-    m_magicLevelPercent = magicLevelPercent;
-    scheduleChangeNotification();
-    notify("onMagicLevelChange", magicLevel, magicLevelPercent, oldMagicLevel, oldMagicLevelPercent);
-}
-
-void TPlayerData::setBaseMagicLevel(const uint16_t baseMagicLevel)
-{
-    if (m_baseMagicLevel == baseMagicLevel)
-        return;
-    const uint16_t oldBaseMagicLevel = m_baseMagicLevel;
-    m_baseMagicLevel = baseMagicLevel;
-    scheduleChangeNotification();
-    notify("onBaseMagicLevelChange", baseMagicLevel, oldBaseMagicLevel);
-}
-
-uint16_t TPlayerData::skillLevel(const tibia::client::Skill skill) const
-{
-    if (skill >= tibia::client::LastSkill)
-        return 0;
-    return m_skills[skill].level;
-}
-
-uint16_t TPlayerData::skillBaseLevel(const tibia::client::Skill skill) const
-{
-    if (skill >= tibia::client::LastSkill)
-        return 0;
-    return m_skills[skill].baseLevel;
-}
-
-uint16_t TPlayerData::skillLoyaltyLevel(const tibia::client::Skill skill) const
-{
-    if (skill >= tibia::client::LastSkill)
-        return 0;
-    return m_skills[skill].loyaltyLevel;
-}
-
-uint16_t TPlayerData::skillPercentHundredths(const tibia::client::Skill skill) const
-{
-    if (skill >= tibia::client::LastSkill)
-        return 0;
-    return m_skills[skill].percentHundredths;
-}
-
 uint16_t TPlayerData::experienceRate(const tibia::client::ExperienceRate_t type) const
 {
     const TExperienceGainRates& rates = m_experienceGainRates;
@@ -703,48 +716,61 @@ uint16_t TPlayerData::experienceRate(const tibia::client::ExperienceRate_t type)
     return static_cast<uint16_t>(qRound(rate * 100.0));
 }
 
-void TPlayerData::setMagicLevelDetail(const uint16_t loyaltyLevel, const uint16_t percentHundredths)
+uint16_t TPlayerData::magicLevel() const { return wholeOf(skill(MagicLevelSkill).level); }
+
+uint16_t TPlayerData::magicLevelPercent() const { return wholeOf(skill(MagicLevelSkill).percent); }
+
+uint16_t TPlayerData::baseMagicLevel() const { return wholeOf(skill(MagicLevelSkill).baseLevel); }
+
+uint16_t TPlayerData::magicLevelLoyalty() const { return wholeOf(skill(MagicLevelSkill).loyalty); }
+
+uint16_t TPlayerData::magicLevelPercentHundredths() const { return hundredthsOf(skill(MagicLevelSkill).percent); }
+
+uint16_t TPlayerData::skillLevel(const tibia::client::Skill skill) const
 {
-    m_magicLevelLoyalty = loyaltyLevel;
-    m_magicLevelPercentHundredths = percentHundredths;
+    const int type = skillTypeOf(skill);
+    return type ? wholeOf(this->skill(type).level) : 0;
 }
 
-void TPlayerData::setSkillLevel(const tibia::client::Skill skill, const uint16_t level,
-                                const uint16_t levelPercent)
+uint16_t TPlayerData::skillBaseLevel(const tibia::client::Skill skill) const
 {
-    if (skill >= tibia::client::LastSkill)
-        return;
-    auto& row = m_skills[skill];
-    if (row.level == level && row.levelPercent == levelPercent)
-        return;
-    const uint16_t oldLevel = row.level;
-    const uint16_t oldLevelPercent = row.levelPercent;
-    row.level = level;
-    row.levelPercent = levelPercent;
-    scheduleChangeNotification();
-    notify("onSkillChange", skill, level, levelPercent, oldLevel, oldLevelPercent);
+    const int type = skillTypeOf(skill);
+    return type ? wholeOf(this->skill(type).baseLevel) : 0;
 }
 
-void TPlayerData::setSkillDetail(const tibia::client::Skill skill, const uint16_t loyaltyLevel,
-                                 const uint16_t percentHundredths)
+uint16_t TPlayerData::skillLoyaltyLevel(const tibia::client::Skill skill) const
 {
-    if (skill >= tibia::client::LastSkill)
-        return;
-    auto& row = m_skills[skill];
-    row.loyaltyLevel = loyaltyLevel;
-    row.percentHundredths = percentHundredths;
+    const int type = skillTypeOf(skill);
+    return type ? wholeOf(this->skill(type).loyalty) : 0;
 }
 
-void TPlayerData::setSkillBaseLevel(const tibia::client::Skill skill, const uint16_t baseLevel)
+uint16_t TPlayerData::skillPercentHundredths(const tibia::client::Skill skill) const
 {
-    if (skill >= tibia::client::LastSkill)
+    const int type = skillTypeOf(skill);
+    return type ? hundredthsOf(this->skill(type).percent) : 0;
+}
+
+void TPlayerData::updateSkill(const int skillType, const double level, const double baseLevel, const double loyalty,
+                              const double percent)
+{
+    const TSkill old = skill(skillType);
+    setSkill(skillType, level, baseLevel, loyalty, percent);
+    const bool levelChanged = wholeOf(old.level) != wholeOf(level) || wholeOf(old.percent) != wholeOf(percent);
+    const bool baseChanged = wholeOf(old.baseLevel) != wholeOf(baseLevel);
+    if (skillType == MagicLevelSkill) {
+        if (levelChanged)
+            notify("onMagicLevelChange", wholeOf(level), wholeOf(percent), wholeOf(old.level), wholeOf(old.percent));
+        if (baseChanged)
+            notify("onBaseMagicLevelChange", wholeOf(baseLevel), wholeOf(old.baseLevel));
         return;
-    const uint16_t oldBaseLevel = m_skills[skill].baseLevel;
-    if (oldBaseLevel == baseLevel)
+    }
+    const std::optional<tibia::client::Skill> clientSkill = clientSkillOf(skillType);
+    if (!clientSkill)
         return;
-    m_skills[skill].baseLevel = baseLevel;
-    scheduleChangeNotification();
-    notify("onBaseSkillChange", skill, baseLevel, oldBaseLevel);
+    if (levelChanged)
+        notify("onSkillChange", *clientSkill, wholeOf(level), wholeOf(percent), wholeOf(old.level), wholeOf(old.percent));
+    if (baseChanged)
+        notify("onBaseSkillChange", *clientSkill, wholeOf(baseLevel), wholeOf(old.baseLevel));
 }
 
 void TPlayerData::setExperienceRate(const tibia::client::ExperienceRate_t type, const uint16_t value)
@@ -850,12 +876,9 @@ void TPlayerData::clear()
     m_serene = false;
 
     m_name.clear();
-    m_magicLevel = 0;
-    m_magicLevelPercent = 0;
-    m_baseMagicLevel = 0;
-    m_magicLevelLoyalty = 0;
-    m_magicLevelPercentHundredths = 0;
-    m_skills = {};
+    for (auto& entry : m_skills)
+        entry.second = TSkill{};
+    m_specialMagicLevels.clear();
     m_rottenBloodState = 0;
     m_otherResources.clear();
     m_reportedResourceTypes.clear();

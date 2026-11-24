@@ -1,5 +1,6 @@
 #pragma once
 
+#include "authentication/authenticationjsondocumenthelper.h"
 #include "authentication/cloudflarechallengetypes.h"
 #include "input/gameactionptr.h"
 
@@ -15,6 +16,14 @@
 namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
+class TCharacterTradeDuePaymentDialogController;
+class TEmergencyDialogController;
+class TGenericEnterTextDialogController;
+class TLoginConfirmationCodeEnterTextDialogController;
+class TMessageDialogController;
+class TReturnerRewardDialogController;
+class TSurveyInvitationDialogController;
+class TTwoFactorCodeEnterTextDialogController;
 struct TCharacterLoginData;
 }
 namespace authentication {
@@ -42,7 +51,11 @@ enum ELoginConfirmationMethod : int
 /// handled after it; a final top-level state stops the machine.
 ///
 /// It owns the login's parts: the character selection, the login request
-/// uploader, the two code request uploaders and the Cloudflare challenge.
+/// uploader, the two code request uploaders, the Cloudflare challenge, the
+/// login's dialogs (the two-factor code, the login confirmation code, the
+/// device verification code, the message box, the survey invitation, the
+/// returner reward, the important balancing message and the character trade
+/// due payments) and the login data the dialogs fill in.
 class TAuthenticationProcessController final : public QObject
 {
     Q_OBJECT
@@ -108,15 +121,12 @@ public:
     };
 
     /// What the host provides: the login request's abort and Cloudflare
-    /// clearance, and the post-login dialogs (each shows its dialog and answers
-    /// whether it did; unset means the dialog is not shown).
+    /// clearance, and the survey invitation (shows it and answers whether it
+    /// did; unset means it is not shown).
     struct THost
     {
         std::function<void()> abortLogin;
         std::function<void(const TCloudflareChallengeClearanceInfo&)> applyClearance;
-        std::function<bool()> showReturnerRewardDialog;
-        std::function<bool()> showEmergencyDialog;
-        std::function<bool()> showCharacterTradeDuePaymentDialog;
         std::function<bool()> showSurveyInvitationDialog;
         /// Whether the assets are loaded, so the game server login can start.
         std::function<bool()> assetsComplete;
@@ -143,6 +153,10 @@ public:
     }
     /// The account the login requests and the code requests are made for.
     void setLoginCredentials(const QString& EMail, const QString& Password);
+    /// The login data the next login request sends (the login mask's account,
+    /// stay-logged-in and client fields); the dialogs add their codes to it.
+    void setLoginData(const TLoginRequestData& LoginData) { m_loginData = LoginData; }
+    const TLoginRequestData& loginData() const { return m_loginData; }
 
     void setHost(THost host) { m_host = std::move(host); }
 
@@ -167,14 +181,13 @@ public:
     /// the credentials again.
     void resetSessionData();
 
+    /// Stops the machine and closes the character selection, the two-factor
+    /// code dialog, the message box and the login confirmation code dialog.
+    void stopProcess();
+
     bool authenticated() const { return m_authenticated; }
     bool fpsTrackingActive() const { return m_fpsTrackingActive; }
     bool optionsTrackingActive() const { return m_optionsTrackingActive; }
-    QString confirmationToken() const { return m_confirmationToken; }
-    bool hasPendingConfirmationCode() const { return m_hasPendingConfirmationCode; }
-    bool loginWaitingDialogVisible() const { return m_loginWaitingDialogVisible; }
-    bool characterSelectionVisible() const { return m_characterSelectionVisible; }
-    bool waitingForAssets() const { return m_waitingForAssets; }
 
 public Q_SLOTS:
     void onLoginStateMachineStartedShortcutToCharacterSelection();
@@ -263,9 +276,18 @@ private:
     std::shared_ptr<TLoginRequestUploader> m_pLoginRequestUploader;
     std::shared_ptr<TEmailCodeRequestUploader> m_pEMailCodeRequestUploader;
     std::shared_ptr<TLoginConfirmationCodeRequestUploader> m_pLoginConfirmationCodeRequestUploader;
-    /// The login data's account.
-    QString m_eMail;
-    QString m_password;
+    std::unique_ptr<gamewindow::TTwoFactorCodeEnterTextDialogController> m_pTwoFactorCodeEnterTextDialogController;
+    std::unique_ptr<gamewindow::TLoginConfirmationCodeEnterTextDialogController>
+        m_pLoginConfirmationCodeEnterTextDialogController;
+    /// The device verification code ("request_device_verification_code_*", ten characters).
+    std::unique_ptr<gamewindow::TGenericEnterTextDialogController> m_pDeviceVerificationCodeEnterTextDialogController;
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pMessageDialogController;
+    std::unique_ptr<gamewindow::TSurveyInvitationDialogController> m_pSurveyInvitationDialogController;
+    std::unique_ptr<gamewindow::TReturnerRewardDialogController> m_pReturnerRewardDialogController;
+    std::unique_ptr<gamewindow::TEmergencyDialogController> m_pEmergencyDialogController;
+    std::unique_ptr<gamewindow::TCharacterTradeDuePaymentDialogController> m_pCharacterTradeDuePaymentDialogController;
+    /// What the next login request sends.
+    TLoginRequestData m_loginData;
     /// What the character selection handed on for the game server login.
     std::vector<gamewindow::TCharacterLoginData> m_characterLoginData;
     std::shared_ptr<TCloudflareChallengeController> m_pCloudflareChallengeController;
@@ -284,11 +306,6 @@ private:
     bool m_authenticated = false;
     bool m_fpsTrackingActive = false;
     bool m_optionsTrackingActive = false;
-    bool m_loginWaitingDialogVisible = false;
-    bool m_characterSelectionVisible = false;
-    bool m_waitingForAssets = false;
-    QString m_confirmationToken;
-    bool m_hasPendingConfirmationCode = false;
 };
 
 template<typename Uploader>

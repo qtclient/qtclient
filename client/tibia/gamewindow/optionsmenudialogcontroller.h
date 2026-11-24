@@ -160,7 +160,6 @@ private:
     /// CIP config surfaces owned for the options dialog lifetime.
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
-    config::TConfigBackupReader::TConfigBackupException m_configBackupException;
 
     /// CIP's message dialogs in layout order.
     TMessageDialogController* m_ruleViolationsMessage;

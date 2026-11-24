@@ -516,6 +516,16 @@ TCharacterWorldTransferDialogController::TCharacterWorldTransferDialogController
     : TDialogController(QStringLiteral("CharacterWorldTransferDialog.qml"), parent)
 {}
 
+TCharacterWorldTransferDialogController::~TCharacterWorldTransferDialogController()
+{
+    closeDialog();
+}
+
+bool TCharacterWorldTransferDialogController::isExpressWorldTransfer() const
+{
+    return m_isExpressWorldTransfer;
+}
+
 bool TCharacterWorldTransferDialogController::canTransfer() const
 {
     return std::none_of(std::begin(m_info.flags), std::end(m_info.flags), [](const bool flag) { return flag; });
@@ -591,18 +601,31 @@ void TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed()
 
 TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ConfirmMoveObjectToStashDialog.qml"), parent)
+{}
+
+void TConfirmMoveObjectToStashDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    m_showThisDialogAgain = app::ClientOptions::load().options().value(QLatin1String(AskBeforeStowOption)).toBool(true);
+    const auto* show = input::gameActionAs<input::TGameActionShowConfirmMoveObjectToStashDialog>(pGameAction.get());
+    if (!show)
+        return;
+    m_gameAction = show->gameAction();
+    dialog()->create();
+    dialog()->show();
 }
 
-void TConfirmMoveObjectToStashDialogController::setConfirmHandler(std::function<void(bool)> onYes)
+bool TConfirmMoveObjectToStashDialogController::showThisDialogAgain() const
 {
-    m_onYes = std::move(onYes);
+    return app::ClientOptions::load().options().value(QLatin1String(AskBeforeStowOption)).toBool(true);
+}
+
+void TConfirmMoveObjectToStashDialogController::closeDialog()
+{
+    m_gameAction.reset();
+    dialog()->close();
 }
 
 void TConfirmMoveObjectToStashDialogController::showDialog()
 {
-    m_showThisDialogAgain = app::ClientOptions::load().options().value(QLatin1String(AskBeforeStowOption)).toBool(true);
     dialog()->create();
     dialog()->show();
 }
@@ -610,17 +633,21 @@ void TConfirmMoveObjectToStashDialogController::showDialog()
 void TConfirmMoveObjectToStashDialogController::onYesClicked(const bool ShowDialogAgain)
 {
     app::ClientOptions::store(QLatin1String(AskBeforeStowOption), ShowDialogAgain);
-    m_showThisDialogAgain = ShowDialogAgain;
-    if (m_onYes)
-        m_onYes(ShowDialogAgain);
-    dialog()->close();
-    Q_EMIT dialogClosed();
+    if (m_gameAction && m_gameAction->gameActionType() == input::EGameAction::MOVE_OBJECT) {
+        if (const auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(m_gameAction))
+            move->setStashConfirmed(true);
+    }
+    if (m_gameAction && m_gameAction->gameActionType() == input::EGameAction::STASH_STOW_CONTAINER_CONTENT) {
+        if (const auto content = std::dynamic_pointer_cast<const input::TGameActionStashStowContainerContent>(m_gameAction))
+            content->setStashConfirmed(true);
+    }
+    Q_EMIT publishGameAction(m_gameAction);
+    closeDialog();
 }
 
 void TConfirmMoveObjectToStashDialogController::onNoClicked()
 {
-    dialog()->close();
-    Q_EMIT dialogClosed();
+    closeDialog();
 }
 
 TCrashReportDialogController::TCrashReportDialogController(QObject* parent)

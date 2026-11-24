@@ -5,6 +5,7 @@
 #include <typeinfo>
 
 #include "worldmap/worldmapfield.h"
+#include "input/gameactioncontext.h"
 
 #include "creatures/creaturestorage.h"
 #include "creatures/movementdirection.h"
@@ -325,6 +326,13 @@ appearances::TAppearanceInstancePtr TWorldMapStorage::appearanceInstanceAt(const
 {
     TWorldMapField* field = fieldAt(coordinate);
     return field ? field->appearanceAt(stackPos) : nullptr;
+}
+
+appearances::TAppearanceInstance* TWorldMapStorage::appearanceInstanceAt(
+    const input::TLocationWorldMapCoordinateWithStackPositionContext& context)
+{
+    const std::shared_ptr<TWorldMapField> stored = field(TWorldMapCoordinate(context.coordinate()));
+    return stored->appearances().at(context.stackPosition()).get();
 }
 
 appearances::TAppearanceInstancePtr TWorldMapStorage::creatureInstanceAt(const TWorldMapCoordinate& coordinate,

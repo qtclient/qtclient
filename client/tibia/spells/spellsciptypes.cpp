@@ -5,6 +5,8 @@
 
 #include <protocol.pb.h>
 
+#include <stdexcept>
+
 namespace tibia::spells {
 
 void ownProductSurface(QObject* parent)
@@ -22,11 +24,18 @@ TSpellsProtocolMessageHandler::TSpellsProtocolMessageHandler(TSpellInfoStorage* 
 {
 }
 
+uint32_t spellModificationType(const uint32_t protocolValue)
+{
+    if (protocolValue > 3)
+        throw std::runtime_error("unhandled enum value");
+    return protocolValue;
+}
+
 void TSpellsProtocolMessageHandler::handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message)
 {
     std::unordered_map<uint16_t, std::vector<TSpellInfoStorage::TSpellModification>> modifications;
     for (const auto& entry : message.entries())
-        modifications[static_cast<uint16_t>(entry.spell_id())].push_back({ entry.mod(), entry.value() });
+        modifications[static_cast<uint16_t>(entry.spell_id())].push_back({ spellModificationType(entry.mod()), entry.value() });
     m_spellInfoStorage->setSpellModifications(std::move(modifications));
 }
 

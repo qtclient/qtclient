@@ -410,8 +410,6 @@ TChatChannel* TChatChannelStorage::open(const TChatChannelIdentifier& identifier
     m_channels.push_back(channel);
     connect(channel, &TChatChannel::chatEntryAdded, this, [this, channel] {
         Q_EMIT entryAddedToChatChannel(channel->identifier());
-        const QString& name = channel->entries().back().name;
-        Q_EMIT entryAddedToChannel(channel, name.isEmpty() || !isOwnName(name));
     });
     Q_EMIT newChatChannelOpened(identifier, forceMakeCurrent);
     Q_EMIT channelAdded(channel, forceMakeCurrent || channel->makeCurrentOnOpen());
@@ -517,17 +515,6 @@ void TChatChannelStorage::removeAllTutorialMarkers()
 {
     for (TChatChannel* channel : m_channels)
         channel->removeTutorialMarker();
-}
-
-void TChatChannelStorage::moveChannel(const int from, const int to)
-{
-    const int count = static_cast<int>(m_channels.size());
-    if (from < 0 || to < 0 || from >= count || to >= count || from == to)
-        return;
-    TChatChannel* channel = m_channels[from];
-    m_channels.erase(m_channels.begin() + from);
-    m_channels.insert(m_channels.begin() + to, channel);
-    Q_EMIT channelsMoved();
 }
 
 void TChatChannelStorage::addSystemEntry(TChatChannel* channel, const QColor& color, const QString& text)

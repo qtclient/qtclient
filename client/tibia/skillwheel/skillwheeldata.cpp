@@ -978,12 +978,7 @@ QString supremeModValueText(const double value, const int mod)
         return formatValue(static_cast<int>(value * 100.0), 4);
     if (category == 5)
         return formatValue(static_cast<int>(value), 1);
-    // The format follows the mod's first augmentation.
-    const auto augs = supremeAugmentations(mod);
-    const int augType = augs.empty() ? 0 : augs.front().augType;
-    if (augType == 2 || augType == 3 || augType == 16 || augType == 17)
-        return formatValue(static_cast<int>(value * 10000.0), 5);
-    return formatValue(static_cast<int>(value), augType == 6 ? 8 : 7);
+    return formatValue(0, 0);
 }
 
 QString augmentationValueText(double value, const int augType)
@@ -1407,7 +1402,7 @@ bool supremeModForVocation(const int mod, const int vocationIndex)
 int totalModGradePoints(const int vocationIndex)
 {
     const int basic = static_cast<int>(std::ranges::count_if(BasicMods, [](const TBasicMod& m) { return m.count > 0; }));
-    return (vocationIndex >= 0 && vocationIndex < VocationCount ? 23 : 0) + basic;
+    return (vocationIndex >= 0 && vocationIndex < VocationCount ? 27 : 0) + basic;
 }
 
 int modGradePoints(const TGrades& basicGrades, const TGrades& supremeGrades)

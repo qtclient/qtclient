@@ -21,6 +21,9 @@ class GameserverMessageUpdateManagedContainers;
 }
 
 namespace tibia {
+namespace config {
+class TCharacterConfigurationManager;
+}
 namespace input {
 class IGameAction;
 }
@@ -28,12 +31,18 @@ namespace quickloot {
 
 class TManagedContainerStorage;
 
-/// The session's managed container messages, into its managed container storage.
+/// The session's managed container messages, into its managed container
+/// storage; it sends the character's quick loot list whenever the character
+/// configuration is loaded or the list changes.
 class TManagedContainersProtocolMessageHandler final : public cip::tibia::quickloot::TManagedContainersProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    explicit TManagedContainersProtocolMessageHandler(TManagedContainerStorage* storage, QObject* parent = nullptr);
+    /// Follows the manager's configurationLoadedForCharacter and its quick loot
+    /// list storage's configurationChangedFromUserInput.
+    explicit TManagedContainersProtocolMessageHandler(TManagedContainerStorage* storage,
+                                                      config::TCharacterConfigurationManager* characterConfigurationManager = nullptr,
+                                                      QObject* parent = nullptr);
     /// Replaces the stored assignments, then the fallback flag. A category outside
     /// the known ones rejects the whole message.
     void handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message);
@@ -63,8 +72,14 @@ public:
     static void sendManagedContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
                                      int stackPosition = 0);
 
+public Q_SLOTS:
+    /// Once the character's configuration is loaded: sends its active quick
+    /// loot list.
+    void onQuickLootBlackWhitelistConfigurationChanged();
+
 private:
     TManagedContainerStorage* m_storage;
+    config::TCharacterConfigurationManager* m_characterConfigurationManager = nullptr;
 };
 
 /// The quick-loot game actions: loot, the managed loot / obtain containers,

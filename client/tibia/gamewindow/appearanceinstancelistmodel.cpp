@@ -1,4 +1,5 @@
 #include "appearanceinstancelistmodel.h"
+#include "appearanceinstanceroledata.h"
 
 #include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
@@ -72,6 +73,19 @@ QVariant TAppearanceInstanceListModel::data(const QModelIndex& index, const int 
     if (!index.isValid() || index.row() >= rowCount())
         return {};
     const Slot slot = index.row() < static_cast<int>(m_objects.size()) ? m_objects[index.row()] : Slot{};
+    if (!slot.empty()) {
+        if (role < TypeIdRole || role > DecoItemObjectIdRole)
+            return {};
+        // An object's roles come from the shared appearance-instance helper; the type count
+        // is the player's count of the type and tier when a count storage is set.
+        TAppearanceInstanceRoleSources sources;
+        sources.withOptions = true;
+        sources.showExpire = m_showExpire;
+        sources.showExpireWhenUnused = m_showExpireWhenUnused;
+        if (const container::TObjectCountStorage* counts = m_objectCounts.data())
+            sources.typeCount = [counts](const uint16_t typeId, const uint8_t tier) { return uint(counts->count(typeId, tier)); };
+        return appearanceInstanceRoleData(slot, static_cast<EAppearanceInstanceRole>(role - TypeIdRole), sources, false);
+    }
     // CIP gives empty slots no data; container.qml reads their strings' length.
     switch (role) {
     case TypeIdRole:
@@ -193,6 +207,7 @@ void TAppearanceInstanceListModel::refreshLootValues()
 void TAppearanceInstanceListModel::setObjectCountStorage(container::TObjectCountStorage* counts)
 {
     QObject::disconnect(m_objectCountsChanged);
+    m_objectCounts = counts;
     if (!counts)
         return;
     m_objectCountsChanged = connect(counts, &container::TObjectCountStorage::objectCountsChanged, this,

@@ -2,6 +2,7 @@
 
 #include "analysers/analyserstorages.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "shared/sortedvectorlistmodel.h"
 
 #include <cip_gen.h>
 
@@ -276,8 +277,8 @@ private:
     qint64 m_lastGraph = 0;
 };
 
-/// The loot / waste widgets' item grid (CIP: the model at vtable ; data).
-class TGainWasteModel final : public cip::TGainWasteModel
+/// The loot / waste widgets' item grid, kept in appearance id order.
+class TGainWasteModel final : public shared::TSortedVectorListModel<cip::TGainWasteModel>
 {
     Q_OBJECT
 public:
@@ -293,12 +294,13 @@ public:
         ItemHookDirection,
     };
 
-    using cip::TGainWasteModel::TGainWasteModel;
+    explicit TGainWasteModel(QObject* parent = nullptr) : TSortedVectorListModel(parent) {}
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
-    /// CIP : inserts, removes and changes rows in place.
+    /// Merges the items into the rows by appearance id: runs of removed,
+    /// inserted and changed rows are announced together.
     void setItems(std::vector<TGainWasteStorage::Item> items);
 
 private:

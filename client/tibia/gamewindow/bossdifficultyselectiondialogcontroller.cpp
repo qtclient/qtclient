@@ -34,7 +34,11 @@ TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogControll
 {
     m_previewTimer.setInterval(500);
     m_previewTimer.setSingleShot(true);
-    connect(&m_previewTimer, &QTimer::timeout, this, [this] { sendSelection(Preview, true); });
+    connect(&m_previewTimer, &QTimer::timeout, this, [this] {
+        if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get()))
+            session->bossDifficultySelectionProtocolMessageHandler()->sendDifficultySelectionPreview(
+                m_context, static_cast<uint32_t>(m_selectedDifficulty));
+    });
 }
 
 void TBossDifficultySelectionDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)

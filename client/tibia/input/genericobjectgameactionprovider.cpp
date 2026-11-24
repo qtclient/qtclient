@@ -66,7 +66,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
             if (hireling) {
                 actions.push_back(TGameActionRequestOutfitsFromServer::forHireling(creatureId));
                 actions.push_back(std::make_shared<TGameActionReportHireling>(A::REPORT_HIRELING_NAME, name, creatureId));
-                actions.push_back(std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId));
+                actions.push_back(std::make_shared<TGameActionBuyHirelingNameOrSexChange>());
             }
         } else {
             push(attackingId == creatureId ? A::STOP_ATTACKING_CREATURE : A::ATTACK_CREATURE);

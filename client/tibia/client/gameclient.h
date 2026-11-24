@@ -43,12 +43,30 @@ enum class TCloudflareChallengeError : int;
 }
 namespace tibia {
 namespace gamewindow {
+class TBlessingsDialogController;
+class TBossDifficultySelectionDialogController;
+class TBugReportDialogController;
 class TCharacterSelectionController;
 class TCreateAccountDialogController;
 class TCreateCharacterDialogController;
 class TCrashReportDialogController;
+class TDeathDialogController;
+class TExaltationForgeDialogController;
 class TGameSessionDisconnectReactionController;
 class TGameWindowController;
+class TMarketController;
+class TNaggingMessageDialogController;
+class TReportViolationController;
+class TRewardWallDialogController;
+class TSelectObjectAmountDialogController;
+class TSoulSealsDialogController;
+class TStoreDialogController;
+}
+namespace proficiency {
+class TWeaponProficiencyDialogController;
+class TWeaponProficiencyReshapeDialogController;
+class TWeaponProficiencyShapeDialogController;
+class TWeaponProficiencyShapeOptionsDialogController;
 }
 namespace shared {
 class TCrashReportSender;
@@ -57,6 +75,7 @@ class TTibiaFileSystemHelper;
 }
 namespace tibia {
 namespace game {
+class FPSDropsLogger;
 class IGameSession;
 class TGameActionRouter;
 class TGameSessionMetaInfo;
@@ -82,6 +101,7 @@ class TSoundPlayerManager;
 }
 namespace tibia {
 namespace qmlcomponents {
+class TLenshelpManager;
 class TWorldMapRenderProvider;
 }
 }
@@ -301,6 +321,8 @@ public:
     /// closes right away; in the tutorial it asks Exit / Cancel, in any other
     /// session Exit / Logout / Cancel.
     void exitClient();
+    /// CIP: the sidebars check their bounds again (true) or not while the client window changes.
+    void setSidebarTriggerCheckBoundsEnabled(bool Enabled);
 
 Q_SIGNALS:
     /// The login service or the game server wants a newer client.
@@ -321,8 +343,13 @@ Q_SIGNALS:
     void worldEntered();
     /// The session ended; worldEntered follows the next world entry.
     void worldLeft();
+    /// CIP: the sidebar manager's sidebar count (the application widens the client window).
+    void numberOfSidebarsChanged(std::size_t NewNumber);
     /// Account email after CipSoft password login / CLI (for remember-email).
     void sessionEmailAvailable(const QString& email);
+    /// CIP: the current game session disconnected (or failed to connect);
+    /// emitted right after onGameSessionDisconnected handled it.
+    void currentGamesessionDisconnected(std::shared_ptr<tibia::game::IGameSession> pCurrentGameSession);
 
 public Q_SLOTS:
     /// CIP: takes the next meta info off the queue, builds its game session,
@@ -424,6 +451,8 @@ private:
     std::unique_ptr<worldmap::TFrameDurationRing> m_frameDurations;
     std::shared_ptr<systemsurvey::TFPSHistory> m_fpsHistory;
     std::shared_ptr<systemsurvey::TFPSHistoryController> m_fpsHistoryController;
+    /// CIP +0xaa8: reports frame rate drops while FPS tracking is on.
+    std::shared_ptr<game::FPSDropsLogger> m_pFPSDropsLogger;
     QTimer m_fpsSampleTimer;
     QTimer m_fpsUploadTimer;
     std::unique_ptr<worldmap::TNextFrameTimestampPredictor> m_predictor;
@@ -464,6 +493,27 @@ private:
     bool m_started = false;
     /// Logged in once the current character has left the world (CIP switch).
     std::optional<QString> m_pendingCharacter;
+    // CIP: the game window's controllers the client owns, in CipSoft's member
+    // order (showGameWindow makes them; the rest still live in TGameWindow).
+    std::unique_ptr<gamewindow::TMarketController> m_pMarketController;
+    std::unique_ptr<gamewindow::TReportViolationController> m_pReportViolationController;
+    std::unique_ptr<gamewindow::TBugReportDialogController> m_pBugReportDialogController;
+    /// The dialogs and returns when the current session cannot connect or ends.
+    std::shared_ptr<gamewindow::TGameSessionDisconnectReactionController> m_pGameSessionDisconnectReactionController;
+    std::unique_ptr<gamewindow::TDeathDialogController> m_pDeathDialogController;
+    std::unique_ptr<gamewindow::TStoreDialogController> m_pStoreDialogController;
+    std::unique_ptr<gamewindow::TBlessingsDialogController> m_pBlessingsDialogController;
+    std::unique_ptr<gamewindow::TSelectObjectAmountDialogController> m_pSelectObjectAmountDialogController;
+    std::unique_ptr<gamewindow::TExaltationForgeDialogController> m_pExaltationForgeDialogController;
+    std::unique_ptr<gamewindow::TNaggingMessageDialogController> m_pNaggingMessageDialogController;
+    std::unique_ptr<proficiency::TWeaponProficiencyDialogController> m_pWeaponProficiencyDialogController;
+    std::unique_ptr<proficiency::TWeaponProficiencyReshapeDialogController> m_pWeaponProficiencyReshapeDialogController;
+    std::unique_ptr<proficiency::TWeaponProficiencyShapeDialogController> m_pWeaponProficiencyShapeDialogController;
+    std::unique_ptr<proficiency::TWeaponProficiencyShapeOptionsDialogController> m_pWeaponProficiencyShapeOptionsDialogController;
+    std::unique_ptr<gamewindow::TSoulSealsDialogController> m_pSoulSealsDialogController;
+    std::unique_ptr<gamewindow::TBossDifficultySelectionDialogController> m_pBossDifficultySelectionDialogController;
+    std::unique_ptr<qmlcomponents::TLenshelpManager> m_pLenshelpManager;
+    std::unique_ptr<gamewindow::TRewardWallDialogController> m_pRewardWallDialogController;
     std::unique_ptr<gamewindow::TCreateAccountDialogController> m_pCreateAccountDialogController;
     std::unique_ptr<gamewindow::TCreateCharacterDialogController> m_pCreateCharacterDialogController;
     /// Destroyed first: its objects use the client's storages and session.

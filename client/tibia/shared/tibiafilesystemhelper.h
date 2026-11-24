@@ -123,6 +123,31 @@ public:
     /// The document, or `{}` when the file is corrupted.
     QJsonDocument readJsonFileOrEmptyObject(const QString& filePath) const;
 
+    /// Why the client starts the launcher; each reason is one launcher switch.
+    enum ELauncherStartReason {
+        LAUNCHER_START_NONE = 0,
+        LAUNCHER_START_FIRST_LAUNCH = 1,   // --first-launch
+        LAUNCHER_START_SKIP_SELFUPDATE = 2, // --skip-selfupdate
+        LAUNCHER_START_SHOW_UI = 3,         // --show-ui
+        LAUNCHER_START_PATCH = 4,           // --patch <path>
+    };
+    /// The nearest directory at or above the application directory that holds
+    /// the launcher executable ("Tibia"); a default QDir when there is none.
+    static QDir getPackageRootDirectory();
+    /// The canonical directory of the launcher executable.
+    static QDir getLauncherDirectory();
+    /// Starts the launcher detached in its directory, with the Qt platform
+    /// plugin path set to its ../PlugIns.
+    static bool startLauncherDetached(const QStringList& arguments);
+    /// Starts the launcher with the switch for `reason` (`patchPath` only for PATCH).
+    static bool startLauncher(ELauncherStartReason reason, const QString& patchPath);
+    /// Starts the launcher to patch this client (<application dir>/client).
+    static bool startLauncherToPatchClient();
+    /// Creates the FORCE_PATCH marker two levels above the resources directory.
+    static void createForcePatchMarker();
+    /// Whether the FORCE_PATCH marker exists two levels above the resources directory.
+    static bool hasForcePatchMarker();
+
     // qtclient resource lookup (virtual data paths).
     void init(const char* argv0);
     /// Finds the directory (cwd or a parent) that holds `existentFile` and makes it the work dir.

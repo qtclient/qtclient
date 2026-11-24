@@ -207,8 +207,7 @@ void TPlayerGuideWidgetController::onPlayerLevelUp()
     std::vector<TPlayerGuideSpellListModel::TEntry> manualSpells;
     const uint8_t vocation = player ? player->vocation() : 0;
     const spells::TSpellInfoStorage* storage = spells::TSpellInfoStorage::instance();
-    for (const auto& [id, record] : storage->spells()) {
-        const spells::TSpellInfo spell = storage->spellInfoAt(id);
+    for (const spells::TSpellInfo& spell : *storage) {
         if (!spell.cast.vocations.count(vocation) || int(spell.cast.minimumLevel) != m_playerLevelToShow)
             continue;
         (spell.autoUnlock ? autoSpells : manualSpells).push_back({ spell.iconIndex, spell.name });

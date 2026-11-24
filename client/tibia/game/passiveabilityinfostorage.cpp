@@ -1,7 +1,5 @@
 #include "game/passiveabilityinfostorage.h"
 
-#include "gamewindow/gamewindowciptypes.h"
-
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -43,34 +41,28 @@ TPassiveAbilityInfoStorage::TIterator TPassiveAbilityInfoStorage::TIterator::ope
     return previous;
 }
 
+TPassiveAbilityInfoStorage::TIterator& TPassiveAbilityInfoStorage::TIterator::operator++()
+{
+    ++m_node;
+    m_value.reset();
+    return *this;
+}
+
 TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
     : cip::tibia::game::TPassiveAbilityInfoStorage(parent)
-    , m_model(new gamewindow::TPassiveAbilityListDataModel(this))
 {
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
         // onPassiveData(abilityId, remainingMs, totalMs, decaying) — cooldown
         // also lands in TCooldownStorage for action-bar overlays.
-        const auto abilityId = static_cast<uint8_t>(argInt(args, 0));
         m_currentCooldown = static_cast<uint32_t>(argInt(args, 1));
         m_maxCooldown = static_cast<uint32_t>(argInt(args, 2));
         m_canDecay = argBool(args, 3);
-        std::vector<gamewindow::TPassiveAbilityListDataModel::Entry> entries;
-        if (const std::optional<TPassiveAbilityInfo> ability = findInfo(abilityId)) {
-            gamewindow::TPassiveAbilityListDataModel::Entry entry;
-            entry.id = ability->id;
-            entry.name = ability->name;
-            entry.iconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(ability->iconId);
-            entry.usableByCurrentVocation = true;
-            entries.push_back(std::move(entry));
-        }
-        m_model->setEntries(std::move(entries));
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_currentCooldown = 0;
         m_maxCooldown = 0;
         m_canDecay = false;
-        m_model->setEntries({});
     });
 }
 

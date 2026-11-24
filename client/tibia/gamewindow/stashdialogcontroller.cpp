@@ -214,25 +214,14 @@ TStashDialogController::TStashDialogController(QObject* parent)
         onStashOptionsChanged();
     });
 
-    // The stash's actions are the container game action handler's. A move
-    // onto the stash or a stow of a container's content it holds back for the
-    // confirmation (it asks only while stashAskBeforeStowContainerContent is
-    // on); once confirmed, the action goes out again marked as confirmed.
-    m_confirmStow->setConfirmHandler([this](bool) {
-        if (m_pendingStow) {
-            if (const auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(m_pendingStow))
-                move->setStashConfirmed(true);
-            else if (const auto content = std::dynamic_pointer_cast<const input::TGameActionStashStowContainerContent>(m_pendingStow))
-                content->setStashConfirmed(true);
-            Q_EMIT publishGameAction(m_pendingStow);
-        }
-        m_pendingStow.reset();
-    });
+    // A move onto the stash or a stow of a container's content waits in the
+    // confirmation dialog; once confirmed it goes out again marked as confirmed.
+    connect(m_confirmStow, &TConfirmMoveObjectToStashDialogController::publishGameAction, this,
+            &TStashDialogController::publishGameAction);
     m_gameActions.on(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this](const input::TGameActionShowConfirmMoveObjectToStashDialog& action) {
         if (!action.gameAction())
             return true;
-        m_pendingStow = action.gameAction();
-        m_confirmStow->showDialog();
+        m_confirmStow->handleGameAction(std::make_shared<input::TGameActionShowConfirmMoveObjectToStashDialog>(action.gameAction()));
         return true;
     });
 

@@ -1,6 +1,7 @@
 #include "eventsuploader.h"
 
 #include "iclockservice.h"
+#include "jsondocumenthttppostsender.h"
 #include "news/newsstorage.h"
 #include "shared/tibiafilesystemhelper.h"
 
@@ -77,6 +78,13 @@ TEventsUploader::TEventsUploader(const QUrl& url, std::shared_ptr<shared::TJsonD
 }
 
 TEventsUploader::~TEventsUploader() = default;
+
+std::shared_ptr<TEventsUploader> TEventsUploader::create(const QUrl& url, std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                                         std::shared_ptr<shared::IClockService> clock)
+{
+    return std::make_shared<TEventsUploader>(url, std::make_shared<shared::TJsonDocumentHttpPostSender>(), std::move(fileSystemHelper),
+                                             std::move(clock));
+}
 
 void TEventsUploader::requestUpdate()
 {

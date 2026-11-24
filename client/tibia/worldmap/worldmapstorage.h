@@ -23,6 +23,9 @@ namespace tibia {
 namespace creatures {
 class TCreature;
 }
+namespace input {
+class TLocationWorldMapCoordinateWithStackPositionContext;
+}
 namespace worldmap {
 
 class TWorldMapField;
@@ -103,6 +106,9 @@ public:
     /// The appearance instance at `stackPos` of the field at `coordinate`; null
     /// without the field or the position.
     appearances::TAppearanceInstancePtr appearanceInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);
+    /// The appearance instance a game action's field and stack position name. The
+    /// field must be stored; a stack position past its stack throws std::out_of_range.
+    appearances::TAppearanceInstance* appearanceInstanceAt(const input::TLocationWorldMapCoordinateWithStackPositionContext& context);
     /// The creature instance at `stackPos`; throws std::runtime_error with the
     /// field's stack when another instance or none is there.
     appearances::TAppearanceInstancePtr creatureInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);

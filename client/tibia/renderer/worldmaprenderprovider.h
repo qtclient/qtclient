@@ -118,6 +118,12 @@ public:
     void setViewScale(double scale);
 
     const Frame& frame() const { return m_frame; }
+    /// The last frame's sorted sprite records (CIP: the provider's draw command list).
+    const std::vector<SpriteRecord>& drawCommands() const { return m_frame.sprites; }
+    /// The last frame's light map; null before the first frame.
+    std::shared_ptr<worldmap::TLightMap> lightMap() const { return m_lightMap; }
+    /// Time the next frame is shown at; the light map's cloud waves run on it.
+    void setFrameTimestamp(const qint64& timestamp) { m_frameTimestamp = timestamp; }
     /// The player's field of the last frame.
     const Position& camera() const { return m_camera; }
     /// The session's view (CIP: the render volume provider's viewport): the
@@ -159,6 +165,8 @@ public:
     uint32_t mouseTargetCreatureId() const { return m_mouseTargetCreatureId; }
     /// Field under the cursor for the highlight baseplate (CIP: v21 / +0xe8).
     void setMouseHighlightField(const Position& field) { m_mouseHighlightField = field; }
+    /// No field under the mouse: the highlight baseplate is not drawn.
+    void clearMouseHighlightField() { m_mouseHighlightField = Position{}; }
     const Position& mouseHighlightField() const { return m_mouseHighlightField; }
     /// Option mouseHighlightTarget: highlight the mouse target; without it the
     /// selected creature keeps its white frame instead.
@@ -388,6 +396,7 @@ private:
     QImage m_lightUntinted;
     /// The light of the last frame (CIP: the provider's TLightMap).
     std::shared_ptr<worldmap::TLightMap> m_lightMap;
+    qint64 m_frameTimestamp = 0;
     /// Memos of the storage questions the light map asks: banks, translucent
     /// fields, and (while indoor fields are darkened) open sky.
     worldmap::TWorldMapStorage* m_lightCacheStorage = nullptr;

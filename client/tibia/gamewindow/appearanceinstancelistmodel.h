@@ -4,6 +4,8 @@
 
 #include <cip_gen.h>
 
+#include <QPointer>
+
 #include <vector>
 
 namespace tibia {
@@ -61,6 +63,7 @@ public:
 private:
     std::vector<container::TInventorySlot> m_objects;
     QMetaObject::Connection m_objectCountsChanged;
+    QPointer<container::TObjectCountStorage> m_objectCounts;
     int m_minimumRows = 0;
     bool m_showExpire = true;
     bool m_showExpireWhenUnused = false;

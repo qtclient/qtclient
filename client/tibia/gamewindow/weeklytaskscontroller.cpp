@@ -50,33 +50,6 @@ constexpr A DeliveryItemContextMenuOrder[] = {
     A::STASH_STOW_TYPE, A::STASH_STOW_CONTAINER_CONTENT, A::CONTEXT_MENU_SEPARATOR, A::GET_TEXT_FOR_REPORT,
 };
 
-QString raceCaption(const uint16_t raceId)
-{
-    if (raceId == 0)
-        return QStringLiteral("Any Creature");
-    const RaceType& race = tibia::game::raceData(raceId);
-    if (race.name.empty())
-        return QStringLiteral("Unknown");
-    QString name = QString::fromStdString(race.name);
-    if (!name.isEmpty())
-        name[0] = name[0].toUpper();
-    return name;
-}
-
-QString itemCaption(const uint16_t itemId)
-{
-    const TAppearanceTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
-    if (!type)
-        return QString::number(itemId);
-    const std::string name = type->getName();
-    if (name.empty())
-        return QString::number(itemId);
-    QString text = QString::fromStdString(name);
-    if (!text.isEmpty())
-        text[0] = text[0].toUpper();
-    return text;
-}
-
 }
 
 TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
@@ -120,7 +93,6 @@ void TWeeklyTasksController::connectToGameSession(const std::shared_ptr<game::IG
                     row.raceId = 0;
                     row.requiredAmount = data.anyCreatureRequiredKills;
                     row.currentKillAmount = data.anyCreatureCurrentKills;
-                    row.caption = raceCaption(0);
                     killRows.push_back(std::move(row));
                 }
                 for (const taskboard::TWeeklyKillTask& task : data.killTasks) {
@@ -128,7 +100,6 @@ void TWeeklyTasksController::connectToGameSession(const std::shared_ptr<game::IG
                     row.raceId = task.raceId;
                     row.requiredAmount = task.requiredKills;
                     row.currentKillAmount = task.currentKills;
-                    row.caption = raceCaption(task.raceId);
                     killRows.push_back(std::move(row));
                 }
                 m_killModel->setRows(std::move(killRows));
@@ -139,8 +110,7 @@ void TWeeklyTasksController::connectToGameSession(const std::shared_ptr<game::IG
                     row.typeId = task.objectTypeId;
                     row.availableAmount = static_cast<int>(task.availableAmount);
                     row.requiredAmount = static_cast<int>(task.requiredAmount);
-                    row.delivered = task.state != 0;
-                    row.caption = itemCaption(task.objectTypeId);
+                    row.state = static_cast<int>(task.state);
                     deliveryRows.push_back(std::move(row));
                 }
                 m_deliveryModel->setRows(std::move(deliveryRows));

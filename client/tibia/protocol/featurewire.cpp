@@ -3279,51 +3279,105 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
         return r.i;
     }
     case 117: {
+        // CIP v175: the classic event type is the oneof case; skills, quest states and
+        // outfit parts become the protocol's values.
         auto* m = msg.MutableExtension(GameserverMessageGameEvent::gameserver_message_game_event);
         uint8_t type = 0;
         if (!r.u8(type))
             return 0;
-        m->set_event_type(type);
-        const auto small = [&] {
-            uint8_t v = 0;
-            if (!r.u8(v))
-                return false;
-            m->set_small_value(v);
-            return true;
-        };
-        const auto value = [&] {
-            uint16_t v = 0;
-            if (!r.u16(v))
-                return false;
-            m->set_value(v);
-            return true;
-        };
-        const auto large = [&] {
-            uint32_t v = 0;
-            if (!r.u32(v))
-                return false;
-            m->set_large_value(static_cast<int32_t>(v));
-            return true;
-        };
+        uint8_t u8Value = 0;
+        uint16_t u16Value = 0;
+        uint32_t u32Value = 0;
         bool ok = true;
         switch (type) {
-        case 1: ok = small(); break; // simple event
+        case 1: // simple event
+            ok = r.u8(u8Value);
+            m->set_simple_event(u8Value);
+            break;
         case 2: // achievement
-        case 3: ok = r.string(*m->mutable_text()); break; // title
-        case 4: // level
-        case 11: // bounty task
-        case 12: // weekly task
-        case 15: // subarea
-        case 16: ok = value(); break;
-        case 5: ok = small() && value(); break; // skill
-        case 6: // bestiary
-        case 7: ok = value() && small(); break; // bosstiary
-        case 8: ok = r.string(*m->mutable_text()) && small(); break; // quest
-        case 9: ok = value() && r.string(*m->mutable_text()) && small(); break; // cosmetic
-        case 10: ok = value() && r.string(*m->mutable_text()); break; // proficiency
-        case 13: ok = large(); break; // spell unlocked
-        case 14: ok = value() && large(); break; // leader monster
-        default: break;
+            ok = r.string(*m->mutable_achievement()->mutable_name());
+            break;
+        case 3: // title
+            ok = r.string(*m->mutable_title()->mutable_name());
+            break;
+        case 4: // level up
+            ok = r.u16(u16Value);
+            m->mutable_level_up()->set_level(u16Value);
+            break;
+        case 5: { // skill up: classic skill 1..8, then the level
+            static constexpr uint32_t ProtocolSkills[8] = { 1, 8, 9, 10, 11, 7, 6, 13 };
+            ok = r.u8(u8Value);
+            auto* skillUp = m->mutable_skill_up();
+            if (static_cast<uint8_t>(u8Value - 1) < 8)
+                skillUp->set_skill(ProtocolSkills[u8Value - 1]);
+            ok = ok && r.u16(u16Value);
+            skillUp->set_level(u16Value);
+            break;
+        }
+        case 6: // bestiary progress
+        case 7: { // bosstiary progress
+            ok = r.u16(u16Value) && r.u8(u8Value);
+            if (type == 6) {
+                m->mutable_bestiary_progress()->set_race_id(u16Value);
+                m->mutable_bestiary_progress()->set_progress(u8Value);
+            } else {
+                m->mutable_bosstiary_progress()->set_race_id(u16Value);
+                m->mutable_bosstiary_progress()->set_progress(u8Value);
+            }
+            break;
+        }
+        case 8: { // quest progress: classic state 0 started, 1 completed
+            auto* quest = m->mutable_quest_progress();
+            ok = r.string(*quest->mutable_quest_name()) && r.u8(u8Value);
+            if (u8Value == 0)
+                quest->set_state(1);
+            else if (u8Value == 1)
+                quest->set_state(2);
+            break;
+        }
+        case 9: { // outfit part unlocked: classic part 0..3
+            auto* outfit = m->mutable_outfit_part_unlocked();
+            ok = r.u16(u16Value) && r.string(*outfit->mutable_name()) && r.u8(u8Value);
+            outfit->set_outfit_id(u16Value);
+            if (u8Value < 4)
+                outfit->set_part(u8Value + 1u);
+            break;
+        }
+        case 10: { // weapon proficiency
+            auto* proficiency = m->mutable_weapon_proficiency();
+            ok = r.u16(u16Value) && r.string(*proficiency->mutable_name());
+            proficiency->set_object_id(u16Value);
+            break;
+        }
+        case 11: // bounty task finished
+            ok = r.u16(u16Value);
+            m->mutable_bounty_task_finished()->set_race_id(u16Value);
+            break;
+        case 12: // weekly task (specific creature) finished
+            ok = r.u16(u16Value);
+            m->mutable_weekly_task_specific_creature_finished()->set_race_id(u16Value);
+            break;
+        case 13: // spell unlocked
+            ok = r.u32(u32Value);
+            m->mutable_spell_unlocked()->set_spell_id(u32Value);
+            break;
+        case 14: { // leader monster killed
+            ok = r.u16(u16Value) && r.u32(u32Value);
+            auto* leader = m->mutable_leader_monster_killed();
+            leader->set_race_id(u16Value);
+            leader->set_charm_points(u32Value);
+            break;
+        }
+        case 15: // subarea unlocked
+            ok = r.u16(u16Value);
+            m->mutable_sub_area_unlocked()->set_sub_area_id(u16Value);
+            break;
+        case 16: // area unlocked
+            ok = r.u16(u16Value);
+            m->mutable_area_unlocked()->set_area_id(u16Value);
+            break;
+        default:
+            break;
         }
         return ok ? r.i : 0;
     }

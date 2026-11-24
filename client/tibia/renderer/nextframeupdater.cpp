@@ -71,8 +71,10 @@ void TNextFrameUpdater::update(const qint64& nextFrameTimestamp)
 
     // Host: the world map's frame is built here, then the movement clock
     // runs on and the local player's walk goes on.
-    if (m_worldMapRenderProvider)
+    if (m_worldMapRenderProvider) {
+        m_worldMapRenderProvider->setFrameTimestamp(nextFrameTimestamp);
         m_worldMapRenderProvider->advance();
+    }
     tibia::creatures::resumeMovementClock();
     tibia::game::localPlayerMovementTick();
 }

@@ -44,8 +44,8 @@ void TTargetSelectionController::setSelecting(const bool selecting)
 {
     bindDialogStack();
     if (selecting) {
-        // CIP : dialog already up → finish instead of arming.
-        if (TDialogStackController* dialogs = TDialogStackController::instance(); dialogs && !dialogs->isEmpty()) {
+        // A dialog shielding the game window ends the selection before it starts.
+        if (TDialogStackController::isAnyShieldingDialogStacked()) {
             onTargetSelectionFinished();
             return;
         }
@@ -63,8 +63,8 @@ void TTargetSelectionController::handleGameAction(const input::IGameAction& acti
 
 void TTargetSelectionController::onDialogVisibleChanged(const bool Visible)
 {
-    // CIP : selecting + dialog visible → finish.
-    if (m_selecting && Visible)
+    // A dialog shown while selecting ends the selection.
+    if (m_selecting && Visible && TDialogStackController::isAnyShieldingDialogStacked())
         onTargetSelectionFinished();
 }
 

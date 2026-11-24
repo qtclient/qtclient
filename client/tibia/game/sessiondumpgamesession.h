@@ -83,7 +83,11 @@ Q_SIGNALS:
     void sessionDumpStart(const QString& sessionKey);
 
 protected Q_SLOTS:
+    /// The player skipped to a keyframe: the frame updater runs a minute ahead and
+    /// the containers and chat channels are cleared.
     void onRequestResetOfStorages();
+    /// The process timer's tick: the player processes the dump up to its clock.
+    void onSessiondumpTimerElapsed();
     void onSessiondumpFinished();
 
 private:

@@ -7,6 +7,7 @@
 #include <QPointer>
 
 class QMimeData;
+class QQmlContext;
 class QQuickItem;
 
 namespace tibia {
@@ -59,6 +60,8 @@ public:
     ~TDragAndDropController() override;
 
     static TDragAndDropController* instance();
+    /// QML reaches the controller as tibiaDragAndDropController.
+    void registerContextProperty(QQmlContext* context);
 
     /// CIP . `source` is the item the drag started from.
     void startDrag(const input::TMoveObjectPtr& action, QObject* source);

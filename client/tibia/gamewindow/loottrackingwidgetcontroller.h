@@ -47,6 +47,8 @@ class TQmlTrackedItem final : public cip::tibia::gamewindow::TQmlTrackedItem
     Q_OBJECT
 public:
     TQmlTrackedItem(const cyclopedia::TTrackedItem& item, QObject* parent);
+    /// Empties the drop list (announced) before deleting its entries.
+    ~TQmlTrackedItem() override;
 
     QString itemValueString() const override;
     QString dropCountString() const override;

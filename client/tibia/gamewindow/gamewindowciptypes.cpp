@@ -198,6 +198,8 @@ TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)
     setId(std::move(id));
 }
 
+void TSpritesheetDataObject::setId(const QString& v) { m_id = v; }
+
 TCyclopediaCreatureInfo::TCyclopediaCreatureInfo(const int raceId, QString raceName, const bool isUnknown, QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaCreatureInfo(parent)
 {
@@ -349,100 +351,6 @@ void TAccountCharactersModel::setCharacters(std::vector<TQMLCharacterData*> rows
     beginResetModel();
     m_rows = std::move(rows);
     endResetModel();
-}
-
-TPassiveAbilityListDataModel::TPassiveAbilityListDataModel(QObject* parent)
-    : cip::tibia::gamewindow::TPassiveAbilityListDataModel(parent)
-{}
-
-int TPassiveAbilityListDataModel::rowCount(const QModelIndex& parent) const
-{
-    return parent.isValid() ? 0 : static_cast<int>(m_entries.size());
-}
-
-QVariant TPassiveAbilityListDataModel::data(const QModelIndex& index, const int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_entries.size()))
-        return {};
-    const Entry& e = m_entries[static_cast<size_t>(index.row())];
-    switch (role) {
-    case NameRole:
-        return e.name;
-    case IdRole:
-    case EnumIdRole:
-        return e.id;
-    case IconUrlRole:
-        return e.iconUrl;
-    case UsableRole:
-        return e.usableByCurrentVocation;
-    default:
-        return {};
-    }
-}
-
-QHash<int, QByteArray> TPassiveAbilityListDataModel::roleNames() const
-{
-    return { { NameRole, "name" },
-             { IdRole, "id" },
-             { EnumIdRole, "enumId" },
-             { IconUrlRole, "iconUrl" },
-             { UsableRole, "usableByCurrentVocation" } };
-}
-
-void TPassiveAbilityListDataModel::setEntries(std::vector<Entry> entries)
-{
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
-}
-
-TPassiveAbilityListDataModelSortFilterProxy::TPassiveAbilityListDataModelSortFilterProxy(QObject* parent)
-    : cip::tibia::gamewindow::TPassiveAbilityListDataModelSortFilterProxy(parent)
-{
-    // CIP: kept sorted by name.
-    setDynamicSortFilter(true);
-    sort(0);
-}
-
-QVariant TPassiveAbilityListDataModelSortFilterProxy::getDataWithRoleName(const int RowIndex, const QByteArray& RoleName)
-{
-    const QModelIndex idx = index(RowIndex, 0);
-    const int role = roleNames().key(RoleName, -1);
-    return role >= 0 ? data(idx, role) : QVariant{};
-}
-
-void TPassiveAbilityListDataModelSortFilterProxy::onPlayerDataChanged()
-{
-    beginFilterChange();
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
-    Q_EMIT configChanged();
-}
-
-void TPassiveAbilityListDataModelSortFilterProxy::setNameFilter(const QString& filter)
-{
-    if (m_nameFilter == filter)
-        return;
-    beginFilterChange();
-    m_nameFilter = filter;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
-    Q_EMIT configChanged();
-}
-
-/// CIP: by the lower-cased names.
-bool TPassiveAbilityListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
-{
-    const QString ln = left.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
-    const QString rn = right.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
-    return QString::compare(ln, rn, Qt::CaseSensitive) < 0;
-}
-
-bool TPassiveAbilityListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
-{
-    if (m_nameFilter.isEmpty())
-        return true;
-    const QModelIndex idx = sourceModel()->index(sourceRow, 0, sourceParent);
-    const QString name = sourceModel()->data(idx, TPassiveAbilityListDataModel::NameRole).toString();
-    return name.contains(m_nameFilter, Qt::CaseInsensitive);
 }
 
 TSimpleNameAndCountModel::TSimpleNameAndCountModel(QObject* parent)
@@ -637,7 +545,14 @@ TSidebarWidgetControllerWithFocusHandling::TSidebarWidgetControllerWithFocusHand
                                                                                      QObject* parent)
     : cip::tibia::gamewindow::TSidebarWidgetControllerWithFocusHandling(parent)
     , m_widget(new TSidebarWidget(this, gameWindowItem, engine, [this](uint id) { m_parentSidebarId = id; }))
-{}
+{
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TSidebarWidgetControllerWithFocusHandling::focusChanged);
+}
+
+/// CIP: the focus goes back first.
+TSidebarWidgetControllerWithFocusHandling::~TSidebarWidgetControllerWithFocusHandling() { m_focus.releaseFocus(); }
+
+bool TSidebarWidgetControllerWithFocusHandling::hasFocus() const { return m_focus.hasFocus(); }
 
 QQuickItem* TSidebarWidgetControllerWithFocusHandling::gameWindowQuickItem() const
 {
@@ -649,22 +564,9 @@ uint TSidebarWidgetControllerWithFocusHandling::parentSidebarId() const
     return m_parentSidebarId;
 }
 
-void TSidebarWidgetControllerWithFocusHandling::takeFocus()
-{
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
-    Q_EMIT requestWidgetControlToTakeFocus();
-}
+void TSidebarWidgetControllerWithFocusHandling::takeFocus() { m_focus.takeFocus(); }
 
-void TSidebarWidgetControllerWithFocusHandling::releaseFocus()
-{
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
-}
+void TSidebarWidgetControllerWithFocusHandling::releaseFocus() { m_focus.releaseFocus(); }
 
 void TSidebarWidgetControllerWithFocusHandling::onCloseClicked()
 {

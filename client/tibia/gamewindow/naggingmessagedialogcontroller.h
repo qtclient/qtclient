@@ -27,6 +27,9 @@ public:
 
     Q_INVOKABLE void requestClose() override;
 
+    /// The whole seconds the countdown has left.
+    int secondsRemaining() const override { return m_secondsRemaining; }
+
 private:
     /// The whole seconds left of the countdown, announced when they change;
     /// the countdown stops at its end.

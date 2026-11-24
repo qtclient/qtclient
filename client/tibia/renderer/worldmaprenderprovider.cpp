@@ -616,7 +616,7 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
     const TWorldMapCoordinate origin(m_camera.x - centerX(), m_camera.y - centerY(), m_camera.z);
     auto map = std::make_shared<worldmap::TLightMap>(
         m_lightOptions.ambientLevel, m_lightOptions.separator, m_lightOptions.attenuation, m_lightOptions.attenuation,
-        origin, drawWidth(), drawHeight(), ambientColor, m_camera.z <= sea, QDateTime::currentMSecsSinceEpoch());
+        origin, drawWidth(), drawHeight(), ambientColor, m_camera.z <= sea, m_frameTimestamp);
 
     std::map<int, std::vector<const light::PointLight*>> lightsByFloor;
     if (withLights) {

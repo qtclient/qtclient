@@ -150,24 +150,20 @@ bool write(const QString& path, const QList<TArchiveEntry>& entries)
     return file.open(QIODevice::WriteOnly) && file.write(archive) == archive.size() && file.commit();
 }
 
-QList<TArchiveEntry> read(const QString& path)
+std::optional<QList<TArchiveEntry>> unpack(const QByteArray& archive)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    const QByteArray archive = file.readAll();
     qsizetype end = archive.size() - 22;
     while (end >= 0 && get32(archive, end) != EndOfCentralDirectory)
         --end;
     if (end < 0)
-        return {};
+        return std::nullopt;
     const quint16 count = get16(archive, end + 10);
     qsizetype at = get32(archive, end + 16);
 
     QList<TArchiveEntry> entries;
     for (quint16 i = 0; i < count; ++i) {
         if (at + 46 > archive.size() || get32(archive, at) != CentralHeader)
-            return {};
+            return std::nullopt;
         const quint16 method = get16(archive, at + 10);
         const quint32 compressedSize = get32(archive, at + 20);
         const quint32 size = get32(archive, at + 24);
@@ -179,25 +175,35 @@ QList<TArchiveEntry> read(const QString& path)
         at += 46 + nameLength + extraLength + commentLength;
 
         if (local + 30 > archive.size() || get32(archive, local) != LocalHeader)
-            return {};
+            return std::nullopt;
         const qsizetype data = local + 30 + get16(archive, local + 26) + get16(archive, local + 28);
         if (data + compressedSize > archive.size())
-            return {};
+            return std::nullopt;
         const QByteArray payload = archive.mid(data, compressedSize);
-        if (name.endsWith(QLatin1Char('/')))
-            continue;
         if (method == Stored) {
             entries.append({ name, payload });
         } else if (method == Deflated) {
             const std::optional<QByteArray> inflated = inflateRaw(payload, size);
             if (!inflated)
-                return {};
+                return std::nullopt;
             entries.append({ name, *inflated });
         } else {
-            return {};
+            return std::nullopt;
         }
     }
     return entries;
+}
+
+QList<TArchiveEntry> read(const QString& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    std::optional<QList<TArchiveEntry>> entries = unpack(file.readAll());
+    if (!entries)
+        return {};
+    entries->removeIf([](const TArchiveEntry& entry) { return entry.name.endsWith(QLatin1Char('/')); });
+    return *entries;
 }
 
 }

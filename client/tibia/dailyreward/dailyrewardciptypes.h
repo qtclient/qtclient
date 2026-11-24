@@ -34,6 +34,10 @@ namespace dailyreward {
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
+/// A daily reward protocol value of the range 0..2 (the collect state, a
+/// history entry's kind); others throw std::invalid_argument.
+int dailyRewardEnumValue(uint32_t protocolValue);
+
 /// A day's free or premium reward; the wall shows the fixed item kind.
 class TDailyReward
 {

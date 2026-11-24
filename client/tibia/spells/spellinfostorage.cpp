@@ -266,6 +266,32 @@ TSpellInfo TSpellInfoStorage::spellInfoAt(const int spellId) const
     return spell;
 }
 
+TSpellInfoStorage::TSpellIterator TSpellInfoStorage::begin() const
+{
+    return TSpellIterator(this, m_spells.begin());
+}
+
+TSpellInfoStorage::TSpellIterator TSpellInfoStorage::end() const
+{
+    return TSpellIterator(this, m_spells.end());
+}
+
+const TSpellInfo& TSpellInfoStorage::TSpellIterator::operator*() const
+{
+    if (!m_spell) {
+        m_spell = m_node->second;
+        m_storage->applySpellModifications(*m_spell);
+    }
+    return *m_spell;
+}
+
+TSpellInfoStorage::TSpellIterator& TSpellInfoStorage::TSpellIterator::operator++()
+{
+    ++m_node;
+    m_spell.reset();
+    return *this;
+}
+
 std::optional<TSpellInfo> TSpellInfoStorage::spellInfo(const int spellId) const
 {
     const TSpellInfo* record = spell(spellId);

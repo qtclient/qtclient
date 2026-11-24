@@ -14,12 +14,6 @@
 #include <vector>
 
 namespace tibia {
-namespace gamewindow {
-class TPassiveAbilityListDataModel;
-}
-}
-
-namespace tibia {
 namespace game {
 
 /// What the client knows about a passive ability: its id, translated name,
@@ -54,6 +48,8 @@ public:
         bool operator!=(const TIterator& other) const { return !(*this == other); }
         /// Moves to the next record and returns the iterator as it was.
         TIterator operator++(int);
+        /// Moves to the next record (the copy of the old one is dropped).
+        TIterator& operator++();
 
     private:
         std::map<uint8_t, TPassiveAbilityInfo>::const_iterator m_node;
@@ -81,7 +77,6 @@ public:
     /// Whether the table has the ability.
     static bool isKnownPassiveAbility(uint8_t id);
 
-    gamewindow::TPassiveAbilityListDataModel* listModel() const { return m_model; }
     uint32_t currentCooldown() const { return m_currentCooldown; }
     uint32_t maxCooldown() const { return m_maxCooldown; }
     bool canDecay() const { return m_canDecay; }
@@ -91,7 +86,6 @@ private:
     static const std::map<uint8_t, TPassiveAbilityInfo>& infos();
 
     static TPassiveAbilityInfoStorage* s_instance;
-    gamewindow::TPassiveAbilityListDataModel* m_model = nullptr;
     uint32_t m_currentCooldown = 0;
     uint32_t m_maxCooldown = 0;
     bool m_canDecay = false;

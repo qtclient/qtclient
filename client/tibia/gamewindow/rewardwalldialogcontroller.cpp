@@ -36,18 +36,26 @@ input::IGameActionPtr simpleAction(const A type)
     return input::makeGameAction(type);
 }
 
-/// "hh:mm".
-QString hoursAndMinutes(const qint64 seconds)
-{
-    return QStringLiteral("%1:%2").arg(seconds / 3600, 2, 10, QLatin1Char('0')).arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'));
-}
-
 /// "45min" or "3h 5min".
 QString minutesText(const qint64 minutes)
 {
     if (minutes < 60)
         return qtTrId("time_minutes_short").arg(minutes % 60);
     return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
+}
+
+/// The compact form of minutesText (the dialog's countdowns and hover).
+QString minutesVeryShortText(const qint64 minutes)
+{
+    if (minutes < 60)
+        return qtTrId("time_minutes_veryshort").arg(minutes % 60);
+    return qtTrId("time_hours_and_minutes_veryshort").arg(minutes / 60).arg(minutes % 60);
+}
+
+/// minutesVeryShortText of whole minutes in `seconds`.
+QString secondsVeryShortText(const qint64 seconds)
+{
+    return minutesVeryShortText(seconds / 60);
 }
 
 QString lessThanOneMinute()
@@ -212,7 +220,7 @@ QString TRewardWallDialogController::rewardStreakTimeLeft() const
     if (state != static_cast<int>(StreakState::Running))
         return {};
     const qint64 seconds = secondsUntilStreakEnd();
-    return seconds > 59 ? hoursAndMinutes(seconds) : lessThanOneMinute();
+    return seconds > 59 ? secondsVeryShortText(seconds) : lessThanOneMinute();
 }
 
 /// The running streak's part of a day left; 0 when expired, 1 otherwise.
@@ -282,7 +290,7 @@ QString TRewardWallDialogController::dailyRewardTimeToUnlock() const
         if (seconds < 0)
             return {};
         if (seconds > 59)
-            return hoursAndMinutes(seconds);
+            return secondsVeryShortText(seconds);
     }
     return lessThanOneMinute();
 }
@@ -560,7 +568,7 @@ QString TRewardWallDialogController::dailyRewardStateHoverText(const int Index)
     const uint32_t unlockTime = m_storage->nextRewardTime();
     const uint32_t now = currentUnixTime();
     if (unlockTime > now)
-        return qtTrId("rewardwall_daily_reward_is_unlocking").arg(minutesText((unlockTime - now) / 60));
+        return qtTrId("rewardwall_daily_reward_is_unlocking").arg(minutesVeryShortText((unlockTime - now) / 60));
     QString text = qtTrId("rewardwall_daily_reward_unlocked");
     text += QStringLiteral("<br>");
     text += m_storage->isUsingRewardShrine() ? qtTrId("rewardwall_daily_reward_shrine_theretfore_free")

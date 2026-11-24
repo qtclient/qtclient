@@ -1,7 +1,10 @@
 #include "sessiondumpgamesession.h"
 #include "game/gameactionrouter.h"
 
+#include "chat/chatchannel.h"
+#include "container/containerciptypes.h"
 #include "game/sessiondumpdmpd.h"
+#include "renderer/nextframeupdater.h"
 #include "sessiondump/sessiondumpasyncloader.h"
 #include "sessiondump/sessiondumpplayer.h"
 #include "sessiondump/sessiondumpprogressclockservice.h"
@@ -33,6 +36,9 @@ using SoftHook = tibia::game::SoftHook;
 using Args = TGameNotify::Args;
 
 namespace {
+
+/// How far the next frame updater runs ahead when the player resets the storages.
+constexpr qint64 StorageResetLookaheadMillis = 60000;
 
 template<typename F>
 SoftHook gameHook(const char* field, F&& f)
@@ -97,8 +103,8 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
-    createGameActionHandlers();
     connectProtocolMessageHandlers();
+    connectGameActionHandlers();
 }
 
 void TSessiondumpGameSession::startSession()
@@ -154,8 +160,10 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
     connect(player, &sessiondump::TSessiondumpPlayer::sessiondumpLoadingError, this,
             [this](const QString& message) { Q_EMIT connectionError(message); });
     m_sessiondumpTimer.setParent(this);
+    // Host: a periodic timer stands in for CipSoft's per-frame restart of its
+    // zero-interval single-shot timer.
     m_sessiondumpTimer.setInterval(16);
-    connect(&m_sessiondumpTimer, &QTimer::timeout, player, &sessiondump::TSessiondumpPlayer::processSessiondump,
+    connect(&m_sessiondumpTimer, &QTimer::timeout, this, &TSessiondumpGameSession::onSessiondumpTimerElapsed,
             Qt::UniqueConnection);
     tibia::game::startDecodedReplay();
     player->start();
@@ -346,7 +354,16 @@ QString TSessiondumpGameSession::worldName() const
 
 void TSessiondumpGameSession::onRequestResetOfStorages()
 {
-    // CIP resets creature/item storages between dump segments; OTC replay is one shot.
+    // The player jumps (skip to a keyframe): the effects, texts and animations run
+    // out a minute ahead, and the containers and chat channels start over.
+    nextFrameUpdater()->update(clockService()->nowMillis() + StorageResetLookaheadMillis);
+    containerStorage()->clear();
+    chatChannelStorage()->clearAllChannels();
+}
+
+void TSessiondumpGameSession::onSessiondumpTimerElapsed()
+{
+    m_sessiondumpPlayer->processSessiondump();
 }
 
 void TSessiondumpGameSession::onSessiondumpFinished()

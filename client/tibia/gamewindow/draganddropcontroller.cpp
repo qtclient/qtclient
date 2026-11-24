@@ -12,6 +12,7 @@
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QQmlContext>
 #include <QQuickItem>
 #include <QQuickWindow>
 
@@ -171,6 +172,11 @@ TDragAndDropController::~TDragAndDropController()
 TDragAndDropController* TDragAndDropController::instance()
 {
     return s_instance;
+}
+
+void TDragAndDropController::registerContextProperty(QQmlContext* context)
+{
+    context->setContextProperty(QStringLiteral("tibiaDragAndDropController"), this);
 }
 
 void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObject* source)

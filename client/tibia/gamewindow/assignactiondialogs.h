@@ -7,13 +7,16 @@
 
 #include <QPointer>
 #include <QSet>
+#include <memory>
 #include <set>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TActionBarController;
-class TPassiveAbilityListDataModel;
 class TPassiveAbilityListDataModelSortFilterProxy;
 
 /// Every spell of the spell table in id order, with the server's
@@ -310,6 +313,8 @@ class TAssignPassiveAbilityActionDialogController final
     Q_OBJECT
 public:
     explicit TAssignPassiveAbilityActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
+    /// CIP: the list follows the session's player (vocation filter, usable role).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP v26: the list's first ability.
     void showDialog(uint ButtonId);
@@ -332,10 +337,7 @@ Q_SIGNALS:
 
 private:
     void refreshSelectedPassive();
-    /// The abilities the storage knows now.
-    void reloadAbilities();
 
-    TPassiveAbilityListDataModel* m_model = nullptr;
     TPassiveAbilityListDataModelSortFilterProxy* m_proxy = nullptr;
     int m_passiveAbility = 0;
 };

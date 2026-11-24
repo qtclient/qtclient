@@ -37,11 +37,14 @@ void configureNaturalCollator(QCollator& collator)
     collator.setCaseSensitivity(Qt::CaseInsensitive);
 }
 
-bool startDetached(const QString& program, const QStringList& arguments, const QHash<QString, QString>& environment)
+bool startDetached(const QString& program, const QStringList& arguments, const QHash<QString, QString>& environment,
+                   const QString& workingDirectory)
 {
     QProcess process;
     process.setProgram(program);
     process.setArguments(arguments);
+    if (!workingDirectory.isEmpty())
+        process.setWorkingDirectory(workingDirectory);
     if (!environment.isEmpty()) {
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         for (auto it = environment.cbegin(); it != environment.cend(); ++it)

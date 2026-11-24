@@ -424,6 +424,29 @@ void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& p
                     static_cast<uint8_t>(static_cast<uint32_t>(pos.z) % depth));
 }
 
+TContainerObjectAppearanceInstance::TContainerObjectAppearanceInstance(TAppearanceType* type,
+                                                                       std::set<int> firstCategories,
+                                                                       std::set<int> secondCategories,
+                                                                       const bool hasValue, const int value,
+                                                                       std::shared_ptr<TFieldEffectInstance> fieldEffect,
+                                                                       const qint64 animationStartMs)
+    : TObjectAppearanceInstance(type, animationStartMs)
+    , m_firstCategories(std::move(firstCategories))
+    , m_secondCategories(std::move(secondCategories))
+    , m_hasValue(hasValue)
+    , m_value(value)
+    , m_fieldEffect(std::move(fieldEffect))
+{
+}
+
+bool TContainerObjectAppearanceInstance::updateAnimation(const qint64 nowMs)
+{
+    bool changed = TObjectAppearanceInstance::updateAnimation(nowMs);
+    if (m_fieldEffect)
+        changed |= m_fieldEffect->updateAnimation(nowMs);
+    return changed;
+}
+
 int TObjectAppearanceInstance::calculateAnimationPhase() const
 {
     if (!m_type || m_type->getAnimationPhases() <= 1)
@@ -771,6 +794,19 @@ std::shared_ptr<TDecoItemKitAppearanceInstance> TAppearanceInstanceFactory::crea
                                                                                                   const uint16_t decoItemId)
 {
     return makeTracked<TDecoItemKitAppearanceInstance>(appearanceType(ThingCategoryItem, id), decoItemId);
+}
+
+std::shared_ptr<TContainerObjectAppearanceInstance>
+TAppearanceInstanceFactory::createContainerObject(const uint16_t id, std::set<int> firstCategories,
+                                                  std::set<int> secondCategories, const bool hasValue, const int value,
+                                                  const bool withFieldEffect, const qint64 animationStartMs)
+{
+    TAppearanceType* type = appearanceType(ThingCategoryItem, id);
+    std::shared_ptr<TFieldEffectInstance> fieldEffect;
+    if (withFieldEffect)
+        fieldEffect = createFieldEffect(252, Position(0, 0, 0), 0, animationStartMs);
+    return makeTracked<TContainerObjectAppearanceInstance>(type, std::move(firstCategories), std::move(secondCategories),
+                                                           hasValue, value, std::move(fieldEffect), animationStartMs);
 }
 
 std::shared_ptr<TUpgradeableObjectAppearanceInstance> TAppearanceInstanceFactory::createUpgradeableObject(const uint16_t id,

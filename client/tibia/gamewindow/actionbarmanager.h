@@ -16,43 +16,43 @@
 #include <client/declarations.h>
 
 #include <QPointer>
-#include <QTimer>
 
-#include <array>
 #include <map>
 #include <memory>
-#include <vector>
-
-class QQmlEngine;
-class QQuickItem;
 
 namespace tibia::game {
 class IGameSession;
+class TGameActionRouter;
+class TPremiumTimeStorage;
 }
-namespace tibia::chat {
-class TChatModeManager;
+namespace tibia::spells {
+class TSpellInfoStorage;
 }
 
 namespace tibia {
 namespace config {
-class TActionBarOptions;
+class TClientOptions;
 }
 namespace gamewindow {
 
-/// The nine action bars around the map (CIP: TActionBarManager): the three
-/// TActionBarGroups by side. The manager hands the router's game actions and
-/// the game session to the groups and ticks them every frame; the bars do
-/// the rest themselves. Host: it also runs the target selection and the
-/// objects' amounts from the local inventory.
+/// The action bars around the map (CIP: TActionBarManager): the
+/// TActionBarGroups by side. The game client makes the groups and adds them;
+/// the manager hands them the router's game actions and the game session,
+/// ticks them every frame and puts newly unlocked spells on a free button.
 class TActionBarManager final : public cip::tibia::gamewindow::TActionBarManager
 {
     Q_OBJECT
 public:
-    TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QQmlEngine* engine, chat::TChatModeManager* chatModeManager,
-                      QObject* parent = nullptr);
+    TActionBarManager(config::TClientOptions* clientOptions, game::TPremiumTimeStorage* premiumTimeStorage,
+                      spells::TSpellInfoStorage* spellInfoStorage, QObject* parent = nullptr);
     ~TActionBarManager() override;
 
-    TActionBarController* bar(int actionBarId) const;
+    /// Keeps `group` under its side, replacing the side's previous group.
+    void addGroup(std::shared_ptr<TActionBarGroup> group);
+    /// Every group's game actions go straight to the router.
+    void connectToGameActionRouter(const std::shared_ptr<game::TGameActionRouter>& router);
+    /// Every group restores the bars of its saved configuration.
+    void restoreLastAktionBarConfiguration();
 
     /// The default use of an object on a button: Equip for wearable
     /// non-multi-use objects, SelectUseTarget for multi-use, otherwise Use.
@@ -77,15 +77,11 @@ public Q_SLOTS:
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
-    void addGroup(std::unique_ptr<TActionBarGroup> group);
-    void restoreLastAktionBarConfiguration();
-
-    QPointer<QQuickItem> m_gameWindowItem;
-    std::map<EActionBarPosition, std::unique_ptr<TActionBarGroup>> m_groups;
+    QPointer<config::TClientOptions> m_clientOptions;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
+    spells::TSpellInfoStorage* m_spellInfoStorage = nullptr;
+    std::map<EActionBarPosition, std::shared_ptr<TActionBarGroup>> m_groups;
     QMetaObject::Connection m_unlockedSpellConnection;
-    QMetaObject::Connection m_frameConnection;
-    /// Host: the target selection the bars' object and spell actions run through.
-    QPointer<TTargetSelectionController> m_targetSelection;
 };
 
 }

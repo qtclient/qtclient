@@ -53,6 +53,9 @@ public:
     const std::shared_ptr<TSoundConfiguration>& configuration() const { return m_configuration; }
     int64_t now() const { return m_nowMs; }
 
+    /// "Numeric sound effect (<id>, <sounds>)" for logs; <sounds> is
+    /// "Unknown" for an unknown effect.
+    QString numericSoundEffectName(uint16_t effectId) const;
     /// The sound, pitch and volume for a numeric sound effect.
     TSoundEffectParameters effectParameters(const TSoundEffectRequest& request) const;
     /// Plays `parameters` once on a pool player.

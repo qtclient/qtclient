@@ -177,7 +177,6 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
-    createGameActionHandlers();
     // The session's network stack: its encoded client messages go to the game connection.
     connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::clientMessageEnqueued, this,
             [](int, const QByteArray& frame) {
@@ -203,6 +202,7 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
             return live ? live->sessiondump() : QByteArray();
         });
     connectProtocolMessageHandlers();
+    connectGameActionHandlers();
     connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedMessage,
             m_sessiondumpRecorder.get(), &sessiondump::TClientSessiondumpRecorder::handleAnyMessage);
 }

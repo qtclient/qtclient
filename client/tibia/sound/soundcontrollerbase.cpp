@@ -5,8 +5,11 @@
 #include <QJSEngine>
 #include <QLoggingCategory>
 #include <QRandomGenerator>
+#include <QStringList>
+#include <QTextStream>
 
 #include <algorithm>
+#include <variant>
 
 Q_LOGGING_CATEGORY(lcSound, "sound", QtFatalMsg)
 
@@ -81,6 +84,24 @@ uint16_t randomSoundId(const std::vector<uint16_t>& soundIds)
 
 }
 
+QString TSoundControllerBase::numericSoundEffectName(const uint16_t effectId) const
+{
+    QString sounds = QStringLiteral("Unknown");
+    if (const std::optional<TNumericSoundEffectMetadata> effect = m_metadata->numericSoundEffect(effectId)) {
+        if (std::holds_alternative<std::monostate>(effect->sound)) {
+            sounds = QStringLiteral("unknown");
+        } else if (const auto* single = std::get_if<TSingleSoundEffectMetadata>(&effect->sound)) {
+            sounds = QStringLiteral("Single sound effect(%1)").arg(m_soundManager->soundName(single->soundId));
+        } else if (const auto* random = std::get_if<TRandomSoundMetadata>(&effect->sound)) {
+            QStringList names;
+            for (const uint16_t soundId : random->soundIds)
+                names.append(m_soundManager->soundName(soundId));
+            sounds = QStringLiteral("Random Sound Effect(%1)").arg(names.join(QLatin1Char(',')));
+        }
+    }
+    return QStringLiteral("Numeric sound effect (%1, %2)").arg(effectId).arg(sounds);
+}
+
 TSoundEffectParameters TSoundControllerBase::effectParameters(const TSoundEffectRequest& request) const
 {
     TSoundEffectParameters parameters;
@@ -128,6 +149,16 @@ std::optional<TSoundPlayerToken> TSoundControllerBase::playSingleShot(const floa
         qDebug() << "Could not get free player for single shot sound effect" << soundId;
         return std::nullopt;
     }
+    QString message;
+    QTextStream stream(&message);
+    stream << "Play single shot effect" << " " << m_soundManager->soundName(playable->soundId())
+           << " (free sound effects " << manager->freePlayerCount() << ")";
+    if (pitch != 1.0f)
+        stream << QStringLiteral(" with pitch of %1").arg(static_cast<double>(pitch));
+    if (modifiers.distance != 100)
+        stream << QStringLiteral(" and distance modifier %1").arg(int(modifiers.distance));
+    stream.flush();
+    qDebug().noquote() << message;
     TSoundPlayer* player = token->player();
     player->setSound(*playable);
     player->setVolumeModifiers(modifiers);

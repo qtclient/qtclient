@@ -149,11 +149,7 @@ TGameActionList TContainerGameActionProvider::depotSearchSlotActions(const bool 
               : input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchDepotItemGameActionContext>(index));
     TGameActionList actions = input::filterActions(input::TGenericObjectGameActionProvider::objectActions(location, slot),
                                                    ContainerSlotActionTypes);
-    const TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : typeOf(slot.typeId);
-    const input::TObjectGameActionContext object{
-        location, input::TGenericObjectGameActionProvider::objectContext(type, slot.typeId, slot.fluid, slot.tier, slot.decoItemId)
-    };
-    actions.push_back(std::make_shared<input::TGameActionOpenParentContainer>(object));
+    actions.push_back(std::make_shared<input::TGameActionOpenParentContainer>(location));
     actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     return actions;
 }

@@ -2,6 +2,10 @@
 
 #include "trade/tradeciptypes.h"
 
+#include "config/sidebaroptions.h"
+#include "container/containerciptypes.h"
+#include "game/playerdata.h"
+
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -16,7 +20,6 @@ namespace tibia::trade {
 
 namespace {
 
-using Args = std::vector<std::any>;
 constexpr int MaxStackableAmount = 10000;
 constexpr int MaxAmount = 100;
 
@@ -104,24 +107,30 @@ int maximumSellAmount(const TNPCTradeGood& good, const uint32_t owned)
     return static_cast<int>(std::min<uint32_t>(owned, amountLimit(good)));
 }
 
-TNPCTradeStorage::TNPCTradeStorage(QObject* parent)
+TNPCTradeStorage::TNPCTradeStorage(std::shared_ptr<game::TPlayerData> playerData,
+                                   std::shared_ptr<container::TInventoryContainer> inventoryContainer,
+                                   std::shared_ptr<config::TSidebarOptions> sidebarOptions, QObject* parent)
     : cip::tibia::trade::TNPCTradeStorage(parent)
+    , m_playerData(std::move(playerData))
+    , m_inventoryContainer(std::move(inventoryContainer))
+    , m_sidebarOptions(std::move(sidebarOptions))
 {
-    // Host: the player data CIP's session forwards (capacity, balances,
-    // inventory).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onFreeCapacityChange", [this](GameObject*, const Args&) {
-        onPlayerDataChanged();
-        return std::any{};
-    });
+    if (m_inventoryContainer)
+        connect(m_inventoryContainer.get(), &container::TInventoryContainer::inventoryChanged, this,
+                &TNPCTradeStorage::playerInventoryChanged);
+    if (m_playerData) {
+        connect(m_playerData.get(), &game::TPlayerData::playerDataChanged, this, &TNPCTradeStorage::onPlayerDataChanged);
+        m_freeCapacity = static_cast<uint32_t>(m_playerData->freeCapacity());
+    }
+    if (m_sidebarOptions)
+        connect(m_sidebarOptions.get(), &config::TSidebarOptions::npcTradeOptionsChanged, this, &TNPCTradeStorage::traderInventoryChanged);
+    // Host: qtclient's gold balances are not part of the inventory container;
+    // their change refreshes the goods like an inventory change.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this]() {
         if (m_open)
             Q_EMIT playerInventoryChanged();
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInventoryChange", [this](GameObject*, const Args&) {
-        if (m_open)
-            Q_EMIT playerInventoryChanged();
-        return std::any{};
-    });
+    Q_EMIT traderInventoryChanged();
 }
 
 void TNPCTradeStorage::setTraderInventory(const QString& npcName, std::vector<TNPCTradeGood> goods)

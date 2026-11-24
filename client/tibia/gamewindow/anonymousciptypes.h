@@ -13,7 +13,6 @@ class TBossTrackerModel final : public ::tibia::CipTyped { public: TBossTrackerM
 class TBossTrackerSortProxyModel final : public ::tibia::CipTyped { public: TBossTrackerSortProxyModel() = default; };
 class TBossesModel final : public ::tibia::CipTyped { public: TBossesModel() = default; };
 class TFriendListSortProxyModel final : public ::tibia::CipTyped { public: TFriendListSortProxyModel() = default; };
-class TMyException final : public ::tibia::CipTyped { public: TMyException() = default; };
 class TPerkInfoModel final : public ::tibia::CipTyped { public: TPerkInfoModel() = default; };
 class TPreyBestiarySelectionSortProxyModel final : public ::tibia::CipTyped { public: TPreyBestiarySelectionSortProxyModel() = default; };
 class TQuestTrackerModel final : public ::tibia::CipTyped { public: TQuestTrackerModel() = default; };

@@ -17,6 +17,9 @@ launcher::TCloudflareCdnTrace::~TCloudflareCdnTrace	097457dc45e86dd8	skip	genera
 launcher::TDraggableMainWindow::v0@10	6a60b0b2b65ffc7f	skip	generated: destructor
 launcher::TDraggableMainWindow::v1@10	1c5837e5cc39444c	skip	generated: destructor
 launcher::TDraggableMainWindow::~TDraggableMainWindow	ce12304e747189af	skip	generated: destructor
+launcher::TInstallationManager::onInstallationFinished	514fe2cfd1c09a04	ported	installationmanager.cpp:TInstallationManager::onInstallationFinished
+launcher::TInstallationManager::onMetaDataDownloadCompleted	d6f2a5be0f9ca632	ported	installationmanager.cpp:TInstallationManager::onMetaDataDownloadCompleted
+launcher::TInstallationManager::onRequiredChangesComputedForInstallation	35f6f6485ee712f7	ported	installationmanager.cpp:TInstallationManager::onRequiredChangesComputedForInstallation
 launcher::TInstallationManager::~TInstallationManager	097457dc45e86dd8	skip	generated: destructor
 launcher::TLauncherApplication::~TLauncherApplication	097457dc45e86dd8	skip	generated: destructor
 launcher::TLauncherApplication::~TLauncherApplication_deleting	79674512666b34e2	skip	generated: destructor

@@ -67,6 +67,12 @@ void installQtMessageHandler(const QtMessageHandler handler)
     g_currentQtMessageHandler = handler;
 }
 
+void uninstallQtMessageHandler()
+{
+    qInstallMessageHandler(nullptr);
+    g_currentQtMessageHandler = nullptr;
+}
+
 void qtMessageHandler(const QtMsgType type, const QMessageLogContext& context, const QString& message)
 {
     const QByteArray localMessage = message.toLocal8Bit();

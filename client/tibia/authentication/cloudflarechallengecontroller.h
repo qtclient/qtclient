@@ -9,6 +9,8 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <optional>
+
 #if defined(TIBIA_DESKTOP_WEBENGINE)
 class QQuickWebEngineProfile;
 #endif
@@ -38,6 +40,8 @@ public:
 
     /// Start the challenge for `url` (login reply URL / cf-mitigated target).
     void startChallenge(const QUrl& url);
+    /// CIP: why the last challenge failed (none while it runs or after a success).
+    const std::optional<TCloudflareChallengeError>& error() const { return m_error; }
 
 Q_SIGNALS:
     /// Skipped in cipgen (ClearanceInfo / Error types); qtclient owns these.
@@ -60,6 +64,7 @@ private:
     bool m_running = false;
     bool m_finished = false;
     TCloudflareChallengeClearanceInfo m_clearance;
+    std::optional<TCloudflareChallengeError> m_error;
 };
 
 }

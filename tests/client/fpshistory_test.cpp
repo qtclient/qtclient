@@ -10,7 +10,7 @@
 #include <QJsonObject>
 #include <QTimeZone>
 
-#include "client/clientciptypes.h"
+#include "client/gameapplication.h"
 
 using namespace tibia::systemsurvey;
 

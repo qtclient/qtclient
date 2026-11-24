@@ -14,6 +14,7 @@
 #include "config/optionspages.h"
 #include "analysers/analyserstorages.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
+#include "config/characterconfigurationmanager.h"
 #include "input/gameactionhandlers.h"
 
 namespace tibia::quickloot {
@@ -154,10 +155,31 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
     Q_EMIT publishGameAction(status);
 }
 
-TManagedContainersProtocolMessageHandler::TManagedContainersProtocolMessageHandler(TManagedContainerStorage* storage, QObject* parent)
+TManagedContainersProtocolMessageHandler::TManagedContainersProtocolMessageHandler(
+    TManagedContainerStorage* storage, config::TCharacterConfigurationManager* characterConfigurationManager, QObject* parent)
     : cip::tibia::quickloot::TManagedContainersProtocolMessageHandler(parent)
     , m_storage(storage)
+    , m_characterConfigurationManager(characterConfigurationManager)
 {
+    if (!m_characterConfigurationManager)
+        return;
+    connect(m_characterConfigurationManager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+            &TManagedContainersProtocolMessageHandler::onQuickLootBlackWhitelistConfigurationChanged);
+    if (TQuickLootBlackWhitelistStorage* list = m_characterConfigurationManager->quickLootBlackWhitelistStorage())
+        connect(list, &TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
+                &TManagedContainersProtocolMessageHandler::onQuickLootBlackWhitelistConfigurationChanged);
+}
+
+void TManagedContainersProtocolMessageHandler::onQuickLootBlackWhitelistConfigurationChanged()
+{
+    if (!m_characterConfigurationManager->isConfigurationLoaded())
+        return;
+    const TQuickLootBlackWhitelistStorage* list = m_characterConfigurationManager->quickLootBlackWhitelistStorage();
+    // Host: the client hands the session its loot list storage once the game
+    // window has one (a replay without it has no list to send).
+    if (!list)
+        return;
+    sendQuickLootBlackWhitelist(list->listType(), list->list(list->listType()));
 }
 
 void TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)

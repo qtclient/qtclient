@@ -94,6 +94,28 @@ void TCreature::createPlaceholderAppearance()
     }
 }
 
+worldmap::TWorldMapSubfieldCoordinate TCreature::drawSubfieldCoordinate() const
+{
+    const worldmap::TWorldMapCoordinate field =
+        worldmap::TWorldMapCoordinate(m_position) + m_movementTween.coveredFieldOffset();
+    const worldmap::TWorldMapSubfieldExtent offset = movementOffset();
+    return worldmap::TWorldMapSubfieldCoordinate(field.x * 32 + offset.width, field.y * 32 + offset.height, field.z);
+}
+
+worldmap::TWorldMapSubfieldCoordinate TCreature::displacedDrawSubfieldCoordinate() const
+{
+    const worldmap::TWorldMapSubfieldExtent displacement = m_placeholderAppearance->creatureDisplacement();
+    return drawSubfieldCoordinate()
+        + worldmap::TWorldMapSubfieldExtent(-(displacement.width + displacement.depth),
+                                            -(displacement.depth + displacement.height), 0);
+}
+
+appearances::TAppearanceInstanceSpriteInfoPtr TCreature::previewSpriteInfo() const
+{
+    const auto* outfit = dynamic_cast<const appearances::TOutfitAppearanceInstance*>(m_outfitAppearance.get());
+    return outfit ? outfit->previewSpriteInfo() : nullptr;
+}
+
 const QString& TCreature::name() const
 {
     return isPlayer() ? m_name : m_formattedName;

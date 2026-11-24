@@ -167,7 +167,10 @@ class TCharacterWorldTransferDialogController final
     Q_OBJECT
 public:
     explicit TCharacterWorldTransferDialogController(QObject* parent = nullptr);
+    /// The dialog closes first (its conditions and worlds go).
+    ~TCharacterWorldTransferDialogController() override;
 
+    bool isExpressWorldTransfer() const override;
     /// Every condition is met.
     bool canTransfer() const override;
 
@@ -203,7 +206,9 @@ public Q_SLOTS:
     void onBenchmarkWindowClosed() override;
 };
 
-/// CIP TConfirmMoveObjectToStashDialogController — ConfirmMoveObjectToStashDialog.qml (v3).
+/// CIP TConfirmMoveObjectToStashDialogController — ConfirmMoveObjectToStashDialog.qml
+/// (v3): a move onto the stash or a stow of a container's content waits here
+/// for the player's yes; then it goes out again marked as confirmed.
 class TConfirmMoveObjectToStashDialogController final
     : public TDialogController<cip::tibia::gamewindow::TConfirmMoveObjectToStashDialogController>
 {
@@ -211,7 +216,13 @@ class TConfirmMoveObjectToStashDialogController final
 public:
     explicit TConfirmMoveObjectToStashDialogController(QObject* parent = nullptr);
 
-    void setConfirmHandler(std::function<void(bool showAgain)> onYes);
+    /// SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG: its action waits, the dialog
+    /// shows.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    /// The askBeforeStowContainerContent option.
+    bool showThisDialogAgain() const override;
+    /// The waiting action is dropped and the dialog closes.
+    void closeDialog();
 
 public Q_SLOTS:
     void showDialog() override;
@@ -219,7 +230,7 @@ public Q_SLOTS:
     void onNoClicked() override;
 
 private:
-    std::function<void(bool)> m_onYes;
+    ::tibia::input::IGameActionPtr m_gameAction;
 };
 
 /// CIP TCrashReportDialogController — CrashReportDialog.qml: shows a crash

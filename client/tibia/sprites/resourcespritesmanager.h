@@ -44,6 +44,9 @@ public:
     QRect resourceRectangle(int id, const QPointF& position, bool centered) const;
 
     const std::map<int, TResourceSprite>& resourceSprites() const { return m_resourceSprites; }
+    /// Resource `id`; an id that was never added gets an empty entry (null
+    /// image, cell size -1 x -1, no path).
+    TResourceSprite& resourceSprite(const int id) { return m_resourceSprites[id]; }
 
 private:
     std::map<int, TResourceSprite> m_resourceSprites;

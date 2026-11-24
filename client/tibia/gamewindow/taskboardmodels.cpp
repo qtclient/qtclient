@@ -1,6 +1,7 @@
 #include "taskboardmodels.h"
 
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "qmlcomponents/qmlcomponentsciptypes.h"
 #include <tibia/game/thingsession_forward.h>
 
 #include <QSortFilterProxyModel>
@@ -8,6 +9,17 @@
 #include <algorithm>
 
 namespace tibia::taskboard {
+
+namespace {
+
+/// The QML AppearanceTypeHelper service the delivery captions come from.
+qmlcomponents::TAppearanceTypeHelperQmlService* appearanceTypeHelper()
+{
+    static auto* const helper = new qmlcomponents::TAppearanceTypeHelperQmlService();
+    return helper;
+}
+
+}
 
 TBountyTasksListModel::TBountyTasksListModel(QObject* parent)
     : TSimpleVectorAbstractListModel(parent)
@@ -97,7 +109,9 @@ QVariant TMonsterKillTasksListModel::data(const QModelIndex& index, const int ro
     case RaceIdRole:
         return row.raceId;
     case CaptionRole:
-        return row.caption;
+        if (row.raceId == 0)
+            return qtTrId("kill_tracker_arbitrary_monster_name");
+        return cyclopedia::bossName(row.raceId);
     case CurrentKillAmountRole:
         return row.currentKillAmount;
     case RequiredAmountRole:
@@ -145,13 +159,13 @@ QVariant TDeliveryTasksListModel::data(const QModelIndex& index, const int role)
     case TypeIdRole:
         return row.typeId;
     case CaptionRole:
-        return row.caption;
+        return cyclopedia::capitalizeWords(appearanceTypeHelper()->getObjectAppearanceTypeNameForID(row.typeId));
     case AvailableAmountRole:
         return row.availableAmount;
     case RequiredAmountRole:
         return row.requiredAmount;
     case DeliveredRole:
-        return row.delivered;
+        return row.state == 1;
     default:
         return {};
     }
@@ -205,9 +219,9 @@ QVariant TBountyTasksPreferredMonsterListModel::data(const QModelIndex& index, c
     case AvoidedMonsterRaceIdRole:
         return row.avoidedMonsterRaceId;
     case PreferredMonsterRaceNameRole:
-        return row.preferredMonsterRaceName;
+        return cyclopedia::bossName(row.preferredMonsterRaceId);
     case AvoidedMonsterRaceNameRole:
-        return row.avoidedMonsterRaceName;
+        return cyclopedia::bossName(row.avoidedMonsterRaceId);
     default:
         return {};
     }
@@ -236,12 +250,17 @@ void TBountyTasksPreferredMonsterListModel::setRows(QVector<PreferredMonsterSlot
 
 bool TBountyTasksPreferredMonsterListModel::isMonsterRaceAssignable(const int RaceId)
 {
-    return RaceId > 0;
+    if (RaceId == 0 || m_rows.isEmpty())
+        return m_rows.isEmpty();
+    return std::none_of(m_rows.begin(), m_rows.end(), [RaceId](const PreferredMonsterSlotRow& row) {
+        return row.preferredMonsterRaceId == RaceId || row.avoidedMonsterRaceId == RaceId;
+    });
 }
 
 void TBountyTasksPreferredMonsterListModel::clearAssignableMonster()
 {
-    setAssignableMonsterRaceId(0);
+    m_assignableMonsterRaceId = 0;
+    Q_EMIT assignableMonsterRaceIdChanged();
 }
 
 }

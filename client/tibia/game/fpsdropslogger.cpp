@@ -1,7 +1,7 @@
 #include "game/fpsdropslogger.h"
 
 #include "app/graphicsrestart.h"
-#include "client/clientciptypes.h"
+#include "client/gameapplication.h"
 #include "config/clientoptions.h"
 #include "gamewindow/dialogmanager.h"
 #include "jsondocumenthttppostsender.h"

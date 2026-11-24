@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -157,10 +158,35 @@ protected:
     bool m_canDraw{ true };
 };
 
+class TFieldEffectInstance;
+
+/// A container object: the two category sets of its protocol object (the
+/// categories whose bits are set, 1 to 31), an optional value, and an optional
+/// field effect that animates with it.
 class TContainerObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit TContainerObjectAppearanceInstance(TAppearanceType* type, std::set<int> firstCategories = {},
+                                                std::set<int> secondCategories = {}, bool hasValue = false,
+                                                int value = 0, std::shared_ptr<TFieldEffectInstance> fieldEffect = {},
+                                                qint64 animationStartMs = 0);
+
+    const std::set<int>& firstCategories() const { return m_firstCategories; }
+    const std::set<int>& secondCategories() const { return m_secondCategories; }
+    bool hasValue() const { return m_hasValue; }
+    int value() const { return m_value; }
+    const std::shared_ptr<TFieldEffectInstance>& fieldEffect() const { return m_fieldEffect; }
+
+    /// The object's animation, then the field effect's: true when either
+    /// drawn phase changed.
+    bool updateAnimation(qint64 nowMs) override;
+
+private:
+    std::set<int> m_firstCategories;
+    std::set<int> m_secondCategories;
+    bool m_hasValue;
+    int m_value;
+    std::shared_ptr<TFieldEffectInstance> m_fieldEffect;
 };
 
 /// A stackable object: its count picks the pile it draws.
@@ -213,6 +239,12 @@ class TPatternObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
     using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    /// An object of `type` drawn with the patterns of `coordinate`.
+    TPatternObjectAppearanceInstance(TAppearanceType* type, const Position& coordinate, qint64 animationStartMs)
+        : TObjectAppearanceInstance(type, animationStartMs)
+    {
+        applyWorldMapCoordinate(coordinate);
+    }
 
     /// Pattern x, y and z are the coordinate modulo the appearance's pattern
     /// width, height and depth.
@@ -592,6 +624,12 @@ public:
     static std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType);
     static std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId);
     static std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier);
+    /// CIP v6: the container object `id` with its two category sets and
+    /// optional value; `withFieldEffect` gives it field effect 252 (made like
+    /// createFieldEffect, on field (0, 0, 0) from source 0).
+    static std::shared_ptr<TContainerObjectAppearanceInstance>
+    createContainerObject(uint16_t id, std::set<int> firstCategories, std::set<int> secondCategories, bool hasValue,
+                          int value, bool withFieldEffect, qint64 animationStartMs);
     static std::shared_ptr<TWearoutObjectAppearanceInstance> createWearoutObject(TAppearanceType* type, uint32_t charges,
                                                                                 bool brandNew);
     static std::shared_ptr<TExpireObjectAppearanceInstance> createExpireObject(TAppearanceType* type,

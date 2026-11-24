@@ -42,7 +42,8 @@ struct TSoundSettings
     TSecondsRange longMusicPause{ 120, 600 };
     TSecondsRange musicCooldown{ 600, 1200 };
     TSecondsRange immediateMusicCooldown{ 60, 180 };
-    uint16_t reserved = 250;
+    /// Most sounds a game session keeps (its TSoundStorage).
+    uint16_t maxGameSessionSoundCount = 250;
     bool ambienceStreamsDisabled = false;
     bool ambienceDisabled = false;
     /// Distance modifier of plain music while the player flag is set.
@@ -84,6 +85,8 @@ public:
     bool isAmbienceStreamEnabled() const;
     /// isAmbienceAudible and ambience not disabled.
     bool isAmbienceEnabled() const;
+    /// The soundMasterVolume option, 0..100.
+    uint8_t masterVolume() const;
     bool isMusicEnabled() const;
     /// isMusicEnabled and the anthem option.
     bool isTitleMusicEnabled() const;

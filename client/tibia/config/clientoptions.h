@@ -256,7 +256,8 @@ private:
     std::unordered_map<EClientOption, QDateTime> m_dates;
     bool m_rendererChangeConfirmationRequired = false;
     TClientWindowOptions m_clientWindow;
-    QRect m_npcDialog;
+    /// Unset until the NPC dialog is first placed: QRect(-1, -1, -1, -1).
+    QRect m_npcDialog{ -1, -1, -1, -1 };
     QJsonObject m_controlButtons;
     QList<std::pair<QString, QString>> m_deviceCookies;
     QJsonObject m_hotkeyOptions;

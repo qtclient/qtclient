@@ -48,6 +48,10 @@ struct SpecialConditionsOptions
     /// The defaults a fresh options file holds and "reset to default" restores:
     /// HUD off, bar on, every known condition in the bar, most in the HUD.
     static SpecialConditionsOptions defaults();
+    /// After loading: an empty order resets the whole section to the
+    /// defaults; otherwise unknown entries leave the order and missing known
+    /// ones are appended.
+    void fixSpecialConditionsOrder();
     /// The section as CIP stores it ([type, value] pairs, sets sorted).
     QJsonObject toJson() const;
 

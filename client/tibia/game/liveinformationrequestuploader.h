@@ -46,6 +46,8 @@ public:
     ~TLiveInformationRequestUploader() override;
 
     const TLiveInformation& liveInformation() const { return m_liveInformation; }
+    /// The pending refresh is dropped (the game screen shows no live numbers).
+    void stopUpdateTimer() { m_updateTimer.stop(); }
 
     /// Reads the fields present as integers into `information`; missing or
     /// malformed fields keep their value.
@@ -57,6 +59,8 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void requestUpdate();
+    /// Requests an update now and (re)starts the update timer with `intervalMs`.
+    void requestUpdateAndStartTimer(int intervalMs);
     void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD);
 
 private:

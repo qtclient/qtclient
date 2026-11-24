@@ -69,6 +69,7 @@ struct TTeamParameters
     bool includeParty = false;
 
     bool operator==(const TTeamParameters& other) const;
+    bool operator!=(const TTeamParameters& other) const;
 };
 
 /// Member status: applied and waiting, invited by the leader, accepted, rejected.
@@ -100,6 +101,7 @@ struct TTeamData
     uint32_t status = 0;
 
     bool operator==(const TTeamData& other) const = default;
+    bool operator!=(const TTeamData& other) const = default;
 };
 
 /// The own team (as leader) and the listed teams (as applicant).

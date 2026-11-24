@@ -39,9 +39,14 @@ int TSoundConfiguration::intOption(const int id) const
     return m_options ? m_options->intOption(static_cast<O>(id)) : 0;
 }
 
+uint8_t TSoundConfiguration::masterVolume() const
+{
+    return static_cast<uint8_t>(intOption(kMasterVolume));
+}
+
 float TSoundConfiguration::volume(const int id) const
 {
-    const float master = static_cast<float>(static_cast<uint8_t>(intOption(kMasterVolume))) / 100.0f;
+    const float master = static_cast<float>(masterVolume()) / 100.0f;
     const float value = static_cast<float>(intOption(id)) / 100.0f;
     return value * master * 100.0f;
 }
@@ -268,7 +273,7 @@ TSoundConfiguration::TEffectSettings TSoundConfiguration::effectSettings(const i
     }
     if (settings)
         return *settings;
-    return { true, static_cast<float>(static_cast<uint8_t>(intOption(kMasterVolume))) };
+    return { true, static_cast<float>(masterVolume()) };
 }
 
 }

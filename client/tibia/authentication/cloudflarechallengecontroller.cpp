@@ -81,6 +81,7 @@ void TCloudflareChallengeController::startChallenge(const QUrl& url)
 
     m_finished = false;
     m_clearance = {};
+    m_error.reset();
     setTargetUrl(url);
 
 #if !defined(TIBIA_DESKTOP_WEBENGINE)
@@ -128,6 +129,7 @@ void TCloudflareChallengeController::fail(const TCloudflareChallengeError error)
         return;
     m_finished = true;
     m_running = false;
+    m_error = error;
     m_timeout.stop();
     stopAndCloseDialog();
     Q_EMIT challengeSolveFailed(error);

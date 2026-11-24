@@ -262,7 +262,7 @@ message ProtocolHouse {
 // CIP TProtobufServerMessageTranslator::v163: u32 time, u8 premium, string text, u16 streak.
 message ProtocolDailyRewardHistoryEntry {
   optional uint32 timestamp = 1;
-  optional bool premium = 2;
+  optional uint32 premium = 2;
   optional string description = 3;
   optional uint32 streak = 4;
 }
@@ -1461,6 +1461,89 @@ message CreatureData {
   optional uint32 speed = 13;
 }
 
+// CIP GameEventTypeAchievement: the achievement's name.
+message GameEventTypeAchievement {
+  optional string name = 1;
+}
+
+// CIP GameEventTypeTitle: the title's name.
+message GameEventTypeTitle {
+  optional string name = 1;
+}
+
+// CIP GameEventTypeLevelUp: the new level.
+message GameEventTypeLevelUp {
+  optional uint32 level = 1;
+}
+
+// CIP GameEventTypeSkillUp: skill: CipSoft's protocol skill (classic 1..8 -> 1, 8, 9, 10, 11, 7, 6, 13); level: the new skill level.
+message GameEventTypeSkillUp {
+  optional uint32 skill = 1;
+  optional uint32 level = 2;
+}
+
+// CIP GameEventTypeBestiaryProgress: race and its new bestiary progress step.
+message GameEventTypeBestiaryProgress {
+  optional uint32 race_id = 1;
+  optional uint32 progress = 2;
+}
+
+// CIP GameEventTypeBosstiaryProgress: race and its new bosstiary progress step.
+message GameEventTypeBosstiaryProgress {
+  optional uint32 race_id = 1;
+  optional uint32 progress = 2;
+}
+
+// CIP GameEventTypeQuestProgress: state: 1 started (classic 0), 2 completed (classic 1).
+message GameEventTypeQuestProgress {
+  optional string quest_name = 1;
+  optional uint32 state = 2;
+}
+
+// CIP GameEventTypeOutfitPartUnlocked: part: 1..4 (classic 0..3).
+message GameEventTypeOutfitPartUnlocked {
+  optional uint32 outfit_id = 1;
+  optional string name = 2;
+  optional uint32 part = 3;
+}
+
+// CIP GameEventTypeWeaponProficency: the weapon (CipSoft's spelling of the message name).
+message GameEventTypeWeaponProficency {
+  optional uint32 object_id = 1;
+  optional string name = 2;
+}
+
+// CIP GameEventTypeBountyTaskFinished: the bounty task's race.
+message GameEventTypeBountyTaskFinished {
+  optional uint32 race_id = 1;
+}
+
+// CIP GameEventTypeWeeklyTaskSpecificCreatureFinished: the weekly task's race.
+message GameEventTypeWeeklyTaskSpecificCreatureFinished {
+  optional uint32 race_id = 1;
+}
+
+// CIP GameEventTypeSpellUnlocked: the unlocked spell.
+message GameEventTypeSpellUnlocked {
+  optional uint32 spell_id = 1;
+}
+
+// CIP GameEventTypeLeaderMonsterKilled: the leader's race and the charm points.
+message GameEventTypeLeaderMonsterKilled {
+  optional uint32 race_id = 1;
+  optional uint32 charm_points = 2;
+}
+
+// CIP GameEventTypeSubAreaUnlocked: the unlocked subarea.
+message GameEventTypeSubAreaUnlocked {
+  optional uint32 sub_area_id = 1;
+}
+
+// CIP GameEventTypeAreaUnlocked: the unlocked area.
+message GameEventTypeAreaUnlocked {
+  optional uint32 area_id = 1;
+}
+
 // server opcode 0x03 (3) — CreatureData
 // classic: creature (new creature layout)
 // CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61).
@@ -2082,13 +2165,26 @@ message GameserverMessageFriendSystemData {
 
 // server opcode 0x75 (117) — GameEvent
 // classic: u8 type; 1: u8; 2/3: string; 4/11/12/15/16: u16; 5: u8, u16; 6/7: u16, u8; 8: string, u8; 9: u16, string, u8; 10: u16, string; 13: s32; 14: u16, s32
-// CIP TProtobufServerMessageTranslator::v175. small_value: the u8 field, value: the u16 field, large_value: the s32 field.
+// CIP TProtobufServerMessageTranslator::v175: a oneof; the case number is the classic event type (1 simple event, 2..16 the GameEventType* sub-messages).
 message GameserverMessageGameEvent {
-  optional string text = 1;
-  optional uint32 event_type = 2;
-  optional uint32 small_value = 3;
-  optional uint32 value = 4;
-  optional int32 large_value = 5;
+  oneof event {
+    int32 simple_event = 1;
+    GameEventTypeAchievement achievement = 2;
+    GameEventTypeTitle title = 3;
+    GameEventTypeLevelUp level_up = 4;
+    GameEventTypeSkillUp skill_up = 5;
+    GameEventTypeBestiaryProgress bestiary_progress = 6;
+    GameEventTypeBosstiaryProgress bosstiary_progress = 7;
+    GameEventTypeQuestProgress quest_progress = 8;
+    GameEventTypeOutfitPartUnlocked outfit_part_unlocked = 9;
+    GameEventTypeWeaponProficency weapon_proficiency = 10;
+    GameEventTypeBountyTaskFinished bounty_task_finished = 11;
+    GameEventTypeWeeklyTaskSpecificCreatureFinished weekly_task_specific_creature_finished = 12;
+    GameEventTypeSpellUnlocked spell_unlocked = 13;
+    GameEventTypeLeaderMonsterKilled leader_monster_killed = 14;
+    GameEventTypeSubAreaUnlocked sub_area_unlocked = 15;
+    GameEventTypeAreaUnlocked area_unlocked = 16;
+  }
   extend GameserverMessage {
     optional GameserverMessageGameEvent gameserver_message_game_event = 117;
   }

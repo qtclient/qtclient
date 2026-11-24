@@ -1,4 +1,8 @@
 #include "assignactiondialogs.h"
+#include "game/passiveabilityinfostorage.h"
+#include "gamewindow/passiveabilitylistdatamodel.h"
+#include "gamewindow/passiveabilitylistdatamodelsortfilterproxy.h"
+#include "game/passiveabilityinfostorage.h"
 
 #include "game/currentgamesession.h"
 #include "game/gameciptypes.h"
@@ -823,41 +827,24 @@ TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogCo
     : TAssignActionDialogControllerBase(QStringLiteral("AssignPassiveAbilityActionDialog.qml"), actionBarId, parent)
 {
     m_passiveAbilityListIndex = uint(-1);
-    m_model = new TPassiveAbilityListDataModel(this);
-    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(this);
-    m_proxy->setSourceModel(m_model);
+    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(game::TPassiveAbilityInfoStorage::instance());
+    m_proxy->setParent(this);
     m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
 }
 
-void TAssignPassiveAbilityActionDialogController::reloadAbilities()
+void TAssignPassiveAbilityActionDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
-    gamewindow::TPassiveAbilityListDataModel* shared = storage ? storage->listModel() : nullptr;
-    if (!shared)
-        return;
-    std::vector<TPassiveAbilityListDataModel::Entry> copy;
-    for (int i = 0; i < shared->rowCount(); ++i) {
-        TPassiveAbilityListDataModel::Entry entry;
-        entry.id = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IdRole).toInt();
-        entry.name = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::NameRole).toString();
-        entry.iconUrl = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IconUrlRole).toString();
-        entry.usableByCurrentVocation = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::UsableRole).toBool();
-        copy.push_back(std::move(entry));
-    }
-    m_model->setEntries(std::move(copy));
+    m_proxy->connectToGameSession(GameSession);
 }
 
 void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId)
 {
-    reloadAbilities();
-    const int first = m_proxy->rowCount() > 0 ? m_proxy->index(0, 0).data(TPassiveAbilityListDataModel::IdRole).toInt() : 0;
-    showDialog(ButtonId, first);
+    showDialog(ButtonId, m_proxy->passiveAbilityAt(0));
 }
 
 void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId, const int PassiveAbility)
 {
     dialog()->close();
-    reloadAbilities();
     setActionButton(ButtonId, -1);
     m_passiveAbility = PassiveAbility;
     refreshSelectedPassive();
@@ -866,31 +853,35 @@ void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId
 }
 
 uint TAssignPassiveAbilityActionDialogController::passiveAbilityListIndex() const { return m_passiveAbilityListIndex; }
-QString TAssignPassiveAbilityActionDialogController::passiveAbilityName() const { return m_passiveAbilityName; }
-QString TAssignPassiveAbilityActionDialogController::passiveAbilityIconUrl() const { return m_passiveAbilityIconUrl; }
+QString TAssignPassiveAbilityActionDialogController::passiveAbilityName() const
+{
+    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    const std::optional<game::TPassiveAbilityInfo> info = storage ? storage->findInfo(uint8_t(m_passiveAbility)) : std::nullopt;
+    return info ? info->name : QString();
+}
+
+QString TAssignPassiveAbilityActionDialogController::passiveAbilityIconUrl() const
+{
+    // The selected ability's icon in the passive ability icon strip.
+    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    const std::optional<game::TPassiveAbilityInfo> info = storage ? storage->findInfo(uint8_t(m_passiveAbility)) : std::nullopt;
+    return info ? QStringLiteral("image://passiveability-icons-32x32/%1").arg(info->iconId) : QString();
+}
 QVariant TAssignPassiveAbilityActionDialogController::passiveAbilityListModel() const { return m_passiveAbilityListModel; }
 
 void TAssignPassiveAbilityActionDialogController::refreshSelectedPassive()
 {
     m_passiveAbilityListIndex = uint(-1);
-    m_passiveAbilityName.clear();
-    m_passiveAbilityIconUrl.clear();
-    if (!m_proxy || !m_passiveAbility)
+    if (!m_proxy)
         return;
     // The row of the shown (sorted, filtered) list.
     for (int i = 0; i < m_proxy->rowCount(); ++i) {
         const QModelIndex idx = m_proxy->index(i, 0);
-        if (idx.data(TPassiveAbilityListDataModel::IdRole).toInt() != m_passiveAbility)
+        if (idx.data(TPassiveAbilityListDataModel::EnumIdRole).toInt() != m_passiveAbility)
             continue;
         m_passiveAbilityListIndex = uint(i);
-        m_passiveAbilityName = idx.data(TPassiveAbilityListDataModel::NameRole).toString();
-        m_passiveAbilityIconUrl = idx.data(TPassiveAbilityListDataModel::IconUrlRole).toString();
-        if (m_passiveAbilityIconUrl.isEmpty())
-            m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(m_passiveAbility);
         break;
     }
-    if (m_passiveAbilityIconUrl.isEmpty() && m_passiveAbility)
-        m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(m_passiveAbility);
 }
 
 void TAssignPassiveAbilityActionDialogController::onOkClicked()

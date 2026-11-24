@@ -10,6 +10,8 @@
 
 #include <QCoreApplication>
 
+#include <stdexcept>
+
 namespace tibia::bossbestiary {
 
 TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler(std::shared_ptr<cyclopedia::TMonsterRaceStorage> pMonsterRaceStorage,
@@ -25,6 +27,22 @@ TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler(std::sh
 } // namespace tibia::bossbestiary
 
 namespace tibia::bossbestiary {
+
+/// The protocol's boss rarity (bane, archfoe, nemesis); any other value throws.
+int bossCategory(const uint32_t protocolValue)
+{
+    if (protocolValue > 2)
+        throw std::runtime_error("unhandled enum value");
+    return static_cast<int>(protocolValue);
+}
+
+/// The protocol's race repeat value of a boss slot (0..3); any other value throws.
+int bossRaceRepeat(const uint32_t protocolValue)
+{
+    if (protocolValue > 3)
+        throw std::runtime_error("unhandled enum value");
+    return static_cast<int>(protocolValue);
+}
 
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData& BosstiaryStaticDataMessage)
 {
@@ -56,9 +74,9 @@ void TBossBestiaryProtocolMessageHandler::handleShowMessageDialogMessage(
 void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::protobuf::protocol::GameserverMessageBossSlots& BossSlotsMessage)
 {
     using namespace ::tibia::protobuf::protocol;
-    TBosstiaryStorage* storage = m_pBosstiaryStorage.get();
     const auto& m = BossSlotsMessage;
-    // A locked slot carries the boss points that unlock it where an unlocked one names its boss.
+    // A locked slot carries the boss points that unlock it; an unlocked one
+    // always carries its boss details (race 0 when the slot is empty).
     const auto slotOf = [](const ProtocolBossSlot& protocolSlot) {
         TBossSlot slot;
         slot.unlocked = protocolSlot.unlocked();
@@ -66,18 +84,18 @@ void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::
             slot.unlockBosspoints = static_cast<int>(protocolSlot.locked_value());
             return slot;
         }
-        const uint32_t bossId = protocolSlot.boss().boss_id();
-        if (bossId == 0)
-            return slot;
-        slot.hasBoss = true;
-        slot.raceId = static_cast<int>(bossId);
-        slot.name = cyclopedia::bossName(slot.raceId);
-        slot.category = static_cast<int>(protocolSlot.boss().race());
+        const ProtocolBossSlotBoss& boss = protocolSlot.boss();
+        slot.raceId = static_cast<int>(static_cast<uint16_t>(boss.boss_id()));
+        if (slot.raceId != 0)
+            slot.name = cyclopedia::bossName(slot.raceId);
+        slot.category = bossCategory(boss.race());
         slot.kills = protocolSlot.kill_count();
         slot.lootBonus = static_cast<int>(protocolSlot.loot_bonus());
         slot.killBonus = static_cast<int>(protocolSlot.kill_bonus());
+        slot.raceRepeat = bossRaceRepeat(protocolSlot.race_repeat());
         slot.removePrice = protocolSlot.remove_price();
         slot.inactive = protocolSlot.inactive();
+        slot.hasBoss = true;
         return slot;
     };
     TBossSlotsData slots;
@@ -88,10 +106,12 @@ void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::
     slots.first = slotOf(m.first_slot());
     slots.second = slotOf(m.second_slot());
     slots.boosted = slotOf(m.boosted_slot());
-    for (const auto& boss : m.unlocked_bosses())
-        slots.assignable.push_back({ static_cast<int>(boss.boss_id()), static_cast<int>(boss.race()),
-                                     cyclopedia::bossName(static_cast<int>(boss.boss_id())) });
-    storage->setBossSlots(std::move(slots));
+    slots.hasUnlockedBosses = m.unlocked_bosses_size() != 0;
+    for (const auto& boss : m.unlocked_bosses()) {
+        const int raceId = static_cast<int>(static_cast<uint16_t>(boss.boss_id()));
+        slots.assignable.push_back({ raceId, bossCategory(boss.race()), cyclopedia::bossName(raceId) });
+    }
+    m_pBosstiaryStorage->setBossSlots(std::move(slots));
 }
 
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiary& BosstiaryMessage)
@@ -102,7 +122,7 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage(const ::tibia::
         TBosstiaryEntry& entry = entries.emplace_back();
         entry.raceId = static_cast<int>(b.race_id());
         entry.name = cyclopedia::bossName(entry.raceId);
-        entry.category = static_cast<int>(b.category());
+        entry.category = bossCategory(b.category());
         entry.kills = b.kills();
         entry.tracked = b.tracked();
         bosses.push_back({ .raceId = b.race_id(), .category = static_cast<uint8_t>(b.category()), .kills = b.kills(),

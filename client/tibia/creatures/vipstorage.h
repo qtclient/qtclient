@@ -54,7 +54,9 @@ public:
 
     /// How many VIPs the list holds.
     size_t vipCount() const;
-    /// The VIP with `id` (CIP map::at; qtclient answers nothing for an unknown id).
+    /// The VIP with `id`; throws std::out_of_range for an unknown id.
+    Vip vipAt(uint32_t id) const { return m_vips.at(id); }
+    /// The VIP with `id`, or nothing for an unknown id (host: callers that skip unknown VIPs).
     std::optional<Vip> vipById(uint32_t id) const;
     /// The first VIP whose name equals `name` exactly.
     std::optional<Vip> vipByName(const QString& name) const;

@@ -204,6 +204,11 @@ bool TTeamParameters::operator==(const TTeamParameters& other) const
         && activity == other.activity && includeParty == other.includeParty;
 }
 
+bool TTeamParameters::operator!=(const TTeamParameters& other) const
+{
+    return !(*this == other);
+}
+
 // ---------------------------------------------------------------------------
 // TTeamFinderStorage
 

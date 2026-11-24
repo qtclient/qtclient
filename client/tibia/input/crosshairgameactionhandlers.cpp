@@ -225,8 +225,10 @@ void TCrossHairSpellGameActionHandler::handleTargetSelected(const TTargetSelecte
     std::shared_ptr<const TGameActionCrossHairSpell> pending = std::exchange(m_pPendingAction, nullptr);
     if (!pending || !target)
         return;
-    Q_EMIT publishGameAction(std::make_shared<TGameActionCrossHairSpell>(
-        pending->spellId(), pending->words(), pending->talkMode(), pending->spellCastType(), target->context()));
+    auto spell = std::make_shared<TGameActionCrossHairSpell>(pending->spellId(), target->context());
+    spell->setWords(pending->words());
+    spell->setTalkMode(pending->talkMode());
+    Q_EMIT publishGameAction(spell);
 }
 
 }

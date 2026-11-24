@@ -9,7 +9,7 @@
 #include "platform/platform.h"
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
-#include "client/clientciptypes.h"
+#include "client/gameapplication.h"
 #include "client/gameclient.h"
 #include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
@@ -87,79 +87,6 @@ int rendererFromArgs(const int argc, char** argv)
 QStringList commandLine()
 {
     return QCoreApplication::arguments() + tibia::platform::extraArguments();
-}
-
-constexpr auto ClientWindowSection = "clientWindowOptions";
-constexpr auto ClientWindowBorderlessKey = "clientWindowIsBorderless";
-
-void applyClientWindowBorderless(QQuickWindow* window, const bool borderless)
-{
-    if (!window)
-        return;
-    // CipSoft's borderless window is the full-screen window state
-    // (clientWindowIsBorderless; TOGGLE_FULLSCREEN flips it).
-    const bool isFullScreen = window->visibility() == QWindow::FullScreen;
-    if (borderless == isFullScreen)
-        return;
-    if (borderless)
-        window->showFullScreen();
-    else
-        window->showNormal();
-}
-
-void applyClientWindowBorderlessFromOptions(QQuickWindow* window)
-{
-    if (!window)
-        return;
-    const QJsonObject opts = app::ClientOptions::load().root().value(QLatin1String(ClientWindowSection)).toObject();
-    applyClientWindowBorderless(window, opts.value(QLatin1String(ClientWindowBorderlessKey)).toBool(false));
-}
-
-void restoreClientWindowGeometry(QQuickWindow* window)
-{
-    if (!window)
-        return;
-    const QJsonObject opts = app::ClientOptions::load().root().value(QLatin1String(ClientWindowSection)).toObject();
-    const int width = opts.value(QLatin1String("clientWindowWidth")).toInt(0);
-    const int height = opts.value(QLatin1String("clientWindowHeight")).toInt(0);
-    const int x = opts.value(QLatin1String("clientWindowPositionX")).toInt(std::numeric_limits<int>::min());
-    const int y = opts.value(QLatin1String("clientWindowPositionY")).toInt(std::numeric_limits<int>::min());
-    const bool maximized = opts.value(QLatin1String("clientWindowIsMaximized")).toBool(false);
-    applyClientWindowBorderless(window, opts.value(QLatin1String(ClientWindowBorderlessKey)).toBool(false));
-    if (width > 0 && height > 0)
-        window->resize(width, height);
-    if (x != std::numeric_limits<int>::min() && y != std::numeric_limits<int>::min()) {
-        if (QScreen* screen = window->screen()) {
-            const QRect available = screen->availableGeometry();
-            const int clampedX = std::clamp(x, available.left(), available.right() - 100);
-            const int clampedY = std::clamp(y, available.top(), available.bottom() - 100);
-            window->setPosition(clampedX, clampedY);
-        } else {
-            window->setPosition(x, y);
-        }
-    }
-    if (maximized)
-        window->showMaximized();
-}
-
-void saveClientWindowGeometry(QQuickWindow* window)
-{
-    if (!window)
-        return;
-    const QRect geo = window->geometry();
-    QJsonObject section = app::ClientOptions::load().root().value(QLatin1String(ClientWindowSection)).toObject();
-    section.insert(QStringLiteral("clientWindowWidth"), geo.width());
-    section.insert(QStringLiteral("clientWindowHeight"), geo.height());
-    section.insert(QStringLiteral("clientWindowPositionX"), geo.x());
-    section.insert(QStringLiteral("clientWindowPositionY"), geo.y());
-    section.insert(QStringLiteral("clientWindowIsMaximized"),
-                   static_cast<bool>(window->windowStates() & Qt::WindowMaximized));
-    // Preserve clientWindowIsBorderless — geometry save must not wipe the option.
-    if (QScreen* screen = window->screen())
-        section.insert(QStringLiteral("clientWindowScreenName"), screen->name());
-    QJsonObject changes;
-    changes.insert(QString::fromLatin1(ClientWindowSection), section);
-    app::ClientOptions::storeAll(changes);
 }
 
 QStringList dataDirs(const QString& explicitDir)
@@ -296,7 +223,12 @@ int main(int argc, char** argv)
     QtWebEngineQuick::initialize();
 #endif
 
+#ifdef TIBIA_WITH_GAMECORE
+    // CIP: the application shows the client window and owns the game client.
+    client::TGameApplication application(argc, argv);
+#else
     QGuiApplication application(argc, argv);
+#endif
     app::applyBundledMoltenVkIcd();
     // Runtime packs after QApp.
     if (!tibia::mods::ModLoader::skipLoad())
@@ -335,8 +267,9 @@ int main(int argc, char** argv)
 
     const auto env = app::LauncherEnv::load(QDir::currentPath());
 #ifdef TIBIA_WITH_GAMECORE
-    // CIP TGameApplication: the crash handler is in place before the game starts.
-    client::TGameApplication::setUpCrashHandler(env.loginUrl());
+    // CIP: the application's setup (crash handler, its connections, the
+    // command line) before the game starts.
+    application.initialize(env.loginUrl());
 #endif
     // CIP links (dialogs, translations, Wheel planner) → this deployment's origins.
     app::PortalUrls::installCipUrlHandler(env);
@@ -347,7 +280,9 @@ int main(int argc, char** argv)
         return 0;
 
     app::mountGraphicsResources(dataDirs(parser.value(QStringLiteral("data"))));
+#ifndef TIBIA_WITH_GAMECORE
     app::installTranslations();
+#endif
     app::installUiFonts(dataDirs(parser.value(QStringLiteral("data"))));
 
     auto engine = app::createEngine();
@@ -366,45 +301,6 @@ int main(int argc, char** argv)
     }
 #endif
 
-    QQmlComponent windowComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/clientwindow.qml")));
-    std::unique_ptr<QObject> windowObject(windowComponent.create());
-    auto* window = qobject_cast<QQuickWindow*>(windowObject.get());
-    if (!window) {
-        qCritical() << "Component creation error: " << windowComponent.errors();
-        return 1;
-    }
-    // QRhi::Timestamps for lastCompletedGpuTime (raycast pass GPU). Must be set before the
-    // scene graph creates the RHI. weather.perf also uses rhi->finish stalls when debug.
-    if (!qEnvironmentVariableIsEmpty("QTCLIENT_PERF") || !qEnvironmentVariableIsEmpty("QTCLIENT_GPU_PERF")) {
-        QQuickGraphicsConfiguration config = window->graphicsConfiguration();
-        config.setTimestamps(true);
-        window->setGraphicsConfiguration(config);
-    }
-    // The browser window fills the page; a desktop window restores its saved geometry.
-    if (!tibia::platform::adaptMainWindow(window)) {
-        restoreClientWindowGeometry(window);
-        QObject::connect(&application, &QCoreApplication::aboutToQuit, window, [window] { saveClientWindowGeometry(window); });
-        QObject::connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, window,
-                         [window](const QString& name) {
-                             if (name == QLatin1String(ClientWindowSection)
-                                 || name == QLatin1String(ClientWindowBorderlessKey))
-                                 applyClientWindowBorderlessFromOptions(window);
-                         });
-    }
-#ifdef TIBIA_WITH_GAMECORE
-    app::qtWindow().attach(window);
-#endif
-    app::alignTextHinting(engine.get());
-
-    QQuickItem* placeholder = window->findChild<QQuickItem*>(QStringLiteral("placeholder"));
-    placeholder->setProperty("windowTitle", QCoreApplication::applicationName());
-    // Tip CDN splash (images/launcher/BackgroundImage.jpg); RCC title.jpg on miss.
-    app::applyLoginSplash(window, placeholder, env.assetBase);
-
-    if (env.isRelease() && !env.ssoHosted()) {
-        return 1;
-    }
-
     const bool preview = parser.isSet(QStringLiteral("preview"));
     gamewindow::TCharacterSelectionController previewController;
     gamewindow::TCharacterSelectionController* controller = &previewController;
@@ -415,39 +311,78 @@ int main(int argc, char** argv)
         previewController.setLastSelectedCharacterName(QStringLiteral("Aria Stormblade"));
     }
 
+    QQuickWindow* window = nullptr;
+    // qtclient's own window steps once the client window exists.
+    const auto setUpHostWindow = [&](QQuickWindow* clientWindow, QQmlEngine* qmlEngine) {
+        window = clientWindow;
+        // QRhi::Timestamps for lastCompletedGpuTime (raycast pass GPU). Must be set before the
+        // scene graph creates the RHI. weather.perf also uses rhi->finish stalls when debug.
+        if (!qEnvironmentVariableIsEmpty("QTCLIENT_PERF") || !qEnvironmentVariableIsEmpty("QTCLIENT_GPU_PERF")) {
+            QQuickGraphicsConfiguration config = window->graphicsConfiguration();
+            config.setTimestamps(true);
+            window->setGraphicsConfiguration(config);
+        }
 #ifdef TIBIA_WITH_GAMECORE
-    client::TGameClient gameClient(engine.get(), std::make_shared<shared::TTibiaFileSystemHelper>(),
-                                   config::TClientOptions::instance());
-    gameClient.setWindow(window);
+        app::qtWindow().attach(window);
+#endif
+        app::alignTextHinting(qmlEngine);
 
-    client::TGameClient::TGameWindowSetup setup;
-    setup.engine = engine.get();
-    setup.window = window;
-    setup.placeholder = placeholder;
-    setup.env = env;
-    setup.preview = preview;
-    setup.characterSelection = controller;
-    setup.argv0 = QCoreApplication::applicationFilePath();
-    setup.workDir = QDir::currentPath();
-    if (!preview) {
-        client::TGameClient::Options& clientOptions = setup.options;
-        clientOptions.env = env;
-        clientOptions.account = parser.value(QStringLiteral("account"));
-        if (clientOptions.account.isEmpty())
-            clientOptions.account = qEnvironmentVariable("QTCLIENT_ACCOUNT");
-        clientOptions.password = parser.value(QStringLiteral("password"));
-        if (clientOptions.password.isEmpty())
-            clientOptions.password = qEnvironmentVariable("QTCLIENT_PASSWORD");
-        clientOptions.autoCharacter = parser.value(QStringLiteral("character"));
-        clientOptions.playForSeconds = parser.value(QStringLiteral("play-for")).toInt();
-        clientOptions.say = parser.values(QStringLiteral("say"));
-        clientOptions.walk = parser.value(QStringLiteral("walk")).split(QLatin1Char(','), Qt::SkipEmptyParts);
-        clientOptions.recordTo = parser.value(QStringLiteral("record"));
-        if (clientOptions.recordTo.isEmpty())
-            clientOptions.recordTo = qEnvironmentVariable("QTCLIENT_RECORD");
-        clientOptions.replay = parser.value(QStringLiteral("replay"));
+        QQuickItem* placeholder = window->findChild<QQuickItem*>(QStringLiteral("placeholder"));
+        placeholder->setProperty("windowTitle", QCoreApplication::applicationName());
+        // Tip CDN splash (images/launcher/BackgroundImage.jpg); RCC title.jpg on miss.
+        app::applyLoginSplash(window, placeholder, env.assetBase);
+        return !(env.isRelease() && !env.ssoHosted());
+    };
+
+#ifdef TIBIA_WITH_GAMECORE
+    application.setQmlEngine(std::move(engine));
+    const auto startClient = [&](client::TGameClient& gameClient, QQuickWindow* clientWindow, QQuickItem* placeholder) {
+        gameClient.setWindow(clientWindow);
+        client::TGameClient::TGameWindowSetup setup;
+        setup.engine = application.qmlEngine();
+        setup.window = clientWindow;
+        setup.placeholder = placeholder;
+        setup.env = env;
+        setup.preview = preview;
+        setup.characterSelection = controller;
+        setup.argv0 = QCoreApplication::applicationFilePath();
+        setup.workDir = QDir::currentPath();
+        if (!preview) {
+            client::TGameClient::Options& clientOptions = setup.options;
+            clientOptions.env = env;
+            clientOptions.account = parser.value(QStringLiteral("account"));
+            if (clientOptions.account.isEmpty())
+                clientOptions.account = qEnvironmentVariable("QTCLIENT_ACCOUNT");
+            clientOptions.password = parser.value(QStringLiteral("password"));
+            if (clientOptions.password.isEmpty())
+                clientOptions.password = qEnvironmentVariable("QTCLIENT_PASSWORD");
+            clientOptions.autoCharacter = parser.value(QStringLiteral("character"));
+            clientOptions.playForSeconds = parser.value(QStringLiteral("play-for")).toInt();
+            clientOptions.say = parser.values(QStringLiteral("say"));
+            clientOptions.walk = parser.value(QStringLiteral("walk")).split(QLatin1Char(','), Qt::SkipEmptyParts);
+            clientOptions.recordTo = parser.value(QStringLiteral("record"));
+            if (clientOptions.recordTo.isEmpty())
+                clientOptions.recordTo = qEnvironmentVariable("QTCLIENT_RECORD");
+            clientOptions.replay = parser.value(QStringLiteral("replay"));
+        }
+        return gameClient.createGameWindow(setup);
+    };
+    if (!application.showClientWindow(
+            [&](QQuickWindow* clientWindow) { return setUpHostWindow(clientWindow, application.qmlEngine()); },
+            startClient))
+        return 1;
+#else
+    Q_UNUSED(controller);
+    Q_UNUSED(preview);
+    QQmlComponent windowComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/clientwindow.qml")));
+    std::unique_ptr<QObject> windowObject(windowComponent.create());
+    auto* shellWindow = qobject_cast<QQuickWindow*>(windowObject.get());
+    if (!shellWindow) {
+        qCritical() << "Component creation error: " << windowComponent.errors();
+        return 1;
     }
-    if (!gameClient.createGameWindow(setup))
+    tibia::platform::adaptMainWindow(shellWindow);
+    if (!setUpHostWindow(shellWindow, engine.get()))
         return 1;
 #endif
 
@@ -464,7 +399,7 @@ int main(int argc, char** argv)
             int delay = says > 0 ? int(says) * 1000 + 500 : 3000;
             if (parser.isSet(QStringLiteral("screenshot-delay")))
                 delay = parser.value(QStringLiteral("screenshot-delay")).toInt();
-            QObject::connect(&gameClient, &client::TGameClient::worldEntered, window, [window, takeShot, delay] {
+            QObject::connect(application.gameClient(), &client::TGameClient::worldEntered, window, [window, takeShot, delay] {
                 QTimer::singleShot(delay, window, takeShot);
             }, Qt::SingleShotConnection);
         } else

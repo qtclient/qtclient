@@ -124,14 +124,6 @@ std::shared_ptr<TGameActionOpenNewsDialog> TGameActionOpenNewsDialog::withCatego
     return action;
 }
 
-TGameActionSetCurrentChatChannelInputText& TGameActionSetCurrentChatChannelInputText::setSpell(const bool isSpell,
-                                                                                               const int spellCastOptionalTargetType)
-{
-    m_isSpell = isSpell;
-    m_spellCastOptionalTargetType = spellCastOptionalTargetType;
-    return *this;
-}
-
 namespace gameactions {
 
 std::optional<bool> TGameActionSoundTrigger::pauseLoopingSounds() const
@@ -270,9 +262,9 @@ IGameActionPtr makeObjectGameAction(const EGameAction type, const TObjectGameAct
     case EGameAction::GATHER_ALL:
         return std::make_shared<gameactions::TGameActionGatherAll>(context);
     case EGameAction::INSPECT_OBJECT:
-        return std::make_shared<TGameActionInspectObject>(context);
+        return std::make_shared<TGameActionInspectObject>(context.location());
     case EGameAction::OPEN_PARENT_CONTAINER:
-        return std::make_shared<TGameActionOpenParentContainer>(context);
+        return std::make_shared<TGameActionOpenParentContainer>(context.location());
     case EGameAction::STASH_STOW_TYPE:
         return std::make_shared<TGameActionStashStowType>(context);
     case EGameAction::STASH_STOW_CONTAINER_CONTENT:

@@ -81,6 +81,13 @@ struct TActionSetting
     /// A passive ability; a non-zero one drops the chat text, the object, its
     /// liquid and the multi actions (the tier stays).
     void setPassiveAbility(int ability);
+    /// Turns the setting into `count` multi actions: the chat text, object,
+    /// liquid and passive ability are dropped; the first action is the old
+    /// setting unless it was a passive ability, the rest are empty.
+    void setMultiActionCount(int count);
+    /// Replaces multi action `index`; throws when the setting holds no multi
+    /// actions.
+    void setMultiAction(qsizetype index, TActionSetting multiAction);
     /// ESpellCastOptionalTargetType of a spell's chat text.
     void setSpellCastType(int castType) { spellCastType = castType; }
     void setUseType(EUseType type) { useType = type; }

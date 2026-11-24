@@ -375,37 +375,6 @@ struct PartyMemberName
         : memberID(id), memberName(name) {}
 };
 
-struct BlessData
-{
-    uint16_t blessBitwise;
-    uint8_t playerBlessCount;
-    uint8_t store;
-};
-
-struct LogData
-{
-    uint32_t timestamp;
-    uint8_t colorMessage;
-    std::string historyMessage;
-};
-
-struct BlessDialogData
-{
-    uint8_t totalBless;
-    std::vector<BlessData> blesses;
-    uint8_t premium;
-    uint8_t promotion;
-    uint8_t pvpMinXpLoss;
-    uint8_t pvpMaxXpLoss;
-    uint8_t pveExpLoss;
-    uint8_t equipPvpLoss;
-    uint8_t equipPveLoss;
-    uint8_t skull;
-    uint8_t aol;
-    std::vector<LogData> logs;
-};
-
-
 struct StoreCategory
 {
     std::string name;

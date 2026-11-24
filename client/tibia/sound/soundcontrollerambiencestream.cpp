@@ -42,12 +42,12 @@ void TSoundControllerAmbienceStream::update(const int64_t nowMs)
         request.effectId = effect.effectId;
         const TSoundEffectParameters parameters = effectParameters(request);
         if (std::optional<TSoundPlayerToken> token = playSingleShot(parameters)) {
-            qDebug() << "Play ambience numeric sound" << QString::number(effect.effectId) << "at" << nowMs;
+            qDebug() << "Play ambience numeric sound" << numericSoundEffectName(effect.effectId) << "at" << nowMs;
             keepSingleShot(std::move(*token));
         }
         const int64_t next = randomDelay(effect.delayMs) + now();
         if (effect.effectId != 0) {
-            qCDebug(lcSoundAmbience) << "Append future ambience numeric sound" << QString::number(effect.effectId) << "in"
+            qCDebug(lcSoundAmbience) << "Append future ambience numeric sound" << numericSoundEffectName(effect.effectId) << "in"
                                      << (next - now()) / 1000 << "seconds";
             m_scheduledEffects.emplace(next, effect);
         }
@@ -113,7 +113,7 @@ void TSoundControllerAmbienceStream::startStream(const bool updatePlayer)
         if (roll.effect.effectId == 0)
             continue;
         m_scheduledEffects.emplace(roll.delayMs + now(), roll.effect);
-        qCDebug(lcSoundAmbience) << "Append future ambience sound" << QString::number(roll.effect.effectId) << "in"
+        qCDebug(lcSoundAmbience) << "Append future ambience sound" << numericSoundEffectName(roll.effect.effectId) << "in"
                                  << roll.delayMs / 1000 << "seconds";
     }
 }

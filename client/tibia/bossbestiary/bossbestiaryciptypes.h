@@ -11,6 +11,7 @@
 
 #include <QObject>
 
+#include <cstdint>
 #include <memory>
 
 namespace tibia::protobuf::protocol {
@@ -27,6 +28,11 @@ namespace cyclopedia {
 class TMonsterRaceStorage;
 }
 namespace bossbestiary {
+
+/// The protocol's boss rarity (0 bane, 1 archfoe, 2 nemesis); other values throw.
+int bossCategory(uint32_t protocolValue);
+/// The protocol's race repeat value of a boss slot (0..3); other values throw.
+int bossRaceRepeat(uint32_t protocolValue);
 
 class TBossBestiaryProtocolMessageHandler final : public cip::tibia::bossbestiary::TBossBestiaryProtocolMessageHandler
 {

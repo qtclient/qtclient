@@ -73,19 +73,7 @@ qtclient_add_port_test(client_creaturemovement_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementtween.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
 )
-# CIP TAuthenticationProcessController: the login state machine against a fake login connection.
 find_package(Qt6 REQUIRED COMPONENTS Network Test Gui Qml Quick)
-qtclient_add_port_test(client_authenticationprocesscontroller_tests
-    authenticationprocesscontroller_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.h
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.h
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.h
-)
-set_target_properties(client_authenticationprocesscontroller_tests PROPERTIES AUTOMOC ON)
-target_link_libraries(client_authenticationprocesscontroller_tests PRIVATE Qt6::Network Qt6::Test Qt6::Gui Qt6::Qml Qt6::Quick qtclient_shared)
 qtclient_add_port_test(client_experiencecalculator_tests
     experiencecalculator_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/game/experiencecalculator.cpp
@@ -237,6 +225,7 @@ if(Qt6_FOUND AND TARGET tibia)
     set_source_files_properties(${_cipgenall} PROPERTIES GENERATED TRUE)
     add_executable(client_sessiondumphints_tests
         sessiondumphints_test.cpp
+        gameactionconstructors_test.cpp
         ${_cipgenall}
         sessiondumphintcondition_test.cpp
         ${CMAKE_SOURCE_DIR}/shared/src/jsonvalidator.cpp
@@ -524,17 +513,6 @@ target_compile_definitions(client_gameactioncontexthelper_tests PRIVATE QT_NO_KE
 qtclient_add_port_test(client_experiencegainchangetracker_tests experiencegainchangetracker_test.cpp)
 
 # Wave 4 ports.
-qtclient_add_port_test(client_authenticationprocesscontrollercoderequests_tests
-    authenticationprocesscontrollercoderequests_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.h
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.h
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.h
-)
-set_target_properties(client_authenticationprocesscontrollercoderequests_tests PROPERTIES AUTOMOC ON)
-target_link_libraries(client_authenticationprocesscontrollercoderequests_tests PRIVATE Qt6::Network Qt6::Gui Qt6::Qml Qt6::Quick qtclient_shared)
 qtclient_add_port_test(client_spriteidentifierclone_tests
     spriteidentifierclone_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/sprites/imageresourcespriteidentifier.cpp
@@ -630,3 +608,36 @@ if(TARGET cip_messages)
     target_link_libraries(client_loginprotocolmessagehandler_tests PRIVATE cip_messages qtclient_shared)
     target_compile_definitions(client_loginprotocolmessagehandler_tests PRIVATE QT_NO_KEYWORDS)
 endif()
+
+# Wave 10 ports.
+qtclient_add_port_test(client_dynamicresourceshelper_tests
+    dynamicresourceshelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/dynamicresourceshelper.cpp
+)
+qtclient_add_port_test(client_myexception_tests
+    myexception_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/input/myexception.cpp
+)
+qtclient_add_port_test(client_specialconditionsoptions_tests
+    specialconditionsoptions_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/specialconditionsoptions.cpp
+)
+find_package(ZLIB REQUIRED)
+qtclient_add_port_test(client_configbackupreader_tests
+    configbackupreader_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/configbackupreader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/optionsarchive.cpp
+)
+target_link_libraries(client_configbackupreader_tests PRIVATE qtclient_shared ZLIB::ZLIB)
+find_package(Qt6 REQUIRED COMPONENTS Gui Quick)
+qtclient_add_port_test(client_scenegraphdrawcommand_tests
+    scenegraphdrawcommand_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/renderer/scenegraphdrawcommand.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/resourcespritesmanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/imageresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/staticminimapmarkersymbolresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/minimaptilespritesheetidentifier.cpp
+)
+set_target_properties(client_scenegraphdrawcommand_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_scenegraphdrawcommand_tests PRIVATE Qt6::Gui Qt6::Quick)

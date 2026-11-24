@@ -5,6 +5,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <optional>
+
 namespace tibia {
 namespace config {
 
@@ -25,7 +27,10 @@ namespace optionsarchive {
 /// names them relative to it).
 QList<TArchiveEntry> collect(const QString& dataDirectory, const QStringList& directories);
 bool write(const QString& path, const QList<TArchiveEntry>& entries);
-/// Empty on a missing or broken archive.
+/// Every entry of a zip archive, directory entries ("name/") included;
+/// nullopt when the archive cannot be unpacked.
+std::optional<QList<TArchiveEntry>> unpack(const QByteArray& archive);
+/// The file entries; empty on a missing or broken archive.
 QList<TArchiveEntry> read(const QString& path);
 
 }

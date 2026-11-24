@@ -974,7 +974,7 @@
         },
         {
           "name": "premium",
-          "type": "bool",
+          "type": "uint32",
           "number": 2,
           "label": "optional"
         },
@@ -5526,6 +5526,219 @@
         }
       ],
       "note": "CipSoft CreatureData, the fields CreatureSpeed fills (1 replaced/known id, 2 id, 13 speed); the other fields are not recovered yet (ProtocolCreature still carries the creature messages)."
+    },
+    "GameEventTypeAchievement": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeAchievement: the achievement's name."
+    },
+    "GameEventTypeTitle": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeTitle: the title's name."
+    },
+    "GameEventTypeLevelUp": {
+      "fields": [
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeLevelUp: the new level."
+    },
+    "GameEventTypeSkillUp": {
+      "fields": [
+        {
+          "name": "skill",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeSkillUp: skill: CipSoft's protocol skill (classic 1..8 -> 1, 8, 9, 10, 11, 7, 6, 13); level: the new skill level."
+    },
+    "GameEventTypeBestiaryProgress": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "progress",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeBestiaryProgress: race and its new bestiary progress step."
+    },
+    "GameEventTypeBosstiaryProgress": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "progress",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeBosstiaryProgress: race and its new bosstiary progress step."
+    },
+    "GameEventTypeQuestProgress": {
+      "fields": [
+        {
+          "name": "quest_name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "state",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeQuestProgress: state: 1 started (classic 0), 2 completed (classic 1)."
+    },
+    "GameEventTypeOutfitPartUnlocked": {
+      "fields": [
+        {
+          "name": "outfit_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "part",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeOutfitPartUnlocked: part: 1..4 (classic 0..3)."
+    },
+    "GameEventTypeWeaponProficency": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeWeaponProficency: the weapon (CipSoft's spelling of the message name)."
+    },
+    "GameEventTypeBountyTaskFinished": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeBountyTaskFinished: the bounty task's race."
+    },
+    "GameEventTypeWeeklyTaskSpecificCreatureFinished": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeWeeklyTaskSpecificCreatureFinished: the weekly task's race."
+    },
+    "GameEventTypeSpellUnlocked": {
+      "fields": [
+        {
+          "name": "spell_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeSpellUnlocked: the unlocked spell."
+    },
+    "GameEventTypeLeaderMonsterKilled": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "charm_points",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeLeaderMonsterKilled: the leader's race and the charm points."
+    },
+    "GameEventTypeSubAreaUnlocked": {
+      "fields": [
+        {
+          "name": "sub_area_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeSubAreaUnlocked: the unlocked subarea."
+    },
+    "GameEventTypeAreaUnlocked": {
+      "fields": [
+        {
+          "name": "area_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP GameEventTypeAreaUnlocked: the unlocked area."
     }
   },
   "GameserverMessagePartyLeft": {
@@ -7041,40 +7254,93 @@
     "note": "CIP TProtobufServerMessageTranslator::v174."
   },
   "GameserverMessageGameEvent": {
-    "fields": [
-      {
-        "name": "text",
-        "type": "string",
-        "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "event_type",
-        "type": "uint32",
-        "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "small_value",
-        "type": "uint32",
-        "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "value",
-        "type": "uint32",
-        "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "large_value",
-        "type": "int32",
-        "number": 5,
-        "label": "optional"
-      }
-    ],
+    "fields": [],
+    "oneofs": {
+      "event": [
+        {
+          "name": "simple_event",
+          "type": "int32",
+          "number": 1
+        },
+        {
+          "name": "achievement",
+          "type": "GameEventTypeAchievement",
+          "number": 2
+        },
+        {
+          "name": "title",
+          "type": "GameEventTypeTitle",
+          "number": 3
+        },
+        {
+          "name": "level_up",
+          "type": "GameEventTypeLevelUp",
+          "number": 4
+        },
+        {
+          "name": "skill_up",
+          "type": "GameEventTypeSkillUp",
+          "number": 5
+        },
+        {
+          "name": "bestiary_progress",
+          "type": "GameEventTypeBestiaryProgress",
+          "number": 6
+        },
+        {
+          "name": "bosstiary_progress",
+          "type": "GameEventTypeBosstiaryProgress",
+          "number": 7
+        },
+        {
+          "name": "quest_progress",
+          "type": "GameEventTypeQuestProgress",
+          "number": 8
+        },
+        {
+          "name": "outfit_part_unlocked",
+          "type": "GameEventTypeOutfitPartUnlocked",
+          "number": 9
+        },
+        {
+          "name": "weapon_proficiency",
+          "type": "GameEventTypeWeaponProficency",
+          "number": 10
+        },
+        {
+          "name": "bounty_task_finished",
+          "type": "GameEventTypeBountyTaskFinished",
+          "number": 11
+        },
+        {
+          "name": "weekly_task_specific_creature_finished",
+          "type": "GameEventTypeWeeklyTaskSpecificCreatureFinished",
+          "number": 12
+        },
+        {
+          "name": "spell_unlocked",
+          "type": "GameEventTypeSpellUnlocked",
+          "number": 13
+        },
+        {
+          "name": "leader_monster_killed",
+          "type": "GameEventTypeLeaderMonsterKilled",
+          "number": 14
+        },
+        {
+          "name": "sub_area_unlocked",
+          "type": "GameEventTypeSubAreaUnlocked",
+          "number": 15
+        },
+        {
+          "name": "area_unlocked",
+          "type": "GameEventTypeAreaUnlocked",
+          "number": 16
+        }
+      ]
+    },
     "classic": "u8 type; 1: u8; 2/3: string; 4/11/12/15/16: u16; 5: u8, u16; 6/7: u16, u8; 8: string, u8; 9: u16, string, u8; 10: u16, string; 13: s32; 14: u16, s32",
-    "note": "CIP TProtobufServerMessageTranslator::v175. small_value: the u8 field, value: the u16 field, large_value: the s32 field."
+    "note": "CIP TProtobufServerMessageTranslator::v175: a oneof; the case number is the classic event type (1 simple event, 2..16 the GameEventType* sub-messages)."
   },
   "GameserverMessageInspectionList": {
     "fields": [

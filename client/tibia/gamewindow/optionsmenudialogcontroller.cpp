@@ -7,11 +7,13 @@
 #include "chat/chatchannel.h"
 #include "client/gameclient.h"
 #include "config/clientoptiondefaults.h"
+#include "config/configbackupreader.h"
 #include "config/hotkeyoptions.h"
 #include "gamewindow/aboutdialogcontroller.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "minimap/minimapmanager.h"
+#include "shared/tibiafilesystemhelper.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "worldmap/nextframetimestamppredictor.h"
@@ -28,6 +30,8 @@
 #include <QUrl>
 
 #include <memory>
+#include <optional>
+#include <stdexcept>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -107,7 +111,6 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     , m_clientOptionsModeSwitcher(config::TClientOptions::instance(), this)
     , m_optionPageQmlWrapperBase(this)
 {
-    (void)m_configBackupException;
     auto* actionBars = new config::TActionBarsOptionsPage(config::actionBarsBindings(), this);
     auto* buttonBar = new config::TButtonBarOptionsPage(this);
     auto* console = new config::TConsoleOptionsPage(config::consoleBindings(), this);
@@ -557,29 +560,27 @@ void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
     const TRendererOptions before(*config::TClientOptions::instance());
-    bool optionsImported = false;
-    for (const config::TArchiveEntry& entry : config::optionsarchive::read(localFile(m_importFile))) {
-        const QString name = QDir::cleanPath(entry.name);
-        const QString top = name.section(QLatin1Char('/'), 0, 0);
-        if (name.startsWith(QLatin1Char('/')) || name.contains(QLatin1String(".."))
-            || (top != QLatin1String(ConfDirectory) && top != QLatin1String(CharacterDataDirectory) && top != QLatin1String(MinimapDirectory)))
-            continue;
-        if (name == QLatin1String(OptionsFile)) {
-            const QJsonObject imported = QJsonDocument::fromJson(entry.data).object();
-            if (!imported.isEmpty()) {
-                app::ClientOptions::storeAll(imported);
-                optionsImported = true;
-            }
-            continue;
-        }
-        const QString path = root.filePath(name);
-        QDir().mkpath(QFileInfo(path).absolutePath());
-        QFile file(path);
-        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-            file.write(entry.data);
-    }
-    if (!optionsImported)
+    std::optional<config::TConfigBackupReader> reader;
+    try {
+        reader.emplace(files::data().getFileSystemHelper(), localFile(m_importFile),
+                       std::vector<QString>{ QLatin1String(ConfDirectory), QLatin1String(CharacterDataDirectory),
+                                             QLatin1String(MinimapDirectory) });
+    } catch (const std::runtime_error&) {
+        // CipSoft catches std::runtime_error here (the handler body is not
+        // decompiled); the import is dropped.
         return;
+    }
+    reader->extractTo(root);
+    if (!reader->containsOptions())
+        return;
+    // qtclient's TClientOptions keeps its own file: the extracted
+    // conf/clientoptions.json is applied through ClientOptions.
+    QFile optionsFile(root.filePath(QLatin1String(OptionsFile)));
+    if (optionsFile.open(QIODevice::ReadOnly)) {
+        const QJsonObject imported = QJsonDocument::fromJson(optionsFile.readAll()).object();
+        if (!imported.isEmpty())
+            app::ClientOptions::storeAll(imported);
+    }
 
     const config::TClientOptions& after = *config::TClientOptions::instance();
     for (const Page& page : m_pages)

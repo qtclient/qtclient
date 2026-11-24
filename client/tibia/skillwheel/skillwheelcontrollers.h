@@ -6,6 +6,10 @@
 
 #include <cip_gen.h>
 
+#include <QTimer>
+
+#include <optional>
+
 namespace tibia {
 namespace skillwheel {
 
@@ -62,12 +66,56 @@ private:
     std::optional<TGem> m_gem;
 };
 
+/// SkillWheelPresetManagmentDialog.qml (CIP: TSkillWheelPresetManagmentDialogController), owned by the
+/// wheel page: opened for the current preset in a mode, it renames the preset, adds an empty preset,
+/// copies the preset or imports a wheel code into the session's presets.
+class TSkillWheelPresetManagmentDialogController final
+    : public gamewindow::TDialogController<cip::tibia::gamewindow::TSkillWheelPresetManagmentDialogController>
+{
+    Q_OBJECT
+public:
+    explicit TSkillWheelPresetManagmentDialogController(QObject* parent = nullptr);
+    ~TSkillWheelPresetManagmentDialogController() override;
+
+    /// CIP: the game session the presets belong to (null without one).
+    void setSkillWheelStorage(TSkillWheelStorage* storage);
+    /// The dialog opens again for `presetName` in `mode`: the new name starts as the trimmed preset
+    /// name, the import string empty.
+    void open(const QString& presetName, EManageMode mode);
+
+    int maxNameLength() const override { return 29; }
+
+    void onOkClicked(EManageMode ManageMod) override;
+    void onCloseClicked() override;
+    void setNewName(const QString& NewName) override;
+    void setImportString(const QString& ImportString) override;
+
+private:
+    /// Mode, names, import string and error go back to their initial values.
+    void clear();
+    /// A name that is not empty and no preset of the session has.
+    bool isValidName(const QString& name) const;
+    /// Empty for a wheel code of the player's vocation with a valid grid.
+    QString importError(const QString& importString) const;
+    void renamePreset();
+    void createEmptyPreset();
+    void copyPreset();
+    void importPreset();
+
+    TSkillWheelStorage* m_storage = nullptr;
+    /// CIP: the info that an imported code is of an older format.
+    gamewindow::TMessageDialogController* m_message;
+    QString m_newName;
+    QString m_importString;
+};
+
 /// The Wheel tab, SkillWheelPage.qml (CIP: TSkillWheelPageController).
 class TSkillWheelPageController final : public cip::tibia::gamewindow::TSkillWheelPageController
 {
     Q_OBJECT
 public:
     explicit TSkillWheelPageController(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    ~TSkillWheelPageController() override;
 
     int totalSkillPoints() const override { return m_storage->totalPoints(); }
     int regularSkillPoints() const override { return m_storage->regularPoints(); }
@@ -128,15 +176,14 @@ public:
 
     /// CIP: saves the preset and sends the wheel when it changed.
     void apply();
-    /// The close prompt (CIP mode 1); false when nothing to ask.
+    /// The page's message boxes and the preset management dialog close.
     void closeMessages();
-    /// Domain/gem for the selected vessel tile when opening the gem atelier.
-    int gemAtelierDomain() const;
-    int gemAtelierGemId() const;
+    /// The next showDialogTab keeps the presets as they are (the dialog switches back to the wheel).
+    void skipNextShowDialogTabUpdate() { m_skipNextShowUpdate = true; }
 
 Q_SIGNALS:
-    /// The management dialog for a mode (TSkillWheelPresetManagmentDialogController::EManageMode).
-    void managePresets(int mode);
+    /// CIP: the fragment workshop tab, at a mod when both are given.
+    void requestShowFragmentWorkshop(std::optional<int> ModId, std::optional<bool> IsBasicMod);
 
 private:
     /// What the page's message box asks (CIP: the box's mode).
@@ -153,6 +200,7 @@ private:
     void selectPendingPreset();
     void showPresetsAdjustedMessage();
     void updateParameters();
+    void clearParameters();
     void showMessage(EMessageMode mode, const QString& caption, const QString& text);
     void deleteCurrentPreset();
     void updateSummaries();
@@ -182,6 +230,7 @@ private:
     int m_hoveredLargeDomain = -1;
     gamewindow::TMessageDialogController* m_message;
     gamewindow::TMessageDialogController* m_export;
+    TSkillWheelPresetManagmentDialogController* m_presetManagmentDialog;
     EMessageMode m_messageMode = NoMessage;
     /// The next showDialogTab keeps the presets as they are.
     bool m_skipNextShowUpdate = false;
@@ -219,6 +268,8 @@ public:
     void dismantleGem(int GemId) override;
     /// CIP: closes the reshape dialog and the dismantle question (the skill wheel dialog closing).
     void closeMessageDialog();
+    /// CIP (the dialog's reset on this tab): the current wheel's vessels are emptied.
+    void resetVessels();
     void revealGem(int GemQuality) override;
     /// The reshape the reshape dialog confirmed: the storage forgets the attempt, the server applies it.
     void reshapeGem(int GemId, int ModIdx) override;
@@ -301,37 +352,20 @@ private:
     int m_pendingMod = -1;
 };
 
-/// SkillWheelPresetManagmentDialog.qml (CIP: TSkillWheelPresetManagmentDialogController).
-class TSkillWheelPresetManagmentDialogController final
-    : public gamewindow::TDialogController<cip::tibia::gamewindow::TSkillWheelPresetManagmentDialogController>
-{
-    Q_OBJECT
-public:
-    TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, EManageMode mode, const QString& currentPresetName,
-                                               QObject* parent = nullptr);
-
-    void onOkClicked(EManageMode ManageMod) override;
-    void onCloseClicked() override;
-    void setNewName(const QString& NewName) override;
-    void setImportString(const QString& ImportString) override;
-
-private:
-    bool isValidName(const QString& name) const;
-    /// The import error text; empty: `wheel` (if given) receives the imported wheel.
-    QString importError(TWheel* wheel) const;
-
-    TSkillWheelStorage* m_storage;
-    QString m_name;
-    QString m_importString;
-};
-
-/// SkillWheelDialog.qml (CIP: TSkillWheelDialogController).
+/// SkillWheelDialog.qml (CIP: TSkillWheelDialogController): the wheel, gem atelier and fragment
+/// workshop tabs, and the skill wheel game actions.
 class TSkillWheelDialogController final : public gamewindow::TDialogController<cip::tibia::gamewindow::TSkillWheelDialogController>
 {
     Q_OBJECT
 public:
     explicit TSkillWheelDialogController(TSkillWheelStorage* storage, QObject* parent = nullptr);
     ~TSkillWheelDialogController() override;
+
+    /// The game session changed: the dialog closes.
+    void connectToGameSession();
+    /// CIP: the skill wheel actions open the dialog at a tab, ask about a missing wheel, or select a
+    /// gem or mod; asking for the own wheel ends the skipped open after a save.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
     bool isPremium() const override;
 
@@ -346,22 +380,32 @@ public:
     void closeDialog() override;
     void requestSkillWheelPreview() override;
 
-    void showMessage(const QString& caption, const QString& text, bool offerPreview);
-    void openDialogTab(EDialogTab tab);
-    void openGemAtelier(int domain, int gemId);
-    void openWorkshopMod(bool isBasic, int modId);
     void onPremiumChanged() { Q_EMIT premiumStatusChanged(); }
-    void clear();
 
 private:
-    void managePresets(int mode);
+    /// What the dialog's message box asks (CIP: the box's mode).
+    enum EMessageMode { NoMessage = 0, PreviewPossibleMessage = 1, NoWheelMessage = 2 };
+
+    /// Shows the dialog unless it is open (or a save of the own wheel skips it), then the tab.
+    void openDialogTab(EDialogTab tab);
+    /// The tab's page shows; the previous one hides.
+    void switchTab(EDialogTab tab);
+    void onMessageDialogAcceptClicked();
+    void onMessageDialogDiscardClicked();
+    void onRequestShowGemAtelier();
+    void onRequestShowFragmentWorkshop(std::optional<int> ModId, std::optional<bool> IsBasicMod);
+    void skipNextOpenForOwnPlayer();
+    void clearSkipNextOpenForOwnPlayer();
 
     TSkillWheelStorage* m_storage;
     TSkillWheelPageController* m_page;
     TGemAtelierPageController* m_atelier;
     TFragmentWorkshopPageController* m_workshop;
     gamewindow::TMessageDialogController* m_message;
-    TSkillWheelPresetManagmentDialogController* m_presetDialog = nullptr;
+    EMessageMode m_messageMode = NoMessage;
+    /// CIP: after a save of the own wheel, its open action does not show the dialog (for a second).
+    QTimer m_skipNextOpenForOwnPlayerTimer;
+    bool m_skipNextOpenForOwnPlayer = false;
 };
 
 }

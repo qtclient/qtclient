@@ -96,6 +96,12 @@ void TLiveInformationRequestUploader::requestUpdate()
     upload(m_url, QJsonDocument(query));
 }
 
+void TLiveInformationRequestUploader::requestUpdateAndStartTimer(const int intervalMs)
+{
+    requestUpdate();
+    m_updateTimer.start(intervalMs);
+}
+
 void TLiveInformationRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
     if (UploadSuccessful) {

@@ -97,6 +97,13 @@ TQmlTrackedItem::TQmlTrackedItem(const cyclopedia::TTrackedItem& item, QObject* 
     m_trackingStartTime = formatDateTime(item.recordStartTimestamp);
 }
 
+TQmlTrackedItem::~TQmlTrackedItem()
+{
+    const QList<QObject*> drops = std::exchange(m_lootDrops, {});
+    Q_EMIT lootDropsChanged();
+    qDeleteAll(drops);
+}
+
 QString TQmlTrackedItem::itemValueString() const { return english(m_itemValue); }
 
 QString TQmlTrackedItem::dropCountString() const { return numberVariants(m_dropCount); }

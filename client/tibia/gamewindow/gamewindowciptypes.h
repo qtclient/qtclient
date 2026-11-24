@@ -9,6 +9,7 @@
 #include "gamewindow/anonymousciptypes.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "gamewindow/uifocusmanager.h"
 
 #include <client/staticdata.h>
 #include <cip_gen.h>
@@ -104,6 +105,9 @@ class TSpritesheetDataObject final : public cip::tibia::gamewindow::TSpritesheet
     Q_OBJECT
 public:
     explicit TSpritesheetDataObject(QString id = {}, QObject* parent = nullptr);
+
+    /// CIP: the id is replaced without idChanged.
+    void setId(const QString& v) override;
 };
 
 class TCyclopediaCreatureInfo final : public cip::tibia::gamewindow::TCyclopediaCreatureInfo
@@ -202,48 +206,6 @@ public:
 
 private:
     std::vector<TQMLCharacterData*> m_rows;
-};
-
-class TPassiveAbilityListDataModel final : public cip::tibia::gamewindow::TPassiveAbilityListDataModel
-{
-    Q_OBJECT
-public:
-    enum Role { NameRole = Qt::UserRole + 1, IdRole, EnumIdRole, IconUrlRole, UsableRole };
-
-    struct Entry {
-        int id = 0;
-        QString name;
-        QString iconUrl;
-        bool usableByCurrentVocation = true;
-    };
-
-    explicit TPassiveAbilityListDataModel(QObject* parent = nullptr);
-
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
-    void setEntries(std::vector<Entry> entries);
-
-private:
-    std::vector<Entry> m_entries;
-};
-
-class TPassiveAbilityListDataModelSortFilterProxy final : public cip::tibia::gamewindow::TPassiveAbilityListDataModelSortFilterProxy
-{
-    Q_OBJECT
-public:
-    explicit TPassiveAbilityListDataModelSortFilterProxy(QObject* parent = nullptr);
-
-    QVariant getDataWithRoleName(int RowIndex, const QByteArray& RoleName) override;
-    void onPlayerDataChanged() override;
-    void setNameFilter(const QString& filter);
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
-
-private:
-    QString m_nameFilter;
 };
 
 class TLargePerkInformation final : public cip::tibia::gamewindow::TLargePerkInformation
@@ -381,11 +343,15 @@ class TSidebarWidgetControllerWithFocusHandling : public cip::tibia::gamewindow:
     Q_OBJECT
 public:
     TSidebarWidgetControllerWithFocusHandling(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    ~TSidebarWidgetControllerWithFocusHandling() override;
 
     QQuickItem* gameWindowQuickItem() const override;
     uint parentSidebarId() const override;
+    /// CIP: the focus manager's focus.
+    bool hasFocus() const override;
 
 public Q_SLOTS:
+    /// CIP: the widget's focus is its focus manager's.
     void takeFocus() override;
     void releaseFocus() override;
     void onCloseClicked() override;
@@ -399,6 +365,7 @@ public Q_SLOTS:
 
 private:
     TSidebarWidget* m_widget = nullptr;
+    TUiFocusManager m_focus;
 };
 
 class TInspectObjectDialogController final : public TDialogController<cip::tibia::gamewindow::TInspectObjectDialogController>

@@ -48,6 +48,9 @@ public:
                     std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
                     std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
     ~TEventsUploader() override;
+    /// An uploader with a sender of its own.
+    static std::shared_ptr<TEventsUploader> create(const QUrl& url, std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                                   std::shared_ptr<shared::IClockService> clock);
 
     /// Queries `{type:"eventschedule"}`.
     void requestEventSchedule();

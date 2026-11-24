@@ -289,8 +289,6 @@ public:
     /// v39.
     void removeAllTutorialMarkers();
 
-    /// Tab drag (the tabs show the storage order).
-    void moveChannel(int from, int to);
     /// A system line in one channel (closed channel notes, client messages).
     void addSystemEntry(TChatChannel* channel, const QColor& color, const QString& text);
     /// The NPC dialog's own line; prefer addOwnNpcChannelEntry.
@@ -313,9 +311,6 @@ Q_SIGNALS:
     /// Host views: a channel came (or came back) and whether its tab becomes current.
     void channelAdded(TChatChannel* channel, bool makeCurrent);
     void channelRemoved(TChatChannel* channel);
-    void channelsMoved();
-    /// A channel got an entry someone else wrote (the tab flashes).
-    void entryAddedToChannel(TChatChannel* channel, bool fromOthers);
 
 private:
     /// Opens Local Chat and the Server Log.

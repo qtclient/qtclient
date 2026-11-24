@@ -445,9 +445,9 @@ size_t fillMiscMessage(GameserverMessage& msg, const int opcode, ClassicReader& 
         for (uint8_t i = 0; i < count; ++i) {
             ProtocolDailyRewardHistoryEntry* entry = m->add_entries();
             uint32_t time = 0;
-            bool premium = false;
+            uint8_t premium = 0;
             uint16_t streak = 0;
-            if (!r.u32(time) || !readBool(r, premium) || !r.string(*entry->mutable_description()) || !r.u16(streak))
+            if (!r.u32(time) || !r.u8(premium) || !r.string(*entry->mutable_description()) || !r.u16(streak))
                 return 0;
             entry->set_timestamp(time);
             entry->set_premium(premium);

@@ -3,6 +3,8 @@
 #include "app/clientoptions.h"
 #include "config/hotkeyoptions.h"
 
+#include <stdexcept>
+
 using namespace tibia::config;
 
 // hotkeyoptions.cpp reads and writes the options files through ClientOptions;
@@ -178,4 +180,35 @@ TEST(HotkeyActionSetting, UseObjectWithLiquidOrTier)
     EXPECT_EQ(tier.objectId, 3079);
     EXPECT_EQ(tier.upgradeTier, std::optional<int>(2));
     EXPECT_FALSE(tier.liquidType.has_value());
+}
+
+TEST(HotkeyActionSetting, MultiActionCountKeepsTheOldSettingFirstUnlessPassive)
+{
+    TActionSetting setting;
+    setting.setChatText(QStringLiteral("exura"));
+    setting.setMultiActionCount(3);
+    EXPECT_EQ(setting.kind, TActionSetting::MULTI_ACTION);
+    EXPECT_TRUE(setting.text.isEmpty());
+    ASSERT_EQ(setting.multiActions.size(), 3u);
+    EXPECT_EQ(setting.multiActions[0].text, QStringLiteral("exura"));
+    EXPECT_TRUE(setting.multiActions[1].isEmpty());
+    EXPECT_TRUE(setting.multiActions[2].isEmpty());
+
+    TActionSetting passive;
+    passive.setPassiveAbility(2);
+    passive.setMultiActionCount(2);
+    EXPECT_EQ(passive.passiveAbility, 0);
+    ASSERT_EQ(passive.multiActions.size(), 2u);
+    EXPECT_TRUE(passive.multiActions[0].isEmpty());
+}
+
+TEST(HotkeyActionSetting, SetMultiActionThrowsWithoutMultiActions)
+{
+    TActionSetting setting;
+    EXPECT_THROW(setting.setMultiAction(0, TActionSetting{}), std::runtime_error);
+    setting.setMultiActionCount(2);
+    TActionSetting text;
+    text.setChatText(QStringLiteral("hi"));
+    setting.setMultiAction(1, text);
+    EXPECT_EQ(setting.multiActions[1].text, QStringLiteral("hi"));
 }

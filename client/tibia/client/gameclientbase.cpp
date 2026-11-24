@@ -22,6 +22,8 @@
 #include "sprites/spritesystem.h"
 
 #include <QObject>
+#include <QQmlContext>
+#include <QQmlEngine>
 
 #include <stdexcept>
 
@@ -56,6 +58,7 @@ void TGameClientBase::initialize()
 {
     initializeStorages();
     initializeSound();
+    initializeQmlContext();
     initializeAssets();
     emitInitialized();
 }
@@ -82,6 +85,13 @@ void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
 void TGameClientBase::initializeStorages()
 {
     createSpellInfoStorage();
+}
+
+void TGameClientBase::initializeQmlContext()
+{
+    m_pStoreAndResourceBalanceHelperController = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
+    m_pEngine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"),
+                                                 m_pStoreAndResourceBalanceHelperController.get());
 }
 
 void TGameClientBase::initializeAssets()

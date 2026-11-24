@@ -113,7 +113,10 @@ public:
     /// CIP: the static race name of the boosted creature / boss, each word capitalised (the
     /// service's name when the race is not in the static data).
     QString boostedCreatureName() const override;
+    /// The boosted boss as the client services last sent it.
+    int boostedBossRace() const override;
     QString boostedBossName() const override;
+    QObject* statusBarController() const override;
     /// CIP: OPEN_URL of a link in the hint area.
     void linkClicked(const QString& Url) override;
     /// CIP: the pointing hand over a hint-area link.
@@ -204,7 +207,7 @@ private:
     std::unique_ptr<game::TBoostedCreatureRequestUploader> m_boostedUploader;
     std::unique_ptr<game::TLiveInformationRequestUploader> m_liveInfoUploader;
     std::unique_ptr<game::TShowOffRequestUploader> m_showOffUploader;
-    std::unique_ptr<news::TEventsUploader> m_eventsUploader;
+    std::shared_ptr<news::TEventsUploader> m_eventsUploader;
     std::unique_ptr<news::TNewsRequestUploader> m_newsUploader;
     std::unique_ptr<news::TNewsViewsUploader> m_newsViewsUploader;
     std::unique_ptr<TNewsDialogController> m_newsDialog;

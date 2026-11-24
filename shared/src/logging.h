@@ -24,6 +24,8 @@ void setLogMessageCallback(std::function<void(const QString&)> callback);
 /// Installs `handler` as Qt's message handler; throws std::runtime_error when
 /// one is already installed.
 void installQtMessageHandler(QtMessageHandler handler);
+/// Removes the installed Qt message handler; messages go to Qt's default output again.
+void uninstallQtMessageHandler();
 
 /// Passes the message to the callback, then to the logger at the level of its
 /// type, and aborts on QtFatalMsg.

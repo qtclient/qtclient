@@ -210,36 +210,50 @@ QString formatXpBoostTime(const uint32_t seconds)
 }
 
 /// CIP: TStorePurchasesQmlData over the 0xDA store summary
-/// (CIP reader case 8).
+/// (CIP reader case 8): the summary it keeps answers the properties; the blessings, hireling
+/// outfits and house items are list models made with it.
 class TStorePurchasesQmlData final : public cip::tibia::gamewindow::TStorePurchasesQmlData
 {
 public:
     TStorePurchasesQmlData(const cyclopedia::TStoreSummary& summary, QObject* parent)
         : cip::tibia::gamewindow::TStorePurchasesQmlData(parent)
+        , m_summary(summary)
     {
-        m_remainingStoreXpBoost = formatXpBoostTime(summary.storeXpBoostTime);
-        m_remainingDailyRewardXpBoost = formatXpBoostTime(summary.dailyRewardXpBoostTime);
         QList<QVariantList> blessings;
-        for (const auto& [name, count] : summary.blessings)
+        for (const auto& [name, count] : m_summary.blessings)
             blessings.append({ name, count });
         m_storeBlessings = new TStoreSummaryListModel({ "name", "count" }, std::move(blessings), this);
-        m_preySlots = summary.preySlots;
-        m_preyWildcards = summary.preyWildcards;
-        m_purchasedPermanentWeeklyTaskExpansion = summary.permanentWeeklyTaskExpansion;
-        m_collectionTokens = summary.instantRewardAccesses;
-        m_hasCharmExpansion = summary.charmExpansion;
-        m_hirelings = summary.hirelings;
-        for (const QString& job : summary.hirelingJobs)
-            m_hirelingJobs.append(job);
         QList<QVariantList> hirelingOutfits;
-        for (const auto& [name, count] : summary.hirelingOutfits)
+        for (const auto& [name, count] : m_summary.hirelingOutfits)
             hirelingOutfits.append({ name, count });
         m_hirelingOutfits = new TStoreSummaryListModel({ "name", "count" }, std::move(hirelingOutfits), this);
         QList<QVariantList> houseItems;
-        for (const auto& [id, name, count] : summary.houseItems)
+        for (const auto& [id, name, count] : m_summary.houseItems)
             houseItems.append({ static_cast<int>(id), name, count });
         m_houseItems = new TStoreSummaryListModel({ "appearanceTypeID", "name", "count" }, std::move(houseItems), this);
     }
+
+    QString remainingStoreXpBoost() const override { return formatXpBoostTime(m_summary.storeXpBoostTime); }
+    QString remainingDailyRewardXpBoost() const override { return formatXpBoostTime(m_summary.dailyRewardXpBoostTime); }
+    QObject* storeBlessings() const override { return m_storeBlessings; }
+    int preySlots() const override { return m_summary.preySlots; }
+    int preyWildcards() const override { return m_summary.preyWildcards; }
+    bool purchasedPermanentWeeklyTaskExpansion() const override { return m_summary.permanentWeeklyTaskExpansion; }
+    int collectionTokens() const override { return m_summary.instantRewardAccesses; }
+    bool hasCharmExpansion() const override { return m_summary.charmExpansion; }
+    int hirelings() const override { return m_summary.hirelings; }
+    QStringList hirelingJobs() const override
+    {
+        QStringList jobs;
+        for (const QString& job : m_summary.hirelingJobs)
+            jobs.append(job);
+        return jobs;
+    }
+    QObject* hirelingOutfits() const override { return m_hirelingOutfits; }
+    QObject* houseItems() const override { return m_houseItems; }
+
+private:
+    cyclopedia::TStoreSummary m_summary;
 };
 
 /// CIP : the inventory slots' background images (1..10); the

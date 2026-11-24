@@ -24,6 +24,13 @@ using A = input::EGameAction;
 
 } // namespace
 
+int dailyRewardEnumValue(const uint32_t protocolValue)
+{
+    if (protocolValue > 2)
+        throw std::invalid_argument("invalid enum value");
+    return static_cast<int>(protocolValue);
+}
+
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;
@@ -290,9 +297,7 @@ void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const Games
     storage.setNextDailyRewardPosition(static_cast<uint8_t>(message.day_streak_day()));
     storage.setNextRewardTime(message.next_reward_time());
     storage.setUsingRewardShrine(message.from_shrine());
-    if (message.collected() >= 3)
-        return;
-    storage.setCollectState(static_cast<int>(message.collected()), QString::fromStdString(message.message()));
+    storage.setCollectState(dailyRewardEnumValue(message.collected()), QString::fromStdString(message.message()));
     // Already collected 0, expired 1, running 2, frozen 3, never collected 4.
     int state = 3;
     uint32_t streakEnd = 0;
@@ -366,7 +371,7 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage(const G
     std::vector<TDailyRewardHistoryEntry> history;
     history.reserve(static_cast<size_t>(message.entries_size()));
     for (const ProtocolDailyRewardHistoryEntry& entry : message.entries())
-        history.push_back({ static_cast<int>(entry.timestamp()), entry.premium() ? 1 : 0, QString::fromStdString(entry.description()),
+        history.push_back({ static_cast<int>(entry.timestamp()), dailyRewardEnumValue(static_cast<uint32_t>(entry.premium())), QString::fromStdString(entry.description()),
                             static_cast<uint16_t>(entry.streak()) });
     storage.setHistory(std::move(history));
 }

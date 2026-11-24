@@ -12,6 +12,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <set>
 
 namespace tibia::worldmap {
 
@@ -22,6 +24,35 @@ bool sameIcons(const std::vector<creatures::TCreatureIcon>& a, const std::vector
     return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const auto& x, const auto& y) {
         return x.kind == y.kind && x.icon == y.icon && x.value == y.value && x.flag == y.flag;
     });
+}
+
+/// The creature icon a status mark shows; marks without one show none.
+const std::map<uint8_t, uint8_t>& statusMarkIcons()
+{
+    static const std::map<uint8_t, uint8_t> icons{ { 2, 10 } };
+    return icons;
+}
+
+/// The creature icons (kind 1, no number, flag set) of the status marks that have one.
+std::vector<creatures::TCreatureIcon> statusMarkHudIcons(const std::set<uint8_t>& statusMarks)
+{
+    std::vector<creatures::TCreatureIcon> icons;
+    for (const uint8_t mark : statusMarks) {
+        const auto icon = statusMarkIcons().find(mark);
+        if (icon == statusMarkIcons().end())
+            continue;
+        icons.push_back({ .kind = 1, .icon = icon->second, .value = 0, .flag = true });
+    }
+    return icons;
+}
+
+/// The creature's HUD icons followed by those of its status marks.
+std::vector<creatures::TCreatureIcon> hudIconsWithStatusMarks(const creatures::TCreature& creature)
+{
+    std::vector<creatures::TCreatureIcon> icons = creature.hudIcons();
+    const std::vector<creatures::TCreatureIcon> marks = statusMarkHudIcons(creature.extraIcons());
+    icons.insert(icons.end(), marks.begin(), marks.end());
+    return icons;
 }
 
 }
@@ -170,14 +201,14 @@ TCreatureHUDRenderInfo TCreatureHUDRenderProvider::creatureHUDRenderInfo(const c
                 info.iconFlags.guild = creature.emblem();
                 info.iconFlags.party = creature.shield();
                 info.iconFlags.skull = creature.skull();
-                info.iconFlags.icons = creature.hudIcons();
+                info.iconFlags.icons = hudIconsWithStatusMarks(creature);
             }
             break;
         case Proto::CreatureTypeMonster:
             info.showHealthBar = m_creatureShowHealth;
             info.healthPercent = creature.healthPercent();
             if (m_creatureShowMarks)
-                info.iconFlags.icons = creature.hudIcons();
+                info.iconFlags.icons = hudIconsWithStatusMarks(creature);
             break;
         case Proto::CreatureTypeNpc:
             if (m_creatureShowNpcIcon)

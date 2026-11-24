@@ -26,7 +26,7 @@ namespace app {
 class TLoginWaitDialogController;
 
 /// CIP start-screen session chrome around TGameClient (stock qtclient host):
-/// - login / game errors → MessageDialog (showErrorAsPopupAndCriticalLog);
+/// - login / game errors close the wait dialog (the application shows them);
 /// - WaitDialog while the character list loads and while entering the world;
 /// - CreateAccountDialog from the login mask;
 /// - CreateCharacterDialog from the character list / SHOW_CREATE_CHARACTER_DIALOG;
@@ -57,7 +57,6 @@ public:
     void closeConnectingDialog();
 
 private:
-    void showError(const QString& message);
     void openCreateCharacter(bool accountHasNoCharacters);
     void openCreateCharacterIfAccountEmpty();
     void promptKeepGraphicsEngine();
@@ -68,7 +67,6 @@ private:
     gamewindow::TGameWindowController* m_gameWindow = nullptr;
     QUrl m_createAccountService;
     TLoginWaitDialogController* m_loginWait = nullptr;
-    gamewindow::TMessageDialogController* m_error = nullptr;
     gamewindow::TMessageDialogController* m_keepRenderer = nullptr;
     QMetaObject::Connection m_createCharacterIfEmpty;
     QMetaObject::Connection m_characterCreated;

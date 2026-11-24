@@ -191,13 +191,28 @@ public:
     /// clears them.
     void setChannelStorage(chat::TChatChannelStorage* storage);
 
+    /// The current tab's channel, null when no tab is current.
     chat::TChatChannel* currentChannel() const;
+    /// The channel of tab `row`, null outside the tabs.
     chat::TChatChannel* channelAt(int row) const;
-    void makeCurrent(chat::TChatChannel* channel);
+    /// The tabs' channels, in tab order.
+    std::vector<chat::TChatChannelIdentifier> identifiers() const;
+    /// While the session's first channels arrive (false), new tabs do not
+    /// become current.
+    void setMakeNewTabsCurrent(bool makeNewTabsCurrent);
+    /// The channel went to the secondary pane: its tab is no longer marked
+    /// (unless current).
+    void resetTabHighlight(const chat::TChatChannelIdentifier& identifier);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
+    int currentRowId() const override;
+    /// The strongest highlight among the tabs hidden left (FLASH_NEW_ENTRY
+    /// wins, then NEW_ENTRY).
+    uint leftButtonHighlight() const override;
+    /// The same for the tabs hidden right.
+    uint rightButtonHighlight() const override;
 
 public Q_SLOTS:
     void onMakeChannelWithRowIdCurrent(int rowId) override;
@@ -209,29 +224,36 @@ public:
     void setNumberOfHiddenTabs(uint hiddenLeft, uint hiddenRight) override;
     void moveTab(int sourceIndex, int targetIndex) override;
 
+    void onAddNewChatChannelTab(const chat::TChatChannelIdentifier& identifier, bool forceMakeCurrent);
+    void onChatChannelReopend(const chat::TChatChannelIdentifier& identifier, bool forceMakeCurrent);
+    void onChatChannelRemoved(const chat::TChatChannelIdentifier& identifier);
+    void onEntryAddedToChatChannel(const chat::TChatChannelIdentifier& identifier);
+    void onMakeChannelWithChatChannelIdentifierCurrent(const chat::TChatChannelIdentifier& identifier);
+
 Q_SIGNALS:
     void currentChannelChanged(chat::TChatChannel* channel);
     void tabClicked(chat::TChatChannel* channel, int mouseButton, int keyboardModifiers);
 
 private:
-    void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
-    void onChannelRemoved(chat::TChatChannel* channel);
-    void onEntryAddedToChatChannel(chat::TChatChannel* channel, bool fromOthers);
-    /// A tab's highlight changed: its row and the scroll buttons repaint.
+    /// A tab's highlight changed: its row repaints, and a scroll button
+    /// whose hidden tabs include it.
     void onTabHighlightChanged(chat::TChatChannel* channel);
     /// The tab's render info, made when the tab is added.
     void addRenderInfo(chat::TChatChannel* channel);
     TChatChannelTabRenderInfo* renderInfo(const chat::TChatChannel* channel) const;
     void setCurrentRow(int row);
+    /// Every tab goes (none current).
+    void removeAllTabs();
     int rowOf(const chat::TChatChannel* channel) const;
+    int rowOf(const chat::TChatChannelIdentifier& identifier) const;
     uint highlightOf(int row) const;
-    void updateButtonHighlights();
 
-    QPointer<chat::TChatChannelStorage> m_storage;
     std::vector<chat::TChatChannel*> m_rows;
+    QPointer<chat::TChatChannelStorage> m_storage;
     std::unordered_map<const chat::TChatChannel*, std::unique_ptr<TChatChannelTabRenderInfo>> m_renderInfos;
     uint m_hiddenLeft = 0;
     uint m_hiddenRight = 0;
+    bool m_makeNewTabsCurrent = false;
 };
 
 /// The channel list (CIP: TOpenChatChannelDialogController,
@@ -430,6 +452,8 @@ private:
     /// CIP +0x438: "recently traded" and the account data warning.
     TMessageDialogController m_messageDialog;
     QPointer<chat::TChatChannel> m_inviteTarget;
+    /// CIP +0x500: started on connect; new tabs become current once it ran.
+    QTimer m_makeNewTabsCurrentTimer;
     QTimer m_ignoredFlashTimer;
     bool m_ignoredFlash = false;
     QTimer m_exivaSuppressedTimer;
@@ -448,6 +472,8 @@ public Q_SLOTS:
     {
         m_gameActions.handle(pGameAction);
     }
+    /// The "recently traded" / account warning message closes.
+    void closeMessageDialog();
 
 private:
     ::tibia::input::TGameActionDispatch m_gameActions;

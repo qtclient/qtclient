@@ -324,11 +324,11 @@ TActionSetting TActionSetting::fromJson(const QJsonObject& json)
         setting.passiveAbility = json.value(QLatin1String("passiveAbility")).toInt();
     } else if (json.contains(QLatin1String("multiActions"))) {
         // At most MaxMultiActions actions are read.
-        setting.kind = MULTI_ACTION;
         const QJsonArray actions = json.value(QLatin1String("multiActions")).toArray();
         const qsizetype count = std::min<qsizetype>(actions.size(), MaxMultiActions);
+        setting.setMultiActionCount(static_cast<int>(count));
         for (qsizetype i = 0; i < count; ++i)
-            setting.multiActions.push_back(fromJson(actions.at(i).toObject()));
+            setting.setMultiAction(i, fromJson(actions.at(i).toObject()));
     }
     return setting;
 }
@@ -414,6 +414,26 @@ void TActionSetting::setPassiveAbility(const int ability)
     objectId = 0;
     liquidType.reset();
     multiActions.clear();
+}
+
+void TActionSetting::setMultiActionCount(const int count)
+{
+    const TActionSetting previous = *this;
+    text.clear();
+    objectId = 0;
+    liquidType.reset();
+    passiveAbility = 0;
+    multiActions.clear();
+    for (int i = 0; i < count; ++i)
+        multiActions.push_back(i == 0 && previous.passiveAbility == 0 ? previous : TActionSetting{});
+    kind = count > 0 ? MULTI_ACTION : NONE;
+}
+
+void TActionSetting::setMultiAction(const qsizetype index, TActionSetting multiAction)
+{
+    if (multiActions.empty())
+        throw std::runtime_error("TTibiaActionSetting::setMultiAction: Called for non multi action");
+    multiActions[static_cast<size_t>(index)] = std::move(multiAction);
 }
 
 void TActionSetting::setUseObject(const int objectClientId, const int liquid)

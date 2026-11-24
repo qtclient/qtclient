@@ -4,6 +4,7 @@
 #include "input/gameactionhandlers.h"
 
 #include <QKeySequence>
+#include <QQuickItem>
 
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
@@ -132,8 +133,9 @@ void TDeathDialogController::onButtonClicked(
     if (ButtonIdentifier != Button::USER_DEFINED)
         return;
     m_openStoreOnWorldEntered = true;
-    // The death message has no check box.
-    Q_EMIT m_box->acceptClicked(false);
+    // The message's check box state, unchecked without its item.
+    const QQuickItem* item = m_box->dialog()->item();
+    Q_EMIT m_box->acceptClicked(item && item->property("checkBoxIsChecked").toBool());
 }
 
 void TDeathDialogController::onWorldEntered()

@@ -94,7 +94,7 @@ bool isCapsLockActive()
     return false;
 }
 
-bool startDetached(const QString&, const QStringList&, const QHash<QString, QString>&)
+bool startDetached(const QString&, const QStringList&, const QHash<QString, QString>&, const QString&)
 {
     return false;
 }

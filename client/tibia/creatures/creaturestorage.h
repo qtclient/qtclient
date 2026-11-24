@@ -125,6 +125,15 @@ public:
     worldmap::TWorldMapSubfieldExtent movementOffset() const { return m_movementTween.drawOffset(); }
 
     const TCreatureMovementTween& movementTween() const { return m_movementTween; }
+    /// The subfield the creature's field is drawn from: its position moved by the
+    /// step's covered field, plus the offset within the step.
+    worldmap::TWorldMapSubfieldCoordinate drawSubfieldCoordinate() const;
+    /// The same subfield moved up and left by the placeholder's displacement and elevation.
+    worldmap::TWorldMapSubfieldCoordinate displacedDrawSubfieldCoordinate() const;
+    /// When the current step ends.
+    qint64 movementEndTime() const { return m_movementTween.endTime(); }
+    /// The outfit looking south (UI previews); null without an outfit.
+    appearances::TAppearanceInstanceSpriteInfoPtr previewSpriteInfo() const;
 
     /// One step from `origin` in `direction` between `startMs` and `endMs`.
     /// When the position already moved off `origin` the creature slides in from

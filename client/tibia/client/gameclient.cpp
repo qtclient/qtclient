@@ -37,6 +37,21 @@
 #include "gamewindow/createcharacterdialogcontroller.h"
 #include "gamewindow/gamesessiondisconnectreactioncontroller.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
+#include "gamewindow/blessingsdialogcontroller.h"
+#include "gamewindow/bossdifficultyselectiondialogcontroller.h"
+#include "gamewindow/bugreportdialogcontroller.h"
+#include "gamewindow/deathdialogcontroller.h"
+#include "gamewindow/exaltationforgedialogcontroller.h"
+#include "gamewindow/marketcontroller.h"
+#include "gamewindow/naggingmessagedialogcontroller.h"
+#include "gamewindow/reportviolationcontroller.h"
+#include "gamewindow/rewardwalldialogcontroller.h"
+#include "gamewindow/selectobjectamountdialogcontroller.h"
+#include "gamewindow/storedialogcontroller.h"
+#include "game/fpsdropslogger.h"
+#include "proficiency/weaponproficiencydialogcontroller.h"
+#include "proficiency/weaponproficiencyshapedialogs.h"
+#include "qmlcomponents/lenshelpmanager.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "config/configciptypes.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
@@ -337,6 +352,9 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     m_gameSessionDisconnected.setAsyncDelay(1);
     m_gameSessionDisconnected.setOnlyFirstSignal(true);
     connect(&m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionDisconnected);
+    connect(
+        &m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, &m_gameSessionDisconnected,
+        [this] { Q_EMIT currentGamesessionDisconnected(m_currentGameSession); }, Qt::DirectConnection);
     m_gameHost = new GameHostImpl(this);
     // Pack ABI: the packs' "main window initialized" is the world entry.
     connect(this, &TGameClient::worldEntered, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
@@ -399,7 +417,8 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     // login confirmation code uploaders (each with its own sender) and the
     // Cloudflare challenge for the login service, handed to the controller.
     auto pCharacterSelection = std::make_shared<gamewindow::TCharacterSelectionController>();
-    auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>();
+    auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>(LoginUrl);
+    pLoginRequestUploader->setClientRevision(m_options.env.revision);
     auto pEMailCodeRequestUploader = std::make_shared<authentication::TEmailCodeRequestUploader>(
         LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
     auto pLoginConfirmationCodeRequestUploader = std::make_shared<authentication::TLoginConfirmationCodeRequestUploader>(
@@ -429,17 +448,22 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
             });
 
     connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
-    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
-    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
-        fail(tr("This account needs an authenticator token."));
-    });
-    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToInvalidServerResponse, this, [this] {
-        fail(tr("The login server sent an invalid response."));
-    });
-    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedClientOutOfDate, this, [this] {
-        // CIP enters ShowClientOutOfDate (info / client_too_old + Restart) —
-        // do not also fail with a dismissible error toast.
-        Q_EMIT clientOutOfDate();
+    // CIP: the login machine shows the login error (loginerror_caption); its
+    // abort (OK) returns to the login mask. CLI runs end on a failed login.
+    const auto exitCliRunOnLoginFailure = [this] {
+        if (!m_options.autoCharacter.isEmpty() || !m_options.replay.isEmpty() || m_options.playForSeconds > 0)
+            QCoreApplication::exit(2);
+    };
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailed, this,
+            [this, exitCliRunOnLoginFailure](const QString& message) {
+                qCritical().noquote() << message;
+                exitCliRunOnLoginFailure();
+            });
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToInvalidServerResponse, this,
+            exitCliRunOnLoginFailure);
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::abort, this, [this] {
+        if (!tibia::game::isOnline())
+            ensureLoginSurface();
     });
     connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToCloudflareMitigation, this,
             [this, uploader = pLoginRequestUploader.get(), cloudflare = pCloudflareChallenge.get()] {
@@ -447,24 +471,6 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
                 if (!challengeUrl.isValid())
                     challengeUrl = m_options.env.loginUrl();
                 cloudflare->startChallenge(challengeUrl);
-            });
-    // The clearance retries the login; a failed challenge ends it with its reason.
-    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
-            [this] { login(); });
-    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
-            [this](authentication::TCloudflareChallengeError error) {
-                switch (error) {
-                case authentication::TCloudflareChallengeError::Timeout:
-                    fail(qtTrId("cloudflare_challenge_error_timeout"));
-                    break;
-                case authentication::TCloudflareChallengeError::Cancelled:
-                    fail(qtTrId("cloudflare_challenge_error_cancelled"));
-                    break;
-                case authentication::TCloudflareChallengeError::Unknown:
-                default:
-                    fail(qtTrId("cloudflare_challenge_error_unknown"));
-                    break;
-                }
             });
 
     connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::publishGameAction,
@@ -513,9 +519,28 @@ TGameClient::~TGameClient()
     // storages the game window owns: save before the game window goes.
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
         manager->saveConfiguration();
-    // CIP: the dialogs made after the game window controller go before it.
+    // CIP: the dialogs made after the game window controller go before it
+    // (the client's members in reverse order, then the game window's).
     m_pCreateCharacterDialogController.reset();
     m_pCreateAccountDialogController.reset();
+    m_pRewardWallDialogController.reset();
+    m_pLenshelpManager.reset();
+    m_pBossDifficultySelectionDialogController.reset();
+    m_pSoulSealsDialogController.reset();
+    m_pWeaponProficiencyShapeOptionsDialogController.reset();
+    m_pWeaponProficiencyShapeDialogController.reset();
+    m_pWeaponProficiencyReshapeDialogController.reset();
+    m_pWeaponProficiencyDialogController.reset();
+    m_pNaggingMessageDialogController.reset();
+    m_pExaltationForgeDialogController.reset();
+    m_pSelectObjectAmountDialogController.reset();
+    m_pBlessingsDialogController.reset();
+    m_pStoreDialogController.reset();
+    m_pDeathDialogController.reset();
+    m_pGameSessionDisconnectReactionController.reset();
+    m_pBugReportDialogController.reset();
+    m_pReportViolationController.reset();
+    m_pMarketController.reset();
     m_gameWindow.reset();
     // The store balance helper follows the session and the engine's hooks.
     m_pStoreAndResourceBalanceHelperController.reset();
@@ -696,7 +721,6 @@ void TGameClient::shutdown()
 
 void TGameClient::login()
 {
-    const auto& env = m_options.env;
     if (m_options.account.isEmpty()) {
         // CIP start-screen login mask (TGameWindowController::loginPressed) supplies credentials.
         return;
@@ -706,11 +730,10 @@ void TGameClient::login()
     request.email = m_options.account;
     request.password = m_options.password;
     request.stayLoggedIn = true;
-    using EState = authentication::TAuthenticationProcessController::EState;
-    if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowLoginWaitingDialog)
-        m_authentication->start();
-    m_authentication->setLoginCredentials(request.email, request.password);
-    loginRequestUploader()->login(env.loginUrl(), request, env.revision);
+    // CIP: the login data goes to the login machine; entering its login
+    // waiting state sends the request.
+    m_authentication->setLoginData(request);
+    m_authentication->start();
 }
 
 void TGameClient::abortPendingEnter()
@@ -1328,8 +1351,7 @@ void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
     if (!FpsTrackingActive) {
         m_fpsHistory.reset();
         m_fpsHistoryController.reset();
-        m_fpsSampleTimer.stop();
-        m_fpsUploadTimer.stop();
+        m_pFPSDropsLogger.reset();
         return;
     }
     auto clockService = shared::TClockService::process();
@@ -1337,8 +1359,9 @@ void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
         std::make_shared<systemsurvey::TFPSCounter>(clockService), clockService);
     // Host: CipSoft posts to [URLS] fpsHistoryRecipient; qtclient posts to the
     // qtc-aac hardware receiver.
+    const QUrl fpsHistoryRecipientUrl = app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl();
     auto uploader = std::make_shared<systemsurvey::TFPSHistoryUploader>(
-        app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl(),
+        fpsHistoryRecipientUrl,
         std::make_shared<systemsurvey::TFPSHistoryToJsonConverter>(),
         std::make_shared<shared::TJsonDocumentHttpPostSender>());
     const int renderer = app::rendererIndexForGraphicsApi(QQuickWindow::graphicsApi());
@@ -1346,6 +1369,10 @@ void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
     const QString group = QStringLiteral("FPSHISTORY");
     startFpsHistoryTimers(config::clientSettingAtLeast(group, QStringLiteral("sampleRateMsec"), 1000, 100),
                           config::clientSettingAtLeast(group, QStringLiteral("uploadRateSec"), 60, 1));
+    // CIP: the frame rate drops go to the same recipient. Host: qtclient's
+    // logger keeps no local log file (CipSoft passes one in the file system
+    // helper's directory).
+    m_pFPSDropsLogger = std::make_shared<game::FPSDropsLogger>(fpsHistoryRecipientUrl, clientOptions());
 }
 
 void TGameClient::startFpsHistoryTimers(const qint64 sampleRateMsec, const qint64 uploadRateSec)
@@ -1361,7 +1388,8 @@ void TGameClient::startFpsHistoryTimers(const qint64 sampleRateMsec, const qint6
         m_fpsUploadTimer.setInterval(int(uploadRateSec * 1000));
         connect(&m_fpsUploadTimer, &QTimer::timeout, controller,
                 &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
-        connect(this, &TGameClient::worldLeft, controller, &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::currentGamesessionDisconnected, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
         connect(this, &TGameClient::clientReadyToClose, controller,
                 &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
         m_fpsUploadTimer.start();

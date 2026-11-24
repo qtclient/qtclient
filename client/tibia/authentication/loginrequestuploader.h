@@ -63,8 +63,14 @@ public:
     };
 
     explicit TLoginRequestUploader(QObject* parent = nullptr);
+    /// CIP: the uploader of the login service at `Url`.
+    explicit TLoginRequestUploader(const QUrl& Url, QObject* parent = nullptr);
     ~TLoginRequestUploader() override;
 
+    /// CIP: the login request for `LoginData` goes to the login service.
+    virtual void uploadLoginRequest(const TLoginRequestData& LoginData);
+    /// qtclient: the client revision the requests carry (X-Tibia-Client).
+    void setClientRevision(const QString& ClientRevision) { m_clientRevision = ClientRevision; }
     void login(const QUrl& url, const TLoginRequestData& data, const QString& clientRevision);
     /// Drop an in-flight login. The Abort button on CIP's connecting dialog.
     void abort();
@@ -103,6 +109,10 @@ public:
     /// state into its entry of the character list.
     virtual void updateCharactersFromGameSession();
 
+    /// The server's errorCode of the last answer (0 for a network error).
+    int errorCode() const { return m_errorCode; }
+    /// The network error, or the server's errorMessage, of the last answer.
+    QString errorMessage() const { return m_errorMessage; }
     /// Seconds since the epoch when the last answer arrived.
     int loginTimestamp() const { return m_loginTimestamp; }
     const std::optional<TSurveyData>& survey() const { return m_survey; }
@@ -120,6 +130,9 @@ private:
 
     QNetworkAccessManager* m_network;
     QNetworkReply* m_reply = nullptr;
+    /// The login service (CIP: the constructor's URL).
+    QUrl m_loginUrl;
+    QString m_clientRevision;
     QUrl m_lastUrl;
     QUrl m_lastMitigatedUrl;
     QString m_lastUserAgent;

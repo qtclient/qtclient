@@ -129,19 +129,6 @@ public:
 namespace tibia {
 namespace config {
 
-/// CIP `config::TConfigBackupReader` with nested exception type.
-class TConfigBackupReader final : public ::tibia::CipTyped
-{
-public:
-    TConfigBackupReader() = default;
-
-    class TConfigBackupException final : public ::tibia::CipTyped
-    {
-    public:
-        TConfigBackupException() = default;
-    };
-};
-
 /// CIP generated options page name (product page: `THotkeysOptionsPage`).
 using THotkeysQMLOptionsPage = cip::tibia::config::THotkeysQMLOptionsPage;
 

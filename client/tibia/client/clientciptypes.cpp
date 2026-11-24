@@ -1,27 +1,8 @@
 #include "client/clientciptypes.h"
 
-#include "platform/platform.h"
-
 #include <tibia/game/tgamenotify.h>
 
-#include "app/clientoptions.h"
-#include "client/gameclient.h"
-#include "client/preventcloseeventfilter.h"
-#include "gamewindow/gamewindowcontroller.h"
-#include "crashhandler.h"
-#include "logging.h"
-#include "shared/tibiafilesystemhelper.h"
-
-#include <QCoreApplication>
-#include <QCryptographicHash>
-#include <QEvent>
-#include <QSysInfo>
-#include <QVariant>
-
-#include <algorithm>
 #include <vector>
-
-extern "C" const char qtclient_host_build_id[];
 
 namespace tibia::client {
 
@@ -68,171 +49,13 @@ IGamesessionManager* IGamesessionManager::instance()
     return &keep;
 }
 
-TGameApplicationBase::TGameApplicationBase(QObject* parent)
-    : QObject(parent)
-{
-}
-
-TGameApplication::TGameApplication(QObject* parent)
-    : TGameApplicationBase(parent)
-    , m_pPreventCloseEventFilter(new TPreventCloseEventFilter(this))
-{
-    connect(m_pPreventCloseEventFilter, &TPreventCloseEventFilter::preventedClose, this,
-            &TGameApplication::onRequestClose);
-}
-
-void TGameApplication::setClientWindow(QWindow* ClientWindow)
-{
-    if (m_clientWindow) {
-        disconnect(m_clientWindow, nullptr, this, nullptr);
-        m_clientWindow->removeEventFilter(m_pPreventCloseEventFilter);
-    }
-    m_clientWindow = ClientWindow;
-    if (!m_clientWindow)
-        return;
-    m_clientWindow->installEventFilter(m_pPreventCloseEventFilter);
-    connect(m_clientWindow, &QWindow::widthChanged, this, &TGameApplication::windowSizeChanged);
-    connect(m_clientWindow, &QWindow::heightChanged, this, &TGameApplication::windowSizeChanged);
-}
-
-void TGameApplication::setUpLogging()
-{
-    const shared::TTibiaFileSystemHelper fileSystem;
-    shared::setUpLogging(fileSystem.getLogDirectory().filePath(QStringLiteral("client.log")), 1024 * 1024);
-    shared::setLogMessageCallback(
-        [](const QString& message) { shared::TCrashHandler::instance().addLogMessage(message); });
-}
-
-void TGameApplication::setUpCrashHandler(const QUrl& loginUrl)
-{
-    const shared::TTibiaFileSystemHelper fileSystem;
-    initializeCrashHandler(fileSystem.getCrashDumpDirectory().absolutePath());
-    setCrashReportLoginHost(loginUrl.host());
-    setCrashHandlerPassesExceptionOn(false);
-}
-
-void TGameApplication::initializeCrashHandler(const QString& dumpPath)
-{
-    shared::TCrashHandler& crashHandler = shared::TCrashHandler::instance();
-    constexpr int clientVersion = TGameClient::ClientVersion;
-    const QString cipVersion =
-        QStringLiteral("%1.%2").arg(clientVersion / 100).arg(clientVersion % 100, 2, 10, QLatin1Char('0'));
-    // Host: CipSoft's build revision is its git sha; qtclient's is the host build id.
-    const QString version = QStringLiteral("%1.%2").arg(cipVersion, QLatin1StringView(qtclient_host_build_id));
-    crashHandler.initialize(QStringLiteral("Tibia Client"), version, dumpPath);
-    crashHandler.setAnnotation(QStringLiteral("HardwareID"), hardwareId());
-    crashHandler.setAnnotation(QStringLiteral("OperatingSystem"), QSysInfo::prettyProductName());
-    // Host: CipSoft annotates its active graphics engine; qtclient's is the renderer option.
-    crashHandler.setAnnotation(QStringLiteral("EngineID"), QString::number(app::ClientOptions::load().rendererIndex()));
-}
-
-void TGameApplication::setCrashReportLoginHost(const QString& loginHost)
-{
-    shared::TCrashHandler::instance().setAnnotation(QStringLiteral("LoginHost"), loginHost);
-}
-
-void TGameApplication::setCrashHandlerPassesExceptionOn(const bool passExceptionOn)
-{
-    shared::TCrashHandler::instance().setPassExceptionOn(passExceptionOn);
-}
-
-QString TGameApplication::hardwareId()
-{
-    static QString hardwareId;
-    if (!hardwareId.isEmpty())
-        return hardwareId;
-    QCryptographicHash hash(QCryptographicHash::Sha1);
-    hash.addData(QStringLiteral("91bb3378-6faa-40dc-8f8b-93b2f1d55e48").toLocal8Bit());
-    for (const QByteArray& address : tibia::platform::hardwareAddresses())
-        hash.addData(address);
-    const QByteArray hex = hash.result().toHex();
-    if (hex.isEmpty())
-        hardwareId.clear();
-    else
-        hardwareId = QString::fromLatin1(hex);
-    return hardwareId;
-}
-
-void TGameApplication::showErrorAsPopupAndCriticalLog(QString ErrorMessage)
-{
-    // CIP slot: critical log + error popup. Tip logs only — opening a blocking
-    // dialog from the keep-alive twin can race the login/character shell.
-    qCritical().noquote() << ErrorMessage;
-}
-
-void TGameApplication::onClientPluginReadyToClose()
-{
-    m_pPreventCloseEventFilter->setPreventClose(false);
-    if (m_pGameClient && m_clientWindow) {
-        m_clientWindow->removeEventFilter(m_pPreventCloseEventFilter);
-        m_clientWindow->close();
-    }
-    QCoreApplication::quit();
-}
-
-void TGameApplication::onRequestClose()
-{
-    if (!m_pGameClient)
-        return;
-    // Host: a relaunch (graphics engine restart, the launcher) quits without
-    // asking.
-    if (gamewindow::TGameWindowController::processExitAllowed()) {
-        onClientPluginReadyToClose();
-        return;
-    }
-    m_pGameClient->exitClient();
-}
-
-void TGameApplication::onAboutToQuit()
-{
-}
-
-void TGameApplication::startClientWindowChangedReactionTimer()
-{
-}
-
-void TGameApplication::screenGeometryChanged()
-{
-    // A screen change repaints the client window by toggling its opacity.
-    if (m_clientWindow) {
-        m_clientWindow->setOpacity(0.0);
-        m_clientWindow->setOpacity(1.0);
-    }
-}
-
-void TGameApplication::onDelayedCliendWindowChanged()
-{
-}
-
-void TGameApplication::onNumberOfSidebarsChanged(const std::size_t NewNumber)
-{
-    // clientwindow.qml's minimum width grows with each sidebar.
-    m_clientWindow->setProperty("numberOfSidebars", QVariant(static_cast<uint>(NewNumber)));
-}
-
-void TGameApplication::onLeftAndRightStatusActionBarWidthChanged(const int NewWidth)
-{
-    m_clientWindow->setProperty("leftAndRightStatusActionBarWidth", QVariant(NewWidth));
-}
-
-void TGameApplication::windowSizeChanged()
-{
-    if (m_pGameClient)
-        m_pGameClient->onWindowSizeChanged();
-}
-
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;
     if (owned)
         return;
     owned = true;
-    // CIP TGameApplication keep-alive under the session/feature parent.
-    // Not the process QApplication — moc slot floor only.
-    if (parent)
-        new TGameApplication(parent);
-    else
-        new TGameApplication(nullptr);
+    Q_UNUSED(parent);
     // Process-lifetime qtclient twin (linked below). Not GameClient session owner.
     (void)IGamesessionManager::instance();
 }

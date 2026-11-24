@@ -600,7 +600,7 @@ void TMapWindowController::updateMouseTarget()
     syncHoverFromCursor();
     if (!m_provider || !m_actions || !m_hovering || !m_mapWindow || !m_worldMap) {
         if (m_provider)
-            m_provider->setMouseHighlightField({});
+            m_provider->clearMouseHighlightField();
         return;
     }
     Cursor* cursor = Cursor::instance();
@@ -610,7 +610,7 @@ void TMapWindowController::updateMouseTarget()
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
         m_provider->setMouseTargetObject(0, {}, -1);
-        m_provider->setMouseHighlightField({});
+        m_provider->clearMouseHighlightField();
         return;
     }
 
@@ -620,7 +620,7 @@ void TMapWindowController::updateMouseTarget()
     if (m_highlightMouseTarget && m_provider->camera().isValid())
         m_provider->setMouseHighlightField(m_provider->fieldAt(mapPixel, m_provider->camera().z));
     else
-        m_provider->setMouseHighlightField({});
+        m_provider->clearMouseHighlightField();
 
     const input::TGameActionList candidates = m_actions->actionsAt(mapPixel);
     // CIP : with mouseHighlightTarget on, the creature under the
@@ -805,7 +805,7 @@ void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGam
     if (m_provider) {
         disconnect(m_provider, nullptr, this, nullptr);
         m_provider->setMouseTargetObject(0, {}, -1);
-        m_provider->setMouseHighlightField({});
+        m_provider->clearMouseHighlightField();
     }
     // The pane's items draw the session's world, texts and numerical effects.
     if (m_worldMap)

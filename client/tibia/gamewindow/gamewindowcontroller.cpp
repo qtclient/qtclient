@@ -95,6 +95,16 @@ QString TGameWindowController::boostedCreatureName() const
     return name.isEmpty() ? m_boostedCreatureName : name;
 }
 
+int TGameWindowController::boostedBossRace() const
+{
+    return m_boostedUploader ? m_boostedUploader->boostedCreature().bossRaceId : 0;
+}
+
+QObject* TGameWindowController::statusBarController() const
+{
+    return m_statusBarController;
+}
+
 QString TGameWindowController::boostedBossName() const
 {
     const QString name = cyclopedia::bossName(m_boostedBossRace);
@@ -281,9 +291,7 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
     // One sender per uploader. Sharing a single TJsonDocumentHttpPostSender
     // fans every reply to every uploader (news saw newsviewed failures as its
     // own; a throw in any onFinished killed application.exec on WASM).
-    m_eventsUploader = std::make_unique<news::TEventsUploader>(
-        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
-        shared::TClockService::process());
+    m_eventsUploader = news::TEventsUploader::create(service, m_fileSystemHelper, shared::TClockService::process());
     connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
             &news::TEventsStorage::onEventsUpdated);
     connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, [this](const std::vector<news::TEventInformation>& events) {
@@ -312,7 +320,7 @@ void TGameWindowController::requestStartScreenServices()
     if (!tibia::platform::kStartScreenServicesBeforeLogin)
         return;
     if (m_liveInfoUploader)
-        m_liveInfoUploader->requestUpdate();
+        m_liveInfoUploader->requestUpdateAndStartTimer(600000);
     if (m_eventsUploader)
         m_eventsUploader->requestUpdate();
     if (m_newsUploader)
@@ -325,7 +333,7 @@ void TGameWindowController::requestStartScreenServices()
 void TGameWindowController::requestDeferredStartScreenServices()
 {
     if (m_liveInfoUploader)
-        m_liveInfoUploader->requestUpdate();
+        m_liveInfoUploader->requestUpdateAndStartTimer(600000);
     if (m_eventsUploader)
         m_eventsUploader->requestUpdate();
     if (m_newsUploader)
@@ -550,7 +558,12 @@ void TGameWindowController::setAuthenticated(const bool authenticated)
 
 void TGameWindowController::showGameScreen()
 {
-    setScreen(QStringLiteral("INGAME"), false, Qt::black);
+    // In game the live numbers stop refreshing; an already shown game screen
+    // keeps its state.
+    if (m_liveInfoUploader)
+        m_liveInfoUploader->stopUpdateTimer();
+    if (m_gameWindowState != QLatin1String("INGAME"))
+        setScreen(QStringLiteral("INGAME"), false, Qt::black);
     // CIP: the start screen's key filter goes; the game screen is announced.
     QCoreApplication::instance()->removeEventFilter(this);
     // CIP: the looping sounds play again.

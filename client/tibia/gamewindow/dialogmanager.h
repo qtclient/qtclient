@@ -55,6 +55,14 @@ public:
         const TDialogStackController* dialogs = instance();
         return dialogs && dialogs->hasDialogs();
     }
+    /// Whether a stacked dialog has no personal mouse shield (it shields the game window).
+    bool hasDialogWithoutPersonalMouseShield() const;
+    /// The stack exists and holds a dialog without a personal mouse shield.
+    static bool isAnyShieldingDialogStacked()
+    {
+        const TDialogStackController* dialogs = instance();
+        return dialogs && dialogs->hasDialogWithoutPersonalMouseShield();
+    }
     /// Hides every dialog (leaving the world).
     void hideAll();
     /// Escape: closes the topmost shown dialog with a personal mouse shield;

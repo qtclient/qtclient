@@ -74,9 +74,11 @@ bool isCapsLockActive(quint32 nativeModifiers);
 
 // ---- Processes and files -------------------------------------------------------
 
-/// Starts a detached process; false where processes cannot be started.
+/// Starts a detached process (in `workingDirectory` when not empty); false
+/// where processes cannot be started.
 bool startDetached(const QString& program, const QStringList& arguments,
-                   const QHash<QString, QString>& environment = {});
+                   const QHash<QString, QString>& environment = {},
+                   const QString& workingDirectory = {});
 /// Restarts the client where possible, then quits.
 void restartApplication();
 /// Install roots above the binary for asset lookup (the .app bundle root on macOS).

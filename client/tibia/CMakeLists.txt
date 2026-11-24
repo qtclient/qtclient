@@ -442,6 +442,7 @@ if(TIBIA_WITH_GAMECORE)
     client/gamecore.cpp client/gamecore.h
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     client/gameclientbase.cpp client/gameclientbase.h
+    client/gameapplication.cpp client/gameapplication.h
     qmlcomponents/qmlcomponentsciptypes.cpp qmlcomponents/qmlcomponentsciptypes.h
     qmlcomponents/lenshelpmanager.cpp qmlcomponents/lenshelpmanager.h
     qmlcomponents/lenshelpquickitem.cpp qmlcomponents/lenshelpquickitem.h
@@ -466,6 +467,7 @@ if(TIBIA_WITH_GAMECORE)
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h
     config/tibiahotkeyactionsettingqmlwrapper.cpp config/tibiahotkeyactionsettingqmlwrapper.h
+    config/configbackupreader.cpp config/configbackupreader.h
     app/portalurls.cpp app/portalurls.h
     game/gameactionrouter.cpp game/gameactionrouter.h
     game/gameciptypes.cpp game/gameciptypes.h
@@ -521,6 +523,12 @@ if(TIBIA_WITH_GAMECORE)
     game/tutorialsessiondumpgamesessionmetainfo.cpp game/tutorialsessiondumpgamesessionmetainfo.h
     game/playermovementintenthandlerconfiguration.h
     game/gamesessionbase.cpp game/gamesessionbase.h
+    game/blessingdialogdata.cpp game/blessingdialogdata.h
+    game/blessingsprotocolmessagehandler.cpp game/blessingsprotocolmessagehandler.h
+    game/qmlblessingdialogdata.cpp game/qmlblessingdialogdata.h
+    game/qmlblessingwithcharges.cpp game/qmlblessingwithcharges.h
+    game/qmlblessinghistoryentry.cpp game/qmlblessinghistoryentry.h
+    game/gameeventprotocolmessagehandler.cpp game/gameeventprotocolmessagehandler.h
     game/currentgamesession.cpp game/currentgamesession.h
     game/gameservergamesession.cpp game/gameservergamesession.h
     game/sessiondumpgamesession.cpp game/sessiondumpgamesession.h
@@ -703,6 +711,8 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/viprenderinfo.cpp gamewindow/viprenderinfo.h
     gamewindow/marketcointransactiondetailsdialogcontroller.cpp gamewindow/marketcointransactiondetailsdialogcontroller.h
     gamewindow/sidebarpanelcontrollerbase.h
+    gamewindow/passiveabilitylistdatamodel.cpp gamewindow/passiveabilitylistdatamodel.h
+    gamewindow/passiveabilitylistdatamodelsortfilterproxy.cpp gamewindow/passiveabilitylistdatamodelsortfilterproxy.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -710,6 +720,7 @@ if(TIBIA_WITH_GAMECORE)
     input/genericobjectgameactionprovider.cpp input/genericobjectgameactionprovider.h
     input/genericchatgameactionprovider.cpp input/genericchatgameactionprovider.h
     input/actionbuttongameactionhandler.cpp input/actionbuttongameactionhandler.h
+    input/myexception.cpp input/myexception.h
     minimap/minimapciptypes.cpp minimap/minimapciptypes.h
     minimap/minimapdiskio.cpp minimap/minimapdiskio.h
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
@@ -787,6 +798,7 @@ if(TIBIA_WITH_GAMECORE)
     shared/experiencegainchangetracker.h
     shared/nullexperiencegainchangetracker.h
     shared/nullexperienceperhourprovider.h
+    shared/dynamicresourceshelper.cpp shared/dynamicresourceshelper.h
     cip_ports/all_ports.cpp
     cip_ports/native_port.h
     cip_ports/animation_ports.h
@@ -861,6 +873,7 @@ if(TIBIA_WITH_GAMECORE)
     renderer/worldmaprenderprovider.cpp renderer/worldmaprenderprovider.h
     renderer/worldmapcameraviewport.cpp renderer/worldmapcameraviewport.h
     renderer/worldmapcamera.cpp renderer/worldmapcamera.h
+    renderer/scenegraphdrawcommand.cpp renderer/scenegraphdrawcommand.h
     store/storeciptypes.cpp store/storeciptypes.h
     store/dynamicallyloadedimage.cpp store/dynamicallyloadedimage.h
     store/qmlstoreobjects.cpp store/qmlstoreobjects.h

@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "game/blessingdialogdata.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -11,50 +12,12 @@
 #include <memory>
 #include <vector>
 
-struct BlessDialogData;
-
 namespace tibia {
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
 }
 namespace gamewindow {
-
-/// One blessing row (CIP: game::TQmlBlessingWithCharges; name ,
-/// image →).
-class TQmlBlessingWithCharges final : public cip::tibia::game::TQmlBlessingWithCharges
-{
-    Q_OBJECT
-public:
-    TQmlBlessingWithCharges(int id, int charges, int chargesFromStore, QObject* parent);
-};
-
-/// One history row (CIP: game::TQmlBlessingHistoryEntry; timestamp
-/// → , gained).
-class TQmlBlessingHistoryEntry final : public cip::tibia::game::TQmlBlessingHistoryEntry
-{
-    Q_OBJECT
-public:
-    TQmlBlessingHistoryEntry(quint32 timestamp, int type, const QString& description, QObject* parent);
-};
-
-/// The dialog's data (CIP: game::TQmlBlessingDialogData, built by
-/// ; texts and).
-class TQmlBlessingDialogData final : public cip::tibia::game::TQmlBlessingDialogData
-{
-    Q_OBJECT
-public:
-    TQmlBlessingDialogData(const BlessDialogData& data, bool premium, QObject* parent);
-
-    /// CIP .
-    void setPremium(bool premium);
-
-private:
-    QString promotionText() const;
-
-    bool m_promoted = false;
-    int m_promotionReduction = 0;
-};
 
 /// BlessingsDialog.qml (CIP: gamewindow::TBlessingsDialogController, ctor
 /// ). Opens when the server sends the blessing dialog (answer to
@@ -83,7 +46,7 @@ private:
     /// Replaces the data and shows the dialog. CipSoft only
     /// creates the item when there is none; the QML reads blessingsData once,
     /// so an open dialog is rebuilt instead.
-    void showDialog(const BlessDialogData& data);
+    void showDialog(const game::TBlessingDialogData& BlessingDialogData);
 
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;

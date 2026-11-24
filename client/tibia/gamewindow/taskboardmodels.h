@@ -50,11 +50,11 @@ protected:
     QVariant itemData(const TBountyTask& task, int role) const override;
 };
 
+/// One kill task of the weekly board; race 0 is "any creature".
 struct MonsterKillTaskRow {
     int raceId = 0;
-    QString caption;
-    int currentKillAmount = 0;
     int requiredAmount = 0;
+    int currentKillAmount = 0;
 };
 
 class TMonsterKillTasksListModel final : public cip::tibia::taskboard::TMonsterKillTasksListModel
@@ -80,13 +80,13 @@ private:
     QVector<MonsterKillTaskRow> m_rows;
 };
 
+/// One delivery task of the weekly board; state 1 is delivered.
 struct DeliveryTaskRow {
     int taskIndex = 0;
     int typeId = 0;
-    QString caption;
-    int availableAmount = 0;
     int requiredAmount = 0;
-    bool delivered = false;
+    int availableAmount = 0;
+    int state = 0;
 };
 
 class TDeliveryTasksListModel final : public cip::tibia::taskboard::TDeliveryTasksListModel
@@ -121,8 +121,6 @@ struct PreferredMonsterSlotRow {
     int unlockCost = 0;
     int preferredMonsterRaceId = 0;
     int avoidedMonsterRaceId = 0;
-    QString preferredMonsterRaceName;
-    QString avoidedMonsterRaceName;
 };
 
 /// CIP PreferredMonsterSlotPanel.qml roles.
@@ -148,7 +146,10 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void setRows(QVector<PreferredMonsterSlotRow> rows);
+    /// Race 0 only while no slot exists; any other race unless a slot
+    /// prefers or avoids it already.
     Q_INVOKABLE bool isMonsterRaceAssignable(int RaceId) override;
+    /// Race 0, always announced.
     Q_INVOKABLE void clearAssignableMonster() override;
 
 private:

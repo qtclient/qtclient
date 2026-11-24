@@ -1,6 +1,6 @@
 #include "systemsurvey/fpshistorytojsonconverter.h"
 
-#include "client/clientciptypes.h"
+#include "client/gameapplication.h"
 #include "datetimehelper.h"
 #include "systemsurvey/fpshistory.h"
 

@@ -157,6 +157,12 @@ void TCreateAccountDialogController::cancel()
     dialog()->close();
 }
 
+void TCreateAccountDialogController::checkIfAccountCreationEnabled(std::function<void(bool)> onResult)
+{
+    post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } },
+         [onResult = std::move(onResult)](QNetworkReply* reply) { onResult(httpOk(reply)); });
+}
+
 void TCreateAccountDialogController::requestAccountCreationStatus()
 {
     post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } },

@@ -8,6 +8,8 @@
 
 #include <QObject>
 
+#include <cstdint>
+
 namespace tibia::protobuf::protocol {
 class GameserverMessageSpellDataModification;
 class GameserverMessageUnlockedSpells;
@@ -21,6 +23,9 @@ void ownProductSurface(QObject* parent);
 
 
 class TSpellInfoStorage;
+
+/// The protocol's spell modification type (0..3); other values throw.
+uint32_t spellModificationType(uint32_t protocolValue);
 
 /// The session's handler of the spell messages: the spell data modifications
 /// go to the spell info storage, each unlocked spell is announced

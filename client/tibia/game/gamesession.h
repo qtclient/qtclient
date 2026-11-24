@@ -316,12 +316,9 @@ void localPlayerSetResourceBalance(tibia::client::ResourceTypes_t type, uint64_t
 void localPlayerSetHarmony(uint8_t harmony);
 void localPlayerSetSerene(bool serene);
 void localPlayerSetExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value);
-void localPlayerSetMagicLevel(uint16_t magicLevel, uint16_t magicLevelPercent);
-void localPlayerSetBaseMagicLevel(uint16_t baseMagicLevel);
-void localPlayerSetMagicLevelDetail(uint16_t loyaltyLevel, uint16_t percentHundredths);
-void localPlayerSetSkill(tibia::client::Skill skill, uint16_t level, uint16_t levelPercent);
-void localPlayerSetSkillDetail(tibia::client::Skill skill, uint16_t loyaltyLevel, uint16_t percentHundredths);
-void localPlayerSetBaseSkill(tibia::client::Skill skill, uint16_t baseLevel);
+/// A skill of the skills message by skill type (4 magic level, 10..16 the
+/// fighting skills and fishing).
+void localPlayerSetSkill(int skillType, double level, double baseLevel, double loyalty, double percent);
 void localPlayerSetBaseSpeed(uint16_t baseSpeed);
 void localPlayerSetRegenerationTime(uint16_t regenerationTime);
 void localPlayerSetOfflineTrainingTime(uint16_t offlineTrainingTime);

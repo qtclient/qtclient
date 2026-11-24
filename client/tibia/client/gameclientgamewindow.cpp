@@ -133,6 +133,7 @@
 
 #include "clockservice.h"
 
+#include <array>
 #include <QGuiApplication>
 #include <qtclient/pack_host.h>
 #include <tibia/game/gamesession.h>
@@ -161,8 +162,6 @@ namespace client {
 struct TGameClient::TGameWindow
 {
     app::LauncherEnv env;
-    /// CIP TGameApplication's client window slots (the sidebar count).
-    std::unique_ptr<TGameApplication> application;
     /// The game actions the client handles itself while the game window exists
     /// (store, screenshots, offline training, default minimap tiles).
     input::TGameActionDispatch gameActions;
@@ -180,7 +179,6 @@ struct TGameClient::TGameWindow
     std::shared_ptr<gamewindow::TGameWindowController> gameWindowController;
     std::unique_ptr<gamewindow::TStatusBarController> statusBarController;
     std::unique_ptr<QObject> gameWindow;
-    std::unique_ptr<qmlcomponents::TLenshelpManager> lenshelpManager;
     QQuickItem* gameWindowItem = nullptr;
     QQuickItem* dialogPlaceholder = nullptr;
     QQuickItem* mapWindowPane = nullptr;
@@ -193,22 +191,16 @@ struct TGameClient::TGameWindow
     gamewindow::TMapWindowController* mapWindowController = nullptr;
     std::unique_ptr<gamewindow::TContextMenuController> contextMenu;
     std::unique_ptr<gamewindow::TDialogStackController> dialogStack;
-    /// CIP +0x418: the dialogs and returns when the current session cannot connect or ends.
-    std::shared_ptr<gamewindow::TGameSessionDisconnectReactionController> gameSessionDisconnectReaction;
     std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
-    std::unique_ptr<gamewindow::TSelectObjectAmountDialogController> splitStackDialog;
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
     std::unique_ptr<gamewindow::TInformationDialogs> informationDialogs;
     std::unique_ptr<gamewindow::TDragAndDropController> dragAndDrop;
     /// CIP: the game window controller's shared image downloader (store, social, news, …).
     std::shared_ptr<store::TDynamicallyLoadedImageManager> dynamicallyLoadedImageManager;
-    std::unique_ptr<gamewindow::TStoreDialogController> storeDialog;
     std::unique_ptr<gamewindow::TStoreButtonController> storeButton;
-    std::unique_ptr<gamewindow::TMarketController> marketController;
     std::unique_ptr<gamewindow::TStashDialogController> stashDialog;
     std::unique_ptr<gamewindow::TManageLootContainerDialogController> manageLootDialog;
     std::unique_ptr<gamewindow::TImbuingDialogController> imbuingDialog;
-    std::unique_ptr<gamewindow::TExaltationForgeDialogController> exaltationForgeDialog;
     std::unique_ptr<skillwheel::TSkillWheelManager> skillWheel;
     std::unique_ptr<screenshot::TScreenshotManager> screenshotManager;
     std::unique_ptr<gamewindow::TSidebarPanelsManager> sidebarPanels;
@@ -216,21 +208,9 @@ struct TGameClient::TGameWindow
     gamewindow::TMinimapController* minimapController = nullptr;
     std::unique_ptr<gamewindow::TContainerStorageController> containers;
     std::unique_ptr<exivaoptions::TExivaOptionsDialogController> exivaOptionsDialog;
-    std::unique_ptr<gamewindow::TReportViolationController> reportViolation;
-    std::unique_ptr<gamewindow::TBugReportDialogController> bugReport;
-    std::unique_ptr<gamewindow::TNaggingMessageDialogController> naggingDialog;
-    std::unique_ptr<gamewindow::TDeathDialogController> deathDialog;
     std::unique_ptr<gamewindow::TCipSoftUiEventBridge> cipSoftUiEventBridge;
     std::unique_ptr<analysers::TAnalyserWidgets> analyserWidgets;
-    std::unique_ptr<proficiency::TWeaponProficiencyDialogController> weaponProficiencyDialog;
-    std::unique_ptr<proficiency::TWeaponProficiencyShapeDialogController> weaponProficiencyShapeDialog;
-    std::unique_ptr<proficiency::TWeaponProficiencyReshapeDialogController> weaponProficiencyReshapeDialog;
-    std::unique_ptr<proficiency::TWeaponProficiencyShapeOptionsDialogController> weaponProficiencyShapeOptionsDialog;
-    std::unique_ptr<gamewindow::TBlessingsDialogController> blessingsDialog;
-    std::unique_ptr<gamewindow::TRewardWallDialogController> rewardWallDialog;
     std::unique_ptr<gamewindow::TTaskboardDialogController> taskboardDialog;
-    std::unique_ptr<gamewindow::TSoulSealsDialogController> soulSealsDialog;
-    std::unique_ptr<gamewindow::TBossDifficultySelectionDialogController> bossDifficultySelectionDialog;
     std::unique_ptr<gamewindow::TTutorialShell> tutorialShell;
     std::unique_ptr<gamewindow::TTutorialOverlayController> tutorialOverlay;
     std::unique_ptr<gamewindow::TOptionsMenuDialogController> optionsDialog;
@@ -238,6 +218,7 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TFPSLatencyIndicatorController> fpsLatency;
     std::unique_ptr<gamewindow::TChatController> chat;
     std::unique_ptr<gamewindow::TActionBarManager> actionBars;
+    std::unique_ptr<gamewindow::TTargetSelectionController> targetSelection;
     std::unique_ptr<gamewindow::TCooldownBarController> cooldownBar;
     std::unique_ptr<input::TPlayerMovementGameActionHandler> playerMovementActions;
     std::unique_ptr<input::TClipboardGameActionHandler> clipboardActions;
@@ -259,8 +240,10 @@ void TGameClient::beforeRenderFrameGameWindow()
         m_gameWindow->sidebarWidgets->updateWithTimestamp(timestampMilliseconds);
     if (m_gameWindow->sidebarPanels)
         m_gameWindow->sidebarPanels->refreshClocks();
-    if (m_gameWindow->deathDialog)
-        m_gameWindow->deathDialog->onBeforeRenderFrame();
+    if (m_pDeathDialogController)
+        m_pDeathDialogController->onBeforeRenderFrame();
+    if (m_gameWindow->actionBars)
+        m_gameWindow->actionBars->tick(game::TCooldownStorage::now());
 }
 
 void TGameClient::requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen)
@@ -271,6 +254,12 @@ void TGameClient::requestLogoutOrShowStartScreen(gamewindow::TGameWindowControll
         dump->requestLogout();
     else if (startScreen)
         startScreen->showStartScreen();
+}
+
+void TGameClient::setSidebarTriggerCheckBoundsEnabled(const bool Enabled)
+{
+    if (m_gameWindow && m_gameWindow->sidebarManager)
+        m_gameWindow->sidebarManager->setTriggerCheckBoundsEnabled(Enabled);
 }
 
 void TGameClient::exitClient()
@@ -354,8 +343,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     m_pEngine = engine;
     m_options = setup.options;
     if (preview) {
-        // The preview runs no engine: the window is only kept.
+        // The preview runs no engine: the window is only kept and the QML
+        // context gets the client's objects.
         m_pMainWindow = window;
+        initializeQmlContext();
     } else {
         // CIP: the application runs the client's setup steps and hands it the
         // client window before the game window is shown.
@@ -429,7 +420,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     if (!gameWindowItem)
         return false;
     // Lenshelp mode and its popup over the game window.
-    g.lenshelpManager = std::make_unique<qmlcomponents::TLenshelpManager>(engine, gameWindowItem);
+    m_pLenshelpManager = std::make_unique<qmlcomponents::TLenshelpManager>(engine, gameWindowItem);
     gameWindowController->configureClientServices(g.env.clientServicesUrl(), g.env.revision);
     // The game screen turns the keyboard shortcuts and walking keys on, the start screen off.
     connect(gameWindowController, &gamewindow::TGameWindowController::gameScreenNowDisplayed, g.eventFilterManager.get(), [&g] {
@@ -450,19 +441,16 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         gameWindowController->gameWindowChild(QStringLiteral("leftSidebarPlaceholder")),
         gameWindowController->gameWindowChild(QStringLiteral("leftSidebarManager")));
     gamewindow::TSidebarManager* sidebarManager = g.sidebarManager.get();
-    g.application = std::make_unique<TGameApplication>();
-    g.application->setGameClient(this);
-    g.application->setClientWindow(window);
-    connect(this, &TGameClient::clientReadyToClose, g.application.get(), &TGameApplication::onClientPluginReadyToClose);
-    connect(sidebarManager, &gamewindow::TSidebarManager::numberOfSidebarsChanged, g.application.get(),
-            &TGameApplication::onNumberOfSidebarsChanged);
+    // CIP: the application hears the sidebar count through the client.
+    connect(sidebarManager, &gamewindow::TSidebarManager::numberOfSidebarsChanged, this,
+            &TGameClient::numberOfSidebarsChanged);
     // Host: the manager already emitted before this connection, and the split
     // view lays out again once the minimum width changed.
     const auto correctLayout = [window] {
         if (QObject* split = window->findChild<QObject*>(QStringLiteral("mainFrame")))
             QTimer::singleShot(0, split, [split] { QMetaObject::invokeMethod(split, "correctLayout"); });
     };
-    g.application->onNumberOfSidebarsChanged(sidebarManager->sidebarIds().size());
+    Q_EMIT numberOfSidebarsChanged(sidebarManager->sidebarIds().size());
     correctLayout();
     connect(sidebarManager, &gamewindow::TSidebarManager::numberOfSidebarsChanged, window, correctLayout);
 
@@ -570,15 +558,17 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     if (!preview)
         g.sessionBootstrap = std::make_unique<app::TSessionBootstrap>(this, g.env, gameWindowController, g.productHost.get());
     // Before the first session: it reacts to the session's connection and login.
-    g.gameSessionDisconnectReaction =
+    m_pGameSessionDisconnectReactionController =
         std::make_shared<gamewindow::TGameSessionDisconnectReactionController>(m_authentication, g.gameWindowController);
-    connect(g.gameSessionDisconnectReaction.get(),
+    connect(m_pGameSessionDisconnectReactionController.get(),
             &gamewindow::TGameSessionDisconnectReactionController::loginAgainAfterLoginWaitElapsed, this,
             &TGameClient::loginAgainWithLastCharacter, Qt::QueuedConnection);
-    connect(g.gameSessionDisconnectReaction.get(), &gamewindow::TGameSessionDisconnectReactionController::quitAndPatchClient,
+    connect(m_pGameSessionDisconnectReactionController.get(), &gamewindow::TGameSessionDisconnectReactionController::quitAndPatchClient,
             application, quitAndPatchClient);
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::quitAndPatchClient, application,
+            quitAndPatchClient);
     connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
-            g.gameSessionDisconnectReaction.get(), &gamewindow::TGameSessionDisconnectReactionController::handleGameAction);
+            m_pGameSessionDisconnectReactionController.get(), &gamewindow::TGameSessionDisconnectReactionController::handleGameAction);
     connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
             m_authentication.get(), &authentication::TAuthenticationProcessController::handleGameAction);
     connect(this, &TGameClient::sessionEmailAvailable, gameWindowController,
@@ -598,32 +588,52 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &gamewindow::TGameWindowController::releaseFocusFromChatInput);
     connect(g.eventFilterManager.get(), &input::TEventFilterManager::releaseElementFocus, gameWindowController,
             &gamewindow::TGameWindowController::bindFocusToChatInput);
-    g.splitStackDialog = std::make_unique<gamewindow::TSelectObjectAmountDialogController>(engine, g.dialogPlaceholder);
     // Before the dialogs: the Cyclopedia item page and the loot widgets read its item storages.
     g.analyserStorages = std::make_unique<analysers::TAnalyserStorages>();
     g.informationDialogs = std::make_unique<gamewindow::TInformationDialogs>();
     gamewindow::TInformationDialogs* informationDialogs = g.informationDialogs.get();
     g.dragAndDrop = std::make_unique<gamewindow::TDragAndDropController>(
         window->contentItem(), gameWindowController->gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), g.dragAndDrop.get());
-    m_pStoreAndResourceBalanceHelperController = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
-    engine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"),
-                                              m_pStoreAndResourceBalanceHelperController.get());
+    g.dragAndDrop->registerContextProperty(engine->rootContext());
     g.dynamicallyLoadedImageManager = std::make_shared<store::TDynamicallyLoadedImageManager>();
-    g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>(g.dynamicallyLoadedImageManager, clientOptions(), engine,
-                                                                         g.dialogPlaceholder);
-    gamewindow::TStoreDialogController* storeDialog = g.storeDialog.get();
+    // CIP: the client's dialog controllers, in showGameWindow's order (each
+    // with the engine and the game window controller's dialog parent item).
+    QQuickItem* const dialogParentItem = g.dialogPlaceholder;
+    m_pMarketController = std::make_unique<gamewindow::TMarketController>(clientOptions(), engine, dialogParentItem);
+    m_pRewardWallDialogController =
+        std::make_unique<gamewindow::TRewardWallDialogController>(shared::TClockService::process(), engine, dialogParentItem);
+    m_pExaltationForgeDialogController =
+        std::make_unique<gamewindow::TExaltationForgeDialogController>(clientOptions(), engine, dialogParentItem);
+    m_pWeaponProficiencyDialogController =
+        std::make_unique<proficiency::TWeaponProficiencyDialogController>(clientOptions(), engine, dialogParentItem);
+    m_pWeaponProficiencyShapeDialogController =
+        std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(engine, dialogParentItem);
+    m_pWeaponProficiencyShapeOptionsDialogController =
+        std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>(engine, dialogParentItem);
+    m_pWeaponProficiencyReshapeDialogController = std::make_unique<proficiency::TWeaponProficiencyReshapeDialogController>(
+        engine, dialogParentItem, m_pWeaponProficiencyShapeDialogController.get());
+    m_pReportViolationController =
+        std::make_unique<gamewindow::TReportViolationController>(shared::TClockService::process(), engine, dialogParentItem);
+    m_pDeathDialogController = std::make_unique<gamewindow::TDeathDialogController>(engine, dialogParentItem);
+    m_pStoreDialogController = std::make_unique<gamewindow::TStoreDialogController>(g.dynamicallyLoadedImageManager,
+                                                                                    clientOptions(), engine, dialogParentItem);
+    m_pBugReportDialogController = std::make_unique<gamewindow::TBugReportDialogController>(engine, dialogParentItem);
+    m_pBlessingsDialogController = std::make_unique<gamewindow::TBlessingsDialogController>(engine, dialogParentItem);
+    m_pSoulSealsDialogController = std::make_unique<gamewindow::TSoulSealsDialogController>(engine, dialogParentItem);
+    m_pBossDifficultySelectionDialogController =
+        std::make_unique<gamewindow::TBossDifficultySelectionDialogController>(engine, dialogParentItem);
+    m_pSelectObjectAmountDialogController =
+        std::make_unique<gamewindow::TSelectObjectAmountDialogController>(engine, dialogParentItem);
+    m_pNaggingMessageDialogController = std::make_unique<gamewindow::TNaggingMessageDialogController>(engine, dialogParentItem);
+    gamewindow::TStoreDialogController* storeDialog = m_pStoreDialogController.get();
     g.storeButton = std::make_unique<gamewindow::TStoreButtonController>(storeDialog);
-    g.marketController = std::make_unique<gamewindow::TMarketController>(clientOptions(), engine, g.dialogPlaceholder);
     g.stashDialog = std::make_unique<gamewindow::TStashDialogController>();
-    connect(g.marketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
+    connect(m_pMarketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
     g.manageLootDialog = std::make_unique<gamewindow::TManageLootContainerDialogController>();
     connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
     g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>();
-    g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>(clientOptions(), engine,
-                                                                                            g.dialogPlaceholder);
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
     g.screenshotManager = std::make_unique<screenshot::TScreenshotManager>();
     g.screenshotManager->configure(window, mapWindowPane);
@@ -664,28 +674,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     informationDialogs->setControlScheme(controlScheme);
     g.exivaOptionsDialog = std::make_unique<exivaoptions::TExivaOptionsDialogController>();
     g.exivaOptionsDialog->setWorldType([this] { return worldType(); });
-    g.reportViolation = std::make_unique<gamewindow::TReportViolationController>(shared::TClockService::process(), engine, g.dialogPlaceholder);
-    g.bugReport = std::make_unique<gamewindow::TBugReportDialogController>(engine, g.dialogPlaceholder);
-    g.naggingDialog = std::make_unique<gamewindow::TNaggingMessageDialogController>(engine, g.dialogPlaceholder);
-    g.deathDialog = std::make_unique<gamewindow::TDeathDialogController>(engine, g.dialogPlaceholder);
     // Subscribers for gem atelier / helpers / RV channel / virtues yellow border.
     g.cipSoftUiEventBridge = std::make_unique<gamewindow::TCipSoftUiEventBridge>();
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
-    g.weaponProficiencyDialog =
-        std::make_unique<proficiency::TWeaponProficiencyDialogController>(clientOptions(), engine, g.dialogPlaceholder);
-    g.weaponProficiencyShapeDialog =
-        std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(engine, g.dialogPlaceholder);
-    g.weaponProficiencyReshapeDialog = std::make_unique<proficiency::TWeaponProficiencyReshapeDialogController>(
-        engine, g.dialogPlaceholder, g.weaponProficiencyShapeDialog.get());
-    g.weaponProficiencyShapeOptionsDialog =
-        std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>(engine, g.dialogPlaceholder);
-    g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>(engine, g.dialogPlaceholder);
-    g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>(shared::TClockService::process(), engine, g.dialogPlaceholder);
     g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
-    g.soulSealsDialog = std::make_unique<gamewindow::TSoulSealsDialogController>(engine, g.dialogPlaceholder);
-    g.bossDifficultySelectionDialog = std::make_unique<gamewindow::TBossDifficultySelectionDialogController>(engine,
-                                                                                                            g.dialogPlaceholder);
     g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>(engine, g.dialogPlaceholder, mapWindowPane,
                                                                    cyclopediaMapStaticDataStorage());
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
@@ -746,7 +739,25 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     gamewindow::TChatController* chat = g.chat.get();
     setMessageIgnoreList(&chat->ignoreList());
 
-    g.actionBars = std::make_unique<gamewindow::TActionBarManager>(gameWindowItem, mapWindowPane, engine, &chat->chatModeManager());
+    // The action bar manager takes the client options, the premium time
+    // storage and the spell table; the three groups (bottom, left, right)
+    // are made here and added to it.
+    g.actionBars = std::make_unique<gamewindow::TActionBarManager>(config::TClientOptions::instance(),
+                                                                   game::TPremiumTimeStorage::liveInstance(), spellInfoStorage());
+    {
+        const std::array<std::pair<gamewindow::EActionBarPosition, const char*>, 3> actionBarContainers{
+            { { gamewindow::EActionBarPosition::ActionBarPositionBottom, "bottomActionBars" },
+              { gamewindow::EActionBarPosition::ActionBarPositionLeft, "leftActionBars" },
+              { gamewindow::EActionBarPosition::ActionBarPositionRight, "rightActionBars" } }
+        };
+        for (const auto& [position, name] : actionBarContainers) {
+            QQuickItem* container = gameWindowItem ? gameWindowItem->findChild<QQuickItem*>(QLatin1String(name)) : nullptr;
+            g.actionBars->addGroup(std::make_shared<gamewindow::TActionBarGroup>(position, container, engine, gameWindowItem, mapWindowPane,
+                                                                                 config::TClientOptions::instance(),
+                                                                                 &chat->chatModeManager()));
+        }
+    }
+    g.targetSelection = std::make_unique<gamewindow::TTargetSelectionController>(gameWindowItem);
     {
         // Host shim: the session's character configuration manager takes the
         // storages the game window still owns.
@@ -798,24 +809,26 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.sidebarManager.get());
     publishToRouter(g.mapWindowController);
     publishToRouter(g.contextMenu.get());
-    publishToRouter(g.splitStackDialog.get());
-    publishToRouter(g.storeDialog.get());
+    publishToRouter(m_pSelectObjectAmountDialogController.get());
+    publishToRouter(m_pStoreDialogController.get());
     publishToRouter(g.storeButton.get());
-    publishToRouter(g.marketController.get());
+    publishToRouter(m_pMarketController.get());
     publishToRouter(g.stashDialog.get());
     publishToRouter(g.manageLootDialog.get());
-    publishToRouter(g.exaltationForgeDialog.get());
+    publishToRouter(m_pExaltationForgeDialogController.get());
     publishToRouter(g.screenshotManager.get());
     publishToRouter(g.minimapController);
-    publishToRouter(g.deathDialog.get());
-    publishToRouter(g.reportViolation.get());
-    publishToRouter(g.weaponProficiencyDialog.get());
-    publishToRouter(g.weaponProficiencyShapeDialog.get());
-    publishToRouter(g.blessingsDialog.get());
-    publishToRouter(g.rewardWallDialog.get());
+    publishToRouter(m_pDeathDialogController.get());
+    publishToRouter(m_pReportViolationController.get());
+    publishToRouter(m_pWeaponProficiencyDialogController.get());
+    publishToRouter(m_pWeaponProficiencyShapeDialogController.get());
+    publishToRouter(m_pBlessingsDialogController.get());
+    publishToRouter(m_pRewardWallDialogController.get());
     publishToRouter(g.optionsDialog.get());
     publishToRouter(g.chat.get());
     publishToRouter(g.actionBars.get());
+    g.actionBars->connectToGameActionRouter(gameActionRouter());
+    publishToRouter(g.targetSelection.get());
     publishToRouter(g.sidebarWidgets.get());
     publishToRouter(g.sidebarPanels.get());
     publishToRouter(g.containers.get());
@@ -858,28 +871,30 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     handleFromRouter(g.sidebarPanels.get());
     handleFromRouter(g.containers.get());
     handleFromRouter(g.contextMenu.get());
-    handleFromRouter(g.splitStackDialog.get());
-    handleFromRouter(g.storeDialog.get());
-    handleFromRouter(g.marketController.get());
+    handleFromRouter(m_pSelectObjectAmountDialogController.get());
+    handleFromRouter(m_pStoreDialogController.get());
+    handleFromRouter(m_pMarketController.get());
     handleFromRouter(g.stashDialog.get());
     handleFromRouter(g.manageLootDialog.get());
-    handleFromRouter(g.exaltationForgeDialog.get());
-    handleFromRouter(g.reportViolation.get());
-    handleFromRouter(g.bugReport.get());
-    handleFromRouter(g.naggingDialog.get());
-    handleFromRouter(g.rewardWallDialog.get());
+    handleFromRouter(m_pExaltationForgeDialogController.get());
+    handleFromRouter(m_pReportViolationController.get());
+    handleFromRouter(m_pBugReportDialogController.get());
+    handleFromRouter(m_pNaggingMessageDialogController.get());
+    handleFromRouter(m_pRewardWallDialogController.get());
     handleFromRouter(g.optionsDialog.get());
     handleFromRouter(g.chat.get());
     handleFromRouter(g.actionBars.get());
+    handleFromRouter(g.targetSelection.get());
+    g.actionBars->restoreLastAktionBarConfiguration();
     handleFromRouter(g.informationDialogs.get());
     handleFromRouter(g.exivaOptionsDialog.get());
     handleFromRouter(g.taskboardDialog.get());
     handleFromRouter(g.tutorialShell.get());
     handleFromRouter(g.tutorialOverlay.get());
-    handleFromRouter(g.weaponProficiencyDialog.get());
-    handleFromRouter(g.weaponProficiencyShapeDialog.get());
-    handleFromRouter(g.weaponProficiencyShapeOptionsDialog.get());
-    handleFromRouter(g.lenshelpManager.get());
+    handleFromRouter(m_pWeaponProficiencyDialogController.get());
+    handleFromRouter(m_pWeaponProficiencyShapeDialogController.get());
+    handleFromRouter(m_pWeaponProficiencyShapeOptionsDialogController.get());
+    handleFromRouter(m_pLenshelpManager.get());
     handleFromRouter(g.skillWheel.get());
     handleFromRouter(g.npcDialog.get());
     handleFromRouter(g.sessionBootstrap.get());
@@ -931,7 +946,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             return;
         g.sessionBootstrap->installCreateCharacter(qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
     };
-    packHost.blessingsDialog = [&g]() -> QObject* { return g.blessingsDialog.get(); };
+    packHost.blessingsDialog = [this]() -> QObject* { return m_pBlessingsDialogController.get(); };
     packHost.npcDialog = [&g]() -> QObject* { return g.npcDialog.get(); };
     packHost.chatController = [chat]() -> QObject* { return chat; };
     packHost.chatStorage = [chat]() -> QObject* { return chat->storage(); };
@@ -1048,7 +1063,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
 
 gamewindow::TGameSessionDisconnectReactionController* TGameClient::gameSessionDisconnectReactionController() const
 {
-    return m_gameWindow ? m_gameWindow->gameSessionDisconnectReaction.get() : nullptr;
+    return m_pGameSessionDisconnectReactionController.get();
 }
 
 void TGameClient::connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -1069,12 +1084,12 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.fpsLatency->setRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
         if (g.containers)
             g.containers->connectToGameSession(GameSession);
-        if (g.splitStackDialog)
-            g.splitStackDialog->connectToGameSession(GameSession);
+        if (m_pSelectObjectAmountDialogController)
+            m_pSelectObjectAmountDialogController->connectToGameSession(GameSession);
         if (g.chat)
             g.chat->connectToGameSession(GameSession);
-        if (g.marketController)
-            g.marketController->connectToGameSession(GameSession);
+        if (m_pMarketController)
+            m_pMarketController->connectToGameSession(GameSession);
         // Host shim: the analysers' aggregate follows the session's storages;
         // the drop tracker reports on the chat's channels.
         if (g.analyserStorages)
@@ -1090,21 +1105,21 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.cooldownBar)
             g.cooldownBar->connectToGameSession(GameSession);
-        if (g.gameSessionDisconnectReaction)
-            g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
+        if (m_pGameSessionDisconnectReactionController)
+            m_pGameSessionDisconnectReactionController->connectToGameSession(GameSession);
         if (m_messageIgnoreList)
             m_messageIgnoreList->setGameSession(GameSession);
-        if (g.reportViolation)
-            g.reportViolation->connectToGameSession(GameSession);
+        if (m_pReportViolationController)
+            m_pReportViolationController->connectToGameSession(GameSession);
         if (g.informationDialogs)
             g.informationDialogs->editText()->connectToGameSession(GameSession);
-        if (g.storeDialog)
-            g.storeDialog->connectToGameSession(GameSession);
+        if (m_pStoreDialogController)
+            m_pStoreDialogController->connectToGameSession(GameSession);
         // CIP: the button bar connects its store button.
         if (g.storeButton)
             g.storeButton->connectToGameSession(GameSession);
-        if (g.bugReport)
-            g.bugReport->connectToGameSession(GameSession);
+        if (m_pBugReportDialogController)
+            m_pBugReportDialogController->connectToGameSession(GameSession);
         if (g.informationDialogs)
             if (gamewindow::TPreyDialogController* prey = g.informationDialogs->prey())
                 prey->connectToGameSession(GameSession);
@@ -1116,21 +1131,21 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             inspectObject->connectToGameSession(GameSession);
         if (gamewindow::TInspectPlayerDialogController* inspectPlayer = gamewindow::TInspectPlayerDialogController::instance())
             inspectPlayer->connectToGameSession(GameSession);
-        if (g.deathDialog)
-            g.deathDialog->connectToGameSession(GameSession);
+        if (m_pDeathDialogController)
+            m_pDeathDialogController->connectToGameSession(GameSession);
         if (gamewindow::TOutfitMemorialDialogController* memorial = gamewindow::TOutfitMemorialDialogController::instance())
             memorial->connectToGameSession(GameSession);
         if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
             offlineTraining->connectToGameSession(GameSession);
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
-        if (g.blessingsDialog) {
-            g.blessingsDialog->connectToGameSession(GameSession);
-            g.blessingsDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        if (m_pBlessingsDialogController) {
+            m_pBlessingsDialogController->connectToGameSession(GameSession);
+            m_pBlessingsDialogController->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         }
-        if (g.rewardWallDialog) {
-            g.rewardWallDialog->connectToGameSession(GameSession);
-            g.rewardWallDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        if (m_pRewardWallDialogController) {
+            m_pRewardWallDialogController->connectToGameSession(GameSession);
+            m_pRewardWallDialogController->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         }
         if (g.manageLootDialog) {
             g.manageLootDialog->connectToGameSession(GameSession);
@@ -1149,8 +1164,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         }
         if (g.taskboardDialog)
             g.taskboardDialog->connectToGameSession(GameSession);
-        if (g.soulSealsDialog)
-            g.soulSealsDialog->connectToGameSession(GameSession);
+        if (m_pSoulSealsDialogController)
+            m_pSoulSealsDialogController->connectToGameSession(GameSession);
         if (g.informationDialogs)
             if (auto* spellBook = g.informationDialogs->findChild<gamewindow::TShowSpellBookDialogController*>())
                 spellBook->connectToGameSession(GameSession);
@@ -1170,8 +1185,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
                 questLog->connectToGameSession(GameSession);
         if (gamewindow::TCharacterTradeDialogController* characterTrade = gamewindow::TCharacterTradeDialogController::instance())
             characterTrade->connectToGameSession(GameSession);
-        if (g.exaltationForgeDialog)
-            g.exaltationForgeDialog->connectToGameSession(GameSession);
+        if (m_pExaltationForgeDialogController)
+            m_pExaltationForgeDialogController->connectToGameSession(GameSession);
         if (m_pStoreAndResourceBalanceHelperController) {
             if (g.skillWheel)
                 m_pStoreAndResourceBalanceHelperController->setSkillWheelStorage(g.skillWheel->storage());
@@ -1179,12 +1194,12 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         }
         if (g.skillWheel)
             g.skillWheel->connectToGameSession(GameSession);
-        if (g.weaponProficiencyDialog)
-            g.weaponProficiencyDialog->connectToGameSession(GameSession);
-        if (g.weaponProficiencyShapeDialog)
-            g.weaponProficiencyShapeDialog->connectToGameSession(GameSession);
-        if (g.weaponProficiencyReshapeDialog)
-            g.weaponProficiencyReshapeDialog->connectToGameSession(GameSession);
+        if (m_pWeaponProficiencyDialogController)
+            m_pWeaponProficiencyDialogController->connectToGameSession(GameSession);
+        if (m_pWeaponProficiencyShapeDialogController)
+            m_pWeaponProficiencyShapeDialogController->connectToGameSession(GameSession);
+        if (m_pWeaponProficiencyReshapeDialogController)
+            m_pWeaponProficiencyReshapeDialogController->connectToGameSession(GameSession);
         if (g.npcDialog)
             g.npcDialog->connectToGameSession(GameSession);
         // Host shim until these controllers connect to the session themselves:
@@ -1205,11 +1220,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
     }
     if (m_pSoundController)
         m_pSoundController->connectToGameSession(GameSession);
-    if (m_gameWindow) {
-        TGameWindow& g = *m_gameWindow;
-        if (g.bossDifficultySelectionDialog)
-            g.bossDifficultySelectionDialog->connectToGameSession(GameSession);
-    }
+    if (m_pBossDifficultySelectionDialogController)
+        m_pBossDifficultySelectionDialogController->connectToGameSession(GameSession);
     // CIP: the proficiency storage is emptied last.
     m_pProficiencyStorage->clear();
 }
@@ -1239,15 +1251,15 @@ void TGameClient::onGameSessionDisconnected()
         if (g.chat)
             g.chat->whiteBlacklistDialog().close();
         if (g.stashDialog)
-            g.stashDialog->confirmMoveObjectToStashDialog()->dialog()->close();
+            g.stashDialog->confirmMoveObjectToStashDialog()->closeDialog();
         if (g.tutorialShell) {
             g.tutorialShell->hint()->dialog()->close();
             g.tutorialShell->vocation()->dialog()->close();
         }
         if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
             offlineTraining->closeDialog();
-        if (g.weaponProficiencyShapeOptionsDialog)
-            g.weaponProficiencyShapeOptionsDialog->closeDialog();
+        if (m_pWeaponProficiencyShapeOptionsDialogController)
+            m_pWeaponProficiencyShapeOptionsDialogController->closeDialog();
     }
     // Host: the world is left (minimap and character options written, start screen).
     onWorldLeft();

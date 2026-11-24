@@ -49,14 +49,11 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
     , m_client(client)
     , m_gameWindow(gameWindow)
     , m_loginWait(new TLoginWaitDialogController(this))
-    , m_error(makeBox(this, qtTrId("ok"), {}))
     , m_keepRenderer(makeBox(this, {}, {}))
 {
     m_keepRenderer->setYesNoButtons();
 
     m_createAccountService = env.createAccountUrl();
-
-    connect(m_client, &client::TGameClient::showErrorAsPopupAndCriticalLog, this, &TSessionBootstrap::showError);
 
     connect(m_keepRenderer, &Box::acceptClicked, this, [] { graphicsrestart::clearPendingConfirm(); });
     connect(m_keepRenderer, &Box::discardClicked, this, [] {
@@ -182,11 +179,6 @@ void TSessionBootstrap::closeConnectingDialog()
 void TSessionBootstrap::openCreateAccount()
 {
     m_client->onRequestCreateAccount();
-}
-
-void TSessionBootstrap::showError(const QString& message)
-{
-    m_error->showMessage(QCoreApplication::applicationName(), message);
 }
 
 void TSessionBootstrap::promptKeepGraphicsEngine()

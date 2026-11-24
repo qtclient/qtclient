@@ -509,16 +509,17 @@ bool TActionButtonController::refreshCooldown(const qint64 now)
 
 QString TActionButtonController::cooldownText(const qint64 remainingMs)
 {
+    // Seconds and tenths are cut, not rounded; the hours form does not pad the minutes.
     if (remainingMs < 11000)
-        return QString::number(double(remainingMs) / 1000.0, 'f', 1);
+        return QStringLiteral("%1.%2").arg(remainingMs / 1000).arg(remainingMs / 100 - (remainingMs / 1000) * 10, 1, 10, QLatin1Char('0'));
     if (remainingMs < 60000)
-        return QString::number(remainingMs / 1000);
+        return QStringLiteral("%1").arg(remainingMs / 1000);
     if (remainingMs < 660000)
         return QStringLiteral("%1:%2").arg(remainingMs / 60000).arg((remainingMs / 1000) % 60, 2, 10, QLatin1Char('0'));
     if (remainingMs < 3660000)
         return QStringLiteral("%1m").arg(remainingMs / 60000);
     if (remainingMs < 36000000)
-        return QStringLiteral("%1h%2").arg(remainingMs / 3600000).arg((remainingMs / 60000) % 60, 2, 10, QLatin1Char('0'));
+        return QStringLiteral("%1h%2").arg(remainingMs / 3600000).arg(remainingMs / 60000 - (remainingMs / 3600000) * 60);
     return QStringLiteral("%1h").arg(remainingMs / 3600000);
 }
 
