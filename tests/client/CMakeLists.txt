@@ -156,6 +156,7 @@ qtclient_add_port_test(client_authenticationjsondocumenthelper_tests
     authenticationjsondocumenthelper_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationjsondocumenthelper.cpp
 )
+target_link_libraries(client_authenticationjsondocumenthelper_tests PRIVATE Qt6::Network)
 
 qtclient_add_port_test(client_hotkeyoptions_tests
     hotkeyoptions_test.cpp
@@ -641,3 +642,7 @@ qtclient_add_port_test(client_scenegraphdrawcommand_tests
 )
 set_target_properties(client_scenegraphdrawcommand_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_scenegraphdrawcommand_tests PRIVATE Qt6::Gui Qt6::Quick)
+qtclient_add_port_test(client_worldmapobjectcounter_tests
+    worldmapobjectcounter_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/worldmapobjectcounter.cpp
+)

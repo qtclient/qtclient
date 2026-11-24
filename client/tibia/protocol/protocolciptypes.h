@@ -129,9 +129,6 @@ void sendGameclientMessage(std::unique_ptr<::tibia::protobuf::protocol::Gameclie
 /// A client message of `opcode` with no fields set yet.
 std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> newGameclientMessage(int opcode);
 
-/// A recorded GameserverMessage as classic wire bytes (opcode first), empty when not structured.
-QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf);
-
 const ::tibia::protobuf::protocol::GameserverMessage* lastShadowServerMessage();
 
 /// The message just enqueued, when it is of `opcode`.

@@ -4,6 +4,7 @@
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
 #include "game/sessiondumpdmpd.h"
+#include "protocol/protocolmessagequeue.h"
 #include "renderer/nextframeupdater.h"
 #include "sessiondump/sessiondumpasyncloader.h"
 #include "sessiondump/sessiondumpplayer.h"
@@ -63,7 +64,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
         Q_EMIT connected();
         return std::any{};
     });
-    connect(TGameNotify::instance(), &TGameNotify::gameStarted, this, [this] { Q_EMIT worldEntered(); });
+    // The base announces worldEntered for every WorldEntered message.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
         onSessiondumpFinished();
         Q_EMIT disconnected();
@@ -131,25 +132,22 @@ void TSessiondumpGameSession::replay(const QString& file)
 
 void TSessiondumpGameSession::replayDmpd(const QString& file)
 {
-    // Host wiring of CipSoft's v158: a loader for the file and a player on the
-    // session's progress clock whose published messages reach the replay bridge.
+    // CipSoft's v158: a loader for the file and a player on the session's
+    // progress clock; the player's server messages go straight into the
+    // session's protocol queue.
     m_sessiondumpLoader = std::make_shared<sessiondump::TSessiondumpAsyncLoader>(QUrl::fromLocalFile(file));
     m_sessiondumpPlayer = std::make_shared<sessiondump::TSessiondumpPlayer>(m_sessiondumpLoader, m_sessiondumpProgressClock);
-    auto converter = std::make_shared<TDmpdClassicConverter>(QByteArray());
     sessiondump::TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
+    // Host: the classic session state enters the game on PendingStateEntered;
+    // a dump that starts at WorldEntered gets one first.
+    m_sawPendingStateEntered = false;
     connect(player, &sessiondump::TSessiondumpPlayer::gameserverMessageAvailable, this,
-            [converter](const sessiondump::TGameserverMessagePointer& message) {
-                const std::string bytes = message->SerializeAsString();
-                for (const auto& packet : converter->convert(QByteArray::fromStdString(bytes)))
-                    tibia::game::deliverReplayPacket(packet->data(), packet->size());
-            });
-    connect(m_sessiondumpLoader.get(), &sessiondump::TSessiondumpAsyncLoader::sessiondumpMetadataLoaded, this,
-            [this, converter] {
-                const auto& metadata = m_sessiondumpLoader->metadata();
-                *converter = TDmpdClassicConverter(metadata.characterName.toUtf8());
-                if (!metadata.sessionKey.isEmpty())
-                    Q_EMIT sessionDumpStart(metadata.sessionKey);
-            });
+            [this](const sessiondump::TGameserverMessagePointer& message) { enqueueGameserverMessage(message); });
+    connect(m_sessiondumpLoader.get(), &sessiondump::TSessiondumpAsyncLoader::sessiondumpMetadataLoaded, this, [this] {
+        const auto& metadata = m_sessiondumpLoader->metadata();
+        if (!metadata.sessionKey.isEmpty())
+            Q_EMIT sessionDumpStart(metadata.sessionKey);
+    });
     connect(player, &sessiondump::TSessiondumpPlayer::requestResetOfStorages, this,
             &TSessiondumpGameSession::onRequestResetOfStorages);
     connect(player, &sessiondump::TSessiondumpPlayer::finished, this, [this] {
@@ -169,6 +167,28 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
     player->start();
     m_sessiondumpTimer.start();
     startHintsForDump(file);
+}
+
+void TSessiondumpGameSession::enqueueGameserverMessage(const sessiondump::TGameserverMessagePointer& message)
+{
+    namespace pb = ::tibia::protobuf::protocol;
+    constexpr int PendingStateEnteredType = 10;
+    constexpr int WorldEnteredType = 15;
+    if (!message)
+        return;
+    protocol::TProtocolMessageQueue* queue = protocolMessageQueue().get();
+    if (message->type() == PendingStateEnteredType)
+        m_sawPendingStateEntered = true;
+    if (message->type() == WorldEnteredType && !m_sawPendingStateEntered) {
+        m_sawPendingStateEntered = true;
+        auto pending = std::make_shared<pb::GameserverMessage>();
+        pending->set_type(PendingStateEnteredType);
+        pending->MutableExtension(pb::GameserverMessagePendingStateEntered::gameserver_message_pending_state_entered);
+        if (message->has_meta_data())
+            *pending->mutable_meta_data() = message->meta_data();
+        queue->enqueueGameserverMessage(pending);
+    }
+    queue->enqueueGameserverMessage(message);
 }
 
 void TSessiondumpGameSession::stopDmpd()

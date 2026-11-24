@@ -133,4 +133,23 @@ void TWorldMapCamera::centerAtSubfieldCoordinateDelayed(const worldmap::TWorldMa
     QTimer::singleShot(0, Qt::PreciseTimer, this, [this, coordinate] { centerAtSubfieldCoordinate(coordinate); });
 }
 
+worldmap::TWorldMapCuboid TWorldMapCamera::visibleArea() const
+{
+    const QPoint farCorner = convertToProjectedSubfield(QPoint(m_viewportSize.width(), m_viewportSize.height()));
+    const worldmap::TWorldMapSubfieldCoordinate bottomRight =
+        worldmap::TWorldMapSubfieldCoordinate::fromProjection(farCorner, m_topLeftSubfieldCoordinate.z, 0);
+    const worldmap::TWorldMapCoordinate first = m_topLeftSubfieldCoordinate.toFieldCoordinate();
+    const worldmap::TWorldMapCoordinate last = bottomRight.toFieldCoordinate();
+    return worldmap::TWorldMapCuboid(first, last.x - first.x, last.y - first.y);
+}
+
+QRect TWorldMapCamera::projectedSubfieldRectangle(const worldmap::TWorldMapCuboid& cuboid) const
+{
+    const worldmap::TWorldMapCoordinate& origin = cuboid.origin;
+    const int left = (origin.z + origin.x) * 32;
+    const int top = (origin.z + origin.y) * 32;
+    const worldmap::TWorldMapExtent extent = cuboid.getExtent();
+    return QRect(QPoint(left, top), QPoint(left + extent.width * 32 - 1, top + extent.height * 32 - 1));
+}
+
 }

@@ -7,8 +7,6 @@
 #include "playermovementintenthandler.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
-#include <tibia/game/gamesessionstate.h>
 
 namespace tibia::input {
 
@@ -18,8 +16,9 @@ using A = EGameAction;
 
 }
 
-TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(QObject* parent)
-    : cip::tibia::input::TPlayerMovementGameActionHandler(parent)
+TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(std::shared_ptr<TPlayerMovementIntentHandler> pPlayerMovementIntentHandler)
+    : cip::tibia::input::TPlayerMovementGameActionHandler(nullptr)
+    , m_pPlayerMovementIntentHandler(std::move(pPlayerMovementIntentHandler))
 {
 }
 
@@ -52,14 +51,10 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
             Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
             Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
         }
-        if (const TMovementIntentTargetCoordinate* walk = action->targetCoordinate()) {
-            // qtclient pack notify: the player walks by hand (a click), e.g. to stop a pack's travel.
+        // qtclient pack notify: the player walks by hand (a click), e.g. to stop a pack's travel.
+        if (kind == TMovementIntentKind::Target)
             tibia::game::notify("onWalk", tibia::client::InvalidDirection);
-            tibia::game::localPlayerAutoWalk(Position(walk->x(), walk->y(), static_cast<uint8_t>(walk->z())), false,
-                                             tibia::client::AutoWalkPathMinimap, walk->enterUnwalkableGoal());
-        } else if (TPlayerMovementIntentHandler* intent = tibia::game::gameSessionState().movementIntent()) {
-            intent->handleMovementIntent(action->intent());
-        }
+        m_pPlayerMovementIntentHandler->handleMovementIntent(action->intent());
         break;
     }
     case A::TRADE_ITEM:
@@ -91,6 +86,6 @@ void TPlayerMovementGameActionHandler::handleUseWithGameAction(const TGameAction
 
 void TPlayerMovementGameActionHandler::stopMovement()
 {
-    tibia::game::localPlayerClearMovementGoal();
+    m_pPlayerMovementIntentHandler->clearPath();
 }
 }

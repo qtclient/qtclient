@@ -1,60 +1,34 @@
 #pragma once
 
-#include "network/gameservernetworkpacket.h"
-
-#include <tibia/game/tgamenotify.h>
-
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QObject>
-#include <QPointer>
 #include <QString>
-#include <QTimer>
 
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 
 namespace tibia {
-namespace authentication {
-class TAuthenticationAndEncryptionInfo;
-class TLoginProtocolMessageHandler;
-}
 namespace shared {
-class TCompressionHelper;
 class TRsaHelper;
 }
 namespace network {
-
-class TGameserverDualConnection;
-class TGameserverNetworkPacketRawDataProcessor;
-class TGameserverNetworkPacketSequenceFlowProcessor;
-class TUnencryptedRawMessageStream;
-
-/// What the login needs from the session.
-struct TGameserverLoginData
-{
-    std::string sessionKey;
-    std::string characterName;
-    std::string host;
-    uint16_t port = 0;
-    std::string recordTo;
-};
 
 /// Installs the login RSA key (Crystal's modulus) into loginRsaHelper().
 void installGameServerConnection();
 /// Encrypts the RSA blocks of the login messages.
 shared::TRsaHelper& loginRsaHelper();
 
-/// The network part of the running game session, built the way CipSoft's
-/// TGameserverGameSession builds it: two game server connections under a
-/// TGameserverDualConnection, the TAuthenticationAndEncryptionInfo, the
-/// sequence flow processor and the raw data processor. Incoming packets are
-/// put in order, decoded and handed to the protocol layer; encoded client
-/// messages become packets for the dual connection. The session's network
-/// tick (CipSoft: the session reads every connection and checks the dual
-/// connection's state each tick) is a timer here. One live instance per session.
+/// Host: the classic session state's view of the running session's game server
+/// connection. The live game server session (game::TGameserverGameSession) owns
+/// the network stack, as CipSoft's does; it reports its connection state here,
+/// hands the decoded server data to the classic packet parser through it and
+/// writes the frames the classic senders and the product transport put here.
+/// A replay of a classic packet log has no network: its packets come from
+/// deliverPacket and its client frames are dropped. One live instance at a time.
 class TGameserverSessionNetwork final : public QObject
 {
     Q_OBJECT
@@ -62,17 +36,28 @@ public:
     explicit TGameserverSessionNetwork(QObject* parent = nullptr);
     ~TGameserverSessionNetwork() override;
 
-    /// The network of the running session, or null.
+    /// A new instance that is retired (not deleted) when its last owner lets it
+    /// go: that can happen inside one of the connection's own callbacks.
+    static std::shared_ptr<TGameserverSessionNetwork> create();
+    /// The connection of the running session, or null.
     static TGameserverSessionNetwork* live();
 
-    /// Connects to the game server.
-    void connectToGameserver(const TGameserverLoginData& login);
+    /// The owning session writes the client frames and closes its connection.
+    void setFrameWriter(std::function<void(const QByteArray&)> writer);
+    void setDisconnector(std::function<void()> disconnector);
+    /// The session's connections are in use (true) or none is (false).
+    void setConnected(bool connected);
+    /// A packet arrived (the "connection ok" timer restarts).
+    void notePacketRead();
+    /// Records the session's packets to `records/<recordTo>` (qtclient's packet log).
+    void startRecording(const std::string& recordTo);
+
     /// Replays a recorded session: packets come from deliverPacket, sends are dropped.
     void beginReplay();
-    /// Closes the connections; no error is reported.
+    /// Closes the connection; no error is reported.
     void disconnect();
-    /// Ends this session's network: disconnects, stops being live() and is
-    /// deleted once control returns to the event loop.
+    /// Ends this connection: disconnects, stops being live() and is deleted once
+    /// control returns to the event loop.
     void retire();
     /// Ends the session as a connection failure (`clean` = peer close, no error dialog).
     void fail(const QString& message, bool clean);
@@ -83,19 +68,14 @@ public:
     /// Milliseconds since the last packet arrived, -1 when not connected.
     qint64 millisSinceRead() const;
 
-    /// The session's login handler (CIP TLoginProtocolMessageHandler), null
-    /// before the first connect.
-    authentication::TLoginProtocolMessageHandler* loginProtocolMessageHandler() const
-    {
-        return m_loginProtocolMessageHandler.get();
-    }
-
-    /// Encoded client message from the protocol queue -> packet -> wire.
+    /// Encoded client message from the protocol queue -> the session's connection.
     void writeClientFrame(const QByteArray& frame);
-    /// Product frames (extended opcode transport) -> wire.
+    /// Product frames (extended opcode transport) -> the session's connection.
     void writeProductFrame(const QByteArray& frame);
 
-    /// A decoded server packet (replay).
+    /// Decoded server data of the live connection: recorded, then parsed.
+    void processServerData(const QByteArray& data);
+    /// A decoded server packet (live or replay) for the classic packet parser.
     void deliverPacket(const uint8_t* data, size_t size);
 
     /// The product extended-opcode transport was opened by the server.
@@ -110,29 +90,14 @@ public:
     int receivedBytes() const { return m_receivedBytes; }
 
 private:
-    void buildNetworkStack();
-    void releaseNetworkStack();
-    void onPacketReady(TGameserverNetworkPacket packet);
-    /// The login handler and the sequence flow processor read the protocol
-    /// queue's messages; the login handler's messages go out through it.
-    void connectProtocolMessageQueue();
-    void processServerData(const QByteArray& data);
     void sendFrame(const QByteArray& frame);
     void recordInput(const QByteArray& data);
     void recordOutput(const QByteArray& data);
 
-    TGameserverLoginData m_login;
-    std::shared_ptr<authentication::TAuthenticationAndEncryptionInfo> m_authenticationAndEncryptionInfo;
-    std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
-    /// The session's protocol queue the stack is connected to.
-    QPointer<QObject> m_protocolMessageQueue;
-    std::shared_ptr<TGameserverDualConnection> m_dualConnection;
-    std::shared_ptr<TUnencryptedRawMessageStream> m_serverMessageStream;
-    std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
-    std::shared_ptr<TGameserverNetworkPacketSequenceFlowProcessor> m_sequenceFlowProcessor;
-    std::shared_ptr<TGameserverNetworkPacketRawDataProcessor> m_rawDataProcessor;
-    QTimer m_networkTick;
+    std::function<void(const QByteArray&)> m_frameWriter;
+    std::function<void()> m_disconnector;
     QElapsedTimer m_readTimer;
+    bool m_connected = false;
     bool m_disconnected = false;
     bool m_replay = false;
     bool m_productTransport = false;

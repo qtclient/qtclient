@@ -85,6 +85,8 @@ public:
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
     /// Runs the filters again over every row (no filterChanged).
     void invalidateRows();
+    /// No mod text, every quality (-1), locked and unlocked gems; then filterChanged.
+    void resetFilters();
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -140,6 +142,8 @@ public:
     void setFilterModName(const QString& v) override;
     int filterMods() const { return m_filterMods; }
     void setFilterMods(int v);
+    /// No mod text, every mod (0); then filterChanged.
+    void resetFilters();
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
     /// CIP: the first shown row of the supreme / basic mod, an invalid index without one.
     QModelIndex indexOfSupremeMod(int modId) const;

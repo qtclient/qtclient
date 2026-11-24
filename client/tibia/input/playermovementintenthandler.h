@@ -47,7 +47,6 @@ public:
     struct Environment
     {
         std::function<qint64()> now;
-        std::function<creatures::TCreature*()> player;
         std::function<worldmap::TWorldMapStorage*()> map;
         /// Waypoint costs for one plan.
         std::function<WaypointCost()> waypointCost;
@@ -85,8 +84,8 @@ public:
     void step(creatures::EMovementDirection direction);
     /// Drop the goal and the path; a step in flight still completes.
     void stopWalking();
-    /// Drop the goal and the path, keeping a held direction.
-    void clearGoal();
+    /// CIP v33: drop the goal and the path, keeping a held direction.
+    void clearPath();
 
     /// Called every frame.
     void tick();
@@ -100,6 +99,11 @@ public:
     bool hasGoal() const { return m_goal.has_value(); }
     bool isPredicting() const { return m_pendingX != 0 || m_pendingY != 0; }
     worldmap::TWorldMapCoordinate predictedPosition() const;
+
+public Q_SLOTS:
+    /// CIP v13: the handler keeps the player's creature and follows its
+    /// position writes (onPositionChanged).
+    void setPlayer(std::weak_ptr<tibia::creatures::TCreature> pPlayer);
 
 Q_SIGNALS:
     void sendGoPath(std::vector<tibia::creatures::EMovementDirection> path);
@@ -117,7 +121,6 @@ private:
     void predictStep(int dx, int dy);
     bool advance();
     bool resetAfterRejectedStep(creatures::ECreatureLookDirection direction);
-    void clearPath();
     /// The steps of the planned path.
     int pathLength() const { return static_cast<int>(m_path.size()); }
     void sendPath();
@@ -137,6 +140,8 @@ private:
     static creatures::EMovementDirection directionOfLook(creatures::ECreatureLookDirection look);
 
     Environment m_env;
+    /// +0x90: the player's creature (setPlayer).
+    std::shared_ptr<creatures::TCreature> m_player;
     std::optional<worldmap::TWorldMapCoordinate> m_goal;
     bool m_enterUnwalkableGoal = false;
     bool m_allowDiagonalStep = false;

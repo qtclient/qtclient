@@ -273,6 +273,7 @@ void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IG
     }
     // Host: the battle lists and the VIP widget keep the options themselves.
     m_battleLists->setSidebarOptions(m_options);
+    m_battleLists->setGameSession(GameSession);
     m_vip->setSidebarOptions(m_options);
     if (m_playerTrade)
         m_playerTrade->setGameSession(session ? session->playerTradeStorage().get() : nullptr,

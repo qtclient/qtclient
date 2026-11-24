@@ -71,6 +71,9 @@ QString scenegraphDrawCommandDataName(const TScenegraphDrawCommandData& data);
 class TScenegraphDrawCommand
 {
 public:
+    /// An empty group with id 0 (a value-initialised command: it takes no
+    /// number from the counter).
+    TScenegraphDrawCommand() = default;
     explicit TScenegraphDrawCommand(TScenegraphDrawCommandData data);
     TScenegraphDrawCommand(TScenegraphDrawCommand&& other) noexcept = default;
     TScenegraphDrawCommand& operator=(TScenegraphDrawCommand&& other) noexcept = default;
@@ -98,7 +101,7 @@ public:
     void dump(int depth = 0) const;
 
 private:
-    int m_id;
+    int m_id = 0;
     bool m_animated = false;
     TScenegraphDrawCommandData m_data;
     std::vector<TScenegraphDrawCommand> m_childs;

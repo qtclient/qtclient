@@ -114,13 +114,11 @@ class TCreatureTrackerWidgetController final
 public:
     using EWidgetMode = cip::tibia::gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
 
-    TCreatureTrackerWidgetController(EWidgetMode mode, cyclopedia::TCreatureTrackerStorage* creatures,
-                                     bossbestiary::TBossTrackerStorage* bosses, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                     QObject* parent = nullptr);
+    TCreatureTrackerWidgetController(EWidgetMode mode, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
-    void setSidebarOptions(config::TSidebarOptions* options);
-    /// The session's creature and boss tracker storages.
-    void setStorages(cyclopedia::TCreatureTrackerStorage* creatures, bossbestiary::TBossTrackerStorage* bosses);
+    /// The session's tracked monsters or bosses (by the mode), its boss
+    /// cooldowns, and the widget's options in the character's sidebar options.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QObject* trackedCreatures() const override;
     EWidgetMode widgetMode() const override;
@@ -162,12 +160,16 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
+    /// The widget's height and the list's sort from the options of its mode.
+    void loadWidgetOptions();
+    /// The widget's height and the list's sort into the options of its mode.
     void persistOptions();
 
     EWidgetMode m_mode;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<cyclopedia::TCreatureTrackerStorage> m_creatures;
     QPointer<bossbestiary::TBossTrackerStorage> m_bosses;
-    std::vector<QMetaObject::Connection> m_storageConnections;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     TCreatureTrackerSortProxyModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;
 };
@@ -176,13 +178,18 @@ class TCreatureTrackerWidgetManager final : public QObject
 {
     Q_OBJECT
 public:
-    TCreatureTrackerWidgetManager(TCreatureTrackerWidgetController::EWidgetMode mode, cyclopedia::TCreatureTrackerStorage* creatures,
-                                  bossbestiary::TBossTrackerStorage* bosses, QQuickItem* gameWindowItem, QQmlEngine* engine,
+    TCreatureTrackerWidgetManager(TCreatureTrackerWidgetController::EWidgetMode mode, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                  QObject* parent = nullptr);
+    /// The storages are the session's (taken by the controller); kept until
+    /// the sidebar widgets manager makes the manager without them.
+    TCreatureTrackerWidgetManager(TCreatureTrackerWidgetController::EWidgetMode mode, cyclopedia::TCreatureTrackerStorage*,
+                                  bossbestiary::TBossTrackerStorage*, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                   QObject* parent = nullptr);
     ~TCreatureTrackerWidgetManager() override;
 
-    /// CIP connector: the session's creature and boss tracker storages.
+    /// The open controller connects to the session (and every one opened later).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The controller takes the options from the session.
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
@@ -195,8 +202,7 @@ Q_SIGNALS:
 
 private:
     TCreatureTrackerWidgetController::EWidgetMode m_mode;
-    QPointer<cyclopedia::TCreatureTrackerStorage> m_creatures;
-    QPointer<bossbestiary::TBossTrackerStorage> m_bosses;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QQuickItem* m_gameWindowItem = nullptr;
     QQmlEngine* m_engine = nullptr;
     TCreatureTrackerWidgetController* m_controller = nullptr;

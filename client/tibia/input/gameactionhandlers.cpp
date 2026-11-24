@@ -174,26 +174,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
         // and its movement handler the walk; tibia::game::stop does both.
         tibia::game::stop();
         break;
-    case A::SET_PLAYER_OUTFIT:
-        if (const auto* set = gameActionAs<TGameActionSetPlayerOutfit>(pGameAction); set && set->outfit().getId() != 0)
-            tibia::game::changeOutfitAndMount(set->outfit(), set->mountCharacter(), set->randomMount());
-        break;
-    case A::SET_HIRELING_OUTFIT:
-        if (const auto* set = gameActionAs<TGameActionSetHirelingOutfit>(pGameAction); set && set->outfit().getId() != 0)
-            tibia::game::setHirelingOutfit(set->outfit(), set->creatureId());
-        break;
-    case A::SET_SHOW_OFF_SOCKET_CONFIGURATION:
-        // Outfit id 0 is valid (clear the displayed look / hide outfit).
-        if (const auto* set = gameActionAs<TGameActionSetShowOffSocketConfiguration>(pGameAction); set && set->podium().itemId != 0)
-            tibia::game::setShowOffSocketConfiguration(set->outfit(), set->podium().position, set->podium().itemId,
-                                                       set->podium().stackPosition, set->lookDirection(), set->showSocket() ? 1 : 0);
-        break;
-    case A::SET_CREATURE_PODIUM_CONFIGURATION:
-        if (const auto* set = gameActionAs<TGameActionSetCreaturePodiumConfiguration>(pGameAction))
-            tibia::game::setCreaturePodiumConfiguration(set->raceId(), set->podium().position, set->podium().itemId,
-                                                        set->podium().stackPosition, set->lookDirection(), set->showPodium() ? 1 : 0,
-                                                        set->showCreature() ? 1 : 0);
-        break;
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
         Q_EMIT publishGameAction(std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE,
                                                                              qtTrId("you_see_nothing"), QColor(Qt::green)));

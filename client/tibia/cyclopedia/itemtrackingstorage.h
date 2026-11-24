@@ -60,6 +60,10 @@ struct TDroppedLoot
     quint32 timestamp = 0;
 };
 
+/// The name a tracked object is shown with: the market name when the type has market
+/// properties, else the coins by translation, else the object's name (dummy_unknown when empty).
+QString trackedItemName(uint16_t objectType);
+
 /// The drop tracker of the Cyclopedia's item page and the loot tracking widget: the tracked
 /// object types (5 for free, 50 for premium players), the recent drops of the last minute and
 /// the auto-tracking of premium players' valuable loot (configuration "itemtracking").

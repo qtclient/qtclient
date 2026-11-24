@@ -17,13 +17,11 @@ using RaceList = std::vector<RaceType>;
 namespace tibia::appearances {
 
 class TAppearanceInstanceTracker;
-class TAppearanceInstanceGenericStoragesManager;
 }
 namespace tibia::sprites {
 class TAppearanceTypeSpritesheetMapping;
 }
 namespace tibia::appearances {
-class TAppearanceInstanceGenericStorage;
 
 /// CIP appearances::TAppearancesManager: the appearance catalog (objects,
 /// outfits, effects, missiles) and the static data shipped with it, plus the
@@ -45,8 +43,6 @@ public:
     const std::shared_ptr<TAppearanceInstanceTracker>& sharedTracker();
     /// The spritesheets of each appearance type, filled by postprocessAppearances.
     const std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping>& spritesheetMapping() const { return m_spritesheetMapping; }
-    TAppearanceInstanceGenericStoragesManager& storages();
-    TAppearanceInstanceGenericStorage& genericStorage();
 
     struct EffectVariant
     {
@@ -155,8 +151,6 @@ private:
 
     std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping> m_spritesheetMapping;
     std::shared_ptr<TAppearanceInstanceTracker> m_tracker;
-    std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
-    std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
 
     std::map<EAppearanceCategory, std::map<uint16_t, TAppearanceType>> m_appearanceTypes;
     RaceList m_monsterRaces;

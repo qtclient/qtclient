@@ -446,11 +446,6 @@ void processRemoveAutomapFlag(const Position& pos, const uint8_t icon, const std
 {
     tibia::game::notify("onRemoveAutomapFlag", pos, icon, message);
 }
-void processOpenOutfitWindow(const Outfit& currentOutfit, const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList, const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList, const std::vector<std::tuple<uint16_t, std::string>>& familiarList)
-{
-    tibia::game::notify("onOpenOutfitWindow", currentOutfit, outfitList, mountList, familiarList);
-}
-
 
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
@@ -943,12 +938,6 @@ void localPlayerRotate(const tibia::client::Direction direction)
         intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentRotate>(static_cast<int>(direction)));
 }
 
-void localPlayerClearMovementGoal()
-{
-    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
-        intent->clearGoal();
-}
-
 void localPlayerReleaseDirection()
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
@@ -959,12 +948,6 @@ void localPlayerMovementTick()
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline())
         intent->tick();
-}
-
-void onLocalPlayerPositionChanged(const Position& position)
-{
-    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
-        intent->onPositionChanged(tibia::worldmap::TWorldMapCoordinate(position));
 }
 
 void localPlayerCancelWalk(const tibia::client::Direction direction)

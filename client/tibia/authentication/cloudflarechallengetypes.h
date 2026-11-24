@@ -12,8 +12,8 @@ namespace authentication {
 enum class TCloudflareChallengeError : int
 {
     Unknown = 0,
-    Timeout = 1,
-    Cancelled = 2,
+    Cancelled = 1,
+    Timeout = 2,
 };
 
 /// CIP TCloudflareChallengeClearanceInfo — cookies + UA after cf_clearance lands.

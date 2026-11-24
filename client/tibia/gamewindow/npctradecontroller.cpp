@@ -1,5 +1,8 @@
 #include "npctradecontroller.h"
+#include "game/gameactionrouter.h"
 #include "game/gamesessionbase.h"
+#include "input/gameaction.h"
+#include "input/gameactioncontext.h"
 
 #include "trade/tradeciptypes.h"
 
@@ -547,8 +550,11 @@ void TNPCTradeController::buildContextMenu(TContextMenuController* menu, const i
         });
         if (copy.isPickupable()) {
             connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [this, copy] {
-                if (m_storage)
-                    m_storage->inspect(copy);
+                const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+                if (!session || !session->gameActionRouter())
+                    return;
+                session->gameActionRouter()->internalRouter()->handleGameActionInternal(std::make_shared<input::TGameActionInspectObject>(
+                    std::make_shared<input::TLocationNpcTradeGameActionContext>(std::make_shared<const TNPCTradeGood>(copy))));
             });
         }
         menu->addCustomSeparator();

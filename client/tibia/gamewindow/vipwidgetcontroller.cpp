@@ -335,7 +335,6 @@ TVipWidgetController::TVipWidgetController(QQuickItem* gameWindowItem, QQmlEngin
     , m_editGroupDialog(new TGenericEnterTextDialogController(this))
     , m_editVipDialog(new TEditVipDialogController(this))
     , m_messageDialog(new TMessageDialogController(this))
-    , m_provider(nullptr, nullptr)
 {
     connect(m_editVipDialog, &TEditVipDialogController::vipDataUpdated, this, &TVipWidgetController::onVipDataEdited);
     m_proxy->setSourceModel(m_model);
@@ -439,6 +438,7 @@ void TVipWidgetController::connectToGameSession(const std::shared_ptr<game::IGam
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_storage = session ? session->vipStorage().get() : nullptr;
+    m_provider = session ? session->vipWidgetGameActionProvider() : nullptr;
     if (m_gameSession) {
         if (m_storage)
             m_connectionManager.add(connect(m_storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this,
@@ -446,12 +446,6 @@ void TVipWidgetController::connectToGameSession(const std::shared_ptr<game::IGam
         readOptions();
     }
     m_model->connectToGameSession(GameSession);
-}
-
-void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, const int worldType)
-{
-    m_provider = creatures::TVipWidgetGameActionProvider(m_storage, exivaOptions);
-    m_provider.setWorldType(worldType);
 }
 
 void TVipWidgetController::runClick(const input::TGameActionList& candidates, const int mouseButton, const int modifiers)
@@ -475,7 +469,9 @@ void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { Q_EMIT p
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
 {
-    runClick(m_provider.gameActions(VipName, GroupName, m_proxy->hideOffline(), !m_proxy->showGroups()), MouseButtonRaw,
+    if (!m_provider)
+        return;
+    runClick(m_provider->gameActions(VipName, GroupName, m_proxy->hideOffline(), !m_proxy->showGroups()), MouseButtonRaw,
              KeyboardModifiersRaw);
 }
 
@@ -619,23 +615,14 @@ void TVipWidgetManager::setControlScheme(const int controlScheme)
         m_controller->setControlScheme(controlScheme);
 }
 
-void TVipWidgetManager::setWorldType(const int worldType)
-{
-    m_worldType = worldType;
-    if (m_controller)
-        m_controller->setExivaOptions(m_exivaOptions, worldType);
-}
-
 void TVipWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_storage = session ? session->vipStorage().get() : nullptr;
-    m_exivaOptions = session ? session->exivaOptionsStorage().get() : nullptr;
     if (!m_controller)
         return;
     m_controller->connectToGameSession(GameSession);
-    m_controller->setExivaOptions(m_exivaOptions, m_worldType);
 }
 
 TSidebarWidget* TVipWidgetManager::open()
@@ -645,7 +632,6 @@ TSidebarWidget* TVipWidgetManager::open()
         connect(m_controller, &TVipWidgetController::publishGameAction, this, &TVipWidgetManager::publishGameAction);
         m_controller->connectToGameSession(m_gameSession);
         m_controller->setControlScheme(m_controlScheme);
-        m_controller->setExivaOptions(m_exivaOptions, m_worldType);
         m_controller->setSidebarOptions(m_options);
     }
     return m_controller->widget();

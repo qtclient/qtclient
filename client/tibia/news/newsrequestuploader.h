@@ -67,8 +67,6 @@ private:
     QUrl m_url;
     std::shared_ptr<TNewsStorage> m_storage;
     std::map<TNewsQueryParameters, uint> m_retries;
-    /// True between requestNews upload and the matching finished (shared sender).
-    bool m_pending = false;
 };
 
 /// The query document of a news request.

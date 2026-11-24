@@ -42,23 +42,24 @@ constexpr int ValuableLootScreenshot = 52;
 /// The colour of the separator between coloured names.
 const QColor ColouredSeparatorColor(0xf0, 0xf0, 0xf0);
 
-/// The coins by translation, else the object's name.
+bool isCoinNotAutoTracked(const uint16_t objectType) { return objectType == GoldCoin || objectType == PlatinumCoin; }
+
+}
+
 QString trackedItemName(const uint16_t objectType)
 {
+    const TAppearanceTypePtr& type = tibia::game::thingType(objectType, ThingCategoryItem);
+    if (type && type->marketProperties())
+        return type->marketProperties()->name;
     switch (objectType) {
         case GoldCoin: return qtTrId("gold_coin");
         case PlatinumCoin: return qtTrId("platinum_coin");
         case CrystalCoin: return qtTrId("crystal_coin");
         default: break;
     }
-    const TAppearanceTypePtr& type = tibia::game::thingType(objectType, ThingCategoryItem);
     if (type && !type->name().isEmpty())
         return type->name();
     return qtTrId("dummy_unknown");
-}
-
-bool isCoinNotAutoTracked(const uint16_t objectType) { return objectType == GoldCoin || objectType == PlatinumCoin; }
-
 }
 
 TItemTrackingStorage::TItemTrackingStorage(analysers::TItemPriceStorage* prices, QObject* parent)

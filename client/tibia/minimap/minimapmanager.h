@@ -65,7 +65,6 @@ private:
     TMinimapMarkerGameActionHandler m_markerGameActionHandler;
     TMinimapProtocolMessageHandler m_protocolMessageHandler;
     TMinimapRenderInfoStorage m_renderInfoStorage;
-    TMinimapRendererScenegraphDrawCommandProvider m_scenegraphDrawCommands;
     std::shared_ptr<TMinimapTileManager> m_tileManager;
     std::unique_ptr<TMinimapWorldFeed> m_worldFeed;
     std::unique_ptr<TMinimapMarkerStorage> m_markers;

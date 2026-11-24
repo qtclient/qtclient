@@ -19,19 +19,6 @@ namespace input {
 /// Own CIP-named types under `parent` (keyboard shortcut handler).
 void ownProductSurface(QObject* parent);
 
-class TKeyboardInputToGameActionConverter final : public cip::tibia::input::TKeyboardInputToGameActionConverter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyboardInputToGameActionConverter::TKeyboardInputToGameActionConverter;
-};
-
-class TGenericChatGameActionProvider final : public ::tibia::CipTyped
-{
-public:
-    TGenericChatGameActionProvider() = default;
-};
-
 class TPathPlanningFailedException final : public ::tibia::CipTyped
 {
 public:

@@ -22,6 +22,7 @@ class TClientOptions;
 struct TClientWindowOptions;
 }
 namespace shared {
+class TDownloadPool;
 class TTibiaFileSystemHelper;
 }
 }
@@ -160,8 +161,8 @@ private:
     /// window's changes start the change timer, its size reaches the client,
     /// its close events are held back; then the game client is made.
     bool connectClientWindow(int StartMode, const TStartClient& StartClient);
-    /// CIP: the game client with the QML engine, the file system helper and
-    /// the client options; its errors, its readiness to close, its sidebar
+    /// CIP: the game client with the QML engine, the file system helper,
+    /// the client options and the download pool; its errors, its readiness to close, its sidebar
     /// count and status bar width reach the application; the window comes to
     /// the front, the client starts and the errors from before are shown.
     bool createGameClient(int StartMode, const TStartClient& StartClient);
@@ -177,6 +178,9 @@ private:
     /// CIP: on Windows a full screen client window keeps its border.
     void setHasBorderInFullScreen();
 
+    /// CIP: the downloads the client makes share this pool; at most
+    /// NETWORK/maxConcurrentDownloads (default 5, at least 1) run at once.
+    std::shared_ptr<shared::TDownloadPool> m_pDownloadPool;
     /// Host: guarded, the application deletes a client still there when it goes.
     QPointer<TGameClient> m_pGameClient;
     QQuickWindow* m_pClientWindow = nullptr;

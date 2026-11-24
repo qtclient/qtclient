@@ -6,6 +6,7 @@
 #include <client/position.h>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include <QPoint>
@@ -14,11 +15,15 @@ namespace tibia {
 namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+namespace renderer {
+class TRenderVolumeProvider;
+}
 }
 
 namespace tibia {
 namespace worldmap {
 
+class TWorldMapStorage;
 class TWorldMapViewport;
 
 /// A field found under the mouse and its coordinate.
@@ -58,6 +63,16 @@ struct TWorldMapPick
 class TWorldMapPicker : public ::tibia::CipTyped
 {
 public:
+    /// The session's picker: the render volume provider (its viewport), the
+    /// render provider whose last frame it reads and the map storage.
+    TWorldMapPicker(std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider,
+                    std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider,
+                    std::shared_ptr<TWorldMapStorage> worldMapStorage);
+    /// pick() on the session's last frame and viewport; invalid without them.
+    TWorldMapPick pick(const QPoint& mapPixel) const;
+    /// creatureAt() on the session's last frame and viewport; 0 without them.
+    uint32_t creatureAt(const QPoint& mapPixel) const;
+
     /// The fields under a map pixel on each drawn floor, top-down.
     static std::vector<Position> fieldCoordinatesAt(const qmlcomponents::TWorldMapRenderProvider& provider,
                                                     const QPoint& mapPixel);
@@ -79,6 +94,11 @@ public:
     /// at the creature's drawn position.
     static uint32_t creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider,
                                const TWorldMapViewport& viewport, const QPoint& mapPixel);
+
+private:
+    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
+    std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
+    std::shared_ptr<TWorldMapStorage> m_worldMapStorage;
 };
 
 }

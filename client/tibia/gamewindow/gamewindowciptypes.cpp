@@ -17,6 +17,7 @@
 #include <tibia/game/gamesession_forward.h>
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
+#include "trade/npctradestorage.h"
 #include "trade/tradeciptypes.h"
 #include "input/gameactionhandlers.h"
 
@@ -457,41 +458,6 @@ bool TPartyHuntMembersListModelSortFilterProxy::lessThan(const QModelIndex& left
     return QString::compare(ln, rn, Qt::CaseInsensitive) < 0;
 }
 
-TBattleListGameActionHandler::TBattleListGameActionHandler(TBattleListControllerStorage* storage, QObject* parent)
-    : cip::tibia::gamewindow::TBattleListGameActionHandler(parent)
-    , m_storage(storage)
-{}
-
-void TBattleListGameActionHandler::attackFirstTarget()
-{
-    if (m_storage)
-        m_storage->attackFirstTarget();
-}
-
-void TBattleListGameActionHandler::attackNextOrPreviousTarget(const bool Previous)
-{
-    if (m_storage)
-        m_storage->attackNextOrPreviousTarget(Previous);
-}
-
-void TBattleListGameActionHandler::setCreatureTutorialMarker(const uint32_t creatureId, const int markerId)
-{
-    m_creatureMarkers.insert(creatureId, markerId);
-}
-
-void TBattleListGameActionHandler::clearCreatureTutorialMarkers()
-{
-    m_creatureMarkers.clear();
-}
-
-void TBattleListGameActionHandler::handleRemoveAllTutorialMarkersGameAction()
-{
-    if (m_storage)
-        m_storage->clearCreatureTutorialMarkers();
-    else
-        clearCreatureTutorialMarkers();
-}
-
 TDialogControllerBase::TDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TDialogControllerBase(parent)
 {}
@@ -774,8 +740,9 @@ void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGam
     const input::TGameActionContextPtr& location = inspect->location();
     const input::EGameActionContextType type = location ? location->gameActionContextType() : input::EGameActionContextType::LOCATION_UNKNOWN;
     if (type == input::EGameActionContextType::LOCATION_NPC_TRADE) {
-        // qtclient has no NPC trade location context: the trade window asks
-        // the NPC trade handler for its looks itself.
+        const auto* trade = dynamic_cast<const input::TLocationNpcTradeGameActionContext*>(location.get());
+        if (trade && trade->good() && session->npcTradeStorage())
+            session->npcTradeStorage()->inspect(*trade->good());
         return;
     }
     if (type == input::EGameActionContextType::LOCATION_PLAYER_TRADE) {

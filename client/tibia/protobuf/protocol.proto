@@ -1402,13 +1402,11 @@ message ProtocolMapDonationRequest {
   optional uint32 amount = 2;
 }
 
+// CIP Outfit: look type, the four colours (OutfitColor) and the addons.
 message ProtocolOutfitLook {
   optional uint32 look_type = 1;
-  optional uint32 head = 2;
-  optional uint32 body = 3;
-  optional uint32 legs = 4;
-  optional uint32 feet = 5;
-  optional uint32 addons = 6;
+  optional OutfitColor colors = 2;
+  optional uint32 addons = 3;
 }
 
 message ProtocolFriendSettingChange {
@@ -1542,6 +1540,47 @@ message GameEventTypeSubAreaUnlocked {
 // CIP GameEventTypeAreaUnlocked: the unlocked area.
 message GameEventTypeAreaUnlocked {
   optional uint32 area_id = 1;
+}
+
+// CIP OutfitColor.
+message OutfitColor {
+  optional uint32 head = 1;
+  optional uint32 body = 2;
+  optional uint32 legs = 3;
+  optional uint32 feet = 4;
+}
+
+// CIP MountAndSummonOutfitData (no field 1 in the client's schema).
+message MountAndSummonOutfitData {
+  optional uint32 mount_look_type = 2;
+  optional OutfitColor mount_colors = 3;
+  optional uint32 familiar_look_type = 4;
+  optional bool random_mount = 5;
+  optional bool mounted = 6;
+}
+
+// CIP ShowOffSocketTarget: the podium (coordinate, stack position, object type).
+message ShowOffSocketTarget {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 stack_position = 2;
+  optional uint32 object_id = 3;
+}
+
+// CIP ShowOffSocketData: SetOutfit type 2 (an outfit on a podium).
+message ShowOffSocketData {
+  optional ShowOffSocketTarget target = 1;
+  optional uint32 mount_look_type = 2;
+  optional OutfitColor mount_colors = 3;
+  optional uint32 direction = 4;
+  optional bool podium_visible = 5;
+}
+
+// CIP ShowOffSocketConfiguration: a creature podium's configuration.
+message ShowOffSocketConfiguration {
+  optional ShowOffSocketTarget target = 1;
+  optional bool podium_visible = 2;
+  optional bool monster_visible = 3;
+  optional uint32 direction = 4;
 }
 
 // server opcode 0x03 (3) — CreatureData
@@ -4791,12 +4830,7 @@ message GameclientMessageCloseNPCChannel {
 // CIP TProtobufClientMessageTranslator::v43.
 message GameclientMessageSetCreaturePodiumConfiguration {
   optional uint32 race_id = 1;
-  optional ProtocolCoordinate position = 2;
-  optional uint32 object_id = 3;
-  optional uint32 stack_position = 4;
-  optional uint32 direction = 5;
-  optional bool podium_visible = 6;
-  optional bool monster_visible = 7;
+  optional ShowOffSocketConfiguration configuration = 2;
   extend GameclientMessage {
     optional GameclientMessageSetCreaturePodiumConfiguration gameclient_message_set_creature_podium_configuration = 159;
   }
@@ -5190,20 +5224,15 @@ message GameclientMessageGetOutfit {
 }
 
 // client opcode 0xD3 (211) — SetOutfit
-// CIP TProtobufClientMessageTranslator::v42.
+// CIP TProtobufClientMessageTranslator::v42: outfit type 0 (player, mount and summon data), 1 (hireling id), 2 (show-off socket data).
 message GameclientMessageSetOutfit {
   optional uint32 outfit_type = 1;
-  optional ProtocolOutfitLook look = 2;
-  optional ProtocolOutfitLook mount = 3;
-  optional bool mounted = 4;
-  optional uint32 familiar = 5;
-  optional bool random_mount = 6;
-  optional uint32 hireling_id = 7;
-  optional ProtocolCoordinate position = 8;
-  optional uint32 object_id = 9;
-  optional uint32 stack_position = 10;
-  optional uint32 direction = 11;
-  optional bool podium_visible = 12;
+  optional ProtocolOutfitLook outfit = 2;
+  oneof outfit_data {
+    MountAndSummonOutfitData mount_and_summon_data = 3;
+    uint32 hireling_id = 4;
+    ShowOffSocketData show_off_socket_data = 5;
+  }
   extend GameclientMessage {
     optional GameclientMessageSetOutfit gameclient_message_set_outfit = 211;
   }

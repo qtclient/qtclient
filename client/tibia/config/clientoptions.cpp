@@ -734,14 +734,17 @@ void TClientOptions::setExtraSection(const QString& name, const QJsonValue& valu
 
 void TClientOptions::setDefaults(const int mode)
 {
-    m_bools.clear();
-    m_ints.clear();
-    m_floats.clear();
-    m_strings.clear();
+    // Every default is assigned over the current value; options without a
+    // default keep theirs. Outside mode 0 the sound options are left as they are.
+    const auto isSoundOption = [](const EClientOption id) {
+        return int(id) >= int(EClientOption::soundAmbienceVolume) && int(id) <= int(EClientOption::soundVipEnabled);
+    };
     const QJsonObject& defaults = defaultClientOptions();
     for (auto it = defaults.begin(); it != defaults.end(); ++it) {
         EClientOption id;
         if (!optionId(it.key(), id))
+            continue;
+        if (mode != 0 && isSoundOption(id))
             continue;
         if (it->isBool())
             m_bools[id] = it->toBool();
@@ -752,27 +755,9 @@ void TClientOptions::setDefaults(const int mode)
         else
             m_ints[id] = it->toInt();
     }
-    // The tutorial's options have no sound options.
-    if (mode != 0) {
-        for (int id = int(EClientOption::soundAmbienceVolume); id <= int(EClientOption::soundVipEnabled); ++id) {
-            m_bools.erase(EClientOption(id));
-            m_ints.erase(EClientOption(id));
-            m_floats.erase(EClientOption(id));
-            m_strings.erase(EClientOption(id));
-        }
-    }
-    m_rendererChangeConfirmationRequired = false;
-    m_clientWindow = {};
-    m_npcDialog = {};
     m_controlButtons = defaultControlButtonsOptions();
-    m_deviceCookies.clear();
-    m_hotkeyOptions = {};
-    m_chat = {};
-    m_whiteBlacklist = {};
-    m_survey = {};
-    m_newsMaxUnlockLevel = 0;
     m_specialConditions = SpecialConditionsOptions::defaults().toJson();
-    m_pinnedCharacters.clear();
+    // Host: options and sections CipSoft does not know start empty.
     m_extraOptions = {};
     m_extraSections = {};
 }

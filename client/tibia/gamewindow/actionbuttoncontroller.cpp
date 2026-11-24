@@ -5,6 +5,8 @@
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
+#include "input/multiactionprioritysolver.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 #include "spells/spellinfostorage.h"
 
 #include <tibia/appearances/appearancetype.h>
@@ -13,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -58,6 +61,15 @@ TActionButtonController::TActionButtonController(TActionBarController* bar, cons
     m_actionButtonID = uint(buttonId);
     m_multiActionIndex = multiActionIndex;
     m_isEnabled = true;
+    // A spell button redraws when the spell table changes.
+    if (spells::TSpellInfoStorage* spellInfo = spells::TSpellInfoStorage::instance())
+        connect(spellInfo, &spells::TSpellInfoStorage::spellModificationsApplied, this, &TActionButtonController::onSpellDataModified);
+}
+
+void TActionButtonController::onSpellDataModified()
+{
+    if (m_type == SPELL)
+        Q_EMIT changed();
 }
 
 void TActionButtonController::setCastType(const int castType)
@@ -399,76 +411,113 @@ game::TCooldown TActionButtonController::currentCooldown() const
     return {};
 }
 
-bool TActionButtonController::isUsable() const
+namespace {
+
+/// A slot of a multi-action button as the multi action priority solver asks
+/// it. Every answer reads the action the slot shows: the slot itself, or,
+/// while it holds slots of its own, its current slot followed down.
+class TPrioritySolverAdapter final : public input::TMultiActionPrioritySolver::IAction
 {
-    if (m_type == SPELL) {
-        if (!tibia::game::isOnline())
-            return false;
-        const std::vector<uint16_t>& learned = tibia::game::localPlayerSpells();
-        return std::find(learned.begin(), learned.end(), uint16_t(m_spellId)) != learned.end();
+public:
+    explicit TPrioritySolverAdapter(TActionButtonController* button)
+        : m_button(button)
+    {
     }
-    if (m_type == OBJECT)
-        return m_objectCount > 0;
-    return true;
+
+    TActionButtonController* button() const { return m_button; }
+
+    bool isEmpty() const override;
+    bool resolveSpell() override;
+    uint16_t spellId() const override;
+    bool hasObject() const override;
+    config::EUseType useType() const override;
+    uint16_t objectId() const override;
+    /// The object is a fluid container or a splash.
+    bool hasLiquidType() const override;
+    uint32_t liquidType() const override;
+    /// The object has an upgrade classification.
+    bool hasUpgradeTier() const override;
+    uint8_t upgradeTier() const override;
+
+private:
+    const TActionButtonController* action() const;
+
+    TActionButtonController* m_button;
+};
+
+const TActionButtonController* TPrioritySolverAdapter::action() const
+{
+    const TActionButtonController* button = m_button;
+    while (button->isMultiAction()) {
+        const TActionButtonController* slot = button->currentMultiAction();
+        if (!slot)
+            break;
+        button = slot;
+    }
+    return button;
 }
 
-qint64 TActionButtonController::remainingCooldown(const qint64 now) const
+bool TPrioritySolverAdapter::isEmpty() const { return action()->type() == TActionButtonController::EMPTY; }
+
+bool TPrioritySolverAdapter::resolveSpell() { return action()->type() == TActionButtonController::SPELL; }
+
+uint16_t TPrioritySolverAdapter::spellId() const { return static_cast<uint16_t>(action()->spellId()); }
+
+bool TPrioritySolverAdapter::hasObject() const { return action()->type() == TActionButtonController::OBJECT; }
+
+config::EUseType TPrioritySolverAdapter::useType() const { return action()->useType(); }
+
+uint16_t TPrioritySolverAdapter::objectId() const { return static_cast<uint16_t>(action()->objectID()); }
+
+bool TPrioritySolverAdapter::hasLiquidType() const
 {
-    const game::TCooldownStorage* storage = m_cooldownStorage.get();
-    if (!storage)
-        return 0;
-    game::TCooldown cooldown;
-    if (m_type == SPELL) {
-        cooldown = storage->spellCooldown(m_spellId);
-    } else if (m_type == PASSIVEABILITY) {
-        cooldown = storage->passiveCooldown();
-    } else if (m_type == OBJECT) {
-        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(int(m_objectID))) {
-            cooldown = storage->objectCooldown(uint16_t(int(m_objectID)), now);
-        } else {
-            switch (m_useType) {
-            case config::EUseType::UseOnYourself:
-            case config::EUseType::UseOnTarget:
-            case config::EUseType::SelectUseTarget:
-            case config::EUseType::UseAtMouseCursor:
-                cooldown = storage->multiUseCooldown();
-                break;
-            default:
-                break;
-            }
-        }
-    }
-    return std::max<qint64>(0, cooldown.end - now);
+    if (!hasObject())
+        return false;
+    const TAppearanceType* type = tibia::game::rawThingType(objectId(), ThingCategoryItem);
+    return type && (type->isFluidContainer() || type->isSplash());
 }
 
-TActionButtonController* TActionButtonController::currentMultiAction(const qint64 now) const
+uint32_t TPrioritySolverAdapter::liquidType() const
 {
-    const int ping = tibia::game::getPing();
-    const qint64 window = std::min<qint64>(std::max(ping, 0) / 2, 400);
-    qint64 best = std::numeric_limits<qint64>::max();
-    TActionButtonController* candidate = nullptr;
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getLiquidType(action()->liquidType());
+}
+
+bool TPrioritySolverAdapter::hasUpgradeTier() const
+{
+    if (!hasObject())
+        return false;
+    const TAppearanceType* type = tibia::game::rawThingType(objectId(), ThingCategoryItem);
+    return type && type->hasUpgradeClassification();
+}
+
+uint8_t TPrioritySolverAdapter::upgradeTier() const { return static_cast<uint8_t>(action()->objectUpgradeTier()); }
+
+}
+
+TActionButtonController* TActionButtonController::currentMultiAction() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->cooldownStorage() || !session->playerData() || !session->objectAppearanceInstanceInfoStorage())
+        return nullptr;
+    std::vector<TPrioritySolverAdapter> adapters;
+    adapters.reserve(m_children.size());
+    std::vector<input::TMultiActionPrioritySolver::IAction*> candidates;
     for (TActionButtonController* child : m_children) {
-        if (child->m_type == EMPTY)
-            continue;
-        if (!child->isUsable()) {
-            if (!candidate)
-                candidate = child;
-            continue;
-        }
-        const qint64 remaining = child->remainingCooldown(now);
-        if (remaining == 0)
-            return child;
-        if (window + remaining < best) {
-            candidate = child;
-            best = remaining;
-        }
+        adapters.emplace_back(child);
+        candidates.push_back(&adapters.back());
     }
-    return candidate;
+    // Host: the clock and the ping are qtclient statics.
+    const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
+    const input::TMultiActionPrioritySolver solver(session->cooldownStorage().get(), session->playerData().get(),
+                                                   session->objectAppearanceInstanceInfoStorage().get(), game::TCooldownStorage::now(),
+                                                   latency);
+    const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));
+    return chosen ? chosen->button() : nullptr;
 }
 
-void TActionButtonController::refreshShownSlot(const qint64 now)
+void TActionButtonController::refreshShownSlot()
 {
-    TActionButtonController* slot = currentMultiAction(now);
+    TActionButtonController* slot = currentMultiAction();
     if (slot == m_shownSlot)
         return;
     m_shownSlot = slot;
@@ -484,7 +533,7 @@ bool TActionButtonController::refreshCooldown(const qint64 now)
     for (TActionButtonController* child : m_children)
         running = child->refreshCooldown(now) || running;
     if (!m_children.empty())
-        refreshShownSlot(now);
+        refreshShownSlot();
 
     const game::TCooldown cooldown = currentCooldown();
     const qint64 remaining = cooldown.end - now;

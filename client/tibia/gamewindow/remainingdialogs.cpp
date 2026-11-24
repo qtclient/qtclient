@@ -654,6 +654,10 @@ TCrashReportDialogController::TCrashReportDialogController(QObject* parent)
     : TDialogController(QStringLiteral("CrashReportDialog.qml"), parent)
 {}
 
+TCrashReportDialogController::TCrashReportDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("CrashReportDialog.qml"), Engine, DialogParentItem, parent)
+{}
+
 QString TCrashReportDialogController::minimalInformation() const
 {
     const std::set<QString> shownKeys = { QStringLiteral("LogMessages"), QStringLiteral("Character") };
@@ -1426,17 +1430,37 @@ TSurveyInvitationDialogController::TSurveyInvitationDialogController(QObject* pa
     m_showAskLater = true;
 }
 
-void TSurveyInvitationDialogController::showInvitation(const int surveyId, const QString& text, const QString& token, const quint32 date,
-                                                       const bool askLater)
+void TSurveyInvitationDialogController::setSurveyData(const authentication::TSurveyData& Survey)
 {
-    m_surveyId = surveyId;
-    m_invitationText = text;
-    m_token = token;
-    m_date = date;
-    m_showAskLater = askLater;
+    m_surveyId = static_cast<int>(Survey.id);
+    m_invitationText = Survey.invitationText;
+    m_token = Survey.invitationToken;
+    m_date = Survey.endTimestamp;
+    config::TClientOptions* options = config::TClientOptions::instance();
+    if (!options)
+        return;
+    if (options->surveyInvitationOptions().id != Survey.id) {
+        config::TSurveyInvitationOptions survey = options->surveyInvitationOptions();
+        survey.id = Survey.id;
+        survey.status = 0;
+        options->setSurveyInvitationOptions(survey);
+        Q_EMIT contentChanged();
+    }
+    m_showAskLater = options->surveyInvitationOptions().status == 0;
+    Q_EMIT contentChanged();
+}
+
+bool TSurveyInvitationDialogController::showSurveyInvitation(const authentication::TSurveyData& Survey)
+{
+    setSurveyData(Survey);
+    config::TClientOptions* options = config::TClientOptions::instance();
+    if (!options || options->surveyInvitationOptions().status == 2)
+        return false;
+    setSurveyStatus(1);
     Q_EMIT contentChanged();
     dialog()->create();
     dialog()->show();
+    return true;
 }
 
 QString TSurveyInvitationDialogController::dateString() const

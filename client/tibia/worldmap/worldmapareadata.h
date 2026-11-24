@@ -84,6 +84,8 @@ struct TPassageMapAreaData
 {
     std::vector<quint16> raceIds;
     TWorldMapCoordinate coordinate;
+    /// The passage is the selected one (set by the Cyclopedia map's render infos).
+    bool selected = false;
 };
 /// A viewpoint of the subarea being discovered: found (state 1) or not.
 struct TViewpointMapAreaData

@@ -12,6 +12,10 @@ TChatChannelFilterController::TChatChannelFilterController(TChatChannelControlle
     connect(source, &TChatChannelController::chatChannelPropertyChanged, this,
             &TChatChannelFilterController::chatChannelPropertyChanged);
     connect(source, &TChatChannelController::chatChannelChanged, this, &TChatChannelFilterController::chatChannelChanged);
+    connect(source, &TChatChannelController::closeRequested, this, &TChatChannelFilterController::closeRequested);
+    connect(source, &TChatChannelController::subscribeToServerLogRequested, this,
+            &TChatChannelFilterController::subscribeToServerLogRequested);
+    connect(source, &TChatChannelController::publishGameAction, this, &TChatChannelFilterController::publishGameAction);
 }
 
 TChatChannelController* TChatChannelFilterController::source() const { return static_cast<TChatChannelController*>(sourceModel()); }

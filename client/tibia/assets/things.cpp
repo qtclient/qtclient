@@ -166,19 +166,6 @@ const std::shared_ptr<TAppearanceInstanceTracker>& TAppearancesManager::sharedTr
     return m_tracker;
 }
 
-TAppearanceInstanceGenericStoragesManager& TAppearancesManager::storages()
-{
-    if (!m_storages)
-        m_storages = std::make_unique<TAppearanceInstanceGenericStoragesManager>();
-    return *m_storages;
-}
-
-TAppearanceInstanceGenericStorage& TAppearancesManager::genericStorage()
-{
-    if (!m_genericStorage)
-        m_genericStorage = std::make_unique<TAppearanceInstanceGenericStorage>();
-    return *m_genericStorage;
-}
 
 
 void TAppearancesManager::init()
@@ -300,8 +287,6 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
 {
     try {
         init();
-        (void)storages();
-        (void)genericStorage();
         m_assetIdentifier = loadAssetIdentifier(directory);
         if (m_assetIdentifier.empty()) {
             // Expected for bare --data extracts until make extract stamps the file.
@@ -319,9 +304,6 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         const auto appearancesPath = tibia::files::data().resolvePath(directory + appearancesFile);
         initialize(tibia::files::data().readFileContents(appearancesPath));
         postprocessAppearances();
-        if (auto* loader = tibia::sprites::TSpriteSystem::instance().assetLoader())
-            QObject::connect(m_tracker.get(), &TAppearanceInstanceTracker::loadSpritesheetWithID, loader,
-                             &tibia::assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::UniqueConnection);
         m_datLoaded = true;
         return true;
     } catch (const std::exception&) {

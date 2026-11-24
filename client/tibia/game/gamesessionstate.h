@@ -26,6 +26,7 @@ class TGameserverGameSession;
 
 namespace tibia::input {
 class TPlayerMovementIntentHandler;
+class TPlayerMovementGameActionHandler;
 }
 
 namespace tibia::game {
@@ -114,7 +115,10 @@ public:
 
 public:
     // login related
-    void loginWorld(std::string_view account, std::string_view password, std::string_view worldName, std::string_view worldHost, int worldPort, std::string_view characterName, std::string_view authenticatorToken, std::string_view sessionKey, const std::string_view& recordTo);
+    /// The live session starts a login: the game state resets and `connection`
+    /// becomes the session's game connection (the session connects it).
+    void loginWorld(std::string_view worldName, std::string_view characterName,
+                    std::shared_ptr<tibia::network::TGameserverSessionNetwork> connection);
     /// Opens a replay session. Decoded server messages are delivered with deliverReplayPacket.
     void startDecodedReplay();
     void deliverReplayPacket(const uint8_t* data, size_t size);
@@ -319,7 +323,8 @@ public:
     void setFollowingCreatureId(uint32_t creatureId);
 
     bool m_playerPresent{ false };
-    std::unique_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
+    std::shared_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
+    std::shared_ptr<tibia::input::TPlayerMovementGameActionHandler> m_playerMovementGameActions;
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };
     /// The game connection of the running session (null when offline).

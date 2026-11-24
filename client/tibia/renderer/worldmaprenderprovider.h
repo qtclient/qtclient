@@ -5,6 +5,8 @@
 #include "mods/worldview.h"
 #include "renderer/spritetexturecache.h"
 #include "renderer/worldgeometry.h"
+#include "worldmap/coordinates.h"
+#include "worldmap/worldmapobjectcounter.h"
 
 #include <client/declarations.h>
 #include <client/position.h>
@@ -17,7 +19,9 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -49,18 +53,41 @@ class TWorldMapStorage;
 namespace tibia {
 namespace qmlcomponents {
 
-/// One sprite of the world, in draw order (CIP: the provider's 0x30-byte records).
-struct SpriteRecord
+/// One sprite of the world (CIP: renderer::TAppearanceInstanceSpriteDrawCommandInfoCompact):
+/// the frame build collects them for every floor, marks the ones hidden under
+/// opaque objects of higher floors and sorts the rest by their key.
+struct TAppearanceInstanceSpriteDrawCommandInfoCompact
 {
+    /// The packed sort key (floor, group, field, layer, draw index).
+    uint64_t key = 0;
     /// One past the sprite's bottom-right pixel: things are anchored at their
     /// bottom-right corner, so the sprite's size is not needed to place it.
     QPoint anchor;
+    /// The floor of the field the sprite is drawn for.
+    int floor = 0;
+    /// Every field the sprite covers is covered by an opaque object of a higher
+    /// floor: the sprite is not drawn.
+    bool obscured = false;
+    /// Highlight drawn over the sprite.
+    enum Highlight : uint8_t { NoHighlight, MouseTarget, AttackTarget, FollowTarget };
+    Highlight highlight = NoHighlight;
     /// The sprite info drawn (its sprite size places it from the anchor).
     SpriteIdentifier sprite;
     float opacity = 1.f;
-    /// Highlight drawn over the sprite (CIP: the record's byte at +0x15).
-    enum Highlight : uint8_t { NoHighlight, MouseTarget, AttackTarget, FollowTarget };
-    Highlight highlight = NoHighlight;
+};
+using SpriteRecord = TAppearanceInstanceSpriteDrawCommandInfoCompact;
+
+/// The fields of the render volume, each holding the highest floor whose opaque
+/// object covers it (CIP: the frame build's occlusion grid; 15 when none does).
+/// Indexed by map pixel / 32 modulo its size.
+struct TOcclusionGrid
+{
+    TOcclusionGrid(int volumeWidth, int volumeHeight);
+    int& at(int column, int row);
+
+    int width = 0;
+    int height = 0;
+    std::vector<int> floors;
 };
 
 /// Turns the game model into the world's frame (CIP: TWorldMapRenderProvider):
@@ -191,32 +218,15 @@ public:
 
     explicit TWorldMapRenderProvider(QObject* parent = nullptr);
 
+    /// The last frame's objects around the player, per type and distance ring
+    /// (CIP: v4); the object sound controller reads it after the frame.
+    const worldmap::TWorldMapObjectCounter& objectCounter() const { return m_objectCounter; }
+    /// The appearance types the last frame drew.
+    const std::set<const TAppearanceType*>& frameAppearanceTypes() const { return m_frameTypes; }
+
 public Q_SLOTS:
     /// Builds the next frame from the game model; emits frameAdvanced.
-    /// CIP `TWorldMapRenderProvider::v6` — sprite list + light + HUD anchors.
     void advance();
-
-public:
-    /// CIP slot aliases (tip names stay for QML/callers).
-    void v6() { advance(); }
-    void v7() { buildLight(); }
-    /// CIP v8 — FOV/skirt field walk that drives per-tile draw (inside `build`).
-    void v8() { (void)build(); }
-    /// CIP v9 — one field's sprites, keyed for the floor sort.
-    void v9(tibia::worldmap::TWorldMapField* tile, int x, int y) { addTile(tile, x, y); }
-    /// CIP v10 — item stack entry + mouse-target tint.
-    SpriteRecord::Highlight v10(const Position& field, int stackIndex, uint16_t typeId) const
-    {
-        return itemHighlightOf(field, stackIndex, typeId);
-    }
-    /// CIP v11 — missile appearances on the floor.
-    void v11(const appearances::TAppearanceInstancePtr& appearance) { addMissile(appearance); }
-    int v14(const Position& field) const { return fieldLightness(field); }
-    void v17(uint16_t typeId, const Position& field, int stackPos)
-    {
-        setMouseTargetObject(typeId, field, stackPos);
-    }
-    void v21() { updateHighlightBaseplate(); }
 
 Q_SIGNALS:
     void frameAdvanced();
@@ -227,9 +237,9 @@ Q_SIGNALS:
     void visibleFieldsChanged();
 
 private:
-    /// Where a sprite sorts on its floor (CIP: the record's 64-bit sort key,
-    /// TWorldMapRenderProvider). A floor's sprites are emitted in any order and
-    /// stable-sorted by group, then field x+y, field x, layer, draw index.
+    /// Where a sprite sorts (CIP: the record's 64-bit sort key). The frame's
+    /// sprites are emitted in any order and sorted by floor (deepest first),
+    /// group, field x+y, field x, layer, draw index; ties keep emission order.
     struct DrawKey
     {
         /// 1 bank/clip, 2 bottom/common/creature/top, 3 effect, 4 topeffect, 5 missile.
@@ -237,33 +247,45 @@ private:
         /// Draw-grid field the sprite sorts with.
         int x = 0;
         int y = 0;
+        /// The floor of the field.
+        int z = 0;
         /// Layer within the field: 0 bank, 1 clip, 2 bottom, 3 common,
         /// 5 creature, 6 top, 7 effect (and the mouse baseplate), 8 missile.
         uint8_t layer = 3;
         /// Position in the field's draw list (stack with everything after the
-        /// bank/clip/bottom prefix reversed); inverted for group 4.
+        /// bank/clip/bottom prefix reversed); inverted in group 4.
         uint8_t index = 0;
         /// A creature or top object moved to a lying object's slot keeps its
         /// own draw index here.
         uint8_t own = 0;
+        /// The record's flag (0 for every sprite qtclient draws).
+        uint8_t flag = 0;
         uint64_t packed() const;
     };
     /// A lying object's slot taken by the creatures and top objects of the
     /// fields up, left and up-left of it.
     struct LyingSlot
     {
-        bool set = false;
+        /// The lying object's field and its draw-grid cell.
+        worldmap::TWorldMapCoordinate field;
         int x = 0;
         int y = 0;
         uint8_t index = 0;
     };
-    struct VisibleField
+    /// A field of the render volume and its draw-grid cell on its floor
+    /// (CIP: the storage's field entries, coordinate and field).
+    struct FieldEntry
     {
-        tibia::worldmap::TWorldMapField* tile;
-        int x;
-        int y;
+        worldmap::TWorldMapCoordinate coordinate;
+        tibia::worldmap::TWorldMapField* field = nullptr;
+        int x = 0;
+        int y = 0;
     };
+    /// What the sprite emitters produce: draw commands, the pack's lighting
+    /// stamps, or both.
+    enum Emit : uint8_t { EmitRecords = 1, EmitStamps = 2, EmitAll = EmitRecords | EmitStamps };
 
+    /// The frame build: every floor's draw commands, sorted, and the light map.
     bool build();
     void buildLight();
     /// Shared outdoor / roof gather when weather or raycast needs it.
@@ -283,24 +305,48 @@ private:
     /// The field drawn at light map cell (x, y) of floor z.
     Position lightField(int x, int y, int z) const;
 
-    /// Emits every sprite of one field with its CIP sort key.
-    void addTile(tibia::worldmap::TWorldMapField* tile, int x, int y);
-    void addTileBelow(tibia::worldmap::TWorldMapField* tile, const QPoint& dest, uint8_t& elevation);
-    void addTileCreatures(tibia::worldmap::TWorldMapField* tile, const QPoint& dest, uint8_t elevation);
+    /// The drawn fields of floors `last` up to `first`, in draw order.
+    std::vector<FieldEntry> fieldsInVolume(uint8_t first, uint8_t last) const;
+    /// Every field's draw commands, lights and occluders.
+    void addFields(const std::vector<FieldEntry>& fields, uint8_t first, uint8_t last, TOcclusionGrid& grid);
+    /// One field's draw commands.
+    void addField(const FieldEntry& field, TOcclusionGrid& grid);
+    void addTileBelow(const FieldEntry& field, const QPoint& dest, uint8_t& elevation, TOcclusionGrid& grid);
+    void addTileCreatures(const FieldEntry& field, const QPoint& dest, uint8_t elevation);
     void addTileEffects(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
-    void addTileTop(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
+    void addTileTop(const FieldEntry& field, const QPoint& dest, TOcclusionGrid& grid);
+    /// One object of a field: its draw commands with their key, its light,
+    /// the fields it hides, its count near the player and its type.
+    void addObject(const FieldEntry& field, int stackIndex, const QPoint& dest, uint8_t& elevation, bool castHeight,
+                   TOcclusionGrid& grid);
+    /// Counts a drawn creature near the player and keeps its types.
+    void noteCreature(const worldmap::TWorldMapCoordinate& field, const tibia::creatures::TCreature& creature);
+    /// The missiles of the drawn floors (after every field).
+    void addMissiles(uint8_t first, uint8_t last);
+    /// The pack lighting's stamps and lights of floor `z`'s missiles.
+    void gatherMissileLighting(int z);
+    /// The square under the mouse.
+    void addHighlightBaseplate(std::vector<SpriteRecord>& records);
+    /// Lowers the floor of the whole fields `record` covers to `floor`.
+    void occlude(TOcclusionGrid& grid, const SpriteRecord& record, int floor) const;
+    /// Marks the draw commands every field of which is covered from a higher floor.
+    void markObscuredDrawCommands(TOcclusionGrid& grid, std::vector<SpriteRecord>& records) const;
+    /// The visible draw commands of `records` in key order into `sorted`.
+    void sortDrawCommands(std::vector<SpriteRecord>& records, std::vector<SpriteRecord>& sorted);
+    /// Appends a draw command with the current key and floor.
+    void pushRecord(SpriteRecord record);
+    /// The key of a sprite of `kind` at draw-grid (x, y).
+    static DrawKey keyOfKind(int kind, int x, int y, uint8_t index, int floor);
+    static bool takesLyingSlot(int kind);
     /// Index of `stackIndex` in the field's draw list.
     static uint8_t drawIndex(const tibia::worldmap::TWorldMapField& tile, int stackIndex);
     /// Draw-grid cell of a field on the current floor.
     QPoint gridCell(const Position& field) const;
-    /// Rebuilds m_lyingSlots for the visible fields of the current floor.
-    void mapLyingObjects();
-    /// Key for a creature or top object at draw-grid (x, y): moved into the
-    /// slot of a lying object down or right of it.
-    DrawKey slotKey(int x, int y, uint8_t layer, uint8_t index) const;
-    /// Item layer draw: appearance instance drives TAppearanceType/layers; optional Item for marked/animation.
-    void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t& elevation,
-                           bool castHeight = true);
+    /// Rebuilds m_lyingSlots for the drawn fields.
+    void mapLyingObjects(const std::vector<FieldEntry>& fields);
+    /// Key for a creature or top object of `field` at draw-grid (x, y): moved
+    /// into the slot of a lying object down or right of it.
+    DrawKey slotKey(const worldmap::TWorldMapCoordinate& field, int x, int y, uint8_t layer, uint8_t index) const;
     void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
     void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
@@ -345,8 +391,6 @@ private:
     void addLight(const QPoint& center, uint8_t intensity, uint8_t color);
     /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
     std::shared_ptr<worldmap::TLightMap> buildLightMap(bool withLights);
-    /// CIP TWorldMapRenderProvider::v21: animated field square under the mouse.
-    void updateHighlightBaseplate();
 
     Frame m_frame;
     Position m_camera;
@@ -367,15 +411,21 @@ private:
     bool m_targetHighlight = true;
     uint32_t m_attackTarget = 0;
     uint32_t m_followTarget = 0;
-    /// The current floor's sprites and their packed sort keys.
-    std::vector<SpriteRecord> m_floorSprites;
-    std::vector<uint64_t> m_floorKeys;
-    std::vector<uint32_t> m_floorOrder;
+    /// The frame's draw commands of every floor, before the sort.
+    std::vector<SpriteRecord> m_records;
+    /// The visible records' keys and indices, sorted.
+    std::vector<std::pair<uint64_t, uint32_t>> m_sortOrder;
     /// Key given to the sprites emitted next.
     DrawKey m_key;
-    std::vector<VisibleField> m_visibleFields;
-    /// Lying-object slots by draw-grid cell (y * drawWidth() + x).
-    std::vector<LyingSlot> m_lyingSlots;
+    Emit m_emit = EmitAll;
+    /// Map pixel of draw-grid pixel (0, 0) on the camera's floor.
+    QPoint m_mapPixelOrigin;
+    /// The pack's lighting gathers this frame.
+    bool m_gatherRaycast = false;
+    /// Lying-object slots by the field they are lent to.
+    std::map<worldmap::TWorldMapCoordinate, LyingSlot> m_lyingSlots;
+    worldmap::TWorldMapObjectCounter m_objectCounter;
+    std::set<const TAppearanceType*> m_frameTypes;
     std::vector<light::PointLight> m_lights;
     light::LightOptions m_lightOptions;
     uint32_t m_coverRevision = 0;

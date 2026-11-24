@@ -46,11 +46,13 @@ TImbuement imbuementFromProtocol(const ::tibia::protobuf::protocol::ProtocolImbu
 
 }
 
-TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler(TImbuingStorage* imbuingStorage,
-                                                               TImbuementDurationsStorage* imbuementDurationsStorage, QObject* parent)
-    : cip::tibia::imbuing::TImbuingProtocolMessageHandler(parent)
-    , m_imbuingStorage(imbuingStorage)
-    , m_imbuementDurationsStorage(imbuementDurationsStorage)
+TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler(
+    std::shared_ptr<TImbuingStorage> imbuingStorage, std::shared_ptr<protocol::TGameActionContextHelper> gameActionContextHelper,
+    std::shared_ptr<TImbuementDurationsStorage> imbuementDurationsStorage, std::shared_ptr<shared::IClockService> clockService)
+    : m_imbuingStorage(std::move(imbuingStorage))
+    , m_gameActionContextHelper(std::move(gameActionContextHelper))
+    , m_imbuementDurationsStorage(std::move(imbuementDurationsStorage))
+    , m_clockService(std::move(clockService))
 {
 }
 
@@ -95,7 +97,7 @@ void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::t
     // product: the pack refreshes its gold-token material status when the choice window opens.
     if (message.window_type() == tibia::client::IMBUEMENT_WINDOW_CHOICE)
         tibia::game::notify("onOpenImbuementWindow", static_cast<uint16_t>(0), static_cast<uint32_t>(0));
-    TImbuingStorage* storage = m_imbuingStorage;
+    TImbuingStorage* storage = m_imbuingStorage.get();
     std::vector<TImbuementSlot> slots;
     slots.reserve(static_cast<size_t>(message.slots_size()));
     for (int index = 0; index < message.slots_size(); ++index) {

@@ -223,8 +223,9 @@ void THotkeyOptionsData::removeSet(const QString& name)
 
 void THotkeyOptionsData::clearBindings(const QString& setName, const bool chatOn)
 {
-    if (THotkeySet* hotkeySet = set(setName))
-        (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff).clear();
+    // An unknown name gets an empty set (CipSoft indexes the set map).
+    THotkeySet& hotkeySet = hotkeySets[setName];
+    (chatOn ? hotkeySet.chatOn : hotkeySet.chatOff).clear();
 }
 
 void THotkeyOptionsData::addBinding(const QString& setName, const bool chatOn, const QKeySequence& keys, const TActionSetting& setting)

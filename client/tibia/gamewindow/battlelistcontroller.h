@@ -2,6 +2,7 @@
 
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "creatures/battlelistrenderprovider.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
@@ -33,6 +34,7 @@ namespace config {
 class TSidebarOptions;
 }
 namespace game {
+class IGameSession;
 class TPremiumTimeStorage;
 }
 }
@@ -48,7 +50,6 @@ namespace gamewindow {
 
 class TSidebarManager;
 class TBattleListControllerStorage;
-class TBattleListGameActionHandler;
 class TGenericEnterTextDialogController;
 
 /// One entry of sidebars.json's battleListsOptions, keyed by battle list id
@@ -75,39 +76,7 @@ struct BattleListOptions
 
 /// One row of a battle list (CIP: TBattleListDrawCommand, read by
 /// TBattleListDataModel::data).
-struct BattleListEntry
-{
-    uint32_t creatureId = 0;
-    QString name;
-    float healthPercent = 0;
-    QColor healthColor;
-    float manaPercent = 0;
-    bool showMana = false;
-    QVariantList frameColors;
-    QStringList statusIcons;
-    uint outfitId = 0;
-    bool outfitIsObject = false;
-    QColor headColor;
-    QColor torsoColor;
-    QColor legsColor;
-    QColor detailColor;
-    bool firstAddOn = false;
-    bool secondAddOn = false;
-    uint visibleOrder = 0;
-    uint distance = 0;
-    bool temporarySelected = false;
-    bool inViewport = false;
-    bool inSharedXpDistance = false;
-    bool fiendish = false;
-    bool leader = false;
-    bool leaderMinion = false;
-    int vocation = 0;
-    /// CIP tutorialMarkerID role 0x111 — set by ADD_GUI_TUTORIAL_MARKER.
-    int tutorialMarkerId = 0;
-
-    /// CIP's draw command comparison.
-    bool operator==(const BattleListEntry& other) const;
-};
+using BattleListEntry = creatures::TBattleListDrawCommand;
 
 /// battleListModel (CIP: TBattleListDataModel, roles).
 class TBattleListDataModel final : public cip::tibia::gamewindow::TBattleListDataModel
@@ -333,21 +302,10 @@ public:
     bool hasPremium() const;
     TBattleListDataModel* dataModel() { return &m_dataModel; }
 
-    /// The creatures a battle list can show: every creature but the player
-    /// that is alive, party members anywhere, the others in range and placed
-    /// on a field.
-    std::vector<std::shared_ptr<creatures::TCreature>> battleListCreatures() const;
     /// The hovered creature (the creature storage holds it and its frame).
     void setTemporarySelectedCreature(uint32_t creatureId);
-
-    /// CIP / (TBattleListGameActionHandler slots).
-    bool attackFirstTarget();
-    bool attackNextOrPreviousTarget(bool previous);
-
-    /// CIP handleAddGUITutorialMarkerAction / REMOVE_ALL on the battle list.
-    void setCreatureTutorialMarker(uint32_t creatureId, int markerId);
-    void clearCreatureTutorialMarkers();
-    TBattleListGameActionHandler* gameActionHandler() const { return m_gameActionHandler; }
+    /// The session whose battle list render provider builds the rows.
+    void setGameSession(std::shared_ptr<game::IGameSession> GameSession);
 
 public Q_SLOTS:
     /// CIP: the shared model takes the draw commands of every creature.
@@ -376,7 +334,6 @@ private:
     /// CIP: a list opened after login starts maximized.
     void maximizeIfLoggedIn(TBattleListController* controller) const;
     void publishStatusLine(const QString& text, const QColor& color);
-    BattleListEntry entryOf(const std::shared_ptr<creatures::TCreature>& creature) const;
     void onUpdateTimer();
 
     QPointer<TSidebarManager> m_sidebars;
@@ -389,12 +346,10 @@ private:
     TBattleListController* m_primary = nullptr;
     TBattleListController* m_party = nullptr;
     std::map<uint8_t, TBattleListController*> m_controllers;
-    /// The creatures of the last list (a newcomer renews its unique id).
-    std::set<uint32_t> m_listedCreatureIds;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     int m_controlScheme = 0;
     bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;
-    TBattleListGameActionHandler* m_gameActionHandler = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:

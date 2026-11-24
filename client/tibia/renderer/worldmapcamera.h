@@ -4,6 +4,7 @@
 
 #include <QMatrix4x4>
 #include <QPoint>
+#include <QRect>
 #include <QSize>
 
 #include <cip_gen.h>
@@ -53,6 +54,14 @@ public:
     worldmap::TWorldMapSubfieldCoordinate convertToWorldMapSubfieldCoordinate(const QPoint& point) const;
     /// Where the subfield coordinate is drawn (rounded to whole pixels).
     QPoint convertSubfieldCoordinateToPoint(const worldmap::TWorldMapSubfieldCoordinate& coordinate) const;
+    /// The fields the viewport shows on the top-left's floor: from the
+    /// top-left's field, as wide and high as the field under the viewport's
+    /// far corner lies from it, one floor deep.
+    worldmap::TWorldMapCuboid visibleArea() const;
+    /// The cuboid's first floor in projected subfields: its origin projected
+    /// onto layer 0 ((z + x) * 32, (z + y) * 32), 32 subfields per field of its
+    /// width and height (right and bottom included).
+    QRect projectedSubfieldRectangle(const worldmap::TWorldMapCuboid& cuboid) const;
 
     /// Moves the top-left so that `coordinate` is drawn at `point`; the
     /// top-left takes the coordinate's layer.

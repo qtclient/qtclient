@@ -368,6 +368,7 @@ if(TIBIA_WITH_GAMECORE)
     authentication/loginconfirmationcoderequestuploader.cpp authentication/loginconfirmationcoderequestuploader.h
     authentication/authenticationandencryptioninfo.cpp authentication/authenticationandencryptioninfo.h
     authentication/loginprotocolmessagehandler.cpp authentication/loginprotocolmessagehandler.h
+    authentication/gameserverloginprocesscontroller.cpp authentication/gameserverloginprocesscontroller.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
     taskboard/taskboardbountytasksstorage.cpp taskboard/taskboardbountytasksstorage.h
     taskboard/taskboardcurrenciesstorage.cpp taskboard/taskboardcurrenciesstorage.h
@@ -523,6 +524,7 @@ if(TIBIA_WITH_GAMECORE)
     game/tutorialsessiondumpgamesessionmetainfo.cpp game/tutorialsessiondumpgamesessionmetainfo.h
     game/playermovementintenthandlerconfiguration.h
     game/gamesessionbase.cpp game/gamesessionbase.h
+    game/selectoutfitdialogdata.cpp game/selectoutfitdialogdata.h
     game/blessingdialogdata.cpp game/blessingdialogdata.h
     game/blessingsprotocolmessagehandler.cpp game/blessingsprotocolmessagehandler.h
     game/qmlblessingdialogdata.cpp game/qmlblessingdialogdata.h
@@ -713,6 +715,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/sidebarpanelcontrollerbase.h
     gamewindow/passiveabilitylistdatamodel.cpp gamewindow/passiveabilitylistdatamodel.h
     gamewindow/passiveabilitylistdatamodelsortfilterproxy.cpp gamewindow/passiveabilitylistdatamodelsortfilterproxy.h
+    gamewindow/battlelistgameactionhandler.cpp gamewindow/battlelistgameactionhandler.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -721,6 +724,8 @@ if(TIBIA_WITH_GAMECORE)
     input/genericchatgameactionprovider.cpp input/genericchatgameactionprovider.h
     input/actionbuttongameactionhandler.cpp input/actionbuttongameactionhandler.h
     input/myexception.cpp input/myexception.h
+    input/multiactionprioritysolver.cpp input/multiactionprioritysolver.h
+    input/keyboardinputtogameactionconverter.cpp input/keyboardinputtogameactionconverter.h
     minimap/minimapciptypes.cpp minimap/minimapciptypes.h
     minimap/minimapdiskio.cpp minimap/minimapdiskio.h
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
@@ -741,6 +746,7 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapmarkercontroller.cpp minimap/minimapmarkercontroller.h
     minimap/minimapmarkeroverlaycontroller.cpp minimap/minimapmarkeroverlaycontroller.h
     minimap/minimapmarkerrenderprovider.cpp minimap/minimapmarkerrenderprovider.h
+    minimap/minimaprendererscenegraphdrawcommandprovider.cpp minimap/minimaprendererscenegraphdrawcommandprovider.h
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
     protocol/objectdata.cpp protocol/objectdata.h
     network/gameserverconnection.cpp network/gameserverconnection.h
@@ -757,7 +763,7 @@ if(TIBIA_WITH_GAMECORE)
     network/gameservernetworkpacketsequenceflowprocessor.cpp network/gameservernetworkpacketsequenceflowprocessor.h
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
     appearances/objectappearanceinstancetypeid.h
-    appearances/genericstorage.h
+    appearances/genericstorage.cpp appearances/genericstorage.h
     appearances/appearanceinstancetracker.cpp appearances/appearanceinstancetracker.h
     appearances/appearanceinstancespritesequence.cpp appearances/appearanceinstancespritesequence.h
     appearances/spriteinfo.cpp appearances/spriteinfo.h
@@ -771,6 +777,7 @@ if(TIBIA_WITH_GAMECORE)
     animation/movingoutfitanimator.cpp animation/movingoutfitanimator.h
     creatures/creatureprotocolapply.cpp creatures/creatureprotocolapply.h
     creatures/creaturesgameactionhandler.cpp creatures/creaturesgameactionhandler.h
+    creatures/battlelistrenderprovider.cpp creatures/battlelistrenderprovider.h
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
@@ -857,6 +864,7 @@ if(TIBIA_WITH_GAMECORE)
     qmlcomponents/qmlincubatorwithcallbackonready.h
     qmlcomponents/cachedoutlinetexttexturemanager.cpp qmlcomponents/cachedoutlinetexttexturemanager.h
     qmlcomponents/offscreenoutlinetexttoimageservice.cpp qmlcomponents/offscreenoutlinetexttoimageservice.h
+    qmlcomponents/qsgscenegraphdrawcommandsnode.cpp qmlcomponents/qsgscenegraphdrawcommandsnode.h
     renderer/childrenscenegraphnode.h
     renderer/highlightedspritenode.cpp renderer/highlightedspritenode.h
     renderer/lightmodel.cpp renderer/lightmodel.h
@@ -900,6 +908,7 @@ if(TIBIA_WITH_GAMECORE)
     worldmap/worldmapprotocolmessagehandler.cpp worldmap/worldmapprotocolmessagehandler.h
     worldmap/worldmapstorage.cpp worldmap/worldmapstorage.h
     worldmap/worldmaptutorialmarkeroverlaycontroller.cpp worldmap/worldmaptutorialmarkeroverlaycontroller.h
+    worldmap/worldmapobjectcounter.cpp worldmap/worldmapobjectcounter.h
     worldmap/worldmapviewport.cpp worldmap/worldmapviewport.h)
   target_sources(tibia PRIVATE ${TIBIA_ENGINE_SOURCES}
     runtime/host.cpp

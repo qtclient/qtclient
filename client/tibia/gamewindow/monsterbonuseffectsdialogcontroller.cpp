@@ -68,6 +68,11 @@ public:
         m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade >= 1 && charm.grade <= 3 ? charm.grade : 0);
         m_assigned = charm.raceId != 0;
         m_assignedMonsterRaceID = charm.raceId;
+        // Without an assigned creature the outfit colours read black.
+        m_creatureHeadColor = QColor(Qt::black);
+        m_creatureTorsoColor = QColor(Qt::black);
+        m_creatureLegsColor = QColor(Qt::black);
+        m_creatureDetailColor = QColor(Qt::black);
         if (m_assigned) {
             const Outfit& outfit = tibia::game::raceData(charm.raceId).outfit;
             m_hasAppearanceInstance = outfit.getId() != 0;

@@ -10,6 +10,7 @@
 #include <memory>
 #include <QPointer>
 #include <QSet>
+#include <QTimer>
 #include <QUrl>
 
 class QNetworkAccessManager;
@@ -30,6 +31,17 @@ struct TImageRequest
     /// CIP: a key and a positive size.
     bool isValid() const { return !key.isEmpty() && size.width() > 0 && size.height() > 0; }
     bool operator==(const TImageRequest&) const = default;
+    /// The order of the requests as map keys: the key (case-sensitive), then
+    /// the width ascending, then the height descending.
+    bool operator<(const TImageRequest& other) const
+    {
+        const int byKey = key.compare(other.key, Qt::CaseSensitive);
+        if (byKey != 0)
+            return byKey < 0;
+        if (size.width() != other.size.width())
+            return size.width() < other.size.width();
+        return size.height() > other.size.height();
+    }
 };
 
 /// The store's images (CIP: store::TDynamicallyLoadedImageManager): downloaded from
@@ -99,19 +111,24 @@ protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;
 
+public Q_SLOTS:
+    /// The manager's answer to the pending request: the image is shown.
+    void onImageReady(const tibia::store::TImageRequest& ImageRequest, const QImage& Image);
+    /// The pending request failed: the error icon is shown.
+    void onImageDownloadOrDecodingError(const tibia::store::TImageRequest& ImageRequest);
+    /// No answer within the loading delay: the loading icon (the error icon
+    /// without an image key).
+    void onLoadingDelayElapsedShowAppropriateIcon();
+
 private:
     int size() const;
-    /// CIP .
+    /// Restarts the loading delay and asks the manager for the image.
     void requestImage();
-    /// CIP .
-    void showPlaceholder(bool failed);
-    bool isCurrentRequest(const store::TImageRequest& request) const;
-    void onImageLoaded(const store::TImageRequest& request, const QImage& image);
-    void onImageLoadFailed(const store::TImageRequest& request);
 
     QPointer<store::TDynamicallyLoadedImageManager> m_manager;
-    /// CIP: the request the item shows.
+    /// The request waiting for the manager's answer.
     store::TImageRequest m_request;
+    QTimer m_loadingDelayTimer;
     QImage m_image;
 };
 

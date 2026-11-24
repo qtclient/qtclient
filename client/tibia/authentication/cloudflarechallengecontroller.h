@@ -42,6 +42,8 @@ public:
     void startChallenge(const QUrl& url);
     /// CIP: why the last challenge failed (none while it runs or after a success).
     const std::optional<TCloudflareChallengeError>& error() const { return m_error; }
+    /// CIP: the reason cancel was given with (empty for a timeout).
+    const QString& errorReason() const { return m_errorReason; }
 
 Q_SIGNALS:
     /// Skipped in cipgen (ClearanceInfo / Error types); qtclient owns these.
@@ -54,7 +56,10 @@ public Q_SLOTS:
     void onSolveTimeout();
 
 private:
-    void fail(TCloudflareChallengeError error);
+    /// Ends a running challenge: stops and closes, keeps the error and its reason, emits failed.
+    void fail(TCloudflareChallengeError error, const QString& reason);
+    void failWithoutSolver();
+    /// Ends a running challenge with the clearance cookie and the profile's user agent.
     void succeed();
 
 #if defined(TIBIA_DESKTOP_WEBENGINE)
@@ -62,9 +67,9 @@ private:
 #endif
     QTimer m_timeout;
     bool m_running = false;
-    bool m_finished = false;
     TCloudflareChallengeClearanceInfo m_clearance;
     std::optional<TCloudflareChallengeError> m_error;
+    QString m_errorReason;
 };
 
 }

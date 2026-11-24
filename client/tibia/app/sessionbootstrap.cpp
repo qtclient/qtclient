@@ -68,7 +68,6 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
             [this](const QString& email, const QString& password) {
                 if (m_gameWindow) {
                     m_gameWindow->setAuthenticated(true);
-                    m_loginWait->showCharacterList();
                 }
                 m_client->submitCredentials(email, password);
             });
@@ -123,14 +122,18 @@ void TSessionBootstrap::wireCreateCharacter()
                 [this](const QString& name, const QJsonObject& reply) {
                     m_client->refreshAccount(reply);
                 });
-    // CIP : SHOW_CREATE_CHARACTER_DIALOG (parameter: account has no characters).
-    m_gameActions.on(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
-                            [self = QPointer<TSessionBootstrap>(this)](const input::gameactions::TGameActionShowCreateCharacterDialog& action) {
-                                if (!self)
-                                    return true;
-                                self->openCreateCharacter(action.accountIsEmpty());
-                                return true;
-                            });
+}
+
+void TSessionBootstrap::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    // CIP: the create-character dialog takes SHOW_CREATE_CHARACTER_DIALOG and the
+    // character selection's auto close itself; the login session goes first.
+    if (gamewindow::TCreateCharacterDialogController* controller = createCharacter(); controller && pGameAction) {
+        if (pGameAction->gameActionType() == input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG)
+            controller->setSessionKey(m_client->account().session.sessionKey);
+        controller->handleGameAction(pGameAction);
+    }
+    m_gameActions.handle(pGameAction);
 }
 
 void TSessionBootstrap::openCreateCharacterIfAccountEmpty()
@@ -147,18 +150,8 @@ void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWin
                     return;
                 // CIP hides the login mask while the account service answers.
                 gameWindow->setAuthenticated(true);
-                m_loginWait->showCharacterList();
             });
-    connect(m_client, &client::TGameClient::loginStarted, this, [this] { m_loginWait->showCharacterList(); });
     connect(m_client, &client::TGameClient::characterSelectionRequested, this, [this] { m_loginWait->close(); });
-    // Ok hides the character list before the game window exists.
-    connect(m_client, &client::TGameClient::characterSelectionClosed, this, [this] {
-        if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter())
-            return;
-        if (m_client->account().session.sessionKey.isEmpty())
-            return;
-        m_loginWait->showGameWorld();
-    });
     connect(m_client, &client::TGameClient::worldEntered, this, [this] { m_loginWait->close(); });
     // The game session's disconnect reaction returns to the start screen when a login fails.
     connect(gameWindow, &gamewindow::TGameWindowController::startScreenNowDisplayed, this, [this] { m_loginWait->close(); });

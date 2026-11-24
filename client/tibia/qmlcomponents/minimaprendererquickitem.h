@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -24,7 +25,12 @@ class TCyclopediaMapStorage;
 
 namespace tibia {
 namespace minimap {
+class TMinimapRenderInfoStorage;
+class TMinimapRendererScenegraphDrawCommandProvider;
 class TMinimapTileStorage;
+}
+namespace sprites {
+class TResourceSpritesManager;
 }
 }
 
@@ -113,10 +119,12 @@ private:
     bool m_isArea;
 };
 
-/// MinimapRenderer (CIP: TMinimapRendererQuickItem, updatePaintNode
-/// ): the Cyclopedia map's satellite / minimap images, the floor
-/// separators, highlighted subareas, NPC and player markers and the area
-/// captions (AreaCaptionTemplate.qml,).
+/// MinimapRenderer (CIP: TMinimapRendererQuickItem): draws the tree of draw
+/// commands its TMinimapRendererScenegraphDrawCommandProvider builds from a
+/// TMinimapRenderInfoStorage (map images, floor separators, highlighted
+/// subareas, markers), plus the area captions (AreaCaptionTemplate.qml).
+/// Host: the pack's mission zone overlays are drawn above the tree, and the
+/// marker rectangles under the mouse are kept for tooltips and clicks.
 class TMinimapRendererQuickItem : public cip::tibia::qmlcomponents::TMinimapRendererQuickItem
 {
     Q_OBJECT
@@ -194,41 +202,36 @@ protected:
     void updatePolish() override;
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 
+public Q_SLOTS:
+    void onCameraViewportChanged();
+    void onRenderInfosChanged();
+    void onRescalingTimerTimeout();
+
 private:
+    /// A pack mission zone image drawn over the tree.
     struct TImageDraw
     {
         QImage image;
         QRectF target;
         QRectF source;
         bool smooth = false;
-        /// CIP DAT_1077b32c8: pulsed for selected-subarea zones; else 1.
+        /// Pulsed like the subarea overlays.
         qreal opacity = 1.0;
-    };
-    struct TRectDraw
-    {
-        QRectF rect;
-        QColor color;
-    };
-    /// One layer's images then its overlays, in drawing order.
-    struct TDraw
-    {
-        std::vector<TImageDraw> images;
-        std::vector<TRectDraw> rects;
     };
 
     void scheduleUpdate();
-    void syncZoneBlinkTimer();
-    void buildDrawList();
-    void addTiles(TDraw& draw, int layer);
-    void addLocalMinimap(TDraw& draw, int layer);
-    void addZones(TDraw& draw, int layer);
-    void addMarkers(TDraw& draw);
+    /// Copies the renderer's settings into the render infos and the provider;
+    /// the draw commands are rebuilt when one changed.
+    void updateRenderInfoSettings();
+    /// Rebuilds the draw commands for the item's size, then the captions.
+    void updateDrawCommands();
+    void addMissionZones(std::vector<TImageDraw>& draws);
+    /// The marker rectangles under the mouse (host: tooltips and clicks).
+    void updateMarkerHits();
     void ensureMarkerIcons();
     void updateCaptions();
     QImage zoneImage(int subareaId, const QImage& mask);
     QImage missionZoneImage(const TMissionZoneOverlay& zone);
-    /// CIP / DAT_1077b32c8: (sin(t_ms/100)*0.15+0.65)*0.75.
-    static float zoneHighlightOpacity();
 
     struct TMarker
     {
@@ -243,6 +246,13 @@ private:
     };
 
     TWorldMapCamera* m_worldCamera;
+    std::shared_ptr<minimap::TMinimapRendererScenegraphDrawCommandProvider> m_drawCommandProvider;
+    /// The draw commands are rebuilt at the next polish.
+    bool m_drawCommandsOutdated = true;
+    bool m_rescaling = false;
+    QTimer m_rescalingTimer;
+    std::shared_ptr<minimap::TMinimapRenderInfoStorage> m_renderInfoStorage;
+    std::shared_ptr<sprites::TResourceSpritesManager> m_resourceSpritesManager;
     QPointer<cyclopedia::TCyclopediaMapStorage> m_storage;
     bool m_showCyclopediaSubareaCaptions = true;
     std::set<int> m_highlighted;
@@ -250,10 +260,9 @@ private:
     bool m_rebuildRequested = false;
     std::unordered_map<int, TMissionZoneOverlay> m_missionZones;
     std::vector<TMissionCaption> m_missionCaptions;
-    std::vector<TDraw> m_drawList;
+    std::vector<TImageDraw> m_missionZoneDraws;
     std::map<int, QImage> m_zoneImages;
     std::map<int, QImage> m_missionZoneImages;
-    std::map<qint64, QImage> m_localTiles;
     QImage m_npcIcon;
     QImage m_playerIcon;
     QImage m_houseIcon;
@@ -265,7 +274,6 @@ private:
     std::map<int, TCaption> m_captions;
     std::vector<TMarker> m_markers;
     QTimer m_playerTimer;
-    QTimer m_zoneBlinkTimer;
     QPoint m_playerField;
     int m_playerLayer = -1;
 };

@@ -1,4 +1,6 @@
 #include "exivaoptions/exivaoptionsciptypes.h"
+
+#include <utility>
 #include <vector>
 #include <string>
 
@@ -31,9 +33,8 @@ TExivaOptionsStorage::Names names(const google::protobuf::RepeatedPtrField<std::
 
 }
 
-TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler(TExivaOptionsStorage* storage, QObject* parent)
-    : cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler(parent)
-    , m_storage(storage)
+TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler(std::shared_ptr<TExivaOptionsStorage> storage)
+    : m_storage(std::move(storage))
 {
 }
 
@@ -44,7 +45,7 @@ void TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage(const ::t
 
 void TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message)
 {
-    TExivaOptionsStorage* storage = m_storage;
+    TExivaOptionsStorage* storage = m_storage.get();
     if (!storage)
         return;
     storage->setAllowEveryone(message.allow_all());

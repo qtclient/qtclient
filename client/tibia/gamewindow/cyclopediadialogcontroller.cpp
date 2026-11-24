@@ -148,7 +148,6 @@ void TCyclopediaDialogController::onSwitchToItemInfoDialogRequested(const uint16
 void TCyclopediaDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
 {
     m_houses->setAmbientLightStorage(ambientLight);
-    m_map->setAmbientLightStorage(ambientLight);
 }
 
 void TCyclopediaDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage)

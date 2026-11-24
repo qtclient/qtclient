@@ -82,10 +82,8 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     if (stored->isPlayer() && !own) {
         // The chat actions on the name, then the bot report by name.
         if (const game::TGameSessionBase* session = game::currentGameSession()) {
-            TGenericChatGameActionProvider chatActions(session->chatChannelStorage().get(), session->vipStorage().get());
-            if (const auto& chat = session->chatProtocolMessageHandler())
-                chatActions.setWhiteBlacklist(chat->whiteBlacklist());
-            chatActions.appendGameActions(actions, name);
+            if (const auto& chatActions = session->genericChatGameActionProvider())
+                chatActions->appendGameActions(actions, name);
         }
         actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }

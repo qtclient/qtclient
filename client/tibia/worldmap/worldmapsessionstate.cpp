@@ -605,7 +605,6 @@ void TWorldMapSessionState::setLocalPlayerPosition(const Position& pos)
     const Position oldPos = m_localPlayerPosition;
     m_localPlayerPosition = pos;
     tibia::game::notify("onPositionChange", pos, oldPos);
-    tibia::game::onLocalPlayerPositionChanged(pos);
 }
 
 void TWorldMapSessionState::localPlayerAppeared()

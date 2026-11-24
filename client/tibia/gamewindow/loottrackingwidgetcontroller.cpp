@@ -21,9 +21,6 @@ namespace tibia::gamewindow {
 namespace {
 
 constexpr auto OptionsKey = "lootTrackerWidgetOptions";
-constexpr uint16_t GoldCoin = 3031;
-constexpr uint16_t PlatinumCoin = 3035;
-constexpr uint16_t CrystalCoin = 3043;
 
 QString english(const qint64 value) { return QLocale(QLocale::English).toString(value); }
 
@@ -39,21 +36,6 @@ QString numberVariants(const qint64 value)
         variants << shortened + u' ' + QLatin1String(unit) << shortened + QLatin1String(unit);
     }
     return variants.join(QChar(0x9c));
-}
-
-/// CIP .
-QString trackedItemName(const uint16_t typeId)
-{
-    switch (typeId) {
-        case GoldCoin: return qtTrId("gold_coin");
-        case PlatinumCoin: return qtTrId("platinum_coin");
-        case CrystalCoin: return qtTrId("crystal_coin");
-        default: break;
-    }
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    if (type && !type->getName().empty())
-        return QString::fromStdString(type->getName());
-    return qtTrId("dummy_unknown");
 }
 
 QColor outfitColor(const int index)
@@ -92,7 +74,7 @@ TQmlTrackedItem::TQmlTrackedItem(const cyclopedia::TTrackedItem& item, QObject* 
 {
     m_appearanceTypeID = item.objectType;
     m_objectID = item.objectType;
-    m_itemName = trackedItemName(item.objectType);
+    m_itemName = cyclopedia::trackedItemName(item.objectType);
     m_dropCount = static_cast<int>(item.dropCount);
     m_trackingStartTime = formatDateTime(item.recordStartTimestamp);
 }

@@ -31,8 +31,14 @@ public:
     virtual QString characterName() const;
     virtual void setSessionKey(const QString& SessionKey);
     virtual QString sessionKey() const;
-    /// The first string of the secondary login's RSA block (nothing in the
-    /// client sets it: it goes out empty).
+    /// The account's email address and password (the game server login's
+    /// credentials for a login without a session key).
+    virtual void setEMail(const QString& EMail);
+    virtual QString eMail() const;
+    virtual void setPassword(const QString& Password);
+    virtual QString password() const;
+    /// The first string of the secondary login's RSA block (the game server
+    /// login sets the session key's SHA-1, in upper-case hex).
     virtual void setSecondaryLoginFirstString(const QString& FirstString);
     virtual QString secondaryLoginFirstString() const;
     /// The token of ReadyForSecondaryConnection, sent back by the secondary login.
@@ -50,6 +56,8 @@ private:
     std::shared_ptr<shared::TXteaHelper> m_xteaHelper;
     QString m_characterName;
     QString m_sessionKey;
+    QString m_eMail;
+    QString m_password;
     QString m_secondaryLoginFirstString;
     QString m_secondaryLoginToken;
     QString m_assetsIdentifier;

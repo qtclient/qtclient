@@ -6,6 +6,7 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/creaturesciptypes.h"
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
@@ -66,15 +67,6 @@ constexpr const char* SortMenuEntries[] = {
 using TCreature = creatures::TCreature;
 using TCreaturePtr = std::shared_ptr<TCreature>;
 
-QColor colorOf(const QColor& c) { return QColor(c.red(), c.green(), c.blue()); }
-
-QColor outfitColor(const int index) { return colorOf(tibia::shared::outfitColor(index)); }
-
-QString stripIcon(const char* provider, const uint8_t value)
-{
-    return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString();
-}
-
 /// A battle list entry's actions: the creature's, then CONTEXT_MENU.
 input::TGameActionList battleListGameActions(const uint32_t creatureId)
 {
@@ -96,21 +88,6 @@ input::IGameActionPtr findAction(const input::TGameActionList& actions, const A 
 }
 
 // ---------------------------------------------------------------------------
-
-bool BattleListEntry::operator==(const BattleListEntry& other) const
-{
-    // CIP compares the outfit by pointer and the status (icons and marks) as
-    // one record; qtclient carries both by value.
-    return creatureId == other.creatureId && name == other.name && healthPercent == other.healthPercent
-        && frameColors == other.frameColors && statusIcons == other.statusIcons && fiendish == other.fiendish
-        && leader == other.leader && leaderMinion == other.leaderMinion && outfitId == other.outfitId
-        && outfitIsObject == other.outfitIsObject && headColor == other.headColor && torsoColor == other.torsoColor
-        && legsColor == other.legsColor && detailColor == other.detailColor && firstAddOn == other.firstAddOn
-        && secondAddOn == other.secondAddOn && tutorialMarkerId == other.tutorialMarkerId && visibleOrder == other.visibleOrder
-        && distance == other.distance && temporarySelected == other.temporarySelected && manaPercent == other.manaPercent
-        && showMana == other.showMana && inSharedXpDistance == other.inSharedXpDistance && inViewport == other.inViewport
-        && vocation == other.vocation;
-}
 
 QList<int> TBattleListDataModel::changedRoles(const BattleListEntry& current, const BattleListEntry& incoming)
 {
@@ -163,9 +140,9 @@ QList<int> TBattleListDataModel::changedRoles(const BattleListEntry& current, co
         roles.append(0x116);
     if (current.fiendish != incoming.fiendish)
         roles.append(0x117);
-    if (current.leader != incoming.leader)
+    if (current.leader() != incoming.leader())
         roles.append(0x118);
-    if (current.leaderMinion != incoming.leaderMinion)
+    if (current.leaderMinion() != incoming.leaderMinion())
         roles.append(0x119);
     if (current.vocation != incoming.vocation)
         roles.append(0x11a);
@@ -256,8 +233,8 @@ QVariant TBattleListDataModel::data(const QModelIndex& index, const int role) co
         case 0x115: return e.inViewport;
         case 0x116: return e.inSharedXpDistance;
         case 0x117: return e.fiendish;
-        case 0x118: return e.leader;
-        case 0x119: return e.leaderMinion;
+        case 0x118: return e.leader();
+        case 0x119: return e.leaderMinion();
         default: return {};
     }
 }
@@ -802,19 +779,6 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         }
         return true;
     });
-    m_gameActionHandler = new TBattleListGameActionHandler(this, this);
-    m_gameActions.on(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
-        m_gameActionHandler->attackFirstTarget();
-        return true;
-    });
-    m_gameActions.on(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
-        m_gameActionHandler->attackNextOrPreviousTarget(false);
-        return true;
-    });
-    m_gameActions.on(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
-        m_gameActionHandler->attackNextOrPreviousTarget(true);
-        return true;
-    });
 
     // Party list CipSoft publishes — creature fields are already updated; refresh rows.
     using Args = std::vector<std::any>;
@@ -1121,151 +1085,22 @@ void TBattleListControllerStorage::onLoginRampUpFinished()
     m_sidebarOptions->setBattleListsOptions(lists);
 }
 
-std::vector<TCreaturePtr> TBattleListControllerStorage::battleListCreatures() const
+void TBattleListControllerStorage::setGameSession(std::shared_ptr<game::IGameSession> GameSession)
 {
-    std::vector<TCreaturePtr> result;
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    if (!tibia::game::hasLocalPlayer() || !storage)
-        return result;
-    const Position center = tibia::game::localPlayerPosition();
-    const auto ar = tibia::game::awareRange();
-    const worldmap::TWorldMapCuboid view(worldmap::TWorldMapCoordinate(center.x - ar.left + 1, center.y - ar.top + 1, center.z),
-                                         2 * ar.left - 1, 2 * ar.top - 1);
-    for (const auto& [id, creature] : storage->battleListCreatures(view))
-        result.push_back(creature);
-    return result;
-}
-
-BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creature) const
-{
-    BattleListEntry e;
-    const Position center = tibia::game::localPlayerPosition();
-    const Position& pos = creature->position();
-    const auto ar = tibia::game::awareRange();
-    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
-    e.creatureId = creature->creatureId();
-    e.name = creature->name();
-    e.healthPercent = creature->healthRatio();
-    e.healthColor = qmlcomponents::colorForHealthPercent(e.healthPercent);
-    e.manaPercent = creature->manaRatio();
-    // Mana shows for the players of the own party.
-    e.showMana = creature->isPartyMember() && creature->isPlayer();
-    // Every frame the creature shows on the map (the white selection frame
-    // too), by color name.
-    for (const QColor& color : creature->marks())
-        e.frameColors.append(color.name());
-    for (const auto& [icon, category, count] : creature->hudIcons()) {
-        if (category != 0 && icon != 0)
-            e.statusIcons.append(stripIcon("othercreatureicons", icon));
-        e.fiendish |= category != 0 && icon == 5;
-    }
-    e.leader = creature->hasStatusMark(0);
-    e.leaderMinion = creature->hasStatusMark(1);
-    // A summon is the player's own (1) or another player's (2), by its master.
-    uint8_t summon = 0;
-    if (creature->creatureType() == Proto::CreatureTypeSummonOwn) {
-        const creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-        summon = storage && creature->masterId() == storage->playerID() ? 1 : 2;
-    }
-    // Empty strings stay in: the QML Row skips the zero-sized images.
-    e.statusIcons << stripIcon("summon", summon) << stripIcon("guild", creature->emblem()) << stripIcon("party", creature->shield())
-                  << stripIcon("playerkiller", creature->skull());
-    const Outfit& outfit = creature->outfit();
-    e.outfitIsObject = outfit.getCategory() == ThingCategoryItem;
-    e.outfitId = e.outfitIsObject ? outfit.getAuxId() : outfit.getId();
-    e.headColor = outfitColor(outfit.getHead());
-    e.torsoColor = outfitColor(outfit.getBody());
-    e.legsColor = outfitColor(outfit.getLegs());
-    e.detailColor = outfitColor(outfit.getFeet());
-    e.firstAddOn = (outfit.getAddons() & 1) != 0;
-    e.secondAddOn = (outfit.getAddons() & 2) != 0;
-    // The age order: the creature's unique id, renewed when it joins the list.
-    e.visibleOrder = static_cast<uint>(creature->uniqueId());
-    e.distance = static_cast<uint>(std::max(std::abs(pos.x - center.x), std::abs(pos.y - center.y)));
-    if (const creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
-        e.temporarySelected = storage->temporarySelectedID() == e.creatureId;
-    // Host: the visible part of the map stands in for CipSoft's view cuboid.
-    e.inViewport = creature->isPlacedOnField() && pos.z == center.z && std::abs(pos.x - center.x) < range.left
-        && std::abs(pos.y - center.y) < range.top;
-    // The server's per-creature status flag says whether it shares experience.
-    e.inSharedXpDistance = creature->showsStatus();
-    e.vocation = creature->vocation();
-    if (m_gameActionHandler)
-        e.tutorialMarkerId = m_gameActionHandler->creatureTutorialMarker(e.creatureId);
-    return e;
-}
-
-void TBattleListControllerStorage::setCreatureTutorialMarker(const uint32_t creatureId, const int markerId)
-{
-    if (m_gameActionHandler)
-        m_gameActionHandler->setCreatureTutorialMarker(creatureId, markerId);
-    triggerUpdate();
-}
-
-void TBattleListControllerStorage::clearCreatureTutorialMarkers()
-{
-    if (m_gameActionHandler)
-        m_gameActionHandler->clearCreatureTutorialMarkers();
-    triggerUpdate();
+    m_gameSession = std::move(GameSession);
 }
 
 void TBattleListControllerStorage::triggerUpdate()
 {
-    if (m_controllers.empty())
-        return;
-    const std::vector<TCreaturePtr> creatures = battleListCreatures();
-    // The first list after login keeps the creatures' ages; later, a creature
-    // that joins the list becomes the youngest.
-    std::set<uint32_t> present;
-    for (const TCreaturePtr& creature : creatures)
-        present.insert(creature->creatureId());
-    if (m_listedCreatureIds.empty())
-        m_listedCreatureIds = present;
-    for (const TCreaturePtr& creature : creatures) {
-        if (m_listedCreatureIds.insert(creature->creatureId()).second)
-            creature->renewUniqueId();
+    // Without a session the lists empty.
+    std::vector<BattleListEntry> commands;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        if (const std::shared_ptr<creatures::TBattleListRenderProvider>& provider = session->battleListRenderProvider())
+            commands = provider->drawCommands();
     }
-    std::erase_if(m_listedCreatureIds, [&present](const uint32_t id) { return !present.contains(id); });
-    std::vector<BattleListEntry> entries;
-    entries.reserve(creatures.size());
-    for (const TCreaturePtr& creature : creatures)
-        entries.push_back(entryOf(creature));
-    m_dataModel.setEntries(std::move(entries));
+    m_dataModel.setEntries(std::move(commands));
 }
 
 void TBattleListControllerStorage::onUpdateTimer() { triggerUpdate(); }
-
-bool TBattleListControllerStorage::attackFirstTarget()
-{
-    const uint32_t targetId = tibia::game::attackingCreatureId();
-    for (const TCreaturePtr& creature : battleListCreatures()) {
-        if (creature->isNpc() || creature->creatureId() == targetId)
-            continue;
-        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
-        return true;
-    }
-    return true;
-}
-
-bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previous)
-{
-    std::vector<TCreaturePtr> list = battleListCreatures();
-    if (list.empty())
-        return true;
-    if (previous)
-        std::reverse(list.begin(), list.end());
-    const uint32_t targetId = tibia::game::attackingCreatureId();
-    if (const auto it = std::find_if(list.begin(), list.end(),
-                                     [targetId](const TCreaturePtr& c) { return c && c->creatureId() == targetId; });
-        it != list.end())
-        std::rotate(list.begin(), it + 1, list.end());
-    for (const TCreaturePtr& creature : list) {
-        if (creature->isNpc() || creature->creatureId() == targetId)
-            continue;
-        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
-        return true;
-    }
-    return true;
-}
 
 }

@@ -147,7 +147,10 @@ TDynamicallyLoadedImageQuickItem::TDynamicallyLoadedImageQuickItem(QQuickItem* p
     : cip::tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem(parent)
 {
     m_sourceImageSize = -1;
-    showPlaceholder(true);
+    m_loadingDelayTimer.setSingleShot(true);
+    m_loadingDelayTimer.setInterval(250);
+    connect(&m_loadingDelayTimer, &QTimer::timeout, this,
+            &TDynamicallyLoadedImageQuickItem::onLoadingDelayElapsedShowAppropriateIcon);
 }
 
 int TDynamicallyLoadedImageQuickItem::size() const
@@ -166,20 +169,18 @@ void TDynamicallyLoadedImageQuickItem::setImageKey(const QString& key)
 
 void TDynamicallyLoadedImageQuickItem::setDynamicallyLoadedImageManager(QObject* manager)
 {
-    if (m_dynamicallyLoadedImageManager == manager)
-        return;
     if (m_manager)
         disconnect(m_manager, nullptr, this, nullptr);
     m_dynamicallyLoadedImageManager = manager;
     m_manager = qobject_cast<store::TDynamicallyLoadedImageManager*>(manager);
     if (m_manager) {
-        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageReady, this, &TDynamicallyLoadedImageQuickItem::onImageLoaded);
+        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageReady, this,
+                &TDynamicallyLoadedImageQuickItem::onImageReady);
         connect(m_manager, &store::TDynamicallyLoadedImageManager::imageDownloadOrDecodingError, this,
-                &TDynamicallyLoadedImageQuickItem::onImageLoadFailed);
+                &TDynamicallyLoadedImageQuickItem::onImageDownloadOrDecodingError);
+        requestImage();
     }
     Q_EMIT propertyChanged();
-    m_request = {};
-    requestImage();
 }
 
 void TDynamicallyLoadedImageQuickItem::setSourceImageSize(const int size)
@@ -216,7 +217,9 @@ void TDynamicallyLoadedImageQuickItem::itemChange(const ItemChange change, const
 
 void TDynamicallyLoadedImageQuickItem::requestImage()
 {
-    if (!m_manager || m_imageKey.isEmpty() || !isVisible())
+    m_loadingDelayTimer.stop();
+    m_loadingDelayTimer.start();
+    if (m_imageKey.isEmpty() || !m_manager || !isVisible())
         return;
     const int imageSize = size();
     if (imageSize != 13 && imageSize != 32 && imageSize != 64)
@@ -225,43 +228,54 @@ void TDynamicallyLoadedImageQuickItem::requestImage()
     if (m_request.isValid() && m_request == request)
         return;
     m_request = request;
-    showPlaceholder(false);
     m_manager->requestImage(m_request);
 }
 
-void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
+namespace {
+
+const QImage& loadingImage(const bool small)
 {
     static const QImage loading(QStringLiteral(":/images/dynamic/dynamic-image-loading.png"));
     static const QImage loadingSmall(QStringLiteral(":/images/dynamic/dynamic-image-loading_13x13.png"));
+    return small ? loadingSmall : loading;
+}
+
+const QImage& errorImage(const bool small)
+{
     static const QImage error(QStringLiteral(":/images/dynamic/dynamic-image-error.png"));
     static const QImage errorSmall(QStringLiteral(":/images/dynamic/dynamic-image-error_13x13.png"));
-    const bool useSmall = size() < 32;
-    if (failed)
-        m_image = useSmall ? errorSmall : error;
-    else
-        m_image = useSmall ? loadingSmall : loading;
-    update();
+    return small ? errorSmall : error;
 }
 
-/// CIP: only an answer to the shown request.
-bool TDynamicallyLoadedImageQuickItem::isCurrentRequest(const store::TImageRequest& request) const
-{
-    return m_request.isValid() && m_request == request;
 }
 
-void TDynamicallyLoadedImageQuickItem::onImageLoaded(const store::TImageRequest& request, const QImage& image)
+void TDynamicallyLoadedImageQuickItem::onImageReady(const store::TImageRequest& ImageRequest, const QImage& Image)
 {
-    if (!isCurrentRequest(request))
+    if (!(ImageRequest == m_request))
         return;
-    m_image = image;
+    m_request = {};
+    m_image = Image;
     update();
+    m_loadingDelayTimer.stop();
 }
 
-void TDynamicallyLoadedImageQuickItem::onImageLoadFailed(const store::TImageRequest& request)
+void TDynamicallyLoadedImageQuickItem::onImageDownloadOrDecodingError(const store::TImageRequest& ImageRequest)
 {
-    if (!isCurrentRequest(request))
+    const int imageSize = size();
+    if (!(ImageRequest == m_request))
         return;
-    showPlaceholder(true);
+    m_request = {};
+    m_image = errorImage(imageSize < 32);
+    update();
+    m_loadingDelayTimer.stop();
+}
+
+void TDynamicallyLoadedImageQuickItem::onLoadingDelayElapsedShowAppropriateIcon()
+{
+    const int imageSize = size();
+    const bool small = imageSize < 32;
+    m_image = m_imageKey.isEmpty() ? errorImage(small) : loadingImage(small);
+    update();
 }
 
 void TDynamicallyLoadedImageQuickItem::paint(QPainter* painter)

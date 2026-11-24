@@ -46,15 +46,14 @@ std::vector<creatures::TCreatureIcon> statusMarkHudIcons(const std::set<uint8_t>
     return icons;
 }
 
-/// The creature's HUD icons followed by those of its status marks.
+}
+
 std::vector<creatures::TCreatureIcon> hudIconsWithStatusMarks(const creatures::TCreature& creature)
 {
     std::vector<creatures::TCreatureIcon> icons = creature.hudIcons();
     const std::vector<creatures::TCreatureIcon> marks = statusMarkHudIcons(creature.extraIcons());
     icons.insert(icons.end(), marks.begin(), marks.end());
     return icons;
-}
-
 }
 
 bool TCreatureHUDIconFlags::operator==(const TCreatureHUDIconFlags& other) const

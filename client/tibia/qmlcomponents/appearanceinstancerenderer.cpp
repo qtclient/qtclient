@@ -119,9 +119,16 @@ TObjectAppearanceInstanceInfoQmlType::ELiquidType TObjectAppearanceInstanceInfoQ
     if (!liquid)
         return ELiquidType::EMPTY;
     const uint32_t fluid = liquid->fluid();
-    if (fluid > uint32_t(ELiquidType::CACAO))
+    if (fluid > uint32_t(ELiquidType::_ELiquidType_AfterLast))
         throw std::invalid_argument("ObjectAppearanceInstanceInfoQmlType::getQmlLiquidType called with unhandeld enum value");
     return ELiquidType(fluid);
+}
+
+uint32_t TObjectAppearanceInstanceInfoQmlType::getLiquidType(const ELiquidType liquidType)
+{
+    if (uint32_t(liquidType) > uint32_t(ELiquidType::_ELiquidType_AfterLast))
+        throw std::invalid_argument("ObjectAppearanceInstanceInfoQmlType::getLiquidType called with unhandled enum value");
+    return uint32_t(liquidType);
 }
 
 TObjectAppearanceInstanceInfoQmlType::EHookDirection TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(

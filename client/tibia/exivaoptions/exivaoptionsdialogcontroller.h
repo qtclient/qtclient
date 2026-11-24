@@ -28,7 +28,10 @@ class TExivaOptionsDialogController final : public gamewindow::TDialogController
 {
     Q_OBJECT
 public:
-    explicit TExivaOptionsDialogController(QObject* parent = nullptr);
+    /// CIP: made in the engine under the game window's dialog parent item
+    /// (without them the dialog uses the dialog stack's).
+    explicit TExivaOptionsDialogController(QQmlEngine* Engine = nullptr, QQuickItem* DialogParentItem = nullptr,
+                                           QObject* parent = nullptr);
     ~TExivaOptionsDialogController() override;
 
     /// The session's world type (the dialog needs an Optional PvP world).

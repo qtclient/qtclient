@@ -242,6 +242,16 @@ void TInventoryGemSortFilterProxyModel::setShowLockedOnly(const bool v)
     refilter();
 }
 
+void TInventoryGemSortFilterProxyModel::resetFilters()
+{
+    beginFilterChange();
+    m_filterModName.clear();
+    m_filterGemQuality = -1;
+    m_showLockedOnly = false;
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    Q_EMIT filterChanged();
+}
+
 bool TInventoryGemSortFilterProxyModel::accepts(const TGem& gem) const
 {
     const bool secondMod = gem.quality >= 1;
@@ -410,6 +420,15 @@ void TModListSortFilterProxyModel::setFilterMods(const int v)
         return;
     beginFilterChange();
     m_filterMods = v;
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    Q_EMIT filterChanged();
+}
+
+void TModListSortFilterProxyModel::resetFilters()
+{
+    beginFilterChange();
+    m_filterModName.clear();
+    m_filterMods = 0;
     endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
 }

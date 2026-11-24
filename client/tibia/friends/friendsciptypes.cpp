@@ -1,5 +1,7 @@
 #include "friends/friendsciptypes.h"
 
+#include <utility>
+
 #include "protocol/protocolciptypes.h"
 
 #include <tibia/game/gamenotify.h>
@@ -188,9 +190,8 @@ void TFriendsStorage::setSettings(std::vector<TVisibilitySetting> settings)
     Q_EMIT visibilitySettingsChanged();
 }
 
-TFriendsProtocolMessageHandler::TFriendsProtocolMessageHandler(TFriendsStorage* storage, QObject* parent)
-    : cip::tibia::friends::TFriendsProtocolMessageHandler(parent)
-    , m_storage(storage)
+TFriendsProtocolMessageHandler::TFriendsProtocolMessageHandler(std::shared_ptr<TFriendsStorage> storage)
+    : m_storage(std::move(storage))
 {
 }
 
@@ -229,7 +230,7 @@ void TFriendsProtocolMessageHandler::removeFromBlacklist(const uint32_t accountI
 
 void TFriendsProtocolMessageHandler::handleFriendSystemDataMessage(const GameserverMessageFriendSystemData& message)
 {
-    TFriendsStorage* storage = m_storage;
+    TFriendsStorage* storage = m_storage.get();
     switch (static_cast<EFriendSystemData>(message.data_type())) {
     case EFriendSystemData::Error:
         // Every error is reported; code 2 is a failed account search.

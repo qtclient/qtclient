@@ -139,6 +139,8 @@ int effectiveGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& s
 int modCount(const TGem& gem);
 bool isSupremeModIndex(int modIndex);
 int modId(const TGem& gem, int modIndex);
+/// The grade of a mod, 0 when the server sent none.
+int modGrade(const TGrades& grades, int mod);
 int gemGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& supremeGrades, int modIndex);
 
 /// English locale number text.
@@ -313,7 +315,11 @@ QString encodeWheelCode(const TWheel& wheel);
 /// CIP: that format (`<letter>0` carries no gems; a decoded gem's id is its vessel index), or the
 /// legacy `EK|RP|MS|ED|EM` + 48 base64 characters of the slice points; empty on any decoding error.
 std::optional<TWheel> decodeWheelCode(const QString& code);
-/// CIP: the slices respect their maximum and paths.
+/// Every vessel holding a gem has exactly the mods of its fixed quality: a lesser vessel neither
+/// the second basic mod nor the supreme mod, a regular one the second basic mod only, a greater
+/// one both.
+bool vesselsValid(const std::array<std::optional<TGem>, VesselCount>& vessels);
+/// The slices respect their maximum and paths, and the vessels are valid.
 bool isValidWheelCode(const TWheel& wheel);
 
 /// The wheel's vocation index (0 knight .. 4 monk) of creature vocation 1..5;

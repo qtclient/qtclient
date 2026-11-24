@@ -9,6 +9,8 @@
 #include <QByteArray>
 #include <QObject>
 
+#include <memory>
+
 namespace tibia::protobuf::protocol {
 class GameserverMessageExivaSuppressed;
 class GameserverMessageUpdateExivaOptions;
@@ -34,7 +36,8 @@ class TExivaOptionsProtocolMessageHandler final : public cip::tibia::exivaoption
 {
     Q_OBJECT
 public:
-    explicit TExivaOptionsProtocolMessageHandler(TExivaOptionsStorage* storage, QObject* parent = nullptr);
+    /// The handler keeps the session's exiva options storage.
+    explicit TExivaOptionsProtocolMessageHandler(std::shared_ptr<TExivaOptionsStorage> storage);
 
     /// A suppressed exiva only flashes the chat's exiva button.
     void handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed& message);
@@ -42,7 +45,7 @@ public:
     void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
 
 private:
-    TExivaOptionsStorage* m_storage;
+    std::shared_ptr<TExivaOptionsStorage> m_storage;
 };
 
 }

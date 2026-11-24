@@ -279,28 +279,6 @@ protected:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 };
 
-class TBattleListGameActionHandler final : public cip::tibia::gamewindow::TBattleListGameActionHandler
-{
-    Q_OBJECT
-public:
-    explicit TBattleListGameActionHandler(TBattleListControllerStorage* storage, QObject* parent = nullptr);
-
-    /// qtclient ADD_GUI_TUTORIAL_MARKER with creatureId — CIP handleAddGUITutorialMarkerAction.
-    void setCreatureTutorialMarker(uint32_t creatureId, int markerId);
-    void clearCreatureTutorialMarkers();
-    int creatureTutorialMarker(uint32_t creatureId) const { return m_creatureMarkers.value(creatureId); }
-
-public Q_SLOTS:
-    void attackFirstTarget() override;
-    void attackNextOrPreviousTarget(bool Previous) override;
-    void handleRemoveAllTutorialMarkersGameAction() override;
-
-private:
-    QPointer<TBattleListControllerStorage> m_storage;
-    /// creatureId → tutorial marker id (CIP battle-list ADD_GUI path).
-    QHash<uint32_t, int> m_creatureMarkers;
-};
-
 /// CipSoft TDialogControllerBase signal surface (abort / dialogClosed).
 /// Live dialogs still use cip::…::TDialogControllerBase via TDialogController<>;
 /// qtclient twin owns the moc NOTIFY names for inventory (TDialog::close emits dialogClosed).

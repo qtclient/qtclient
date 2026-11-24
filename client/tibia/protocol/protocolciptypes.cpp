@@ -1021,32 +1021,35 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 211: {
         const auto& m = msg.GetExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
-        const auto writeLook = [&w](const ProtocolOutfitLook& look, const bool addons) {
-            w.u16(static_cast<uint16_t>(look.look_type()));
-            w.u8(static_cast<uint8_t>(look.head()));
-            w.u8(static_cast<uint8_t>(look.body()));
-            w.u8(static_cast<uint8_t>(look.legs()));
-            w.u8(static_cast<uint8_t>(look.feet()));
-            if (addons)
-                w.u8(static_cast<uint8_t>(look.addons()));
+        const auto writeColors = [&w](const OutfitColor& colors) {
+            w.u8(static_cast<uint8_t>(colors.head()));
+            w.u8(static_cast<uint8_t>(colors.body()));
+            w.u8(static_cast<uint8_t>(colors.legs()));
+            w.u8(static_cast<uint8_t>(colors.feet()));
         };
         const auto type = m.outfit_type();
         w.u8(static_cast<uint8_t>(type));
-        writeLook(m.look(), true);
-        if (type == 0) { // own outfit
-            writeLook(m.mount(), false);
-            w.u8(m.mounted() ? 1 : 0);
-            w.u16(static_cast<uint16_t>(m.familiar()));
-            w.u8(m.random_mount() ? 1 : 0);
+        w.u16(static_cast<uint16_t>(m.outfit().look_type()));
+        writeColors(m.outfit().colors());
+        w.u8(static_cast<uint8_t>(m.outfit().addons()));
+        if (type == 2) { // show-off socket (podium)
+            const auto& socket = m.show_off_socket_data();
+            writeCoordinate(w, socket.target().position());
+            w.u16(static_cast<uint16_t>(socket.target().object_id()));
+            w.u8(static_cast<uint8_t>(socket.target().stack_position()));
+            w.u16(static_cast<uint16_t>(socket.mount_look_type()));
+            writeColors(socket.mount_colors());
+            w.u8(static_cast<uint8_t>(socket.direction()));
+            w.u8(socket.podium_visible() ? 1 : 0);
         } else if (type == 1) { // hireling
             w.u32(m.hireling_id());
-        } else if (type == 2) { // podium
-            writeCoordinate(w, m.position());
-            w.u16(static_cast<uint16_t>(m.object_id()));
-            w.u8(static_cast<uint8_t>(m.stack_position()));
-            writeLook(m.mount(), false);
-            w.u8(static_cast<uint8_t>(m.direction()));
-            w.u8(m.podium_visible() ? 1 : 0);
+        } else if (type == 0) { // own outfit
+            const auto& mount = m.mount_and_summon_data();
+            w.u16(static_cast<uint16_t>(mount.mount_look_type()));
+            writeColors(mount.mount_colors());
+            w.u8(mount.mounted() ? 1 : 0);
+            w.u16(static_cast<uint16_t>(mount.familiar_look_type()));
+            w.u8(mount.random_mount() ? 1 : 0);
         }
         return w.out;
     }
@@ -1716,13 +1719,14 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 159: {
         const auto& m = msg.GetExtension(GameclientMessageSetCreaturePodiumConfiguration::gameclient_message_set_creature_podium_configuration);
+        const auto& configuration = m.configuration();
         w.u32(static_cast<uint32_t>(m.race_id()));
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
-        w.u8(static_cast<uint8_t>(m.direction()));
-        w.u8(m.podium_visible() ? 1 : 0);
-        w.u8(m.monster_visible() ? 1 : 0);
+        writeCoordinate(w, configuration.target().position());
+        w.u16(static_cast<uint16_t>(configuration.target().object_id()));
+        w.u8(static_cast<uint8_t>(configuration.target().stack_position()));
+        w.u8(static_cast<uint8_t>(configuration.direction()));
+        w.u8(configuration.podium_visible() ? 1 : 0);
+        w.u8(configuration.monster_visible() ? 1 : 0);
         return w.out;
     }
     case 160: {
@@ -2157,18 +2161,6 @@ void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
     // Before the queue exists: straight to the wire.
     if (auto* processor = network::TGameserverSessionNetwork::live())
         processor->writeClientFrame(wire);
-}
-
-QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf)
-{
-    auto* xlat = serverMessageTranslator();
-    if (!xlat || gameserverProtobuf.isEmpty())
-        return {};
-    GameserverMessage message;
-    if (!message.ParseFromArray(gameserverProtobuf.constData(), gameserverProtobuf.size())) {
-        return {};
-    }
-    return xlat->translateToClassic(message);
 }
 
 const GameserverMessage* lastShadowServerMessage()

@@ -8,6 +8,7 @@
 #include "client/animatedtext.h"
 #include "protocol/protocolciptypes.h"
 #include "config/clientoptiondefaults.h"
+#include "config/clientoptions.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/vipstorage.h"
 #include "input/gameaction.h"
@@ -110,17 +111,12 @@ bool option(const QJsonObject& options, const char* name)
     return options.value(key).toBool(config::defaultClientOptions().value(key).toBool());
 }
 
-QJsonObject whiteBlacklistOptions()
-{
-    return app::ClientOptions::load().root().value(QLatin1String("whiteBlacklistOptions")).toObject();
 }
 
-}
-
-TWhiteBlacklist::TWhiteBlacklist(QObject* parent)
-    : cip::tibia::chat::TWhiteBlacklist(parent)
+TWhiteBlacklist::TWhiteBlacklist(config::TClientOptions* pClientOptions)
+    : cip::tibia::chat::TWhiteBlacklist(nullptr)
+    , m_pClientOptions(pClientOptions)
 {
-    loadFromOptions();
 }
 
 TWhiteBlacklist::Entries::iterator TWhiteBlacklist::findEntry(Entries& entries, const QString& name)
@@ -199,33 +195,32 @@ void TWhiteBlacklist::setLists(const Entries& whitelist, const Entries& blacklis
 
 void TWhiteBlacklist::loadFromOptions()
 {
-    const QJsonObject options = whiteBlacklistOptions();
-    const auto load = [](const QJsonArray& names, Entries& entries) {
+    const config::TWhiteBlacklistOptions& options = m_pClientOptions->whiteBlacklistOptions();
+    const auto load = [](const QStringList& names, Entries& entries) {
         entries.clear();
-        for (const QJsonValue& value : names) {
-            const QString name = value.toString();
+        for (const QString& name : names) {
             if (!name.isEmpty())
                 insertEntry(entries, { name, true });
         }
         sortEntries(entries);
     };
-    load(options.value(QLatin1String("blacklistedNames")).toArray(), m_blacklist);
-    load(options.value(QLatin1String("whitelistedNames")).toArray(), m_whitelist);
+    load(options.blacklistedNames, m_blacklist);
+    load(options.whitelistedNames, m_whitelist);
 }
 
 void TWhiteBlacklist::saveToOptions() const
 {
     const auto permanentNames = [](const Entries& entries) {
-        QJsonArray names;
+        QStringList names;
         for (const Entry& entry : entries)
             if (entry.permanently)
                 names.append(entry.name);
         return names;
     };
-    QJsonObject options = whiteBlacklistOptions();
-    options.insert(QLatin1String("blacklistedNames"), permanentNames(m_blacklist));
-    options.insert(QLatin1String("whitelistedNames"), permanentNames(m_whitelist));
-    app::ClientOptions::storeAll({ { QStringLiteral("whiteBlacklistOptions"), options } });
+    config::TWhiteBlacklistOptions options;
+    options.blacklistedNames = permanentNames(m_blacklist);
+    options.whitelistedNames = permanentNames(m_whitelist);
+    m_pClientOptions->setWhiteBlacklistOptions(options);
 }
 
 bool TWhiteBlacklist::blocksName(const QString& name) const

@@ -10,6 +10,8 @@ class QQuickWindow;
 
 namespace tibia {
 namespace appearances {
+class TAppearanceInstanceFactory;
+class TAppearanceInstanceGenericStoragesManager;
 class TAppearancesManager;
 }
 namespace config {
@@ -21,6 +23,7 @@ class TCyclopediaMapStaticDataStorage;
 namespace game {
 class TGameActionRouter;
 class TPassiveAbilityInfoStorage;
+class TTraderStorage;
 }
 namespace proficiency {
 class TProficiencyStorage;
@@ -30,6 +33,9 @@ class TSpriteTextureProviderManager;
 }
 namespace shared {
 class TTibiaFileSystemHelper;
+}
+namespace sprites {
+class TResourceSpritesManager;
 }
 namespace spells {
 class TSpellInfoStorage;
@@ -78,10 +84,10 @@ public:
     TGameClientBase& operator=(const TGameClientBase&) = delete;
 
     /// CIP: the client's setup steps, in CipSoft's order: the storages, the
-    /// sound system, the QML context, the assets; then `initialized`.
-    /// Host: CipSoft's sprite resolver, appearance instance factory and
-    /// minimap steps have no counterpart here yet (qtclient's sprite system
-    /// is the engine's, its minimap is the game session's).
+    /// sound system, the QML context, the assets, the sprite resolver, the
+    /// appearance instance factory; then `initialized`. Host: CipSoft's
+    /// minimap step has no counterpart here yet (qtclient's minimap is the
+    /// game session's).
     virtual void initialize();
 
     /// The client version the assets and the login are made for.
@@ -90,9 +96,10 @@ public:
     /// texture provider manager is made, the client's parts connect to the
     /// game action router and `mainWindowInitialized` follows.
     void setMainWindow(QQuickWindow* MainWindow);
-    /// CIP: before each frame, at `Timestamp` (milliseconds): the sound
-    /// controller and the sound manager catch up, and the highlight pulse of
-    /// the frame is computed.
+    /// CIP: before each frame, at `Timestamp` (milliseconds): the generic
+    /// storages advance their appearance instances, the sound manager catches
+    /// up and the highlight pulse of the frame is computed. Host: the sound
+    /// controller catches up here too.
     void updateWithTimestamp(qint64 Timestamp);
 
     /// The QML engine the game window and its controllers are built in.
@@ -113,6 +120,18 @@ public:
     game::TPassiveAbilityInfoStorage* passiveAbilityInfoStorage() const { return m_pPassiveAbilityInfoStorage.get(); }
     /// The weapon proficiencies the server sent; emptied when the game session changes.
     proficiency::TProficiencyStorage* proficiencyStorage() const { return m_pProficiencyStorage.get(); }
+
+    /// Throws std::logic_error before it exists.
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory() const;
+    /// Null before the appearance instance factory exists.
+    std::shared_ptr<appearances::TAppearanceInstanceGenericStoragesManager> appearanceInstanceGenericStoragesManager() const
+    {
+        return m_pAppearanceInstanceGenericStoragesManager;
+    }
+    /// The object types each NPC buys. Throws std::logic_error before it exists.
+    std::shared_ptr<game::TTraderStorage> traderStorage() const;
+    /// The client's built-in resource images; null before the storages exist.
+    std::shared_ptr<sprites::TResourceSpritesManager> resourceSpritesManager() const { return m_pResourceSpritesManager; }
 
     /// The router the game window's controllers publish into and listen to.
     /// Throws std::logic_error before it exists.
@@ -143,12 +162,31 @@ protected:
     /// (CipSoft makes an empty one with the client).
     void createSpellInfoStorage();
 
-    /// CIP: the storages the client keeps for the whole process. Host: the
-    /// spell table (spells.json is readable now); qtclient makes the
-    /// appearances, the Cyclopedia map's static data and the game action
-    /// router with the client, because the game window's controllers use
-    /// them without a running engine (the character selection preview).
+    /// CIP: the storages the client keeps for the whole process: the trader
+    /// storage and the resource sprites manager. Host: also the spell table
+    /// (spells.json is readable now); qtclient makes the appearances, the
+    /// Cyclopedia map's static data and the game action router with the
+    /// client, because the game window's controllers use them without a
+    /// running engine (the character selection preview); the spritesheet
+    /// manager is the sprite system's, the minimap storages the game
+    /// session's.
     virtual void initializeStorages();
+    /// CIP: a failed spritesheet decompression reaches the client (the
+    /// base does nothing with it); the resource sprites manager becomes the
+    /// root context's `ResourceSpritesManager`. Host: qtclient's sprite
+    /// resolver is the sprite system's (TSpriteSystem), made with it.
+    virtual void initializeSpriteResolver();
+    /// CIP: the appearance instance factory of the appearances; the
+    /// instance tracker's spritesheet requests go to the spritesheet manager;
+    /// then the generic storages manager of the factory, the root context's
+    /// `AppearanceInstanceGenericStorageManager`.
+    virtual void initializeAppearanceInstanceFactory();
+    /// CIP slot: a spritesheet could not be decompressed. The base ignores it.
+    virtual void onSpritesheetUncompressFailed(const QString& SpritesheetID);
+    /// CIP slot: the assets finished loading. The base ignores it.
+    virtual void onAssetsComplete();
+    /// CIP slot: the assets could not be loaded. The base ignores it.
+    virtual void onAssetsError();
     /// CIP: what the QML engine's root context offers the client's QML: the
     /// store balance helper (`storeAndResourceBalanceHelper`). Host: the mouse
     /// cursor and text copy controllers CipSoft makes here come with the
@@ -185,6 +223,8 @@ protected:
     /// (CipSoft shares them between the application and the client).
     config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    std::shared_ptr<game::TTraderStorage> m_pTraderStorage;
     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_pCyclopediaMapStaticDataStorage;
     std::unique_ptr<spells::TSpellInfoStorage> m_pSpellInfoStorage;
     std::unique_ptr<game::TPassiveAbilityInfoStorage> m_pPassiveAbilityInfoStorage;
@@ -197,6 +237,8 @@ protected:
     std::shared_ptr<sound::TSoundPlayerManager> m_pSoundPlayerManager;
     std::shared_ptr<sound::TSoundMetadataManager> m_pSoundMetadataManager;
     std::shared_ptr<renderer::TSpriteTextureProviderManager> m_pSpriteTextureProviderManager;
+    std::shared_ptr<appearances::TAppearanceInstanceGenericStoragesManager> m_pAppearanceInstanceGenericStoragesManager;
+    std::shared_ptr<sprites::TResourceSpritesManager> m_pResourceSpritesManager;
     /// Host: what initializeAssets could not read; empty when all loaded.
     QString m_assetLoadError;
 };

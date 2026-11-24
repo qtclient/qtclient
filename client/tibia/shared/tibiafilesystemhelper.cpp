@@ -5,6 +5,7 @@
 #include "shared/sharedciptypes.h"
 
 #include <QCoreApplication>
+#include <utility>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -121,6 +122,14 @@ TTibiaFileSystemHelper::TTibiaFileSystemHelper()
     , m_baseDirectory(m_dataDirectory)
     , m_fileSystemHelper(std::make_shared<TFileSystemHelper>())
 {
+}
+
+TTibiaFileSystemHelper::TTibiaFileSystemHelper(const QDir& baseDirectory, std::shared_ptr<TFileSystemHelper> fileSystemHelper)
+    : m_dataDirectory(baseDirectory)
+    , m_baseDirectory(baseDirectory)
+    , m_fileSystemHelper(std::move(fileSystemHelper))
+{
+    validateBaseDirectory();
 }
 
 TTibiaFileSystemHelper::~TTibiaFileSystemHelper() = default;

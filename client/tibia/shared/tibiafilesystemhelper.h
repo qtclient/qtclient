@@ -44,7 +44,11 @@ public:
         DIRECTORY_SOUNDS = 15,
     };
 
+    /// Host: the application data location as the base directory, unchecked.
     TTibiaFileSystemHelper();
+    /// Both the data and the base directory are `baseDirectory`; it must exist
+    /// (validateBaseDirectory throws std::invalid_argument otherwise).
+    TTibiaFileSystemHelper(const QDir& baseDirectory, std::shared_ptr<TFileSystemHelper> fileSystemHelper);
     ~TTibiaFileSystemHelper();
 
     // CIP path service (vtable order).

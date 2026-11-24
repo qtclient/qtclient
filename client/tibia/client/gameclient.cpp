@@ -30,8 +30,10 @@
 #include "dailyreward/dailyrewardciptypes.h"
 #include "common/commonciptypes.h"
 #include "client/clientciptypes.h"
+#include "crashhandler.h"
 #include "crashreportdata.h"
 #include "crashreportsender.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/createaccountdialogcontroller.h"
 #include "gamewindow/createcharacterdialogcontroller.h"
@@ -80,6 +82,7 @@
 #include "game/gamesessionbase.h"
 #include "game/playerdata.h"
 #include "input/genericgameactionhandler.h"
+#include "input/keyboardstatusstorage.h"
 #include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
@@ -144,6 +147,7 @@
 #include <QHash>
 #include <QJsonObject>
 #include <QPointer>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QThread>
 
@@ -316,16 +320,14 @@ private:
 }
 
 TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                         config::TClientOptions* ClientOptions, QObject* parent)
+                         config::TClientOptions* ClientOptions, std::shared_ptr<shared::TDownloadPool> DownloadPool,
+                         QObject* parent)
     : cip::tibia::client::TGameClient(parent)
     , ::tibia::client::TGameClientBase(Engine, std::move(TibiaFileSystemHelper), ClientOptions)
-    , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
-    , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
-          1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
+    , m_sessiondumpCatalogLoader(std::move(DownloadPool))
 {
-    game::TOutfitDialogStorage::setInstance(m_outfitDialogStorage.get());
     m_pGameActionRouter = std::make_shared<game::TGameActionRouter>();
     // CIP: the client's own game actions go through the router.
     connect(this, &TGameClient::publishGameAction, m_pGameActionRouter->internalRouter(),
@@ -417,7 +419,8 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     // login confirmation code uploaders (each with its own sender) and the
     // Cloudflare challenge for the login service, handed to the controller.
     auto pCharacterSelection = std::make_shared<gamewindow::TCharacterSelectionController>();
-    auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>(LoginUrl);
+    auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>(
+        LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
     pLoginRequestUploader->setClientRevision(m_options.env.revision);
     auto pEMailCodeRequestUploader = std::make_shared<authentication::TEmailCodeRequestUploader>(
         LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
@@ -433,10 +436,6 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         // account; the clearance goes with the next login request.
         authentication::TAuthenticationProcessController::THost host;
         host.resetSessionData = [this] { m_account.session = {}; };
-        host.applyClearance = [uploader = pLoginRequestUploader.get()](
-                                  const authentication::TCloudflareChallengeClearanceInfo& info) {
-            uploader->applyClearance(info);
-        };
         m_authentication->setHost(std::move(host));
     }
     m_authentication->bindLoginUploader(pLoginRequestUploader.get());
@@ -465,15 +464,10 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         if (!tibia::game::isOnline())
             ensureLoginSurface();
     });
-    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToCloudflareMitigation, this,
-            [this, uploader = pLoginRequestUploader.get(), cloudflare = pCloudflareChallenge.get()] {
-                QUrl challengeUrl = uploader->lastMitigatedUrl();
-                if (!challengeUrl.isValid())
-                    challengeUrl = m_options.env.loginUrl();
-                cloudflare->startChallenge(challengeUrl);
-            });
 
     connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::publishGameAction,
+            m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::publishGameAction,
             m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
             [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
@@ -487,8 +481,6 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         Q_EMIT returnToLoginRequested();
     });
     connect(this, &TGameClient::characterSelectionRequested, this, [this] {
-        if (!tibia::game::isOnline())
-            return;
         m_characterSelectionOpen = true;
         if (gamewindow::TCharacterSelectionController* selection = characterSelection())
             selection->open();
@@ -500,6 +492,12 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         }
         m_characterSelectionOpen = false;
     });
+    // CIP: the controller asks the client to connect the chosen character,
+    // and its FPS tracking switch follows the login.
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::requestCharacterGameserverLogin, this,
+            &TGameClient::connectClientToGameserverWithExistingCredentials);
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::fpsTrackingActiveChanged, this,
+            &TGameClient::onFpsTrackingActiveChanged);
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
             [this](const input::IGameActionPtr& action) {
@@ -521,9 +519,13 @@ TGameClient::~TGameClient()
         manager->saveConfiguration();
     // CIP: the dialogs made after the game window controller go before it
     // (the client's members in reverse order, then the game window's).
+    m_pLoginAdviceDialogController.reset();
+    m_pExitGameDialogController.reset();
+    m_pConnectingDialogController.reset();
     m_pCreateCharacterDialogController.reset();
     m_pCreateAccountDialogController.reset();
     m_pRewardWallDialogController.reset();
+    m_pOutfitMemorialDialogController.reset();
     m_pLenshelpManager.reset();
     m_pBossDifficultySelectionDialogController.reset();
     m_pSoulSealsDialogController.reset();
@@ -532,9 +534,12 @@ TGameClient::~TGameClient()
     m_pWeaponProficiencyReshapeDialogController.reset();
     m_pWeaponProficiencyDialogController.reset();
     m_pNaggingMessageDialogController.reset();
+    m_pShowSpellBookDialogController.reset();
+    m_pShowImageDialogController.reset();
     m_pExaltationForgeDialogController.reset();
     m_pSelectObjectAmountDialogController.reset();
     m_pBlessingsDialogController.reset();
+    m_pMultiOfflineTrainingDialogController.reset();
     m_pStoreDialogController.reset();
     m_pDeathDialogController.reset();
     m_pGameSessionDisconnectReactionController.reset();
@@ -726,19 +731,18 @@ void TGameClient::login()
         return;
     }
     Q_EMIT loginStarted();
-    authentication::TLoginRequestData request;
-    request.email = m_options.account;
-    request.password = m_options.password;
-    request.stayLoggedIn = true;
-    // CIP: the login data goes to the login machine; entering its login
-    // waiting state sends the request.
-    m_authentication->setLoginData(request);
-    m_authentication->start();
+    onRequestLoginWithCredentials(m_options.account, m_options.password);
+}
+
+void TGameClient::onRequestLoginWithCredentials(const QString& EMailAddress, const QString& Password)
+{
+    // The credentials go to the login machine; entering its login waiting
+    // state sends the request.
+    m_authentication->loginWithCredentials(EMailAddress, Password);
 }
 
 void TGameClient::abortPendingEnter()
 {
-    loginRequestUploader()->abort();
     if (!tibia::game::isOnline()) {
         if (game::TGameserverGameSession* live = session())
             live->disconnectNow();
@@ -775,24 +779,15 @@ void TGameClient::refreshAccount(const QJsonObject& reply)
 void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
 {
     m_account = result;
-    onFpsTrackingActiveChanged(result.session.fpsTracking);
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
-    // CIP (TAuthenticationProcessController): the news learn the account's
-    // returner state and unlock against its highest character level.
-    if (news::TNewsStorage* news = news::TNewsStorage::current()) {
-        news->setReturnerInformation(result.session.isReturner, result.session.showRewardNews);
-        int highestLevel = 0;
-        for (const auto& c : result.characters)
-            highestLevel = std::max(highestLevel, c.level);
-        news->raiseAccountLevel(static_cast<ushort>(highestLevel));
-    }
     showAccount(result.characters);
     if (!m_options.autoCharacter.isEmpty()) {
         for (const auto& c : result.characters) {
             if (c.name.compare(m_options.autoCharacter, Qt::CaseInsensitive) == 0) {
-                onCharacterChosen(c.name);
+                // The selection logs the character in as if it was confirmed.
+                characterSelection()->selectCharacter(c.name);
                 return;
             }
         }
@@ -830,6 +825,10 @@ void TGameClient::ensureLoginSurface()
 {
     if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter() || !m_options.autoCharacter.isEmpty())
         return;
+    // A character change (or a login again) connects the next session itself.
+    if (const gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController();
+        reaction && reaction->reconnectRequested())
+        return;
     // A live account session reopens the character list (including an empty
     // account, which the bootstrap turns into Create Character). Otherwise the
     // login mask is the only way back in — leaving both hidden is a dead screen.
@@ -842,13 +841,17 @@ void TGameClient::ensureLoginSurface()
 
 bool TGameClient::requestCharacterSwitch(const QString& characterName)
 {
-    if (characterName.isEmpty() || !tibia::game::isOnline() || m_pendingCharacter)
+    if (characterName.isEmpty() || !tibia::game::isOnline())
         return false;
-    // CIP: this character logs out; the chosen one logs in, in a new game
-    // session, once it left the world.
-    m_pendingCharacter = characterName;
-    tibia::game::safeLogout();
+    const auto known = std::find_if(m_account.characters.begin(), m_account.characters.end(),
+                                    [&](const authentication::TCharacter& c) { return c.name == characterName; });
+    if (known == m_account.characters.end())
+        return false;
+    // The selection logs the character in as if it was confirmed; the client
+    // then quits this one and connects the chosen one once it disconnected.
+    showAccount(m_account.characters);
     Q_EMIT characterSwitchRequested(characterName);
+    characterSelection()->selectCharacter(characterName);
     return true;
 }
 
@@ -872,55 +875,131 @@ void TGameClient::showAccount(const authentication::TCharacterList& characters)
 void TGameClient::onCharacterChosen(const QString& characterName)
 {
     characterSelection()->setLastSelectedCharacterName(characterName);
-    // A character switch from a running session starts at the character selection.
-    if (!m_authentication->isRunning())
+    Q_EMIT characterSelectionClosed();
+    // The character login is the machine's ShowCharacterSelection step. A
+    // stopped machine (a character change from a running session) or one
+    // still in its post-login dialogs starts again there.
+    using EState = authentication::TAuthenticationProcessController::EState;
+    if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowCharacterSelection)
         m_authentication->start(true);
     m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CharacterLoginRequested);
-    if (tibia::game::isOnline()) {
-        Q_EMIT characterSelectionClosed();
-        // CIP: log this character out; the chosen one logs in once it left the world.
-        m_pendingCharacter = characterName;
-        tibia::game::safeLogout();
-        return;
-    }
-
-    const authentication::TCharacter* chosen = nullptr;
-    for (const auto& c : m_account.characters) {
-        if (c.name == characterName) {
-            chosen = &c;
-            break;
-        }
-    }
-    const auto* world = chosen ? m_account.world(chosen->worldId) : nullptr;
-    if (!world) {
-        fail(tr("The world of %1 is not in the world list.").arg(characterName));
-        return;
-    }
-    Q_EMIT characterSelectionClosed();
-    m_worldType = world->pvpType;
-
-    game::GameserverCredentials credentials;
-    credentials.account = m_options.account;
-    credentials.password = m_options.password;
-    credentials.sessionKey = m_account.session.sessionKey;
-    credentials.worldName = world->name;
-    credentials.host = world->host();
-    credentials.port = world->port();
-    credentials.characterName = chosen->name;
-    if (!m_options.recordTo.isEmpty())
-        credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
-
-    // CIP: a new login does not open the character selection on its own disconnect.
-    if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
-        reaction->resetShowCharacterSelectionOnDisconnect();
-    enqueueGameSessions(createGameSessionMetaInfos(credentials, chosen->tutorial ? game::resolveTutorialSessiondumpPath() : QString()));
 }
 
-void TGameClient::loginAgainWithLastCharacter()
+void TGameClient::connectClientToGameserverWithExistingCredentials()
 {
-    const QString characterName = characterSelection()->lastSelectedCharacterName();
-    if (!characterName.isEmpty())
-        onCharacterChosen(characterName);
+    if (!m_currentGameSession) {
+        m_pConnectingDialogController->setButtons(gamewindow::cancelDialogButtons());
+        m_pConnectingDialogController->showMessage(qtTrId("connecting_caption"), qtTrId("connecting_description"));
+        QTimer::singleShot(0, this, &TGameClient::onConnectClientToGameserver);
+        return;
+    }
+    // A character change: the current one quits without leaving the game, so
+    // the client logs in again once it disconnected.
+    if (m_pGameSessionDisconnectReactionController && !m_pGameSessionDisconnectReactionController->reconnectRequested())
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(false));
+}
+
+void TGameClient::onConnectClientToGameserver()
+{
+    m_gameSessionMetaInfoQueue.clear();
+    const authentication::TLoginRequestData loginData = m_authentication->loginData();
+    const std::vector<gamewindow::TCharacterLoginData> characterLoginData = m_authentication->characterLoginData();
+    if (characterLoginData.size() == 1) {
+        for (std::shared_ptr<game::TGameSessionMetaInfo>& metaInfo : createGameSessionMetaInfos(loginData, characterLoginData.front()))
+            m_gameSessionMetaInfoQueue.push_back(std::move(metaInfo));
+    }
+    autoconnectNextGameSessionInQueue();
+}
+
+void TGameClient::onAbortConnectClientToGameserver()
+{
+    if (m_pGameSessionDisconnectReactionController && m_pGameSessionDisconnectReactionController->reconnectRequested())
+        m_pGameSessionDisconnectReactionController->resetReconnectRequested();
+    onGameSessionDisconnected();
+    onShowCharacterSelectionDialogRequested();
+}
+
+void TGameClient::onShowCharacterSelectionDialogRequested()
+{
+    // CIP first updates the login uploader's characters from the game
+    // session; qtclient's uploader follows the session (setCurrentGameSession).
+    m_authentication->showCharacterSelection();
+}
+
+void TGameClient::onGameSessionConnected()
+{
+    m_authentication->stopProcess();
+    if (m_pFPSDropsLogger) {
+        const gamewindow::TCharacterLoginData characterLoginData = m_authentication->firstCharacterLoginData();
+        m_pFPSDropsLogger->setCharacterName(characterLoginData.characterName);
+        m_pFPSDropsLogger->setWorldName(characterLoginData.worldName);
+    }
+}
+
+void TGameClient::onGameSessionLoginSuccessful()
+{
+    updateWindowTitleExtension();
+    updateCrashReportAnnotations();
+}
+
+void TGameClient::onGameSessionLoginAdvice(const QString& LoginAdvice)
+{
+    m_pLoginAdviceDialogController->setButtons(gamewindow::okDialogButtons());
+    m_pLoginAdviceDialogController->showMessage(qtTrId("login_advice_dialog_caption"), LoginAdvice);
+}
+
+void TGameClient::onGameSessionLoginError(const QString& LoginError, const int Action)
+{
+    Q_UNUSED(LoginError);
+    Q_UNUSED(Action);
+    m_pConnectingDialogController->dialog()->close();
+}
+
+void TGameClient::updateWindowTitleExtension()
+{
+    QQuickItem* const placeholder = m_gameWindowPlaceholder;
+    if (!placeholder)
+        return;
+    if (m_currentGameSession) {
+        const std::vector<gamewindow::TCharacterLoginData> characterLoginData = m_authentication->characterLoginData();
+        if (!characterLoginData.empty()) {
+            placeholder->setProperty("windowTitleExtension", characterLoginData.front().characterName);
+            return;
+        }
+    }
+    placeholder->setProperty("windowTitleExtension", QString());
+}
+
+void TGameClient::updateCrashReportAnnotations()
+{
+    if (m_currentGameSession) {
+        const std::vector<gamewindow::TCharacterLoginData> characterLoginData = m_authentication->characterLoginData();
+        if (!characterLoginData.empty()) {
+            setCharacterCrashReportAnnotations(characterLoginData.front().characterName, characterLoginData.front().worldName);
+            return;
+        }
+    }
+    removeCharacterCrashReportAnnotations();
+    removeWorldAddressCrashReportAnnotations();
+}
+
+void TGameClient::setCharacterCrashReportAnnotations(const QString& CharacterName, const QString& WorldName)
+{
+    shared::TCrashHandler::instance().setAnnotation(QStringLiteral("Character"), CharacterName);
+    shared::TCrashHandler::instance().setAnnotation(QStringLiteral("Server"), WorldName);
+}
+
+void TGameClient::removeCharacterCrashReportAnnotations()
+{
+    shared::TCrashHandler::instance().removeAnnotation(QStringLiteral("Character"));
+    shared::TCrashHandler::instance().removeAnnotation(QStringLiteral("Server"));
+    shared::TCrashHandler::instance().removeAnnotation(QStringLiteral("Position"));
+}
+
+void TGameClient::removeWorldAddressCrashReportAnnotations()
+{
+    shared::TCrashHandler::instance().removeAnnotation(QStringLiteral("UnprotectedWorldAddress"));
+    shared::TCrashHandler::instance().removeAnnotation(QStringLiteral("ProtectedWorldAddress"));
 }
 
 void TGameClient::setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const
@@ -942,7 +1021,7 @@ void TGameClient::setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) c
 }
 
 std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGameSessionMetaInfos(
-    const game::GameserverCredentials& loginData, const QString& tutorialSessiondump) const
+    const authentication::TLoginRequestData& LoginData, const gamewindow::TCharacterLoginData& CharacterLoginData)
 {
     std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos;
     auto gameserver = std::make_shared<game::TGameserverGameSessionMetaInfo>();
@@ -954,13 +1033,42 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
         gameserver->playerMovementIntentHandlerConfiguration->maxMillisecondsToFinishCurrentMovementBeforeSendNext =
             config::clientSetting(movement, QStringLiteral("maxMillisecondsToFinishCurrentMovementBeforeSendNext"), 0);
     }
-    gameserver->loginData = loginData;
-    if (!tutorialSessiondump.isEmpty()) {
-        auto tutorial = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
-        tutorial->sessiondump.url = QUrl::fromLocalFile(tutorialSessiondump);
-        setGameSessionSettings(*tutorial);
-        tutorial->characterName = loginData.characterName;
-        metaInfos.push_back(std::move(tutorial));
+    // CIP: a new login does not open the character selection on its own disconnect.
+    if (m_pGameSessionDisconnectReactionController)
+        m_pGameSessionDisconnectReactionController->resetShowCharacterSelectionOnDisconnect();
+    // CIP: the session gets the account's login data and the character's.
+    // Host: qtclient's meta info keeps the credentials the game server login
+    // reads; the world's game port (the WebSocket port in the browser), its
+    // PvP type and the session key are the login service's answer.
+    game::GameserverCredentials& credentials = gameserver->loginData;
+    credentials.account = LoginData.email;
+    credentials.password = LoginData.password;
+    credentials.sessionKey = LoginData.sessionKey.isEmpty() ? m_account.session.sessionKey : LoginData.sessionKey;
+    credentials.characterName = CharacterLoginData.characterName;
+    credentials.worldName = CharacterLoginData.worldName;
+    credentials.host = CharacterLoginData.worldAddressProtected;
+    credentials.port = CharacterLoginData.worldPortProtected;
+    m_worldType = -1;
+    for (const auto& [worldId, world] : m_account.worlds) {
+        if (world.name == CharacterLoginData.worldName) {
+            credentials.port = world.port();
+            m_worldType = world.pvpType;
+            break;
+        }
+    }
+    if (!m_options.recordTo.isEmpty())
+        credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
+    // CIP: a tutorial character first watches the tutorial dump. Host: the
+    // dump is qtclient's local tutorial file (CipSoft's comes from its assets).
+    if (CharacterLoginData.tutorial) {
+        const QString tutorialSessiondump = game::resolveTutorialSessiondumpPath();
+        if (!tutorialSessiondump.isEmpty()) {
+            auto tutorial = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
+            tutorial->sessiondump.url = QUrl::fromLocalFile(tutorialSessiondump);
+            setGameSessionSettings(*tutorial);
+            tutorial->characterName = credentials.characterName;
+            metaInfos.push_back(std::move(tutorial));
+        }
     }
     metaInfos.push_back(std::move(gameserver));
     return metaInfos;
@@ -1000,10 +1108,17 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     if (type != EType::Gameserver)
         return;
     setCurrentGameSession(nullptr);
+    // CIP: a crash report from now on names the character and its world.
+    if (const auto* gameserver = dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(metaInfo.get()))
+        setCharacterCrashReportAnnotations(gameserver->loginData.characterName, gameserver->loginData.worldName);
     const auto live = createGameSession<game::TGameserverGameSession>();
     live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
     live->initialize(metaInfo);
     setCurrentGameSession(live);
+    // CIP: the walk keys reach the live session.
+    if (input::TKeyboardStatusStorage* keyboardStatus = keyboardStatusStorage())
+        connect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged,
+                Qt::UniqueConnection);
     live->connectToGameserver();
     live->startSession();
 }
@@ -1012,7 +1127,13 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    connect(current, &game::IGameSession::showCharacterSelectionDialog, this, [this] { openCharacterSelectionForSwitch(); });
+    // CIP: the session's connection, login and character selection requests.
+    connect(current, &game::IGameSession::connected, this, &TGameClient::onGameSessionConnected);
+    connect(current, &game::IGameSession::gameLoginSuccessful, this, &TGameClient::onGameSessionLoginSuccessful);
+    connect(current, &game::IGameSession::showCharacterSelectionDialog, this,
+            &TGameClient::onShowCharacterSelectionDialogRequested);
+    connect(current, &game::IGameSession::gameLoginAdviceMessage, this, &TGameClient::onGameSessionLoginAdvice);
+    connect(current, &game::IGameSession::gameLoginErrorMessage, this, &TGameClient::onGameSessionLoginError);
     if (auto* base = dynamic_cast<game::TGameSessionBase*>(current))
         connect(base->genericGameActionHandler().get(), &input::TGenericGameActionHandler::sendQuitGame, this,
                 [this] { requestLogoutOrShowStartScreen(nullptr); });
@@ -1059,9 +1180,10 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         next->initializeWorldMapSessionState();
     }
     connectGameWindowControllersToGameSession(GameSession);
-    // The login uploader's character list follows the session's player.
-    if (authentication::TLoginRequestUploader* uploader = loginRequestUploader())
-        uploader->setGameSession(std::dynamic_pointer_cast<game::TGameSessionBase>(GameSession));
+    // CIP: the login's controller follows the session (its player's level and
+    // data, and the login request uploader's character list).
+    if (m_authentication)
+        m_authentication->connectToGameSession(std::dynamic_pointer_cast<game::TGameSessionBase>(GameSession));
     m_currentGameSession = GameSession;
     // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
     game::setCurrentGameSession(m_currentGameSession);
@@ -1101,6 +1223,9 @@ void TGameClient::onWorldEntered()
 {
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
+    // Host: the connecting dialog has done its job once the world shows.
+    if (m_pConnectingDialogController)
+        m_pConnectingDialogController->dialog()->close();
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager();
         manager && tibia::game::localPlayerId() != 0)
         manager->onPlayerCreatureLoaded(tibia::game::localPlayerId());
@@ -1216,11 +1341,6 @@ void TGameClient::onWorldLeft()
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
-    if (m_pendingCharacter) {
-        const QString next = *m_pendingCharacter;
-        m_pendingCharacter.reset();
-        QTimer::singleShot(0, this, [this, next] { onCharacterChosen(next); });
-    }
 }
 
 void TGameClient::setWindow(QQuickWindow* window)
@@ -1269,13 +1389,6 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (m_pSoundController) {
-        if (game::TGameSessionBase* session = game::currentGameSession()) {
-            if (session->objectSoundController())
-                session->objectSoundController()->updateObjectCounts(
-                    tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
-        }
-    }
     updateWithTimestamp(static_cast<qint64>(shared::TClockService::frameMillis()));
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {

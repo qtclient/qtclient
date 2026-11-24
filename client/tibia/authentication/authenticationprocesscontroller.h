@@ -4,6 +4,8 @@
 #include "authentication/cloudflarechallengetypes.h"
 #include "input/gameactionptr.h"
 
+#include "qtconnectionmanager.h"
+
 #include <QObject>
 #include <QString>
 
@@ -14,6 +16,9 @@
 #include <vector>
 
 namespace tibia {
+namespace game {
+class TGameSessionBase;
+}
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCharacterTradeDuePaymentDialogController;
@@ -120,17 +125,12 @@ public:
         AssetsComplete,
     };
 
-    /// What the host provides: the login request's abort and Cloudflare
-    /// clearance, and the survey invitation (shows it and answers whether it
-    /// did; unset means it is not shown).
+    /// What the host provides.
     struct THost
     {
-        std::function<void()> abortLogin;
-        std::function<void(const TCloudflareChallengeClearanceInfo&)> applyClearance;
-        std::function<bool()> showSurveyInvitationDialog;
         /// Whether the assets are loaded, so the game server login can start.
         std::function<bool()> assetsComplete;
-        /// Forgets the account's session (the host keeps the play session data).
+        /// The host's copy of the play session data is forgotten too.
         std::function<void()> resetSessionData;
     };
 
@@ -151,12 +151,25 @@ public:
     {
         return m_pCloudflareChallengeController.get();
     }
-    /// The account the login requests and the code requests are made for.
-    void setLoginCredentials(const QString& EMail, const QString& Password);
     /// The login data the next login request sends (the login mask's account,
     /// stay-logged-in and client fields); the dialogs add their codes to it.
-    void setLoginData(const TLoginRequestData& LoginData) { m_loginData = LoginData; }
     const TLoginRequestData& loginData() const { return m_loginData; }
+    /// CIP: the character the selection handed on for the game server login
+    /// (one entry, or none).
+    std::vector<gamewindow::TCharacterLoginData> characterLoginData() const;
+    /// CIP: the first of characterLoginData, or an empty one.
+    gamewindow::TCharacterLoginData firstCharacterLoginData() const;
+
+    /// CIP: a login with `EMail` and `Password` from the login mask: the
+    /// login data is renewed (stay logged in, the device cookie and the
+    /// trusted device token for the account; the codes are cleared), the
+    /// email address is remembered when the client options say so, and the
+    /// machine starts (or, when it runs, goes to the login upload).
+    void loginWithCredentials(const QString& EMail, const QString& Password);
+    /// CIP: the game session whose player's level and data the news and the
+    /// level popups follow; the login request uploader's character list
+    /// follows it too.
+    void connectToGameSession(const std::shared_ptr<game::TGameSessionBase>& GameSession);
 
     void setHost(THost host) { m_host = std::move(host); }
 
@@ -178,7 +191,9 @@ public:
     /// machine advances straight to it, a stopped one starts there.
     void showCharacterSelection();
     /// CIP: forgets the account's session data, so the next login asks for
-    /// the credentials again.
+    /// the credentials again: the credentials, the play session, the login
+    /// confirmation token, an expiring Cloudflare clearance, the character
+    /// selection's characters, the authentication and the premium time.
     void resetSessionData();
 
     /// Stops the machine and closes the character selection, the two-factor
@@ -243,6 +258,7 @@ Q_SIGNALS:
     void advanceStateMachineToWaitForAssetCompletion();
     void abort();
     void requestCharacterGameserverLogin();
+    void publishGameAction(const tibia::input::IGameActionPtr& pGameAction);
     void authenticatedChanged(bool IsAuthenticated);
     void fpsTrackingActiveChanged(bool FpsTrackingActive);
     void optionsTrackingActiveChanged(bool OptionsTrackingActive);
@@ -271,6 +287,9 @@ private:
     void setAuthenticated(bool value);
     void setFpsTrackingActive(bool value);
     void setOptionsTrackingActive(bool value);
+    /// CIP: the account's trusted device token: a SHA-1 of the lower-cased
+    /// email address, the machine id, the user name and the CPU.
+    static QString trustedDeviceToken(const QString& EMail);
 
     std::shared_ptr<gamewindow::TCharacterSelectionController> m_pCharacterSelectionController;
     std::shared_ptr<TLoginRequestUploader> m_pLoginRequestUploader;
@@ -290,6 +309,8 @@ private:
     TLoginRequestData m_loginData;
     /// What the character selection handed on for the game server login.
     std::vector<gamewindow::TCharacterLoginData> m_characterLoginData;
+    std::shared_ptr<game::TGameSessionBase> m_pGameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<TCloudflareChallengeController> m_pCloudflareChallengeController;
 
     THost m_host;
@@ -301,7 +322,6 @@ private:
     bool m_running = false;
     bool m_processing = false;
     std::deque<ETrigger> m_queue;
-    std::optional<TCloudflareChallengeClearanceInfo> m_cloudflareClearance;
 
     bool m_authenticated = false;
     bool m_fpsTrackingActive = false;

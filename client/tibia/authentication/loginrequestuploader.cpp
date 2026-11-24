@@ -9,16 +9,14 @@
 #include "game/playerdata.h"
 #include "teamfinder/teamfinderciptypes.h"
 
+#include "jsondocumenthttppostsender.h"
+
 #include <QDateTime>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QNetworkAccessManager>
-#include <QNetworkCookie>
-#include <QNetworkCookieJar>
 #include <QNetworkReply>
-#include <QNetworkRequest>
 
 namespace tibia::authentication {
 
@@ -29,17 +27,21 @@ constexpr int LastImportantBalancingMessageOption = 126;
 /// An important balancing message is shown for 28 days after its changes.
 constexpr int ImportantBalancingMessageSeconds = 28 * 24 * 60 * 60;
 
-bool looksLikeCloudflareChallenge(const QNetworkReply* reply, const QByteArray& mitigated)
+/// The sender's form of a solved challenge's clearance.
+shared::TJsonDocumentHttpPostSender::TCloudflareClearance senderClearance(const TCloudflareChallengeClearanceInfo& Clearance)
 {
-    if (!mitigated.isEmpty())
-        return true;
-    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    if (status != 403 && status != 503)
-        return false;
-    const QByteArray server = reply->rawHeader("server").toLower();
-    return server.contains("cloudflare") || !reply->rawHeader("cf-ray").isEmpty();
+    return { cloudflareClearanceCookie(Clearance), Clearance.userAgent };
 }
 
+}
+
+QNetworkCookie cloudflareClearanceCookie(const TCloudflareChallengeClearanceInfo& Clearance)
+{
+    for (const QNetworkCookie& cookie : Clearance.cookies) {
+        if (cookie.name() == QByteArrayLiteral("cf_clearance"))
+            return cookie;
+    }
+    return QNetworkCookie();
 }
 
 const TWorld* LoginResult::world(const int id) const
@@ -48,125 +50,44 @@ const TWorld* LoginResult::world(const int id) const
     return it == worlds.end() ? nullptr : &it->second;
 }
 
-TLoginRequestUploader::TLoginRequestUploader(QObject* parent)
-    : cip::tibia::authentication::TLoginRequestUploader(parent)
-    , m_network(new QNetworkAccessManager(this))
+TLoginRequestUploader::TLoginRequestUploader(const QUrl& Url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> Sender)
+    : shared::TJsonDocumentUploaderBase(Sender)
+    , m_pSender(std::move(Sender))
+    , m_loginUrl(Url)
     , m_helper(std::make_unique<TAuthenticationJsonDocumentHelper>())
 {
     connect(this, &TLoginRequestUploader::finished, this, &TLoginRequestUploader::onFinished);
-}
-
-TLoginRequestUploader::TLoginRequestUploader(const QUrl& Url, QObject* parent)
-    : TLoginRequestUploader(parent)
-{
-    m_loginUrl = Url;
+    connect(m_pSender.get(), &shared::TJsonDocumentHttpPostSender::cloudflareMitigated, this,
+            &TLoginRequestUploader::onCloudflareMitigated);
 }
 
 TLoginRequestUploader::~TLoginRequestUploader() = default;
 
 void TLoginRequestUploader::uploadLoginRequest(const TLoginRequestData& LoginData)
 {
-    post(m_loginUrl, m_helper->createLoginRequest(LoginData).object(), m_clientRevision);
-}
-
-void TLoginRequestUploader::login(const QUrl& url, const TLoginRequestData& data, const QString& clientRevision)
-{
-    m_loginUrl = url;
-    m_clientRevision = clientRevision;
-    uploadLoginRequest(data);
-}
-
-void TLoginRequestUploader::abort()
-{
-    if (!m_reply)
-        return;
-    QNetworkReply* reply = m_reply;
-    m_reply = nullptr;
-    reply->abort();
-}
-
-void TLoginRequestUploader::applyClearance(const TCloudflareChallengeClearanceInfo& clearance)
-{
-    m_lastUserAgent = clearance.userAgent;
-    if (!m_network->cookieJar())
-        m_network->setCookieJar(new QNetworkCookieJar(m_network));
-    QNetworkCookieJar* jar = m_network->cookieJar();
-    for (const QNetworkCookie& cookie : clearance.cookies) {
-        QNetworkCookie copy = cookie;
-        if (copy.domain().isEmpty() && m_lastUrl.isValid())
-            copy.setDomain(m_lastUrl.host());
-        jar->insertCookie(copy);
+    QJsonDocument request = m_helper->createLoginRequest(LoginData);
+    // The sender sends the solved challenge's clearance, or none.
+    if (!LoginData.cloudflareClearance)
+        m_pSender->resetCloudflareClearance();
+    else
+        m_pSender->setCloudflareClearance(senderClearance(*LoginData.cloudflareClearance));
+    if (!m_clientRevision.isEmpty()) {
+        // qtclient host: the portal checks the client revision.
+        QJsonObject body = request.object();
+        body.insert(QStringLiteral("clientRevision"), m_clientRevision);
+        request.setObject(body);
     }
+    upload(m_loginUrl, request);
 }
 
-void TLoginRequestUploader::post(const QUrl& url, QJsonObject body, const QString& clientRevision)
+void TLoginRequestUploader::onCloudflareMitigated(QNetworkReply* Reply, const std::string MitigatedHeaderValue)
 {
-    if (!clientRevision.isEmpty())
-        body.insert(QStringLiteral("clientRevision"), clientRevision);
-
-    m_lastUrl = url;
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    if (!clientRevision.isEmpty())
-        request.setRawHeader("X-Tibia-Client", clientRevision.toUtf8());
-    if (!m_lastUserAgent.isEmpty())
-        request.setHeader(QNetworkRequest::UserAgentHeader, m_lastUserAgent);
-    request.setTransferTimeout(30000);
-
-    if (m_reply)
-        m_reply->abort();
-    QNetworkReply* reply = m_network->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
-    m_reply = reply;
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        if (m_reply == reply)
-            m_reply = nullptr;
-        reply->deleteLater();
-        if (reply->error() == QNetworkReply::OperationCanceledError)
-            return;
-
-        const QByteArray mitigated = reply->rawHeader("cf-mitigated");
-        if (looksLikeCloudflareChallenge(reply, mitigated)) {
-            onCloudflareMitigated(reply, std::string(mitigated.constData(), mitigated.size()));
-            return;
-        }
-
-        // Error answers (401 etc.) still carry the service's JSON.
-        QJsonParseError parseError{};
-        const auto doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            if (reply->error() != QNetworkReply::NoError) {
-                // TJsonDocumentUploaderBase: a network error keeps its text, code 0.
-                m_errorCode = 0;
-                m_errorMessage = tr("Could not reach the login service: %1").arg(reply->errorString());
-                Q_EMIT loginFailed(m_errorMessage);
-            } else
-                Q_EMIT loginFailedDueToInvalidServerResponse();
-            return;
-        }
-        // TJsonDocumentUploaderBase: an answer with an error code is a failed upload.
-        const QJsonObject answer = doc.object();
-        if (answer.contains(QStringLiteral("errorCode"))) {
-            m_errorCode = answer.value(QStringLiteral("errorCode")).toInt();
-            m_errorMessage = answer.value(QStringLiteral("errorMessage")).toString();
-            Q_EMIT finished(false, doc);
-            return;
-        }
-        m_errorCode = 0;
-        m_errorMessage.clear();
-        Q_EMIT finished(true, doc);
-    });
-}
-
-void TLoginRequestUploader::onCloudflareMitigated(QNetworkReply* Reply, const std::string& MitigatedHeaderValue)
-{
+    Q_UNUSED(Reply);
     m_cloudflareMitigatedHeaderValue = MitigatedHeaderValue;
-    m_lastMitigatedUrl = Reply ? Reply->url() : m_lastUrl;
-    if (!m_lastMitigatedUrl.isValid())
-        m_lastMitigatedUrl = m_lastUrl;
     Q_EMIT loginFailedDueToCloudflareMitigation();
 }
 
-void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
+void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument ReplyFromServerJD)
 {
     m_characters.clear();
     m_worlds.clear();
@@ -174,7 +95,7 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
     m_loginTimestamp = static_cast<int>(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
 
     if (!UploadSuccessful) {
-        switch (m_errorCode) {
+        switch (errorCode()) {
         case ErrorMissingTwoFactorToken:
             Q_EMIT loginFailedDueToMissingTwoFactorToken();
             break;
@@ -197,7 +118,7 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
             break;
         }
         default:
-            Q_EMIT loginFailed(m_errorMessage);
+            Q_EMIT loginFailed(errorMessage());
             break;
         }
         return;

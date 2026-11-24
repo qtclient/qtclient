@@ -1,5 +1,7 @@
 #pragma once
 
+#include "authentication/cloudflarechallengetypes.h"
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QList>
@@ -7,6 +9,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <vector>
 
 namespace tibia {
@@ -25,10 +28,16 @@ struct TLoginRequestData
     QString loginConfirmationCode;
     QString loginConfirmationToken;
     bool stayLoggedIn = false;
+    /// The play session of the last successful login (the character selection
+    /// takes it from the login answer).
+    QString sessionKey;
     QString deviceCookie;
     int clientType = 0;
     QString clientVersion;
     QString assetVersion;
+    /// The clearance of a solved Cloudflare challenge; the login request is
+    /// sent with it, or without one when unset.
+    std::optional<TCloudflareChallengeClearanceInfo> cloudflareClearance;
 };
 
 /// One "playdata.worlds" entry.

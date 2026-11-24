@@ -4,7 +4,7 @@
 
 #include <cip_gen.h>
 
-#include <vector>
+#include <memory>
 
 namespace tibia {
 namespace input {
@@ -14,11 +14,14 @@ namespace input {
 /// applies the auto-chase setting and stops following); attacking or following
 /// a creature, trading an object with a player and using or opening an object
 /// on a map field drop the walk path.
+class TPlayerMovementIntentHandler;
+
 class TPlayerMovementGameActionHandler final : public cip::tibia::input::TPlayerMovementGameActionHandler
 {
     Q_OBJECT
 public:
-    explicit TPlayerMovementGameActionHandler(QObject* parent = nullptr);
+    /// The session makes it with its movement intent handler.
+    explicit TPlayerMovementGameActionHandler(std::shared_ptr<TPlayerMovementIntentHandler> pPlayerMovementIntentHandler);
     ~TPlayerMovementGameActionHandler() override;
     TPlayerMovementGameActionHandler(const TPlayerMovementGameActionHandler&) = delete;
     TPlayerMovementGameActionHandler& operator=(const TPlayerMovementGameActionHandler&) = delete;
@@ -37,6 +40,9 @@ private:
     void handleUseWithGameAction(const TGameActionUseWith& action);
     /// CIP v14: the movement intent handler drops its path.
     void stopMovement();
+
+    /// +0x10
+    std::shared_ptr<TPlayerMovementIntentHandler> m_pPlayerMovementIntentHandler;
 };
 
 }

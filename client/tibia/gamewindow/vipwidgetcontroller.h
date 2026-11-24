@@ -156,9 +156,6 @@ public:
     /// vipWidgetOptions: size, sort order, hidden offline VIPs, groups.
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
-    /// The exiva whitelist entries' data (CIP TVipWidgetGameActionProvider
-    /// +0x18 the exiva options storage, +0x38 the world type).
-    void setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, int worldType);
     /// The widget follows `GameSession`'s VIP list: the add-VIP, add-group
     /// and edit-VIP dialogs close, the old session's connections drop, the
     /// options are read again and the list model follows the session.
@@ -237,7 +234,8 @@ private:
     TEditVipDialogController* m_editVipDialog;
     TMessageDialogController* m_messageDialog;
     QPointer<config::TSidebarOptions> m_options;
-    creatures::TVipWidgetGameActionProvider m_provider;
+    /// The session's provider (it follows the session's world type).
+    std::shared_ptr<creatures::TVipWidgetGameActionProvider> m_provider;
     input::TGameActionMapper m_mapper;
     /// The group the edit-group dialog was opened for.
     creatures::TVipStorage::Group m_editedGroup;
@@ -255,16 +253,12 @@ public:
     ~TVipWidgetManager() override;
 
     creatures::TVipStorage* storage() const { return m_storage; }
-    exivaoptions::TExivaOptionsStorage* exivaOptions() const { return m_exivaOptions; }
     /// The widget follows `GameSession`'s VIP list and exiva options. Host: the
     /// sidebar widgets manager's connector reaches the VIP widget through here.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Before the sidebar widgets manager restores the open widgets.
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme);
-    /// CIP EWorldType of the session (worldTypeSet): exiva whitelist entries
-    /// only on optional PvP worlds (1).
-    void setWorldType(int worldType);
 
     /// Makes the widget (if needed) and returns it, for the sidebar manager to place.
     TSidebarWidget* open();
@@ -283,11 +277,9 @@ private:
     QQmlEngine* m_engine;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<creatures::TVipStorage> m_storage;
-    QPointer<exivaoptions::TExivaOptionsStorage> m_exivaOptions;
     QPointer<TVipWidgetController> m_controller;
     QPointer<config::TSidebarOptions> m_options;
     int m_controlScheme = 0;
-    int m_worldType = -1;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

@@ -241,6 +241,8 @@ class TCrashReportDialogController final : public TDialogController<cip::tibia::
     Q_OBJECT
 public:
     explicit TCrashReportDialogController(QObject* parent = nullptr);
+    /// CIP: made in the engine under the game window's dialog parent item.
+    TCrashReportDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// The LogMessages and Character lines ("key: value"), one per line.
     QString minimalInformation() const override;
@@ -564,8 +566,13 @@ class TSurveyInvitationDialogController final : public TDialogController<cip::ti
 public:
     explicit TSurveyInvitationDialogController(QObject* parent = nullptr);
 
-    /// qtclient: fills the invitation and shows the dialog.
-    void showInvitation(int surveyId, const QString& text, const QString& token, quint32 date, bool askLater);
+    /// CIP: takes the survey's data; a survey the client options do not know
+    /// yet starts unanswered (status 0), and "ask later" is offered while it is
+    /// unanswered.
+    void setSurveyData(const authentication::TSurveyData& Survey);
+    /// CIP: shows the invitation unless the player answered it (status 2); a
+    /// shown invitation counts as "ask later" (status 1). Whether it shows.
+    bool showSurveyInvitation(const authentication::TSurveyData& Survey);
 
     /// The invitation's date, "MMMM d, yyyy" in British English.
     QString dateString() const override;

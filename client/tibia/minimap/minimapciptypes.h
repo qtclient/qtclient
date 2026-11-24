@@ -27,12 +27,5 @@ public:
     using cip::tibia::minimap::TMinimapProtocolMessageHandler::TMinimapProtocolMessageHandler;
 };
 
-/// CIP TMinimapRendererScenegraphDrawCommandProvider — scenegraph draw cmds.
-class TMinimapRendererScenegraphDrawCommandProvider final : public ::tibia::CipTyped
-{
-public:
-    TMinimapRendererScenegraphDrawCommandProvider() = default;
-};
-
 }
 }

@@ -18,11 +18,13 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tibia::appearances {
 class TAppearanceType;
 class TAppearanceInstanceTracker;
+class TAppearancesManager;
 }
 namespace tibia::protocol {
 struct TObjectData;
@@ -672,6 +674,15 @@ public:
     static TAppearanceInstancePtr fromOutfit(const Outfit& outfit, TAppearanceType* type);
     /// A tutorial marker on `field`: kind 1 is effect 57, any other kind effect 56.
     static std::shared_ptr<TTutorialFieldEffectInstance> createTutorialFieldEffect(int kind, const Position& field);
+
+    /// CIP: the client's factory, making its instances from `AppearancesManager`'s types.
+    explicit TAppearanceInstanceFactory(std::shared_ptr<TAppearancesManager> AppearancesManager)
+        : m_pAppearancesManager(std::move(AppearancesManager))
+    {
+    }
+
+private:
+    std::shared_ptr<TAppearancesManager> m_pAppearancesManager;
 };
 
 

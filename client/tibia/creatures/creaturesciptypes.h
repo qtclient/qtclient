@@ -31,13 +31,6 @@ void ownProductSurface(QObject* parent);
 
 class TBattleListGameActionProvider final : public ::tibia::CipTyped {};
 
-class TBattleListRenderProvider final : public cip::tibia::creatures::TBattleListRenderProvider
-{
-    Q_OBJECT
-public:
-    using cip::tibia::creatures::TBattleListRenderProvider::TBattleListRenderProvider;
-};
-
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 
 /// Applies the creature messages to the session's creature storage: moves,

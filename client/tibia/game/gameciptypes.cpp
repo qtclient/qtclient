@@ -21,6 +21,7 @@
 #include "clockservice.h"
 #include "game/currentgamesession.h"
 #include "game/playerskillstats.h"
+#include "game/selectoutfitdialogdata.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "protocol/protocolciptypes.h"
@@ -543,43 +544,10 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
 
 void TPlayerProtocolMessageHandler::handleOutfitMessage(const GameserverMessageOutfit& m)
 {
-    Outfit current = creatures::outfitFromProtocol(m.outfit(), nullptr);
-    current.setMount(static_cast<uint16_t>(m.mount()));
-    current.setMountColors(static_cast<uint8_t>(m.mount_colors().head()), static_cast<uint8_t>(m.mount_colors().body()),
-                           static_cast<uint8_t>(m.mount_colors().legs()), static_cast<uint8_t>(m.mount_colors().feet()));
-    current.setFamiliar(static_cast<uint16_t>(m.familiar()));
-    std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>> outfits;
-    std::vector<uint32_t> outfitOffers, mountOffers, familiarOffers;
-    for (const auto& o : m.outfits()) {
-        outfits.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
-                             static_cast<uint8_t>(o.mode()));
-        outfitOffers.push_back(o.offer_id());
-    }
-    std::vector<std::tuple<uint16_t, std::string, uint8_t>> mounts;
-    for (const auto& o : m.mounts()) {
-        mounts.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.mode()));
-        mountOffers.push_back(o.offer_id());
-    }
-    std::vector<std::tuple<uint16_t, std::string>> familiars;
-    for (const auto& o : m.familiars()) {
-        familiars.emplace_back(static_cast<uint16_t>(o.look_type()), o.name());
-        familiarOffers.push_back(o.offer_id());
-    }
-    std::vector<std::tuple<uint16_t, uint16_t>> pairs;
-    for (const auto& p : m.gender_pairs())
-        pairs.emplace_back(static_cast<uint16_t>(p.male()), static_cast<uint16_t>(p.female()));
-    Position podium;
-    podium.x = static_cast<int>(m.podium_position().x());
-    podium.y = static_cast<int>(m.podium_position().y());
-    podium.z = static_cast<short>(m.podium_position().z());
-    const bool podiumWindow = m.window_mode() == 5;
-    tibia::game::notify("onOutfitWindowOptions", static_cast<uint8_t>(m.window_mode()), m.mounted(), m.random_mount(), pairs,
-                        outfitOffers, mountOffers, familiarOffers, podium, static_cast<uint16_t>(m.podium_object()),
-                        static_cast<uint8_t>(m.podium_stack_position()),
-                        static_cast<uint8_t>(podiumWindow ? (m.podium_visible() ? 1 : 0) : 1),
-                        static_cast<uint8_t>(podiumWindow ? (m.podium_show_outfit() ? 1 : 0) : 1),
-                        static_cast<uint8_t>(podiumWindow ? m.podium_direction() : 2));
-    tibia::game::processOpenOutfitWindow(current, outfits, mounts, familiars);
+    const auto data = std::make_shared<TSelectOutfitDialogData>(m);
+    if (m_outfitDialogStorage)
+        m_outfitDialogStorage->setSelectOutfitDialogData(data);
+    Q_EMIT showSelectOutfitDialog();
 }
 
 void TPlayerProtocolMessageHandler::handleBlessingsMessage(const GameserverMessageBlessings& m)
@@ -647,7 +615,7 @@ void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageSto
     // The server stopped the player: the walk plan clears, or without one the
     // player's step stops.
     if (tibia::input::TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.data()) {
-        intent->clearGoal();
+        intent->clearPath();
         return;
     }
     if (const auto player = localPlayerCreature())
@@ -841,12 +809,17 @@ void TPremiumTimeStorage::reset()
     Q_EMIT premiumTimeChanged();
 }
 
+void TPremiumProtocolMessageHandler::setPremiumTimeStorage(TPremiumTimeStorage* premiumTimeStorage)
+{
+    m_premiumTimeStorage = premiumTimeStorage;
+}
+
 void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message)
 {
     const bool wasPremium = tibia::game::localPlayerIsPremium();
-    if (TPremiumTimeStorage* storage = TPremiumTimeStorage::liveInstance())
-        storage->setPremium(message.premium(), message.premium_until());
+    if (m_premiumTimeStorage)
+        m_premiumTimeStorage->setPremium(message.premium(), message.premium_until());
     if (wasPremium != message.premium())
         tibia::game::notify("onPremiumChange", message.premium());
     tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
@@ -949,24 +922,12 @@ void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
         Q_EMIT requestShowSpellBookDialog(QString::fromStdString(Message.message()), static_cast<uint16_t>(Message.extra_value()));
 }
 
-namespace {
-TOutfitDialogStorage* g_outfitDialogStorage = nullptr;
-}
-
 TOutfitDialogStorage::TOutfitDialogStorage(QObject* parent)
     : cip::tibia::game::TOutfitDialogStorage(parent)
 {
 }
 
-TOutfitDialogStorage::~TOutfitDialogStorage()
-{
-    if (g_outfitDialogStorage == this)
-        g_outfitDialogStorage = nullptr;
-}
-
-TOutfitDialogStorage* TOutfitDialogStorage::instance() { return g_outfitDialogStorage; }
-
-void TOutfitDialogStorage::setInstance(TOutfitDialogStorage* storage) { g_outfitDialogStorage = storage; }
+TOutfitDialogStorage::~TOutfitDialogStorage() = default;
 
 void TOutfitDialogStorage::announcePresetsChanged() { Q_EMIT configurationChangedFromUserInput(); }
 

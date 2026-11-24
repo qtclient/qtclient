@@ -1,4 +1,5 @@
 #include "configurecreaturepodiumdialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -305,9 +306,14 @@ void TConfigureCreaturePodiumDialogController::onOkClicked()
     dialog()->close();
 }
 
-void TConfigureCreaturePodiumDialogController::onControllerFinished()
+void TConfigureCreaturePodiumDialogController::onControllerFinished() { dialog()->destroy(); }
+
+/// The base properties and whether textures are smoothed (antialiasing).
+QVariantMap TConfigureCreaturePodiumDialogController::initialDialogProperties() const
 {
-    dialog()->close();
+    QVariantMap properties = TDialogController::initialDialogProperties();
+    properties.insert(QStringLiteral("clientSettingSmoothFiltering"), smoothFilteringEnabled());
+    return properties;
 }
 
 }

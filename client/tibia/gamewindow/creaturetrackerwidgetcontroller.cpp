@@ -22,13 +22,6 @@ namespace {
 using A = input::EGameAction;
 using Mode = TCreatureTrackerWidgetController::EWidgetMode;
 
-constexpr auto BestiaryOptionsKey = "bestiaryTrackerWidgetOptions";
-constexpr auto BosstiaryOptionsKey = "bosstiaryTrackerWidgetOptions";
-
-const char* optionsKey(const Mode mode)
-{
-    return mode == Mode::Bosstiary ? BosstiaryOptionsKey : BestiaryOptionsKey;
-}
 
 } // namespace
 
@@ -171,41 +164,51 @@ bool TCreatureTrackerSortProxyModel::lessThan(const QModelIndex& left, const QMo
     return descending ? rightName < leftName : leftName < rightName;
 }
 
-TCreatureTrackerWidgetController::TCreatureTrackerWidgetController(const EWidgetMode mode, cyclopedia::TCreatureTrackerStorage* creatures,
-                                                                   bossbestiary::TBossTrackerStorage* bosses, QQuickItem* gameWindowItem,
-                                                                   QQmlEngine* engine, QObject* parent)
+TCreatureTrackerWidgetController::TCreatureTrackerWidgetController(const EWidgetMode mode, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                                                   QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_mode(mode)
     , m_model(new TCreatureTrackerSortProxyModel(this))
 {
     m_widgetMode = mode;
     m_trackedCreatures = m_model;
-    setStorages(creatures, bosses);
     widget()->createItem(QStringLiteral("CreatureTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TCreatureTrackerWidgetController::onWidgetQuickItemDestroyed);
 }
 
-void TCreatureTrackerWidgetController::setStorages(cyclopedia::TCreatureTrackerStorage* const creatures,
-                                                   bossbestiary::TBossTrackerStorage* const bosses)
+void TCreatureTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    for (const QMetaObject::Connection& connection : m_storageConnections)
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
-    m_storageConnections.clear();
-    m_creatures = creatures;
-    m_bosses = bosses;
-    if (m_creatures) {
-        if (m_mode == Mode::Bosstiary)
-            m_storageConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedBossesChanged, this,
-                                                   &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
-        else
-            m_storageConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
-                                                   &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
-    }
-    if (m_bosses && m_mode == Mode::Bosstiary)
-        m_storageConnections.push_back(connect(m_bosses, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
-                                               &TCreatureTrackerWidgetController::onBossCooldownsChanged));
+    m_sessionConnections.clear();
+    m_options = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_creatures = session ? session->creatureTrackerStorage().get() : nullptr;
+    m_bosses = session ? session->bossTrackerStorage().get() : nullptr;
+    if (!session)
+        return;
+    // The tracked monsters or bosses, by the widget's mode; the boss cooldowns.
+    if (m_mode == Mode::Bestiary)
+        m_sessionConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
+                                               &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
+    else
+        m_sessionConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedBossesChanged, this,
+                                               &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
+    m_sessionConnections.push_back(connect(m_bosses, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
+                                           &TCreatureTrackerWidgetController::onBossCooldownsChanged));
     onTrackedCreaturesChanged();
+    // The widget's options in the character's sidebar options.
+    config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+    m_options = configuration->sidebarOptions();
+    m_sessionConnections.push_back(connect(m_options, &config::TSidebarOptions::bestiaryTrackerWidgetOptionsChanged, this,
+                                           &TCreatureTrackerWidgetController::loadWidgetOptions));
+    m_sessionConnections.push_back(connect(m_options, &config::TSidebarOptions::bosstiaryTrackerWidgetOptionsChanged, this,
+                                           &TCreatureTrackerWidgetController::loadWidgetOptions));
+    m_sessionConnections.push_back(connect(configuration, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                           &TCreatureTrackerWidgetController::loadWidgetOptions));
+    loadWidgetOptions();
 }
 
 QObject* TCreatureTrackerWidgetController::trackedCreatures() const { return m_model; }
@@ -230,20 +233,18 @@ void TCreatureTrackerWidgetController::setCursorToResizeVertical(const bool Enab
 void TCreatureTrackerWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TCreatureTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 
-void TCreatureTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
+void TCreatureTrackerWidgetController::loadWidgetOptions()
 {
-    m_options = options;
     if (!m_options)
         return;
-    const QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
-    // The saved sort of the list (by name / percentage / remaining, ascending / descending).
-    if (json.contains(QLatin1String("sortType")))
-        m_model->setSortType(static_cast<decltype(m_model->sortType())>(json.value(QLatin1String("sortType")).toInt()));
-    if (json.contains(QLatin1String("sortOrder")))
-        m_model->setSortOrder(static_cast<decltype(m_model->sortOrder())>(json.value(QLatin1String("sortOrder")).toInt()));
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+    config::TCreatureTrackerWidgetOptions options;
+    if (m_mode == Mode::Bestiary)
+        options = m_options->bestiaryTrackerWidgetOptions();
+    else if (m_mode == Mode::Bosstiary)
+        options = m_options->bosstiaryTrackerWidgetOptions();
+    widget()->setInitialContentHeightAndMaximized(options.contentHeight, options.contentMaximized);
+    m_model->setSortType(options.sortKey);
+    m_model->setSortOrder(options.sortOrder);
 }
 
 void TCreatureTrackerWidgetController::saveWidgetOptions() { persistOptions(); }
@@ -254,12 +255,20 @@ void TCreatureTrackerWidgetController::persistOptions()
 {
     if (!m_options)
         return;
-    QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
-    json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
-    json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
-    json.insert(QStringLiteral("sortType"), static_cast<int>(m_model->sortType()));
-    json.insert(QStringLiteral("sortOrder"), static_cast<int>(m_model->sortOrder()));
-    m_options->setSection(QLatin1String(optionsKey(m_mode)), json);
+    config::TCreatureTrackerWidgetOptions options;
+    if (m_mode == Mode::Bestiary)
+        options = m_options->bestiaryTrackerWidgetOptions();
+    else if (m_mode == Mode::Bosstiary)
+        options = m_options->bosstiaryTrackerWidgetOptions();
+    else
+        return;
+    options.setContentHeightAndMaximized(widget()->maximizedContentHeight(), widget()->isMaximized());
+    options.sortOrder = m_model->sortOrder();
+    options.sortKey = m_model->sortType();
+    if (m_mode == Mode::Bestiary)
+        m_options->setBestiaryTrackerWidgetOptions(options);
+    else
+        m_options->setBosstiaryTrackerWidgetOptions(options);
 }
 
 /// Takes the storage's list for the widget's mode, then the cooldowns.
@@ -386,34 +395,35 @@ void TCreatureTrackerWidgetController::requestWidgetConfigurationMenu()
 }
 
 TCreatureTrackerWidgetManager::TCreatureTrackerWidgetManager(const TCreatureTrackerWidgetController::EWidgetMode mode,
-                                                             cyclopedia::TCreatureTrackerStorage* creatures,
-                                                             bossbestiary::TBossTrackerStorage* bosses, QQuickItem* gameWindowItem,
-                                                             QQmlEngine* engine, QObject* parent)
+                                                             QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : QObject(parent)
     , m_mode(mode)
-    , m_creatures(creatures)
-    , m_bosses(bosses)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
+{}
+
+TCreatureTrackerWidgetManager::TCreatureTrackerWidgetManager(const TCreatureTrackerWidgetController::EWidgetMode mode,
+                                                             cyclopedia::TCreatureTrackerStorage*, bossbestiary::TBossTrackerStorage*,
+                                                             QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+    : TCreatureTrackerWidgetManager(mode, gameWindowItem, engine, parent)
 {}
 
 TCreatureTrackerWidgetManager::~TCreatureTrackerWidgetManager() { delete m_controller; }
 
 void TCreatureTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_creatures = session ? session->creatureTrackerStorage().get() : nullptr;
-    m_bosses = session ? session->bossTrackerStorage().get() : nullptr;
+    m_gameSession = GameSession;
     if (m_controller)
-        m_controller->setStorages(m_creatures, m_bosses);
+        m_controller->connectToGameSession(m_gameSession);
 }
 
-TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions* options)
+TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions*)
 {
     if (!m_controller) {
-        m_controller = new TCreatureTrackerWidgetController(m_mode, m_creatures, m_bosses, m_gameWindowItem, m_engine);
+        m_controller = new TCreatureTrackerWidgetController(m_mode, m_gameWindowItem, m_engine);
         connect(m_controller, &TCreatureTrackerWidgetController::publishGameAction, this, &TCreatureTrackerWidgetManager::publishGameAction);
-        m_controller->setSidebarOptions(options);
+        // The controller takes its storages and options from the session.
+        m_controller->connectToGameSession(m_gameSession);
     }
     return m_controller->widget();
 }

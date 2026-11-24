@@ -33,6 +33,18 @@ using gamewindow::okDialogButtons;
 using Button = TMessageDialogController::Button;
 using EManageMode = cip::tibia::gamewindow::TSkillWheelPresetManagmentDialogController::EManageMode;
 
+/// The slice is below its maximum and the grid stays valid with the slice
+/// filled to its maximum.
+bool canIncrease(const std::array<int, SlotCount>& points, const int slot)
+{
+    const int max = gridConfiguration().maxPoints(slot);
+    if (points[slot] >= max)
+        return false;
+    auto filled = points;
+    filled[slot] = max;
+    return isValid(filled);
+}
+
 /// Socketed gem image and vessel bezel for atelier vessel index 0..7.
 /// The icon of a conviction perk; Revelation Mastery has one per revelation perk.
 QUrl mediumPerkImage(const int perk, const std::optional<int> largePerk)
@@ -766,7 +778,7 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
     // The grid alone decides: a full slice can be emptied, and a slice can be
     // filled, when the grid stays valid.
     info->setCanBeDecreased(canDecrease(wheel.points, slot));
-    info->setCanBeIncreased(points < max && isUnlocked(wheel.points, slot));
+    info->setCanBeIncreased(canIncrease(wheel.points, slot));
     info->setShowGemAtelierButton(isVesselPerk(medium));
     info->setSmallPerkHover(smallPerkInfo(smallPerkId, voc));
     info->setSmallPerkSumInfo(smallPerkValueText(smallPerkId, points, voc));
@@ -847,7 +859,7 @@ void TSkillWheelPageController::changePoints(const int slot, const int delta)
 void TSkillWheelPageController::addToSkill(const int GridTileQML, const int KeyboardModifiers)
 {
     if (!m_storage->hasData() || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
-        || !isUnlocked(m_storage->currentWheel().points, GridTileQML))
+        || !canIncrease(m_storage->currentWheel().points, GridTileQML))
         return;
     const int amount = std::min(stepSize(KeyboardModifiers), std::max(0, m_storage->freePoints()));
     changePoints(GridTileQML, amount);
@@ -857,7 +869,7 @@ void TSkillWheelPageController::addToSkill(const int GridTileQML, const int Keyb
 void TSkillWheelPageController::fillSkill(const int GridTileQML)
 {
     if (!m_storage->hasData() || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
-        || !isUnlocked(m_storage->currentWheel().points, GridTileQML))
+        || !canIncrease(m_storage->currentWheel().points, GridTileQML))
         return;
     changePoints(GridTileQML, std::min(gridConfiguration().maxPoints(GridTileQML), std::max(0, m_storage->freePoints())));
 }
@@ -890,7 +902,7 @@ void TSkillWheelPageController::onGridTileRightClicked(const int GridTileQML, co
     const int current = points[GridTileQML];
     const int max = gridConfiguration().maxPoints(GridTileQML);
     const int free = m_storage->freePoints();
-    if (current < max && isUnlocked(points, GridTileQML) && free > 0) {
+    if (canIncrease(points, GridTileQML) && free > 0) {
         if (KeyboardModifiers == 0)
             fillSkill(GridTileQML);
         else
@@ -1326,6 +1338,15 @@ void TGemAtelierPageController::closeMessageDialog()
         m_dismantleConfirm->dialog()->close();
 }
 
+/// The skill wheel dialog closing: first page, no filters, no vessel or gem selected.
+void TGemAtelierPageController::clearData()
+{
+    m_pages->setCurrentPage(1);
+    m_filter->resetFilters();
+    m_selectedVesselIndex = -1;
+    m_selectedGemIndex = QPersistentModelIndex();
+}
+
 void TGemAtelierPageController::resetVessels()
 {
     std::optional<TWheel> wheel = m_storage->currentSkillWheel();
@@ -1513,6 +1534,17 @@ void TFragmentWorkshopPageController::setFilterMods(const int v)
 }
 
 /// New grades: keep the selected mod (CIP keeps the pending selection when a grade filter hides it).
+/// The skill wheel dialog closing: first page, no filters, no mod selected and
+/// no mod waiting to be selected.
+void TFragmentWorkshopPageController::clearData()
+{
+    m_pages->setCurrentPage(1);
+    m_filter->resetFilters();
+    m_filterMods = 0;
+    m_selectedModIndex = QPersistentModelIndex();
+    m_pendingMod = -1;
+}
+
 void TFragmentWorkshopPageController::onModsChanged()
 {
     const QModelIndex current = m_selectedModIndex;
@@ -1875,6 +1907,8 @@ void TSkillWheelDialogController::closeDialog()
     Q_EMIT dialogTabChanged();
     dialog()->close();
     m_page->clearData();
+    m_atelier->clearData();
+    m_workshop->clearData();
     m_storage->clearServerData();
     m_storage->resetCurrentSkillWheel();
 }

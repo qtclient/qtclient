@@ -1,5 +1,7 @@
 #pragma once
 
+#include "chat/chatchannel.h"
+
 #include <cip_gen.h>
 
 #include <QDateTime>
@@ -43,6 +45,11 @@ public:
     void setSubscribeToServerLog(bool Subscribe) override;
     void closeChannel() override;
     void onChannelClicked(int EntryId, int MouseButtonRaw, int KeyboardModifiersRaw) override;
+
+Q_SIGNALS:
+    /// The channel controller's close and server log requests, forwarded.
+    void closeRequested(tibia::chat::TChatChannel* channel);
+    void subscribeToServerLogRequested(bool subscribe, tibia::chat::TChatChannel* channel);
 
 protected:
     /// With a minimum time, only entries from then on.

@@ -104,6 +104,8 @@ QString TFriendsAccountSearchPageController::loyaltyTitle() const
 
 QString TFriendsAccountSearchPageController::lastGameLogin() const
 {
+    if (!m_gameSession)
+        return qtTrId("dummy_unknown");
     return QDateTime::fromSecsSinceEpoch(searchResult().lastGameLogin).toString(QStringLiteral("yyyy-MM-dd"));
 }
 
@@ -323,17 +325,18 @@ void TFriendsAccountSearchPageController::connectToGameSession(const std::shared
         disconnect(connection);
     m_gameSessionConnections.clear();
     m_gameSession = GameSession;
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    if (!session)
-        return;
-    friends::TFriendsAccountSearchStorage* search = session->friendsAccountSearchStorage().get();
-    m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedAccountSearchResults, this,
-                                               &TFriendsAccountSearchPageController::onAccountSearchResults));
-    m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedNoResultsFound, this,
-                                               &TFriendsAccountSearchPageController::onNoResultsFound));
-    m_gameSessionConnections.push_back(connect(session->friendsProtocolMessageHandler().get(),
-                                               &friends::TFriendsProtocolMessageHandler::errorReceived, this,
-                                               &TFriendsAccountSearchPageController::onFriendSystemError));
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        friends::TFriendsAccountSearchStorage* search = session->friendsAccountSearchStorage().get();
+        m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedAccountSearchResults, this,
+                                                   &TFriendsAccountSearchPageController::onAccountSearchResults));
+        m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedNoResultsFound, this,
+                                                   &TFriendsAccountSearchPageController::onNoResultsFound));
+        m_gameSessionConnections.push_back(connect(session->friendsProtocolMessageHandler().get(),
+                                                   &friends::TFriendsProtocolMessageHandler::errorReceived, this,
+                                                   &TFriendsAccountSearchPageController::onFriendSystemError));
+    }
+    // The searched character's info page follows the session too.
+    m_characterInfo->connectToGameSession(m_gameSession);
 }
 
 const friends::TAccountSearchResult& TFriendsAccountSearchPageController::searchResult() const

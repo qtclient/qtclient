@@ -1,13 +1,43 @@
 #include "worldmappicker.h"
 
 #include "creatures/creaturestorage.h"
+#include "renderer/rendervolumeprovider.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
 
 #include <QRect>
 
+#include <utility>
+
 namespace tibia::worldmap {
+
+TWorldMapPicker::TWorldMapPicker(std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider,
+                                 std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider,
+                                 std::shared_ptr<TWorldMapStorage> worldMapStorage)
+    : m_renderVolumeProvider(std::move(renderVolumeProvider))
+    , m_worldMapRenderProvider(std::move(worldMapRenderProvider))
+    , m_worldMapStorage(std::move(worldMapStorage))
+{
+}
+
+TWorldMapPick TWorldMapPicker::pick(const QPoint& mapPixel) const
+{
+    const std::shared_ptr<TWorldMapViewport> viewport =
+        m_renderVolumeProvider ? m_renderVolumeProvider->worldMapViewport() : nullptr;
+    if (!m_worldMapRenderProvider || !viewport)
+        return {};
+    return pick(*m_worldMapRenderProvider, *viewport, mapPixel);
+}
+
+uint32_t TWorldMapPicker::creatureAt(const QPoint& mapPixel) const
+{
+    const std::shared_ptr<TWorldMapViewport> viewport =
+        m_renderVolumeProvider ? m_renderVolumeProvider->worldMapViewport() : nullptr;
+    if (!m_worldMapRenderProvider || !viewport)
+        return 0;
+    return creatureAt(*m_worldMapRenderProvider, *viewport, mapPixel);
+}
 
 std::vector<Position> TWorldMapPicker::fieldCoordinatesAt(const qmlcomponents::TWorldMapRenderProvider& provider,
                                                           const QPoint& mapPixel)

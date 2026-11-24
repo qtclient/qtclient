@@ -1,5 +1,7 @@
 #include "proficiency/proficiencystorage.h"
 
+#include <utility>
+
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "shared/tibiafilesystemhelper.h"
@@ -201,8 +203,8 @@ const TShapedSlot* TProficiencyData::shapedSlot(const int level, const int perk)
     return it == shaped.end() ? nullptr : &*it;
 }
 
-TProficiencyStorage::TProficiencyStorage(QObject* parent)
-    : QObject(parent)
+TProficiencyStorage::TProficiencyStorage(std::shared_ptr<appearances::TAppearancesManager> appearancesManager)
+    : m_appearancesManager(std::move(appearancesManager))
 {
     g_instance = this;
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,

@@ -18,8 +18,6 @@ namespace tibia::input {
 
 namespace {
 
-using A = EGameAction;
-
 const std::unordered_map<QString, tibia::client::Direction>& goActions()
 {
     static const std::unordered_map<QString, tibia::client::Direction> actions{
@@ -52,8 +50,6 @@ TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(std::shared_ptr
         if (name.startsWith(QLatin1String("rotateWith")))
             onOptionsChanged();
     });
-    // CIP: TKeyboardInputToGameActionConverter reads the status on every change.
-    connect(m_pKeyboardStatusStorage.get(), &TKeyboardStatusStorage::changed, this, &TPlayerMovementInputInterpreter::update);
     onOptionsChanged();
 }
 
@@ -142,66 +138,37 @@ bool TPlayerMovementInputInterpreter::statusHolds(const int key) const
     return m_pKeyboardStatusStorage->isPressed({ key, false });
 }
 
-void TPlayerMovementInputInterpreter::update()
+std::optional<TPlayerMovementInputInterpreter::TKey> TPlayerMovementInputInterpreter::newestWalkKey() const
 {
-    // CIP TKeyboardInputToGameActionConverter::v12: the newest direction key of
-    // the status walks (no modifier in the status) or turns; only a change
-    // becomes a new intent (v14).
-    TIntent intent;
-    {
-        const TDirectionKeys& directions = currentDirections();
-        std::vector<TKey> walkKeys;
-        for (const std::vector<TKey>& keys : directions)
-            walkKeys.insert(walkKeys.end(), keys.begin(), keys.end());
-        const std::optional<TKey> recent = m_pKeyboardStatusStorage->mostRecentlyPressed(walkKeys);
-        static constexpr std::array<int, 5> Blocking{ Qt::Key_Shift, Qt::Key_Control, Qt::Key_Alt, Qt::Key_Meta,
-                                                      Qt::Key_AltGr };
-        const bool blocked = std::any_of(Blocking.begin(), Blocking.end(), [this](const int key) { return statusHolds(key); });
-        static constexpr std::array<tibia::client::Direction, 8> walking{
-            tibia::client::North,     tibia::client::South,     tibia::client::West,      tibia::client::East,
-            tibia::client::NorthWest, tibia::client::NorthEast, tibia::client::SouthWest, tibia::client::SouthEast,
-        };
-        static constexpr std::array<tibia::client::Direction, 4> turning{
-            tibia::client::North, tibia::client::East, tibia::client::West, tibia::client::South,
-        };
-        const auto bound = [&](const tibia::client::Direction direction) {
-            const std::vector<TKey>& keys = directions[direction];
-            return std::find(keys.begin(), keys.end(), *recent) != keys.end();
-        };
-        if (recent && !blocked) {
-            for (const tibia::client::Direction direction : walking) {
-                if (bound(direction)) {
-                    intent = { EIntentKind::Walk, direction };
-                    break;
-                }
-            }
-        } else if (recent && rotates()) {
-            for (const tibia::client::Direction direction : turning) {
-                if (bound(direction)) {
-                    intent = { EIntentKind::Rotate, direction };
-                    break;
-                }
-            }
-        }
-    }
-    if (intent == m_intent)
-        return;
-    m_intent = intent;
-    switch (intent.kind) {
-    case EIntentKind::Walk:
-        Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
-        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
-        // qtclient pack notify (as TGameSessionState::walk): a manual step, e.g. to stop a pack's travel.
-        tibia::game::notify("onWalk", intent.direction);
-        tibia::game::localPlayerHoldDirection(intent.direction);
-        break;
-    case EIntentKind::Rotate:
-        tibia::game::localPlayerRotate(intent.direction);
-        break;
-    case EIntentKind::Stop:
-        tibia::game::localPlayerReleaseDirection();
-        break;
-    }
+    std::vector<TKey> walkKeys;
+    for (const std::vector<TKey>& keys : currentDirections())
+        walkKeys.insert(walkKeys.end(), keys.begin(), keys.end());
+    return m_pKeyboardStatusStorage->mostRecentlyPressed(walkKeys);
+}
+
+bool TPlayerMovementInputInterpreter::holdsBlockingModifier() const
+{
+    static constexpr std::array<int, 5> Blocking{ Qt::Key_Shift, Qt::Key_Control, Qt::Key_Alt, Qt::Key_Meta, Qt::Key_AltGr };
+    return std::any_of(Blocking.begin(), Blocking.end(), [this](const int key) { return statusHolds(key); });
+}
+
+bool TPlayerMovementInputInterpreter::isNewestWalkKey(const tibia::client::Direction direction) const
+{
+    const std::optional<TKey> recent = newestWalkKey();
+    if (!recent)
+        return false;
+    const std::vector<TKey>& keys = currentDirections()[direction];
+    return std::find(keys.begin(), keys.end(), *recent) != keys.end();
+}
+
+bool TPlayerMovementInputInterpreter::walks(const tibia::client::Direction direction) const
+{
+    return isNewestWalkKey(direction) && !holdsBlockingModifier();
+}
+
+bool TPlayerMovementInputInterpreter::turns(const tibia::client::Direction direction) const
+{
+    return isNewestWalkKey(direction) && rotates();
 }
 
 

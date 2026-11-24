@@ -4,7 +4,9 @@
 #include "skillwheel/skillwheelciptypes.h"
 
 #include "cyclopedia/characterinfostorage.h"
+#include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
+#include "game/selectoutfitdialogdata.h"
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
 #include "cyclopedia/playerdefencestatsprovider.h"
@@ -413,6 +415,7 @@ void TCharacterInfoDialogController::connectToGameSession(const std::shared_ptr<
     if (m_characterInfoStorage)
         disconnect(m_characterInfoStorage.get(), nullptr, this, nullptr);
     m_dataType = Inspection;
+    m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_characterInfoStorage = session ? session->characterInfoStorage() : nullptr;
     if (!m_characterInfoStorage)
@@ -441,10 +444,6 @@ void TCharacterInfoDialogController::hideDialogTab()
     m_shown = false;
     if (cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
         storage->clearAll();
-    if (m_outfitDialog) {
-        m_outfitDialog->deleteLater();
-        m_outfitDialog = nullptr;
-    }
     clearModels({ GeneralStats, OffenceStats, DefenceStats, MiscStats, RecentDeaths, RecentKills, Achievements, ItemSummary,
                   OutfitsMounts, StoreSummary, Inspection });
 }
@@ -658,57 +657,54 @@ void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint Appe
 void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const bool IsOutfit, const bool IsMount,
                                                       const bool IsSummonSkin)
 {
-    if (!tibia::game::isOnline())
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->outfitDialogStorage() || !session->playerProtocolMessageHandler())
         return;
-    Outfit current;
-    current.setCategory(ThingCategoryCreature);
-    if (IsOutfit)
-        current.setId(static_cast<uint16_t>(OutfitID));
-    else if (IsMount)
-        current.setMount(static_cast<uint16_t>(OutfitID));
-    else if (IsSummonSkin)
-        current.setFamiliar(static_cast<uint16_t>(OutfitID));
-    else
+    auto data = std::make_shared<game::TSelectOutfitDialogData>();
+    if (IsOutfit) {
+        data->OutfitId = static_cast<uint16_t>(OutfitID);
+        data->Mounted = false;
+    } else if (IsMount) {
+        data->MountId = static_cast<uint16_t>(OutfitID);
+    } else if (IsSummonSkin) {
+        data->SummonId = static_cast<uint16_t>(OutfitID);
+    } else {
         return;
+    }
+    data->DialogMode = cip::tibia::gamewindow::TSelectOutfitDialogController::CharacterInfoShowSelection;
     if (const auto* model = dynamic_cast<TOutfitMountSummonSkinsListDataModelSortFilterProxy*>(m_outfitMountModel)) {
         const auto& colors = model->colors();
-        current.setHead(colors[0]);
-        current.setBody(colors[1]);
-        current.setLegs(colors[2]);
-        current.setFeet(colors[3]);
-        current.setMountColors(colors[4], colors[5], colors[6], colors[7]);
+        data->HeadColor = static_cast<uint8_t>(colors[0]);
+        data->TorsoColor = static_cast<uint8_t>(colors[1]);
+        data->LegsColor = static_cast<uint8_t>(colors[2]);
+        data->DetailColor = static_cast<uint8_t>(colors[3]);
+        data->MountHeadColor = static_cast<uint8_t>(colors[4]);
+        data->MountTorsoColor = static_cast<uint8_t>(colors[5]);
+        data->MountLegsColor = static_cast<uint8_t>(colors[6]);
+        data->MountDetailColor = static_cast<uint8_t>(colors[7]);
     }
-
-    using Entry = TCustomiseCharacterModel::Entry;
-    QList<Entry> outfits;
-    QList<Entry> mounts;
-    QList<Entry> summons;
     if (const auto appearances = characterInfoStorage() ? characterInfoStorage()->outfitsMountsSummonSkins() : nullptr) {
         for (const auto& outfit : appearances->outfits) {
             if (IsOutfit && outfit.lookType == OutfitID)
-                current.setAddons(static_cast<uint8_t>(outfit.addons));
-            outfits.append({ .id = outfit.lookType, .name = outfit.name, .firstAddOn = (outfit.addons & 1) != 0,
-                             .secondAddOn = (outfit.addons & 2) != 0, .type = static_cast<int>(outfit.source) });
+                data->AddOns = static_cast<uint8_t>(outfit.addons);
+            data->Outfits.push_back({ .Id = static_cast<uint16_t>(outfit.lookType), .Name = outfit.name,
+                                      .AddOns = static_cast<uint8_t>(outfit.addons), .Type = static_cast<int>(outfit.source) });
         }
         for (const auto& mount : appearances->mounts)
-            mounts.append({ .id = mount.lookType, .name = mount.name, .type = static_cast<int>(mount.source) });
+            data->Mounts.push_back({ .Id = static_cast<uint16_t>(mount.lookType), .Name = mount.name, .Type = static_cast<int>(mount.source) });
         for (const auto& summon : appearances->summonSkins)
-            summons.append({ .id = summon.lookType, .name = summon.name, .type = static_cast<int>(summon.source) });
+            data->Summons.push_back({ .Id = static_cast<uint16_t>(summon.lookType), .Name = summon.name, .Type = static_cast<int>(summon.source) });
     }
-    if (!IsOutfit && !outfits.isEmpty()) {
-        current.setId(static_cast<uint16_t>(outfits.first().id));
-        current.setAddons(static_cast<uint8_t>((outfits.first().firstAddOn ? 1 : 0) | (outfits.first().secondAddOn ? 2 : 0)));
+    if (!IsOutfit && !data->Outfits.empty()) {
+        data->OutfitId = data->Outfits.front().Id;
+        data->AddOns = data->Outfits.front().AddOns;
     }
-    if (!IsMount && !mounts.isEmpty())
-        current.setMount(static_cast<uint16_t>(mounts.first().id));
-    if (!IsSummonSkin && !summons.isEmpty())
-        current.setFamiliar(static_cast<uint16_t>(summons.first().id));
-
-    if (!m_outfitDialog)
-        m_outfitDialog = new TSelectOutfitDialogController(this);
-        connect(m_outfitDialog, &TSelectOutfitDialogController::publishGameAction, this, &TCharacterInfoDialogController::publishGameAction);
-    m_outfitDialog->openCharacterInfoSelection(current, std::move(outfits), std::move(mounts), std::move(summons), IsOutfit, IsMount,
-                                               IsSummonSkin);
+    if (!IsMount && !data->Mounts.empty())
+        data->MountId = data->Mounts.front().Id;
+    if (!IsSummonSkin && !data->Summons.empty())
+        data->SummonId = data->Summons.front().Id;
+    session->outfitDialogStorage()->setSelectOutfitDialogData(data);
+    Q_EMIT session->playerProtocolMessageHandler()->showSelectOutfitDialog();
 }
 
 void TCharacterInfoDialogController::rebuildStatsBlocks()

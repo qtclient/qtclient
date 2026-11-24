@@ -72,8 +72,6 @@ public:
     /// (TEventFilterManager::requestFocus / releaseFocus); only for the top dialog.
     void dialogTookFocus(const TDialog* dialog);
     void dialogReleasedFocus(const TDialog* dialog);
-    /// Character selection is not a stack dialog. While it is open, the keyboard is blocked.
-    void setCharacterListOpen(bool open);
 
 
 private:
@@ -83,7 +81,6 @@ private:
     QQmlEngine* m_engine;
     QPointer<QQuickItem> m_placeholder;
     std::vector<TDialog*> m_dialogs;
-    bool m_characterListOpen = false;
 };
 
 /// The parts of CIP's TDialogControllerBase a dialog controller overrides

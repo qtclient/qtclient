@@ -91,11 +91,12 @@ public:
     /// CIP 's per-button part with / :
     /// the remaining cooldown at `now`. Returns whether one runs.
     bool refreshCooldown(qint64 now);
-    /// CIP / : the slot of a multi-action button
-    /// that runs at `now` (the first usable slot without cooldown, else the one
-    /// whose cooldown ends first by more than min(ping / 2, 400) ms, else the
-    /// first unusable one), or null.
-    TActionButtonController* currentMultiAction(qint64 now) const;
+    /// The slot of a multi-action button that runs now, as the multi action
+    /// priority solver picks it over the slots (the first usable slot without
+    /// cooldown, else the one whose cooldown ends first by more than
+    /// min(ping / 2, 400) ms, else the first unusable one); null without a
+    /// session or when no slot qualifies.
+    TActionButtonController* currentMultiAction() const;
     bool isShownEmpty() const { return type() == EMPTY; }
 
     /// CIP : "S.t" below 11 s, "S" below a minute, "M:SS" below
@@ -138,6 +139,8 @@ public Q_SLOTS:
     void contextMenuRequested() override;
     void onTargetSelected() override;
     void onDragChanged(bool Dragged) override;
+    /// A spell button announces a change when the spell table was modified.
+    void onSpellDataModified();
 
 Q_SIGNALS:
     /// Asks the bar for this button's context menu (-1: not a slot).
@@ -146,13 +149,9 @@ Q_SIGNALS:
 private:
     const TActionButtonController* shown() const { return m_shownSlot ? m_shownSlot : this; }
     /// Re-selects the shown slot; announces a change.
-    void refreshShownSlot(qint64 now);
+    void refreshShownSlot();
     /// CIP : the tooltip's table rows for this button or slot.
     QString tooltipRows() const;
-    /// CIP .
-    bool isUsable() const;
-    /// CIP : the cooldown left at `now` in ms.
-    qint64 remainingCooldown(qint64 now) const;
     game::TCooldown currentCooldown() const;
 
     TActionBarController* m_bar;

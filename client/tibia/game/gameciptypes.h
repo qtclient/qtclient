@@ -113,6 +113,7 @@ namespace tibia {
 namespace game {
 
 class TCooldownStorage;
+class TSelectOutfitDialogData;
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -279,11 +280,11 @@ class TOutfitDialogStorage final : public cip::tibia::game::TOutfitDialogStorage
 public:
     explicit TOutfitDialogStorage(QObject* parent = nullptr);
     ~TOutfitDialogStorage() override;
-    /// The game client's storage, the one its character configuration manager
-    /// loads (CIP: the session's); null without one. The sessions' own
-    /// storages are not registered.
-    static TOutfitDialogStorage* instance();
-    static void setInstance(TOutfitDialogStorage* storage);
+
+    /// The latest select outfit dialog data (the outfit message's, or the
+    /// character info's selection); the outfit dialog shows it.
+    const std::shared_ptr<TSelectOutfitDialogData>& selectOutfitDialogData() const { return m_selectOutfitDialogData; }
+    void setSelectOutfitDialogData(const std::shared_ptr<TSelectOutfitDialogData>& Data) { m_selectOutfitDialogData = Data; }
 
     QString configurationName() const override;
     /// The two preset lists under "customiseCharacterPresets" and
@@ -306,6 +307,7 @@ public:
     void announcePresetsChanged();
 
 private:
+    std::shared_ptr<TSelectOutfitDialogData> m_selectOutfitDialogData;
     QJsonArray m_presets;
     QJsonArray m_showOffPresets;
 };
@@ -341,7 +343,14 @@ public:
     /// The monk's harmony, serenity and virtue spells.
     void handleVocationSpecificPlayerDataMessage(
         const ::tibia::protobuf::protocol::GameserverMessageVocationSpecificPlayerData& message);
+    /// Stores the message's select outfit dialog data in the outfit dialog
+    /// storage, then emits showSelectOutfitDialog.
     void handleOutfitMessage(const ::tibia::protobuf::protocol::GameserverMessageOutfit& message);
+    /// The session's outfit dialog storage (CIP: a constructor argument).
+    void setOutfitDialogStorage(const std::shared_ptr<TOutfitDialogStorage>& OutfitDialogStorage)
+    {
+        m_outfitDialogStorage = OutfitDialogStorage;
+    }
     void handleBlessingsMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessings& message);
     void handleConfigureCreaturePodiumMessage(const ::tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium& message);
     void handleSwitchPresetMessage(const ::tibia::protobuf::protocol::GameserverMessageSwitchPreset& message);
@@ -394,22 +403,9 @@ Q_SIGNALS:
 
 private:
     TCooldownStorage* m_cooldownStorage = nullptr;
+    std::shared_ptr<TOutfitDialogStorage> m_outfitDialogStorage;
     QPointer<::tibia::input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
     bool m_allowAllToInspectPlayer = false;
-};
-
-class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TPremiumProtocolMessageHandler::TPremiumProtocolMessageHandler;
-
-    /// The premium features the server wants advertised.
-    static void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
-    /// The client's premium feature for a protocol feature id, none for an unknown one.
-    static std::optional<uint8_t> premiumFeature(uint32_t trigger);
-    /// Hands the premium flag and its end to the premium time storage.
-    static void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
 };
 
 /// The account's premium state: the flag, the server time it ends at (0 for
@@ -440,6 +436,27 @@ private:
     uint32_t m_premiumUntil = 0;
     bool m_premium = false;
     uint32_t m_receivedAt = 0;
+};
+
+class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
+{
+    Q_OBJECT
+public:
+    using cip::tibia::game::TPremiumProtocolMessageHandler::TPremiumProtocolMessageHandler;
+
+    /// The premium time storage the player data's premium state goes to.
+    void setPremiumTimeStorage(TPremiumTimeStorage* premiumTimeStorage);
+    /// The premium features the server wants advertised.
+    static void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
+    /// The client's premium feature for a protocol feature id, none for an unknown one.
+    static std::optional<uint8_t> premiumFeature(uint32_t trigger);
+    /// Hands the premium flag and its end to the premium time storage, when there is one.
+    void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
+
+private:
+    // Host: the storage is QObject-owned (ownProductSurface), so the handler
+    // keeps a guarded pointer where CipSoft keeps a shared_ptr.
+    QPointer<TPremiumTimeStorage> m_premiumTimeStorage;
 };
 
 class TServerModalDialogProtocolMessageHandler final : public cip::tibia::game::TServerModalDialogProtocolMessageHandler

@@ -1,11 +1,14 @@
 #include "outfitdialogcontroller.h"
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/selectoutfitdialogdata.h"
 
 #include "app/clientoptions.h"
 
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/outfitpalette.h"
 #include "qmlcomponents/outfittypes.h"
 
 #include <tibia/appearances/appearancetype.h>
@@ -39,41 +42,8 @@ using qmlcomponents::TOutfitColorQmlType;
 using qmlcomponents::TOutfitPresetQmlType;
 
 constexpr int OwnedOutfitType = 0;
-constexpr int StoreOutfitType = 1;
 
-using Entries = QList<TCustomiseCharacterModel::Entry>;
 using Gender = cip::tibia::gamewindow::TSelectOutfitDialogController::EOutfitGender;
-
-/// CIP : the pair partner, or the id itself.
-int otherGenderOutfit(const QList<QPair<int, int>>& pairs, const int id)
-{
-    for (const auto& [male, female] : pairs) {
-        if (male == id)
-            return female;
-        if (female == id)
-            return male;
-    }
-    return id;
-}
-
-/// CIP / : male when first of a pair, female when second.
-int outfitGender(const QList<QPair<int, int>>& pairs, const int id)
-{
-    for (const auto& pair : pairs)
-        if (pair.first == id)
-            return Gender::OutfitGenderMale;
-    for (const auto& pair : pairs)
-        if (pair.second == id)
-            return Gender::OutfitGenderFemale;
-    return Gender::OutfitGenderUnknown;
-}
-
-/// CIP : a store entry keeps its offer id.
-void applyOffers(Entries& entries, const QList<int>& offers)
-{
-    for (qsizetype i = 0; i < entries.size(); ++i)
-        entries[i].offerId = entries[i].type == StoreOutfitType ? offers.value(i) : 0;
-}
 
 }
 
@@ -262,11 +232,10 @@ TSelectOutfitDialogController::TSelectOutfitDialogController(QObject* parent)
     , m_outfitsProxy(&m_outfits)
     , m_mountsProxy(&m_mounts)
     , m_summonsProxy(&m_summons)
-    , m_preset(new TOutfitPresetQmlType(this))
+    , m_renameDialog(new TGenericEnterTextDialogController(this))
 {
-    // View options live in the controller for the session, no file (CIP ctor
-    // defaults; QML writes them back on every change).
-    m_dialogMode = SelectOutfit;
+    // View options live in the controller for the session, no file (QML
+    // writes them back on every change).
     m_showMovement = false;
     m_showOutfit = true;
     m_showSummon = true;
@@ -275,41 +244,172 @@ TSelectOutfitDialogController::TSelectOutfitDialogController(QObject* parent)
     m_mountsModel = &m_mountsProxy;
     m_summonsModel = &m_summonsProxy;
     m_presetsModel = &m_presets;
-    m_selectedOutfitPreset = m_preset;
-    for (int i = 0; i < qmlcomponents::outfitpalette::Count; ++i)
-        m_hsvColors.append(qmlcomponents::outfitpalette::color(i));
+    connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TSelectOutfitDialogController::onPresetNameEntered);
+    m_renameDialog->setCaption(qtTrId("outfit_preset_rename_dialog_caption"));
+    m_renameDialog->setAllowEmptyText(true);
+    m_renameDialog->setMaxInputLength(60);
 }
 
 TSelectOutfitDialogController::~TSelectOutfitDialogController() = default;
 
-void TSelectOutfitDialogController::setWindowOptions(WindowOptions options)
+void TSelectOutfitDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_randomMount = options.randomMount;
-    m_windowOptions = std::move(options);
-    m_dialogMode = m_windowOptions.tryOutfitMode == 5 ? ConfigureShowOffSocket : SelectOutfit;
-    Q_EMIT dialogModeChanged();
-    Q_EMIT showChanged();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    m_renameDialog->dialog()->close();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.add(connect(session->playerProtocolMessageHandler().get(),
+                                         &game::TPlayerProtocolMessageHandler::showSelectOutfitDialog, this,
+                                         &TSelectOutfitDialogController::onShowSelectOutfitDialog));
+    m_outfitDialogStorage = session->outfitDialogStorage();
+    if (m_outfitDialogStorage) {
+        m_gameSessionConnections.add(connect(m_outfitDialogStorage.get(), &game::TOutfitDialogStorage::customizeCharacterPresetsChanged, this,
+                                             &TSelectOutfitDialogController::onCharacterPresetsChanged));
+        m_gameSessionConnections.add(connect(m_outfitDialogStorage.get(),
+                                             &game::TOutfitDialogStorage::configureShowOffSocketPresetsChanged, this,
+                                             &TSelectOutfitDialogController::onCharacterPresetsChanged));
+    }
+    onCharacterPresetsChanged();
+}
+
+void TSelectOutfitDialogController::onShowSelectOutfitDialog()
+{
+    m_dialogData = m_outfitDialogStorage ? m_outfitDialogStorage->selectOutfitDialogData() : nullptr;
+    m_ownedIds.clear();
+    if (!m_dialogData)
+        return;
+    const game::TSelectOutfitDialogData& data = *m_dialogData;
+
+    QList<TCustomiseCharacterModel::Entry> outfits;
+    for (const auto& outfit : data.Outfits) {
+        TCustomiseCharacterModel::Entry entry{ .id = outfit.Id,
+                                               .name = outfit.Name,
+                                               .firstAddOn = (outfit.AddOns & 1) != 0,
+                                               .secondAddOn = (outfit.AddOns & 2) != 0,
+                                               .type = outfit.Type,
+                                               .offerId = static_cast<int>(outfit.OfferId) };
+        entry.otherGenderId = data.otherGenderOutfit(outfit.Id);
+        if (entry.otherGenderId != 0)
+            entry.gender = data.isMaleOutfit(outfit.Id) ? Gender::OutfitGenderMale
+                           : data.isFemaleOutfit(outfit.Id) ? Gender::OutfitGenderFemale
+                                                            : Gender::OutfitGenderUnknown;
+        entry.canBeColorized = outfitCanBeColorized(outfit.Id);
+        outfits.append(entry);
+        if (entry.type == OwnedOutfitType) {
+            m_ownedIds.insert(entry.id);
+            if (entry.otherGenderId != 0)
+                m_ownedIds.insert(static_cast<uint16_t>(entry.otherGenderId));
+        }
+    }
+    m_outfits.setEntries(std::move(outfits));
+    m_outfitsProxy.resetFilter();
+
+    // Mounts and summons have no gender twin.
+    const auto entries = [this](const std::vector<game::TSelectOutfitDialogData::TMountOrSummon>& List) {
+        QList<TCustomiseCharacterModel::Entry> result;
+        for (const auto& item : List) {
+            result.append({ .id = item.Id,
+                            .name = item.Name,
+                            .type = item.Type,
+                            .canBeColorized = outfitCanBeColorized(item.Id),
+                            .offerId = static_cast<int>(item.OfferId) });
+            if (item.Type == OwnedOutfitType)
+                m_ownedIds.insert(item.Id);
+        }
+        return result;
+    };
+    m_mounts.setEntries(entries(data.Mounts));
+    m_mountsProxy.resetFilter();
+    m_summons.setEntries(entries(data.Summons));
+    m_summonsProxy.resetFilter();
+
+    m_randomMount = data.RandomMount;
+    removeUnsupportedAddOns();
+    dialog()->create();
+    dialog()->show();
+    onCharacterPresetsChanged();
+}
+
+/// An outfit offers only the add-ons its idle appearance has patterns for.
+void TSelectOutfitDialogController::removeUnsupportedAddOns()
+{
+    for (auto& outfit : m_dialogData->Outfits) {
+        if (!tibia::game::isValidDatId(outfit.Id, ThingCategoryCreature))
+            continue;
+        const TAppearanceTypePtr& type = tibia::game::thingType(outfit.Id, ThingCategoryCreature);
+        if (!type || !type->hasFrameGroup(tibia::appearances::EFixedFrameGroup::OutfitIdle))
+            continue;
+        const uint32_t patterns = type->frameGroup(tibia::appearances::EFixedFrameGroup::OutfitIdle).patternHeight();
+        outfit.AddOns &= static_cast<uint8_t>(~(~0u << ((patterns - 1u) & 0x1f)));
+    }
+}
+
+/// The data's mode; no data or an unknown mode select the own outfit.
+TSelectOutfitDialogController::EDialogMode TSelectOutfitDialogController::dialogMode() const
+{
+    if (!m_dialogData)
+        return SelectOutfit;
+    const int mode = m_dialogData->DialogMode;
+    return mode >= TryOutfit && mode <= ConfigureShowOffSocket ? static_cast<EDialogMode>(mode) : SelectOutfit;
 }
 
 /// The socket configuration's outfit flag, else the dialog's own.
 bool TSelectOutfitDialogController::showOutfit() const
 {
-    return m_dialogMode == ConfigureShowOffSocket ? m_windowOptions.podiumShowOutfit : m_showOutfit;
+    if (!m_dialogData)
+        return false;
+    return m_dialogData->DialogMode == ConfigureShowOffSocket ? m_dialogData->ShowOutfit : m_showOutfit;
 }
 
 /// Only a show-off socket can be shown.
 bool TSelectOutfitDialogController::showSocket() const
 {
-    return m_dialogMode == ConfigureShowOffSocket && m_windowOptions.podiumVisible;
+    return m_dialogData && m_dialogData->DialogMode == ConfigureShowOffSocket && m_dialogData->ShowSocket;
 }
 
-/// The window's look direction (south unless a socket says otherwise).
+/// The data's look direction, south without data.
 TOutfitAppearanceInstanceQmlType::ECreatureLookDirection TSelectOutfitDialogController::direction() const
 {
-    return static_cast<TOutfitAppearanceInstanceQmlType::ECreatureLookDirection>(m_windowOptions.podiumDirection);
+    return static_cast<TOutfitAppearanceInstanceQmlType::ECreatureLookDirection>(m_dialogData ? m_dialogData->LookDirection : 2);
 }
 
-bool TSelectOutfitDialogController::isMounted() const { return m_windowOptions.mounted; }
+bool TSelectOutfitDialogController::isMounted() const { return m_dialogData && m_dialogData->Mounted; }
+
+/// A new JS-owned preset of the data's outfit (colours and add-ons), mount
+/// (colours) and summon.
+cip::tibia::qmlcomponents::TOutfitPresetQmlType* TSelectOutfitDialogController::selectedOutfitPreset() const
+{
+    if (!m_dialogData)
+        return nullptr;
+    const game::TSelectOutfitDialogData& data = *m_dialogData;
+    auto* preset = new TOutfitPresetQmlType();
+    QJSEngine::setObjectOwnership(preset, QJSEngine::JavaScriptOwnership);
+    preset->setOutfitID(data.OutfitId);
+    TOutfitColorQmlType outfitColor(data.HeadColor, data.TorsoColor, data.LegsColor, data.DetailColor);
+    preset->outfitColor()->copyFrom(&outfitColor);
+    preset->setOutfitFirstAddOn((data.AddOns & 1) != 0);
+    preset->setOutfitSecondAddOn((data.AddOns & 2) != 0);
+    preset->setMountID(data.MountId);
+    TOutfitColorQmlType mountColor(data.MountHeadColor, data.MountTorsoColor, data.MountLegsColor, data.MountDetailColor);
+    preset->mountColor()->copyFrom(&mountColor);
+    preset->setSummonID(data.SummonId);
+    return preset;
+}
+
+/// The outfit palette, built once.
+QVariantList TSelectOutfitDialogController::hsvColors() const
+{
+    static const QVariantList colors = [] {
+        QVariantList list;
+        list.reserve(qmlcomponents::outfitpalette::Count);
+        for (int i = 0; i < qmlcomponents::outfitpalette::Count; ++i)
+            list.append(qmlcomponents::outfitpalette::color(i));
+        return list;
+    }();
+    return colors;
+}
 
 /// The base properties and whether textures are smoothed (antialiasing).
 QVariantMap TSelectOutfitDialogController::initialDialogProperties() const
@@ -321,90 +421,12 @@ QVariantMap TSelectOutfitDialogController::initialDialogProperties() const
     return properties;
 }
 
-void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits,
-                                         QList<TCustomiseCharacterModel::Entry> mounts, QList<TCustomiseCharacterModel::Entry> summons)
-{
-    if (dialog()->isShown())
-        dialog()->close();
-
-    const auto& pairs = m_windowOptions.genderPairs;
-    for (auto& entry : outfits) {
-        entry.otherGenderId = otherGenderOutfit(pairs, entry.id);
-        entry.gender = entry.otherGenderId != 0 ? outfitGender(pairs, entry.id) : int(Gender::OutfitGenderUnknown);
-    }
-    // Mounts and summons have no gender twin.
-    for (Entries* list : { &mounts, &summons })
-        for (auto& entry : *list) {
-            entry.otherGenderId = 0;
-            entry.gender = Gender::OutfitGenderUnknown;
-        }
-    applyOffers(outfits, m_windowOptions.outfitOffers);
-    applyOffers(mounts, m_windowOptions.mountOffers);
-    applyOffers(summons, m_windowOptions.summonOffers);
-
-    // CIP : a current outfit (or its other-gender twin), mount or
-    // summon missing from its list falls back to the list's first entry
-    // (outfit add-ons cleared), or none.
-    const auto contains = [](const Entries& list, const int id, const int twin) {
-        return std::ranges::any_of(list, [&](const auto& entry) { return entry.id == id || entry.id == twin; });
-    };
-    int outfitId = current.getId();
-    int addons = current.getAddons();
-    if (!contains(outfits, outfitId, otherGenderOutfit(pairs, outfitId))) {
-        outfitId = outfits.isEmpty() ? 0 : outfits.first().id;
-        addons = 0;
-    }
-    int mountId = current.getMount();
-    if (!contains(mounts, mountId, mountId))
-        mountId = mounts.isEmpty() ? 0 : mounts.first().id;
-    int summonId = current.getFamiliar();
-    if (!contains(summons, summonId, summonId))
-        summonId = summons.isEmpty() ? 0 : summons.first().id;
-
-    m_outfits.setEntries(std::move(outfits));
-    m_mounts.setEntries(std::move(mounts));
-    m_summons.setEntries(std::move(summons));
-    m_outfitsProxy.resetFilter();
-    m_mountsProxy.resetFilter();
-    m_summonsProxy.resetFilter();
-
-    m_preset->setName({});
-    m_preset->setIsObjectOutfit(false);
-    m_preset->setOutfitID(outfitId);
-    m_preset->setOutfitFirstAddOn((addons & 1) != 0);
-    m_preset->setOutfitSecondAddOn((addons & 2) != 0);
-    TOutfitColorQmlType outfitColor(current.getHead(), current.getBody(), current.getLegs(), current.getFeet());
-    m_preset->outfitColor()->copyFrom(&outfitColor);
-    m_preset->setMountID(mountId);
-    TOutfitColorQmlType mountColor(current.getMountHead(), current.getMountBody(), current.getMountLegs(), current.getMountFeet());
-    m_preset->mountColor()->copyFrom(&mountColor);
-    m_preset->setSummonID(summonId);
-
-    onCharacterPresetsChanged();
-    dialog()->show();
-}
-
-void TSelectOutfitDialogController::openCharacterInfoSelection(const Outfit& current, Entries outfits, Entries mounts, Entries summons,
-                                                               const bool isOutfit, const bool isMount, const bool isSummonSkin)
-{
-    for (Entries* list : { &outfits, &mounts })
-        for (auto& entry : *list)
-            entry.canBeColorized = outfitCanBeColorized(entry.id);
-    m_dialogMode = CharacterInfoShowSelection;
-    m_showOutfit = isOutfit || (!isMount && !isSummonSkin);
-    m_showSummon = isSummonSkin;
-    Q_EMIT dialogModeChanged();
-    Q_EMIT showChanged();
-    open(current, std::move(outfits), std::move(mounts), std::move(summons));
-}
-
-/// CIP .
 void TSelectOutfitDialogController::onCancelClicked()
 {
     dialog()->close();
 }
 
-/// CIP : closes, then opens the store on the offer (open action 4).
+/// Closes, then opens the store on the offer (open action 4).
 void TSelectOutfitDialogController::onClickedOpenStoreOffer(const int offerID)
 {
     dialog()->close();
@@ -417,63 +439,68 @@ void TSelectOutfitDialogController::onControllerFinished()
     dialog()->close();
 }
 
-/// CIP : a preset counts as owned when its outfit and mount are.
+/// Each preset the dialog mode edits gets "everythingOwned": its outfit, mount
+/// and summon (those set) are all owned.
 void TSelectOutfitDialogController::onCharacterPresetsChanged()
 {
     QList<QJsonObject> presets;
     QList<bool> owned;
     TOutfitPresetQmlType preset;
     const QJsonArray* list = presetList();
+    const auto isOwned = [this](const int id) { return id == 0 || m_ownedIds.contains(static_cast<uint16_t>(id)); };
     for (const QJsonValue& value : list ? *list : QJsonArray()) {
-        const QJsonObject json = value.toObject();
-        if (!preset.canBeFilledFromJsonObject(json))
-            continue;
-        preset.fromJsonObject(json);
-        bool everythingOwned = true;
-        if (preset.outfitID() != 0) {
-            const auto* outfit = m_outfits.ownedEntry(preset.outfitID());
-            everythingOwned = outfit && (!preset.outfitFirstAddOn() || outfit->firstAddOn) && (!preset.outfitSecondAddOn() || outfit->secondAddOn);
+        QJsonObject json = value.toObject();
+        bool everythingOwned = false;
+        if (preset.canBeFilledFromJsonObject(json)) {
+            preset.fromJsonObject(json);
+            everythingOwned = isOwned(preset.outfitID()) && isOwned(preset.mountID()) && isOwned(preset.summonID());
+            json.insert(QStringLiteral("everythingOwned"), everythingOwned);
         }
-        if (preset.mountID() != 0)
-            everythingOwned = everythingOwned && m_mounts.ownedEntry(preset.mountID());
         presets.append(json);
         owned.append(everythingOwned);
     }
     m_presets.setPresets(std::move(presets), std::move(owned));
 }
 
-/// CIP (SelectOutfit): publishes SET_PLAYER_OUTFIT, then closes.
-/// Mode 5 (ConfigureShowOffSocket): publishes SET_SHOW_OFF_SOCKET_CONFIGURATION.
+/// Sends what the data's mode configures, then closes: a show-off socket
+/// (its mount only when the character is mounted), a hireling's outfit, or
+/// the own outfit, mount and summon. The other modes send nothing.
 void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcomponents::TOutfitPresetQmlType* pOutfitPreset,
                                                               const int LookDirectionRaw, const bool ShowSocket,
                                                               const bool MountCharacter)
 {
-    if (pOutfitPreset && tibia::game::isOnline()) {
+    if (pOutfitPreset && m_dialogData) {
         const auto* outfitColor = pOutfitPreset->outfitColor();
         const auto* mountColor = pOutfitPreset->mountColor();
+        const uint8_t addOns = static_cast<uint8_t>((pOutfitPreset->outfitFirstAddOn() ? 1 : 0) + (pOutfitPreset->outfitSecondAddOn() ? 2 : 0));
         Outfit outfit;
         outfit.setCategory(ThingCategoryCreature);
-        outfit.setId(pOutfitPreset->outfitID());
-        outfit.setHead(outfitColor->headColorIndex());
-        outfit.setBody(outfitColor->torsoColorIndex());
-        outfit.setLegs(outfitColor->legsColorIndex());
-        outfit.setFeet(outfitColor->detailColorIndex());
-        outfit.setAddons((pOutfitPreset->outfitFirstAddOn() ? 1 : 0) + (pOutfitPreset->outfitSecondAddOn() ? 2 : 0));
-        outfit.setMount(pOutfitPreset->mountID());
-        outfit.setMountColors(mountColor->headColorIndex(), mountColor->torsoColorIndex(), mountColor->legsColorIndex(),
-                              mountColor->detailColorIndex());
-        outfit.setFamiliar(pOutfitPreset->summonID());
-        if (m_dialogMode == CharacterInfoShowSelection) {
-            // Preview-only: Character Info never applies an outfit from this dialog.
-        } else if (m_dialogMode == ConfigureShowOffSocket) {
-            // The socket shows a mount only when the character is mounted.
-            if (!MountCharacter)
-                outfit.setMount(0);
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetShowOffSocketConfiguration>(
-                input::TPodiumLocation{ m_windowOptions.podiumPosition, m_windowOptions.podiumItemId, m_windowOptions.podiumStackpos },
-                outfit, static_cast<uint8_t>(LookDirectionRaw), ShowSocket));
-        } else {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetPlayerOutfit>(outfit, MountCharacter, m_randomMount));
+        outfit.setId(static_cast<uint16_t>(pOutfitPreset->outfitID()));
+        outfit.setHead(static_cast<uint8_t>(outfitColor->headColorIndex()));
+        outfit.setBody(static_cast<uint8_t>(outfitColor->torsoColorIndex()));
+        outfit.setLegs(static_cast<uint8_t>(outfitColor->legsColorIndex()));
+        outfit.setFeet(static_cast<uint8_t>(outfitColor->detailColorIndex()));
+        outfit.setAddons(addOns);
+        const auto setMount = [&](const int MountId) {
+            outfit.setMount(static_cast<uint16_t>(MountId));
+            outfit.setMountColors(static_cast<uint8_t>(mountColor->headColorIndex()), static_cast<uint8_t>(mountColor->torsoColorIndex()),
+                                  static_cast<uint8_t>(mountColor->legsColorIndex()), static_cast<uint8_t>(mountColor->detailColorIndex()));
+        };
+        switch (m_dialogData->DialogMode) {
+            case ConfigureShowOffSocket:
+                setMount(MountCharacter ? pOutfitPreset->mountID() : 0);
+                Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetShowOffSocketConfiguration>(
+                    m_dialogData->PodiumLocation, outfit, static_cast<uint8_t>(LookDirectionRaw), ShowSocket));
+                break;
+            case HirelingSelectOutfit:
+                Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetHirelingOutfit>(outfit, m_dialogData->HirelingCreatureId));
+                break;
+            case SelectOutfit:
+                setMount(pOutfitPreset->mountID());
+                outfit.setFamiliar(static_cast<uint16_t>(pOutfitPreset->summonID()));
+                Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetPlayerOutfit>(outfit, MountCharacter, m_randomMount));
+                break;
+            default: break;
         }
     }
     dialog()->close();
@@ -484,14 +511,14 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
 /// the outfit presets.
 QJsonArray* TSelectOutfitDialogController::presetList()
 {
-    game::TOutfitDialogStorage* storage = game::TOutfitDialogStorage::instance();
-    if (!storage)
+    if (!m_outfitDialogStorage)
         return nullptr;
-    if (m_dialogMode == ConfigureShowOffSocket)
-        return &storage->showOffPresets();
-    if (m_dialogMode >= TryOutfit && m_dialogMode <= CharacterInfoShowSelection)
+    const int mode = m_dialogData ? m_dialogData->DialogMode : SelectOutfit;
+    if (mode == ConfigureShowOffSocket)
+        return &m_outfitDialogStorage->showOffPresets();
+    if (mode >= TryOutfit && mode <= CharacterInfoShowSelection)
         return nullptr;
-    return &storage->presets();
+    return &m_outfitDialogStorage->presets();
 }
 
 const QJsonArray* TSelectOutfitDialogController::presetList() const
@@ -523,20 +550,17 @@ void TSelectOutfitDialogController::outfitPresetsDeleteIndex(const int Index)
     onCharacterPresetsChanged();
 }
 
-/// Asks for the preset's new name; onPresetNameEntered applies it.
+/// Asks for the preset's new name (the rename dialog starts with the current
+/// one); onPresetNameEntered applies it.
 void TSelectOutfitDialogController::outfitPresetsRenameIndex(const int Index)
 {
     const QJsonArray* list = presetList();
     if (!list || Index < 0 || Index >= list->size())
         return;
     m_renameIndex = Index;
-    if (!m_renameDialog) {
-        m_renameDialog = new TGenericEnterTextDialogController(this);
-        m_renameDialog->setCaption(qtTrId("outfit_preset_rename_dialog_caption"));
-        connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TSelectOutfitDialogController::onPresetNameEntered);
-    }
-    m_renameDialog->setText(list->at(Index).toObject().value(QStringLiteral("name")).toString());
-    m_renameDialog->dialog()->show();
+    TOutfitPresetQmlType preset;
+    preset.fromJsonObject(list->at(Index).toObject());
+    m_renameDialog->showWithText(preset.name());
 }
 
 /// Renames the preset the rename dialog was opened for.
@@ -552,7 +576,7 @@ void TSelectOutfitDialogController::onPresetNameEntered(const QString& PlayerNam
     onCharacterPresetsChanged();
 }
 
-/// CIP : a preset or a colour set.
+/// A preset or a colour set.
 void TSelectOutfitDialogController::copyToClipboard(QObject* pData)
 {
     QJsonObject json;
@@ -566,7 +590,7 @@ void TSelectOutfitDialogController::copyToClipboard(QObject* pData)
     clipboard.setJsonObjectAsBase64String(json);
 }
 
-/// CIP : a JS-owned OutfitColor or OutfitPreset, or null.
+/// A JS-owned OutfitColor or OutfitPreset, or null.
 QObject* TSelectOutfitDialogController::createFromClipboard()
 {
     TClipboardHelperQmlService clipboard;
@@ -590,8 +614,8 @@ QObject* TSelectOutfitDialogController::createFromClipboard()
 
 void TSelectOutfitDialogController::savePresets()
 {
-    if (game::TOutfitDialogStorage* storage = game::TOutfitDialogStorage::instance())
-        storage->announcePresetsChanged();
+    if (m_outfitDialogStorage)
+        m_outfitDialogStorage->announcePresetsChanged();
 }
 
 }

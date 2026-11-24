@@ -2,6 +2,7 @@
 
 #include "config/clientoptions.h"
 #include "sound/soundengine.h"
+#include "worldmap/worldmapobjectcounter.h"
 
 namespace tibia::sound {
 
@@ -20,6 +21,8 @@ TSoundConfiguration::TSoundConfiguration(const TSoundSettings& settings, config:
     if (m_options)
         connect(m_options, &config::TClientOptions::soundOptionsChanged, this, &TSoundConfiguration::onSoundOptionsChanged);
     Q_EMIT soundConfigurationChanged();
+    // A floor of height difference counts as this many fields of distance.
+    worldmap::TWorldMapObjectCounter::setFloorDistance(m_settings.floorDistance);
     if (m_settings.noSound)
         TSoundEngine::instance().setInitialized(false);
 }

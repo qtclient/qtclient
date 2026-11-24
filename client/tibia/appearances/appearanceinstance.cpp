@@ -865,12 +865,12 @@ std::shared_ptr<TObjectOutfitAppearanceInstance> TAppearanceInstanceFactory::cre
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::protocol::TObjectData& object)
 {
-    if (object.isCumulative())
-        return createCumulativeObject(object.id, object.count);
     if (object.isLiquid())
         return createLiquidObject(object.id, object.liquidType);
     if (object.isUpgradeable())
         return createUpgradeableObject(object.id, object.upgradeClassification);
+    if (object.isCumulative())
+        return createCumulativeObject(object.id, object.count);
     if (object.isDecoItemKit())
         return createDecoItemKitObject(object.id, object.decoItemId);
     TAppearanceInstancePtr instance = createObject(object.id);

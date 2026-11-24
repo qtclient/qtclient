@@ -7,14 +7,20 @@
 #include "sound/soundcontrollercombatsound.h"
 #include "sound/soundcontrollermusic.h"
 
+#include "worldmap/coordinates.h"
+
 #include <QTimer>
 
 #include <memory>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace tibia::game {
 class IGameSession;
+}
+namespace tibia::creatures {
+class TCreature;
 }
 
 namespace tibia {
@@ -43,9 +49,8 @@ public:
     static TSoundController* instance();
     static void setInstance(TSoundController* controller);
 
-    /// The game session whose world sounds play (nullptr: none).
-    void setGameSessionSoundProvider(std::shared_ptr<TGameSessionSoundProvider> provider);
-    /// CIP connector: plays `GameSession`'s world sounds and follows its ambience objects.
+    /// Plays `GameSession`'s world sounds; follows its player's position, its
+    /// player data (the music's fight flag) and its ambience objects.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// SoundTrigger type 1: the music template.
     void setMusicTemplate(uint16_t templateId);
@@ -64,14 +69,16 @@ public Q_SLOTS:
     void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
     void onEffectSoundsChanged();
     void deferredPlayChangedEffectSounds();
-    void onPlayerPositionChanged(const Position& position);
+    void connectToPlayerPositionWasUpdated();
+    void onPlayerPositionChanged(tibia::worldmap::TWorldMapCoordinate position);
+    void onPlayerDataChanged();
     void onAmbienceObjectStreamCountChanged(uint16_t soundEffectId, size_t count, int nearestDistance);
     void onQueuedSoundsTimerTriggered();
 
 private:
-    std::shared_ptr<TGameSessionSoundProvider> m_provider;
-    QMetaObject::Connection m_providerConnection;
-    QMetaObject::Connection m_objectSoundConnection;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<creatures::TCreature> m_playerCreature;
     std::shared_ptr<TSoundControllerMusic> m_music;
     std::shared_ptr<TSoundControllerAmbienceStream> m_ambienceStream;
     std::shared_ptr<TSoundControllerAmbienceObjectSound> m_ambienceObjectSound;

@@ -15,6 +15,13 @@
 namespace tibia {
 namespace creatures {
 class TCreature;
+class TCreatureStorage;
+}
+namespace cyclopedia {
+class TCharacterInfoStorage;
+}
+namespace game {
+class TPlayerData;
 }
 namespace input {
 class IGameAction;
@@ -81,10 +88,15 @@ class TSkillWheelProtocolMessageHandler final : public cip::tibia::skillwheel::T
 {
     Q_OBJECT
 public:
-    explicit TSkillWheelProtocolMessageHandler(QObject* parent = nullptr);
+    /// The handler keeps the skill wheel storage, the session's creature and
+    /// character info storages and its player data. Host: the skill wheel
+    /// storage is the game client's (it may be null when the session is made).
+    TSkillWheelProtocolMessageHandler(TSkillWheelStorage* skillWheelStorage,
+                                      std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+                                      std::shared_ptr<cyclopedia::TCharacterInfoStorage> characterInfoStorage,
+                                      std::shared_ptr<game::TPlayerData> playerData);
 
-    /// Host: CipSoft's handler gets the session's skill wheel storage when it
-    /// is made; the client's storage is handed over when the session becomes
+    /// Host: the client's storage is handed over again when the session becomes
     /// current (TSkillWheelManager::connectToGameSession).
     void setSkillWheelStorage(TSkillWheelStorage* storage);
 
@@ -117,6 +129,9 @@ public:
 
 private:
     QPointer<TSkillWheelStorage> m_storage;
+    std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
+    std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;
+    std::shared_ptr<game::TPlayerData> m_playerData;
 };
 
 }

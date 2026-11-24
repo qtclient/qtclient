@@ -100,20 +100,6 @@ QString ownName()
     return QString::fromStdString(tibia::game::characterName());
 }
 
-/// The session's VIP list has the name (lower-case names compared).
-bool isVip(const game::IGameSession* gameSession, const QString& name)
-{
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession);
-    if (!session || !session->vipStorage())
-        return false;
-    const QString lower = name.toLower();
-    for (const tibia::creatures::TVipStorage::Vip& vip : session->vipStorage()->vips()) {
-        if (vip.name.toLower() == lower)
-            return true;
-    }
-    return false;
-}
-
 void own(QObject* object)
 {
     QQmlEngine::setObjectOwnership(object, QQmlEngine::CppOwnership);
@@ -1054,10 +1040,12 @@ void TOpenChatChannelDialogController::onOpenPrivateChannelTo(const QString& rec
 TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& gameClient, QObject* parent)
     : cip::tibia::gamewindow::TChatController(parent)
     , m_chatItem(chatItem)
+    , m_blacklist(gameClient.clientOptions())
     , m_mapper(app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0))
     , m_whiteBlacklistDialog(m_blacklist)
     , m_gameClient(gameClient)
 {
+    m_blacklist.loadFromOptions();
     own(this);
     own(&m_primary);
     own(&m_secondary);
@@ -1994,21 +1982,7 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
         m_chatChannelStorage = session->chatChannelStorage();
         m_tabs.setChannelStorage(m_chatChannelStorage.get());
         m_primary.setChannel(m_tabs.currentChannel());
-        m_actionProvider.emplace(
-            *m_chatChannelStorage,
-            [this](input::TGameActionList& actions, const QString& name) {
-                actions.push_back(std::make_shared<input::TGameActionOpenMessageToChatChannel>(name));
-                if (const TChatChannel* own = m_chatChannelStorage ? m_chatChannelStorage->ownChannel() : nullptr)
-                    actions.push_back(std::make_shared<input::TGameActionInvitePlayerToPrivateChatChannel>(own->identifier().id, name));
-                actions.push_back(std::make_shared<input::TGameActionReportCharacter>(A::REPORT_NAME, name));
-                if (m_blacklist.isIgnored(name))
-                    actions.push_back(std::make_shared<input::TGameActionUnignoreName>(name));
-                else
-                    actions.push_back(std::make_shared<input::TGameActionIgnoreName>(name));
-                if (!isVip(m_gameSession.get(), name))
-                    actions.push_back(std::make_shared<input::TGameActionAddNewVip>(name));
-            },
-            [] { return app::ClientOptions::load().options().value(QLatin1String("consoleShowJoinLeaveMessages")).toBool(true); });
+        m_actionProvider = session->chatGameActionProvider();
         m_gameSessionConnections.push_back(connect(m_chatChannelStorage.get(), &TChatChannelStorage::channelRemoved, this,
                                                    &TChatController::onChatChannelRemoved));
         m_gameSessionConnections.push_back(

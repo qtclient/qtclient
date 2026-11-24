@@ -11,6 +11,7 @@
 
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/config/runtimegameconfig.h>
+#include "input/playermovementgameactionhandler.h"
 #include "input/playermovementintenthandler.h"
 #include "mods/registry.h"
 #include "input/movementpathplanner.h"
@@ -166,6 +167,7 @@ std::vector<tibia::worldmap::TWorldMapCoordinate> avoidedFieldsInView()
 void TGameSessionState::createMovementIntent()
 {
     using tibia::input::TPlayerMovementIntentHandler;
+    m_playerMovementGameActions.reset();
     m_movementIntent.reset();
     if (!m_playerPresent)
         return;
@@ -173,13 +175,6 @@ void TGameSessionState::createMovementIntent()
     options->load();
     TPlayerMovementIntentHandler::Environment env;
     env.now = [] { return static_cast<qint64>(tibia::shared::TClockService::frameMillis()); };
-    env.player = [this]() -> tibia::creatures::TCreature* {
-        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-        if (!storage || !m_playerPresent)
-            return nullptr;
-        const auto row = storage->player();
-        return row && row->position().isValid() ? row.get() : nullptr;
-    };
     env.map = [] { return tibia::worldmap::TWorldMapStorage::ensureStorage(); };
     env.waypointCost = snapshotWaypointCost;
     env.blockedFields = avoidedFieldsInView;
@@ -224,8 +219,24 @@ void TGameSessionState::createMovementIntent()
         }
         return tibia::mods::claimWalkUnreachable(goal.x, goal.y, goal.z, reason);
     };
-    m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
+    m_movementIntent = std::make_shared<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
+    // CIP: the session hands the player's creature to the intent handler, now or
+    // when it joins the creature storage.
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance(); storage && storage->player())
+        intent->setPlayer(storage->player());
+    else if (TGameSessionBase* session = currentGameSession())
+        QObject::connect(session, &IGameSession::playerCreatureAddedToCreatureStorage, intent,
+                         &TPlayerMovementIntentHandler::setPlayer);
+    // CIP: the session's player movement game action handler drives the intent handler.
+    m_playerMovementGameActions = std::make_shared<tibia::input::TPlayerMovementGameActionHandler>(m_movementIntent);
+    if (TGameSessionBase* session = currentGameSession(); session && session->gameActionRouter()) {
+        TInternalGameActionRouter* router = session->gameActionRouter()->internalRouter();
+        QObject::connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_playerMovementGameActions.get(),
+                         &tibia::input::TPlayerMovementGameActionHandler::handleGameAction);
+        QObject::connect(m_playerMovementGameActions.get(), &tibia::input::TPlayerMovementGameActionHandler::publishGameAction,
+                         router, &TInternalGameActionRouter::handleGameActionInternal);
+    }
     // CIP: the session's movement intent handler publishes through the session's router.
     if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
         QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
@@ -262,6 +273,7 @@ void TGameSessionState::resetGameStates()
         storage->setAttackID(0);
         storage->setFollowID(0);
     }
+    m_playerMovementGameActions.reset();
     m_movementIntent.reset();
     m_playerPresent = false;
     if (TGameSessionBase* session = currentGameSession())
@@ -569,7 +581,8 @@ void TGameSessionState::processUpdateTarget(const uint32_t seq, const uint32_t t
 }
 
 
-void TGameSessionState::loginWorld(const std::string_view account, const std::string_view password, const std::string_view worldName, const std::string_view worldHost, const int worldPort, const std::string_view characterName, const std::string_view authenticatorToken, const std::string_view sessionKey, const std::string_view& recordTo)
+void TGameSessionState::loginWorld(const std::string_view worldName, const std::string_view characterName,
+                                   std::shared_ptr<tibia::network::TGameserverSessionNetwork> connection)
 {
     if (m_gameConnection || isOnline())
         throw std::runtime_error("Unable to login into a world while already online or logging.");
@@ -582,20 +595,10 @@ void TGameSessionState::loginWorld(const std::string_view account, const std::st
 
     beginPlayerSession(characterName);
 
-    (void)account;
-    (void)password;
-    (void)authenticatorToken;
     m_characterName = characterName;
     m_worldName = worldName;
-    m_gameConnection = newGameConnection();
+    m_gameConnection = std::move(connection);
     bindExtendedOpcodeSender(true);
-    tibia::network::TGameserverLoginData login;
-    login.sessionKey = sessionKey;
-    login.characterName = characterName;
-    login.host = worldHost;
-    login.port = static_cast<uint16_t>(worldPort);
-    login.recordTo = recordTo;
-    m_gameConnection->connectToGameserver(login);
 }
 
 void TGameSessionState::startDecodedReplay()

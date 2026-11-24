@@ -8,10 +8,14 @@
 #include <vector>
 
 namespace tibia {
+namespace gamewindow {
+class TBattleListGameActionHandler;
+}
 namespace chat {
 class TGameMessageHandler;
 class TChatChannelStorage;
 class TChatGameActionHandler;
+class TChatGameActionProvider;
 class TChatProtocolMessageHandler;
 class TChatStorage;
 class TTextStorage;
@@ -29,6 +33,7 @@ class TStashStorage;
 }
 namespace input {
 class TActionButtonGameActionHandler;
+class TGenericChatGameActionProvider;
 class TGatherAllGameActionHandler;
 class TGatherAllProtocolMessageHandler;
 }
@@ -43,6 +48,7 @@ class TManagedContainersProtocolMessageHandler;
 class TQuickLootGameActionHandler;
 }
 namespace creatures {
+class TBattleListRenderProvider;
 class TCreatureMovementSpeedCalculator;
 class TCreatureProtocolMessageHandler;
 class TCreatureStorage;
@@ -50,6 +56,7 @@ class TUnjustifiedPointsStorage;
 class TVipGameActionHandler;
 class TVipProtocolMessageHandler;
 class TVipStorage;
+class TVipWidgetGameActionProvider;
 }
 namespace exivaoptions {
 class TExivaOptionsProtocolMessageHandler;
@@ -169,6 +176,7 @@ class TWorldMapRenderProvider;
 namespace renderer {
 class TNextFrameUpdater;
 class TRenderVolumeProvider;
+class TWorldMapCamera;
 }
 namespace questlog {
 class TQuestLogGameActionHandler;
@@ -214,6 +222,7 @@ class TAmbientLightStorage;
 class TCreatureHUDRenderProvider;
 class TWorldMapGameActionHandler;
 class TWorldMapGameActionProvider;
+class TWorldMapPicker;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -326,10 +335,37 @@ public:
     {
         return m_creatureHUDRenderProvider;
     }
+    /// The battle list's rows (CIP v62).
+    const std::shared_ptr<creatures::TBattleListRenderProvider>& battleListRenderProvider() const
+    {
+        return m_battleListRenderProvider;
+    }
+    const std::shared_ptr<gamewindow::TBattleListGameActionHandler>& battleListGameActionHandler() const
+    {
+        return m_battleListGameActionHandler;
+    }
     /// The actions offered at a point of the world map.
     const std::shared_ptr<worldmap::TWorldMapGameActionProvider>& worldMapGameActionProvider() const
     {
         return m_worldMapGameActionProvider;
+    }
+    /// Resolves a pixel of the session's last world map frame to fields,
+    /// objects and creatures.
+    const std::shared_ptr<worldmap::TWorldMapPicker>& worldMapPicker() const { return m_worldMapPicker; }
+    /// The session's world map camera (made with the session).
+    const std::shared_ptr<renderer::TWorldMapCamera>& worldMapCamera() const { return m_worldMapCamera; }
+    /// The chat actions on a player's name (message, invite, report, ignore,
+    /// add as VIP) the other providers offer.
+    const std::shared_ptr<input::TGenericChatGameActionProvider>& genericChatGameActionProvider() const
+    {
+        return m_genericChatGameActionProvider;
+    }
+    /// The actions of a chat tab or of a chat entry.
+    const std::shared_ptr<chat::TChatGameActionProvider>& chatGameActionProvider() const { return m_chatGameActionProvider; }
+    /// The actions of a click in the VIP widget; it follows the world type.
+    const std::shared_ptr<creatures::TVipWidgetGameActionProvider>& vipWidgetGameActionProvider() const
+    {
+        return m_vipWidgetGameActionProvider;
     }
 
     /// The hunting analysers' storages (CIP: handed to the session's character
@@ -539,6 +575,28 @@ public:
         return m_gameEventProtocolMessageHandler;
     }
     const std::shared_ptr<input::TGenericGameActionHandler>& genericGameActionHandler() const { return m_genericGameActionHandler; }
+    const std::shared_ptr<creatures::TCreaturesGameActionHandler>& creaturesGameActionHandler() const
+    {
+        return m_creaturesGameActionHandler;
+    }
+    const std::shared_ptr<TPlayerGameActionHandler>& playerGameActionHandler() const { return m_playerGameActionHandler; }
+    const std::shared_ptr<container::TContainerGameActionHandler>& containerGameActionHandler() const
+    {
+        return m_containerGameActionHandler;
+    }
+    const std::shared_ptr<worldmap::TWorldMapGameActionHandler>& worldMapGameActionHandler() const
+    {
+        return m_worldMapGameActionHandler;
+    }
+    const std::shared_ptr<input::TUseWithGameActionHandler>& useWithGameActionHandler() const { return m_useWithGameActionHandler; }
+    const std::shared_ptr<input::TCrossHairSpellGameActionHandler>& crossHairSpellGameActionHandler() const
+    {
+        return m_crossHairSpellGameActionHandler;
+    }
+    const std::shared_ptr<input::TGatherAllProtocolMessageHandler>& gatherAllProtocolMessageHandler() const
+    {
+        return m_gatherAllProtocolMessageHandler;
+    }
 
     /// Host shim until the analysers, quick loot, Cyclopedia map and skill
     /// wheel storages are the session's: the game client hands in its own
@@ -613,6 +671,7 @@ private:
     std::shared_ptr<protocol::TProtocolMessageQueue> m_protocolMessageQueue;
     std::shared_ptr<worldmap::TWorldMapViewport> m_worldMapViewport;
     std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_creatureMovementSpeedCalculator;
+    std::shared_ptr<renderer::TWorldMapCamera> m_worldMapCamera;
     std::shared_ptr<TPlayerData> m_playerData;
     std::shared_ptr<TPlayerSkillStats> m_playerSkillStats;
     std::shared_ptr<questlog::TQuestLogStorage> m_questLogStorage;
@@ -661,11 +720,17 @@ private:
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
     std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
+    std::shared_ptr<worldmap::TWorldMapPicker> m_worldMapPicker;
     std::shared_ptr<worldmap::TCreatureHUDRenderProvider> m_creatureHUDRenderProvider;
+    std::shared_ptr<creatures::TBattleListRenderProvider> m_battleListRenderProvider;
+    std::shared_ptr<gamewindow::TBattleListGameActionHandler> m_battleListGameActionHandler;
     std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
     std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     std::shared_ptr<renderer::TNextFrameUpdater> m_nextFrameUpdater;
+    std::shared_ptr<input::TGenericChatGameActionProvider> m_genericChatGameActionProvider;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_worldMapGameActionProvider;
+    std::shared_ptr<chat::TChatGameActionProvider> m_chatGameActionProvider;
+    std::shared_ptr<creatures::TVipWidgetGameActionProvider> m_vipWidgetGameActionProvider;
     /// qtclient's status line and centre messages go to the session's texts.
     std::shared_ptr<chat::TGameMessageHandler> m_gameMessageHandler;
     std::shared_ptr<chat::TTextStorage> m_textStorage;

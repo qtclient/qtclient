@@ -217,7 +217,8 @@ class TFriendsProtocolMessageHandler final : public cip::tibia::friends::TFriend
 {
     Q_OBJECT
 public:
-    explicit TFriendsProtocolMessageHandler(TFriendsStorage* storage, QObject* parent = nullptr);
+    /// The handler keeps the session's friends storage.
+    explicit TFriendsProtocolMessageHandler(std::shared_ptr<TFriendsStorage> storage);
 
     void handleFriendSystemDataMessage(const ::tibia::protobuf::protocol::GameserverMessageFriendSystemData& message);
 
@@ -232,7 +233,7 @@ Q_SIGNALS:
     void sendFriendSystemAction(const ::tibia::protobuf::protocol::GameclientMessageFriendSystemAction& FriendSystemActionMessage);
 
 private:
-    TFriendsStorage* m_storage;
+    std::shared_ptr<TFriendsStorage> m_storage;
 };
 
 /// The FriendSystemData data types (CIP's switch in handleFriendSystemDataMessage).

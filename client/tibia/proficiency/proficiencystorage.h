@@ -7,11 +7,15 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <unordered_map>
 #include <vector>
 
 namespace tibia {
+namespace appearances {
+class TAppearancesManager;
+}
 namespace proficiency {
 
 /// One perk of the proficiencies JSON (CIP: the std::variant of
@@ -101,7 +105,8 @@ class TProficiencyStorage final : public QObject
 {
     Q_OBJECT
 public:
-    explicit TProficiencyStorage(QObject* parent = nullptr);
+    /// The storage keeps the game client's appearances manager.
+    explicit TProficiencyStorage(std::shared_ptr<appearances::TAppearancesManager> appearancesManager);
     ~TProficiencyStorage() override;
     static TProficiencyStorage* instance();
     /// The game client's new session (or none) starts without the weapons'
@@ -170,6 +175,7 @@ private:
     void setTables(const std::vector<TProficiencyInfo>& proficiencies) const;
     int reachedLevel(uint16_t typeId, int count) const;
 
+    std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
     std::unordered_map<uint16_t, TProficiencyData> m_data;
     mutable std::map<uint32_t, TProficiencyInfo> m_tables;
     mutable bool m_tablesLoaded = false;

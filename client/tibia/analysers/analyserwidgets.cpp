@@ -727,17 +727,23 @@ qint64 experienceForLevel(const qint64 level)
     return ((50 * l * l * l) - (150 * l * l) + (400 * l)) / 3;
 }
 
-qint64 experienceToNextLevel()
+qint64 experienceToNextLevel(const qint64 experience, const int level)
+{
+    const qint64 needed = experienceForLevel(level);
+    return needed > experience ? needed - experience : 0;
+}
+
+qint64 localPlayerExperienceToNextLevel()
 {
     if (!tibia::game::hasLocalPlayer())
         return 0;
-    const int level = tibia::game::localPlayerLevel();
-    return std::max<qint64>(0, experienceForLevel(level + 1) - static_cast<qint64>(tibia::game::localPlayerExperience()));
+    return experienceToNextLevel(static_cast<qint64>(tibia::game::localPlayerExperience()),
+                                 static_cast<uint16_t>(tibia::game::localPlayerLevel() + 1));
 }
 
 }
 
-QString TProgressWidgetController::experiencePointsNeededForNextLevel() const { return format::grouped(experienceToNextLevel()); }
+QString TProgressWidgetController::experiencePointsNeededForNextLevel() const { return format::grouped(localPlayerExperienceToNextLevel()); }
 
 double TProgressWidgetController::playerLevelProgress() const
 {
@@ -750,7 +756,7 @@ QString TProgressWidgetController::timeToNextLevel() const
     const double perMinute = m_storage->finalXp().perSecond() * 60.0;
     if (perMinute <= 0.0)
         return QStringLiteral("-");
-    const double minutes = static_cast<double>(experienceToNextLevel()) / perMinute;
+    const double minutes = static_cast<double>(localPlayerExperienceToNextLevel()) / perMinute;
     if (minutes >= 6000.0)
         return QStringLiteral("-");
     return format::minutes(static_cast<qint64>(minutes));

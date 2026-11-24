@@ -6,6 +6,7 @@
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -188,40 +189,44 @@ void TCyclopediaMapDialogController::connectToGameSession(const std::shared_ptr<
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();
+    m_confirmDialog->dialog()->close();
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_storage = session ? session->cyclopediaMapStorage() : nullptr;
     m_configuration = session ? session->cyclopediaMapCharacterConfigurationStorage() : nullptr;
-    m_selection = TNoSelection{};
+    // Host: the map item draws the session's map storage.
     if (m_renderer)
         m_renderer->setStorage(m_storage.get());
-    if (!m_storage)
+    if (!session)
         return;
-    cyclopedia::TCyclopediaMapStorage* storage = m_storage.get();
     using Base = cip::tibia::gamewindow::TCyclopediaMapDialogController;
+    // The character's configuration loaded: the stored selection comes back.
+    m_sessionConnections.push_back(connect(session->characterConfigurationManager().get(),
+                                           &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                           &TCyclopediaMapDialogController::showDialogTab));
+    // The time of day the map shows.
+    m_ambientLight = session->ambientLightStorage();
+    worldmap::TAmbientLightStorage* ambientLight = m_ambientLight.get();
+    m_sessionConnections.push_back(connect(ambientLight, &worldmap::TAmbientLightStorage::normalizedTibiaTimeOfDayWasChanged, this,
+                                           &TCyclopediaMapDialogController::updateTimeDisplay));
+    m_sessionConnections.push_back(connect(ambientLight, &worldmap::TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged, this,
+                                           &TCyclopediaMapDialogController::updateTimeDisplay));
+    updateTimeDisplay();
+    // Viewpoints, areas and donations: the selection's info is rebuilt.
+    cyclopedia::TCyclopediaMapStorage* storage = m_storage.get();
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::viewpointsChanged, this,
                                            &TCyclopediaMapDialogController::refreshSelection));
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::areaAndSubAreaDataChanged, this,
                                            &TCyclopediaMapDialogController::refreshSelection));
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::areaDonationsChanged, this,
                                            &TCyclopediaMapDialogController::refreshSelection));
+    // The player's data holds the gold.
+    m_sessionConnections.push_back(connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this,
+                                           &Base::goldBalanceChanged));
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::playerAreaChanged, this, &Base::currentPlayerAreaChanged));
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::playerPositionChanged, this,
                                            &Base::currentPlayerSubAreaIDChanged));
     m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::explorationRewardAmountGoStrengthChanged, this,
                                            &Base::explorationRewardAmountGoStrengthChanged));
-    refreshSelection();
-}
-
-void TCyclopediaMapDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
-{
-    if (m_ambientLight)
-        disconnect(m_ambientLight, nullptr, this, nullptr);
-    m_ambientLight = ambientLight;
-    if (ambientLight) {
-        connect(ambientLight, &worldmap::TAmbientLightStorage::normalizedTibiaTimeOfDayWasChanged, this, &TCyclopediaMapDialogController::updateTimeDisplay);
-        connect(ambientLight, &worldmap::TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged, this, &TCyclopediaMapDialogController::updateTimeDisplay);
-        updateTimeDisplay();
-    }
 }
 
 void TCyclopediaMapDialogController::setInstanceStorage(mods::InstanceBackend* instance) { m_instance = instance; }

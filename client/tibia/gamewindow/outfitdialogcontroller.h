@@ -1,17 +1,20 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
-#include <client/position.h>
 
 #include <QJsonArray>
 
-class Outfit;
+#include <memory>
+#include <unordered_set>
 
 namespace tibia {
-namespace qmlcomponents {
-class TOutfitPresetQmlType;
+namespace game {
+class IGameSession;
+class TOutfitDialogStorage;
+class TSelectOutfitDialogData;
 }
 }
 
@@ -114,7 +117,9 @@ private:
 };
 
 /// The outfit window, outfitdialog/OutfitDialog.qml (CIP:
-/// TSelectOutfitDialogController). Only SelectOutfit mode is served.
+/// TSelectOutfitDialogController). Shows the session's latest select outfit
+/// dialog data whenever the player handler asks for the dialog; the mode of
+/// that data decides what the dialog edits and what a confirm sends.
 class TSelectOutfitDialogController final : public TDialogController<cip::tibia::gamewindow::TSelectOutfitDialogController>
 {
     Q_OBJECT
@@ -122,37 +127,14 @@ public:
     explicit TSelectOutfitDialogController(QObject* parent = nullptr);
     ~TSelectOutfitDialogController() override;
 
-    struct WindowOptions
-    {
-        bool mounted = false;
-        bool randomMount = false;
-        /// qtclient ChooseOutfit tryOutfitMode (0 own, 3 hireling, 5 show-off podium).
-        int tryOutfitMode = 0;
-        /// Male/female outfit pairs (only sent with the both-genders modes).
-        QList<QPair<int, int>> genderPairs;
-        /// Store offer id per outfit / mount / summon of the message.
-        QList<int> outfitOffers;
-        QList<int> mountOffers;
-        QList<int> summonOffers;
-        /// Mode 5 (ConfigureShowOffSocket) podium target.
-        Position podiumPosition;
-        uint16_t podiumItemId = 0;
-        uint8_t podiumStackpos = 0;
-        bool podiumVisible = true;
-        bool podiumShowOutfit = true;
-        uint8_t podiumDirection = 2;
-    };
-
-    /// The trailing options of the outfit window message.
-    void setWindowOptions(WindowOptions options);
-    /// Fills the models from the outfit window message and shows the dialog.
-    void open(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits, QList<TCustomiseCharacterModel::Entry> mounts,
-              QList<TCustomiseCharacterModel::Entry> summons);
-    /// Character-info outfit/mount/summon tile (CIP EDialogMode::CharacterInfoShowSelection).
-    /// The shown character's lists, `current` selecting the clicked appearance.
-    void openCharacterInfoSelection(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits,
-                                    QList<TCustomiseCharacterModel::Entry> mounts, QList<TCustomiseCharacterModel::Entry> summons,
-                                    bool isOutfit, bool isMount, bool isSummonSkin);
+    /// Follows the session's player handler and character configuration: closes
+    /// the rename dialog, opens the dialog on showSelectOutfitDialog and reloads
+    /// the presets when either preset list changes.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Shows the outfit dialog storage's current data: the outfit, mount and
+    /// summon lists (with the owned ids), the random mount flag, then creates
+    /// and shows the dialog and loads the presets.
+    void onShowSelectOutfitDialog();
 
     void onCancelClicked() override;
     void onClickedOpenStoreOffer(int offerID) override;
@@ -167,10 +149,13 @@ public:
     void copyToClipboard(QObject* pData) override;
     QObject* createFromClipboard() override;
     void onPresetNameEntered(const QString& PlayerName);
+    EDialogMode dialogMode() const override;
     bool showOutfit() const override;
     bool showSocket() const override;
     cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::ECreatureLookDirection direction() const override;
     bool isMounted() const override;
+    cip::tibia::qmlcomponents::TOutfitPresetQmlType* selectedOutfitPreset() const override;
+    QVariantList hsvColors() const override;
     QVariantMap initialDialogProperties() const override;
 
 private:
@@ -179,7 +164,14 @@ private:
     const QJsonArray* presetList() const;
     /// The character configuration storage announces the edited presets.
     void savePresets();
+    /// Clears the add-ons of each offered outfit its appearance cannot show.
+    void removeUnsupportedAddOns();
 
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    int m_renameIndex = -1;
+    /// The owned outfits (and their other-gender twins), mounts and summons.
+    std::unordered_set<uint16_t> m_ownedIds;
     TCustomiseCharacterModel m_outfits;
     TCustomiseCharacterModel m_mounts;
     TCustomiseCharacterModel m_summons;
@@ -187,10 +179,9 @@ private:
     TCustomizeCharacterSortProxyModel m_mountsProxy;
     TCustomizeCharacterSortProxyModel m_summonsProxy;
     TOutfitPresetsModel m_presets;
-    tibia::qmlcomponents::TOutfitPresetQmlType* m_preset;
-    TGenericEnterTextDialogController* m_renameDialog = nullptr;
-    int m_renameIndex = -1;
-    WindowOptions m_windowOptions;
+    std::shared_ptr<game::TSelectOutfitDialogData> m_dialogData;
+    std::shared_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
+    TGenericEnterTextDialogController* m_renameDialog;
 };
 
 }

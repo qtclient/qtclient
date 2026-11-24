@@ -5333,36 +5333,19 @@
           "label": "optional"
         },
         {
-          "name": "head",
-          "type": "uint32",
+          "name": "colors",
+          "type": "OutfitColor",
           "number": 2,
-          "label": "optional"
-        },
-        {
-          "name": "body",
-          "type": "uint32",
-          "number": 3,
-          "label": "optional"
-        },
-        {
-          "name": "legs",
-          "type": "uint32",
-          "number": 4,
-          "label": "optional"
-        },
-        {
-          "name": "feet",
-          "type": "uint32",
-          "number": 5,
           "label": "optional"
         },
         {
           "name": "addons",
           "type": "uint32",
-          "number": 6,
+          "number": 3,
           "label": "optional"
         }
-      ]
+      ],
+      "note": "CIP Outfit: look type, the four colours (OutfitColor) and the addons."
     },
     "ProtocolFriendSettingChange": {
       "fields": [
@@ -5739,6 +5722,157 @@
         }
       ],
       "note": "CIP GameEventTypeAreaUnlocked: the unlocked area."
+    },
+    "OutfitColor": {
+      "fields": [
+        {
+          "name": "head",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "body",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "legs",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "feet",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP OutfitColor."
+    },
+    "MountAndSummonOutfitData": {
+      "fields": [
+        {
+          "name": "mount_look_type",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "mount_colors",
+          "type": "OutfitColor",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "familiar_look_type",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "random_mount",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "mounted",
+          "type": "bool",
+          "number": 6,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP MountAndSummonOutfitData (no field 1 in the client's schema)."
+    },
+    "ShowOffSocketTarget": {
+      "fields": [
+        {
+          "name": "position",
+          "type": "ProtocolCoordinate",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "stack_position",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP ShowOffSocketTarget: the podium (coordinate, stack position, object type)."
+    },
+    "ShowOffSocketData": {
+      "fields": [
+        {
+          "name": "target",
+          "type": "ShowOffSocketTarget",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "mount_look_type",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "mount_colors",
+          "type": "OutfitColor",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "direction",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "podium_visible",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP ShowOffSocketData: SetOutfit type 2 (an outfit on a podium)."
+    },
+    "ShowOffSocketConfiguration": {
+      "fields": [
+        {
+          "name": "target",
+          "type": "ShowOffSocketTarget",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "podium_visible",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "monster_visible",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "direction",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP ShowOffSocketConfiguration: a creature podium's configuration."
     }
   },
   "GameserverMessagePartyLeft": {
@@ -12711,39 +12845,9 @@
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "configuration",
+        "type": "ShowOffSocketConfiguration",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "object_id",
-        "type": "uint32",
-        "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "direction",
-        "type": "uint32",
-        "number": 5,
-        "label": "optional"
-      },
-      {
-        "name": "podium_visible",
-        "type": "bool",
-        "number": 6,
-        "label": "optional"
-      },
-      {
-        "name": "monster_visible",
-        "type": "bool",
-        "number": 7,
         "label": "optional"
       }
     ],
@@ -13448,73 +13552,32 @@
         "label": "optional"
       },
       {
-        "name": "look",
+        "name": "outfit",
         "type": "ProtocolOutfitLook",
         "number": 2,
         "label": "optional"
-      },
-      {
-        "name": "mount",
-        "type": "ProtocolOutfitLook",
-        "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "mounted",
-        "type": "bool",
-        "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "familiar",
-        "type": "uint32",
-        "number": 5,
-        "label": "optional"
-      },
-      {
-        "name": "random_mount",
-        "type": "bool",
-        "number": 6,
-        "label": "optional"
-      },
-      {
-        "name": "hireling_id",
-        "type": "uint32",
-        "number": 7,
-        "label": "optional"
-      },
-      {
-        "name": "position",
-        "type": "ProtocolCoordinate",
-        "number": 8,
-        "label": "optional"
-      },
-      {
-        "name": "object_id",
-        "type": "uint32",
-        "number": 9,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 10,
-        "label": "optional"
-      },
-      {
-        "name": "direction",
-        "type": "uint32",
-        "number": 11,
-        "label": "optional"
-      },
-      {
-        "name": "podium_visible",
-        "type": "bool",
-        "number": 12,
-        "label": "optional"
       }
     ],
-    "note": "CIP TProtobufClientMessageTranslator::v42."
+    "oneofs": {
+      "outfit_data": [
+        {
+          "name": "mount_and_summon_data",
+          "type": "MountAndSummonOutfitData",
+          "number": 3
+        },
+        {
+          "name": "hireling_id",
+          "type": "uint32",
+          "number": 4
+        },
+        {
+          "name": "show_off_socket_data",
+          "type": "ShowOffSocketData",
+          "number": 5
+        }
+      ]
+    },
+    "note": "CIP TProtobufClientMessageTranslator::v42: outfit type 0 (player, mount and summon data), 1 (hireling id), 2 (show-off socket data)."
   },
   "GameclientMessageMount": {
     "fields": [

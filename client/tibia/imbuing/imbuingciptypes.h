@@ -12,6 +12,7 @@
 #include <QString>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tibia::protobuf::protocol {
@@ -20,6 +21,13 @@ class GameserverMessageDead;
 class GameserverMessageImbuementDurations;
 class GameserverMessageImbuingDialogRefresh;
 class GameserverMessageShowMessageDialog;
+}
+
+namespace tibia::protocol {
+class TGameActionContextHelper;
+}
+namespace tibia::shared {
+class IClockService;
 }
 
 namespace tibia {
@@ -75,8 +83,13 @@ class TImbuingProtocolMessageHandler final : public cip::tibia::imbuing::TImbuin
 {
     Q_OBJECT
 public:
-    TImbuingProtocolMessageHandler(TImbuingStorage* imbuingStorage, TImbuementDurationsStorage* imbuementDurationsStorage,
-                                   QObject* parent = nullptr);
+    /// The handler keeps the session's imbuing storages, its game action
+    /// context helper and its clock. Host: the appearance instance factory is
+    /// static in qtclient.
+    TImbuingProtocolMessageHandler(std::shared_ptr<TImbuingStorage> imbuingStorage,
+                                   std::shared_ptr<protocol::TGameActionContextHelper> gameActionContextHelper,
+                                   std::shared_ptr<TImbuementDurationsStorage> imbuementDurationsStorage,
+                                   std::shared_ptr<shared::IClockService> clockService);
 
     /// The whole refresh goes to the storage; the dialog then shows or updates.
     void handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message);
@@ -88,8 +101,10 @@ public:
     void handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage);
 
 private:
-    TImbuingStorage* m_imbuingStorage;
-    TImbuementDurationsStorage* m_imbuementDurationsStorage;
+    std::shared_ptr<TImbuingStorage> m_imbuingStorage;
+    std::shared_ptr<protocol::TGameActionContextHelper> m_gameActionContextHelper;
+    std::shared_ptr<TImbuementDurationsStorage> m_imbuementDurationsStorage;
+    std::shared_ptr<shared::IClockService> m_clockService;
 };
 
 }

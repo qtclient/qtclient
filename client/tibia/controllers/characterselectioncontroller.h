@@ -2,6 +2,7 @@
 
 #include "authentication/authenticationjsondocumenthelper.h"
 #include "gamewindow/characterinformationmodeldata.h"
+#include "gamewindow/dialogmanager.h"
 
 #include <cip_gen.h>
 
@@ -9,6 +10,17 @@
 #include <QList>
 #include <QString>
 #include <QTimer>
+
+#include <cstdint>
+#include <map>
+#include <memory>
+
+class QQmlEngine;
+class QQuickItem;
+
+namespace tibia::game {
+class TPremiumMessage;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -30,20 +42,26 @@ struct TCharacterLoginData
     bool isMale = false;
 };
 
-/// CharacterSelection.qml's controller (CIP TCharacterSelectionController).
-/// It keeps the account's characters and worlds; sorting, the hidden
-/// characters, the outfits and the pinned characters are client options.
-class TCharacterSelectionController : public cip::tibia::gamewindow::TCharacterSelectionController
+/// CharacterSelection.qml's controller (CIP TCharacterSelectionController), a
+/// dialog controller: it makes, shows and closes its own dialog. It keeps the
+/// account's characters and worlds and the premium features the dialog
+/// advertises; sorting, the hidden characters, the outfits and the pinned
+/// characters are client options.
+class TCharacterSelectionController : public TDialogController<cip::tibia::gamewindow::TCharacterSelectionController>
 {
     Q_OBJECT
 public:
-    explicit TCharacterSelectionController(QObject* parent = nullptr);
+    /// Without an engine and parent item the dialog uses the dialog stack's.
+    explicit TCharacterSelectionController(QQmlEngine* engine = nullptr, QQuickItem* dialogParentItem = nullptr,
+                                           QObject* parent = nullptr);
+    ~TCharacterSelectionController() override;
     bool clientSettingSmoothFiltering() const override;
 
-    /// The selection is shown: the auto-close and server save timers run, and
-    /// the application's input events keep it open.
+    /// The dialog is made and shown with three freshly picked premium
+    /// features; the auto-close and server save timers run, and the
+    /// application's input events keep it open.
     virtual void open();
-    /// The selection is hidden: its timers stop and input is no longer watched.
+    /// The dialog closes; its timers stop and input is no longer watched.
     virtual void close();
 
     /// CIP: the account line - frozen (state 1), suspended (state 2), else
@@ -80,7 +98,10 @@ public:
     bool showOutfits() const override;
     bool recoverySetupComplete() const override { return m_recoverySetupComplete; }
 
+    /// Cancel: the dialog closes and the selection aborts.
     void onCancelClicked() override;
+    /// The dialog's item goes (the controller stays).
+    void onControllerFinished() override;
     void onCharacterSelectionConfirmed(const QList<int>& SelectedCharacters) override;
     void onOptionsChanged() override;
     void setShowHiddenCharacters(bool Show) override;
@@ -111,6 +132,11 @@ Q_SIGNALS:
     void requestCharacterLogin(const tibia::gamewindow::TCharacterLoginData& LoginData);
 
 private:
+    /// The premium features shown: one of the preferred ones and two more of
+    /// all, picked at random, each feature at most once.
+    void refreshPremiumFeatures();
+    /// The table rows go (on destruction).
+    void clearCharacterList();
     /// The character named `name` (case-sensitive), the first one when none
     /// is; -1 for an empty name.
     int characterIndex(const QString& name) const;
@@ -126,6 +152,8 @@ private:
     authentication::TWorldList m_worlds;
     /// Watches the application's input while the selection is open.
     TPreventAutoCloseEventFilter* m_preventAutoCloseEventFilter;
+    /// Every premium feature with its large icon, by feature id.
+    std::map<uint8_t, std::shared_ptr<game::TPremiumMessage>> m_premiumFeatures;
     QCollator m_collator;
     /// Single shot: closes the selection after thirty seconds without input.
     QTimer m_autocloseTimer;

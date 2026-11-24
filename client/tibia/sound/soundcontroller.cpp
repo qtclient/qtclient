@@ -1,13 +1,13 @@
 #include "sound/soundcontroller.h"
 #include "game/gamesessionbase.h"
 
+#include "creatures/creaturestorage.h"
+#include "game/playerdata.h"
 #include "input/gameaction.h"
 
 #include "sound/gamesessionsoundprovider.h"
 #include "sound/objectsoundcontroller.h"
 #include "sound/soundstorage.h"
-
-#include <tibia/game/gamesession.h>
 
 namespace tibia::sound {
 
@@ -46,7 +46,8 @@ TSoundController::~TSoundController()
 {
     if (g_soundController == this)
         g_soundController = nullptr;
-    disconnect(m_providerConnection);
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
 }
 
 void TSoundController::update(const int64_t nowMs)
@@ -58,15 +59,6 @@ void TSoundController::update(const int64_t nowMs)
     m_combatSound->update(nowMs);
 }
 
-void TSoundController::setGameSessionSoundProvider(std::shared_ptr<TGameSessionSoundProvider> provider)
-{
-    disconnect(m_providerConnection);
-    m_provider = std::move(provider);
-    if (m_provider)
-        m_providerConnection = connect(m_provider.get(), &TGameSessionSoundProvider::soundsToPlayChanged, this,
-                                       &TSoundController::onEffectSoundsChanged);
-}
-
 void TSoundController::onEffectSoundsChanged()
 {
     if (!m_deferredEffectSoundsTimer.isActive())
@@ -75,18 +67,28 @@ void TSoundController::onEffectSoundsChanged()
 
 void TSoundController::deferredPlayChangedEffectSounds()
 {
-    if (!m_provider || !m_provider->soundStorage())
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
         return;
-    // CipSoft follows the player's position signal; qtclient reads it here.
-    if (tibia::game::hasLocalPlayer())
-        onPlayerPositionChanged(tibia::game::localPlayerPosition());
-    const std::vector<TSoundToPlay> sounds = m_provider->soundStorage()->soundsToPlay();
+    const std::vector<TSoundToPlay> sounds = session->gameSessionSoundProvider()->soundStorage()->takeSoundsToPlay();
     m_combatSound->playEffectSounds(sounds);
 }
 
-void TSoundController::onPlayerPositionChanged(const Position& position)
+void TSoundController::connectToPlayerPositionWasUpdated()
 {
-    m_combatSound->setPlayerPosition(position);
+    m_gameSessionConnections.push_back(connect(m_playerCreature.get(), &creatures::TCreature::positionWasUpdated, this,
+                                               &TSoundController::onPlayerPositionChanged, Qt::QueuedConnection));
+}
+
+void TSoundController::onPlayerPositionChanged(const tibia::worldmap::TWorldMapCoordinate position)
+{
+    m_combatSound->setPlayerPosition(position.toPosition());
+}
+
+void TSoundController::onPlayerDataChanged()
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_music->setPlayerFlag(session ? session->playerData()->isFighting() : false);
 }
 
 void TSoundController::onAmbienceObjectStreamCountChanged(const uint16_t soundEffectId, const size_t count,
@@ -162,10 +164,29 @@ void TSoundController::onQueuedSoundsTimerTriggered()
 
 void tibia::sound::TSoundController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    disconnect(m_objectSoundConnection);
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
-    if (session && session->objectSoundController())
-        m_objectSoundConnection = connect(session->objectSoundController().get(), &TObjectSoundController::ambienceObjectStreamCountChanged,
-                                          this, &TSoundController::onAmbienceObjectStreamCountChanged);
+    m_gameSession = GameSession;
+    // qtclient's sessions are TGameSessionBase; CIP asks the IGameSession.
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->gameSessionSoundProvider().get(),
+                                               &TGameSessionSoundProvider::soundsToPlayChanged, this,
+                                               &TSoundController::onEffectSoundsChanged));
+    m_playerCreature = session->playerCreature().lock();
+    if (m_playerCreature) {
+        // A session that already has its player only follows the position.
+        connectToPlayerPositionWasUpdated();
+        return;
+    }
+    m_gameSessionConnections.push_back(connect(session, &game::TGameSessionBase::playerCreatureAddedToCreatureStorage, this,
+                                               [this](const std::weak_ptr<creatures::TCreature>& pPlayer) {
+                                                   m_playerCreature = pPlayer.lock();
+                                                   connectToPlayerPositionWasUpdated();
+                                               }));
+    m_gameSessionConnections.push_back(connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this,
+                                               &TSoundController::onPlayerDataChanged));
+    m_gameSessionConnections.push_back(connect(session->objectSoundController().get(),
+                                               &TObjectSoundController::ambienceObjectStreamCountChanged, this,
+                                               &TSoundController::onAmbienceObjectStreamCountChanged));
+    onPlayerDataChanged();
 }

@@ -1,5 +1,8 @@
 #include "client/gameclientbase.h"
 
+#include "appearances/appearanceinstance.h"
+#include "appearances/appearanceinstancetracker.h"
+#include "appearances/genericstorage.h"
 #include "assets/assetasyncloader.h"
 #include "assets/things.h"
 #include "client/gamecore.h"
@@ -7,6 +10,7 @@
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameactionrouter.h"
 #include "game/passiveabilityinfostorage.h"
+#include "game/traderstorage.h"
 #include "proficiency/proficiencystorage.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "renderer/spritetextureprovider.h"
@@ -18,7 +22,9 @@
 #include "sound/soundplayermanager.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "spells/spellinfostorage.h"
+#include "sprites/resourcespritesmanager.h"
 #include "sprites/spriteresolver.h"
+#include "sprites/spritesheetmanager.h"
 #include "sprites/spritesystem.h"
 
 #include <QObject>
@@ -38,7 +44,7 @@ TGameClientBase::TGameClientBase(QQmlEngine* Engine,
     , m_pAppearancesManager(std::make_shared<appearances::TAppearancesManager>())
     , m_pCyclopediaMapStaticDataStorage(std::make_shared<cyclopedia::TCyclopediaMapStaticDataStorage>())
     , m_pPassiveAbilityInfoStorage(std::make_unique<game::TPassiveAbilityInfoStorage>())
-    , m_pProficiencyStorage(std::make_unique<proficiency::TProficiencyStorage>())
+    , m_pProficiencyStorage(std::make_unique<proficiency::TProficiencyStorage>(m_pAppearancesManager))
 {
     appearances::TAppearancesManager::setInstance(m_pAppearancesManager.get());
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(m_pCyclopediaMapStaticDataStorage.get());
@@ -60,6 +66,8 @@ void TGameClientBase::initialize()
     initializeSound();
     initializeQmlContext();
     initializeAssets();
+    initializeSpriteResolver();
+    initializeAppearanceInstanceFactory();
     emitInitialized();
 }
 
@@ -75,6 +83,9 @@ void TGameClientBase::setMainWindow(QQuickWindow* MainWindow)
 
 void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
 {
+    if (m_pAppearanceInstanceGenericStoragesManager)
+        m_pAppearanceInstanceGenericStoragesManager->updateWithTimestamp(Timestamp);
+    // Host: qtclient's sound controller catches up with the frame here.
     if (m_pSoundController)
         m_pSoundController->update(Timestamp);
     if (m_pSoundManager)
@@ -84,8 +95,35 @@ void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
 
 void TGameClientBase::initializeStorages()
 {
+    m_pTraderStorage = std::make_shared<game::TTraderStorage>();
+    m_pResourceSpritesManager = std::make_shared<sprites::TResourceSpritesManager>();
     createSpellInfoStorage();
 }
+
+void TGameClientBase::initializeSpriteResolver()
+{
+    QObject::connect(&sprites::TSpriteSystem::instance().spritesheets(),
+                     &sprites::TSpritesheetManager::spritesheetUncompressFailed, m_pResourceSpritesManager.get(),
+                     [this](const sprites::TSpritesheetID& SpritesheetID) { onSpritesheetUncompressFailed(SpritesheetID); });
+    m_pEngine->rootContext()->setContextProperty(QStringLiteral("ResourceSpritesManager"), m_pResourceSpritesManager.get());
+}
+
+void TGameClientBase::initializeAppearanceInstanceFactory()
+{
+    m_pAppearanceInstanceFactory = std::make_shared<appearances::TAppearanceInstanceFactory>(m_pAppearancesManager);
+    const std::shared_ptr<appearances::TAppearanceInstanceTracker> tracker = m_pAppearanceInstanceFactory->instanceTracker();
+    QObject::connect(tracker.get(), &appearances::TAppearanceInstanceTracker::loadSpritesheetWithID,
+                     &sprites::TSpriteSystem::instance().spritesheets(), &sprites::TSpritesheetManager::getSpritesheet);
+    m_pAppearanceInstanceGenericStoragesManager =
+        std::make_shared<appearances::TAppearanceInstanceGenericStoragesManager>(appearanceInstanceFactory());
+    m_pAppearanceInstanceGenericStoragesManager->registerInQmlContext(m_pEngine->rootContext());
+}
+
+void TGameClientBase::onSpritesheetUncompressFailed(const QString&) {}
+
+void TGameClientBase::onAssetsComplete() {}
+
+void TGameClientBase::onAssetsError() {}
 
 void TGameClientBase::initializeQmlContext()
 {
@@ -161,6 +199,20 @@ std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> TGameClientBase::cy
     if (!m_pCyclopediaMapStaticDataStorage)
         throw std::logic_error("m_pCyclopediaMapStaticDataStorage was not initialized yet");
     return m_pCyclopediaMapStaticDataStorage;
+}
+
+std::shared_ptr<appearances::TAppearanceInstanceFactory> TGameClientBase::appearanceInstanceFactory() const
+{
+    if (!m_pAppearanceInstanceFactory)
+        throw std::logic_error("m_pAppearanceInstanceFactory was not initialized yet");
+    return m_pAppearanceInstanceFactory;
+}
+
+std::shared_ptr<game::TTraderStorage> TGameClientBase::traderStorage() const
+{
+    if (!m_pTraderStorage)
+        throw std::logic_error("m_pTraderStorage was not initialized yet");
+    return m_pTraderStorage;
 }
 
 std::shared_ptr<game::TGameActionRouter> TGameClientBase::gameActionRouter() const

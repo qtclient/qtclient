@@ -38,6 +38,9 @@ class GameserverMessageTalk;
 }
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace effects {
 class TEffectStorage;
 }
@@ -51,9 +54,9 @@ class TChatStorage;
 class TTextStorage;
 
 /// The ignore and white lists (CIP: chat::TWhiteBlacklist, vtable slots
-/// 12-36; option section whiteBlacklistOptions). Both lists are kept sorted
-/// by lower-case name; only permanent entries are stored. The flags are not
-/// stored: blacklist and whitelist start active, the rest off.
+/// 12-36). Both lists are kept sorted by lower-case name; only permanent
+/// entries are stored, in the client options' white/blacklist options. The
+/// flags are not stored: blacklist and whitelist start active, the rest off.
 class TWhiteBlacklist final : public cip::tibia::chat::TWhiteBlacklist
 {
     Q_OBJECT
@@ -65,7 +68,9 @@ public:
     };
     using Entries = std::vector<Entry>;
 
-    explicit TWhiteBlacklist(QObject* parent = nullptr);
+    /// Keeps the client options the lists load from and save to; the game
+    /// client loads them right after.
+    explicit TWhiteBlacklist(config::TClientOptions* pClientOptions);
 
     /// v12: allowVips looks names up in this session's VIP list.
     void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession) { m_gameSession = GameSession; }
@@ -134,6 +139,9 @@ private:
     static void sortEntries(Entries& entries);
     bool isVip(const QString& name) const;
 
+    /// +0x10 (CipSoft holds the client's options shared; qtclient's client keeps them as a pointer).
+    config::TClientOptions* m_pClientOptions;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     Entries m_blacklist;
     Entries m_whitelist;
     bool m_blacklistActive = true;
@@ -141,7 +149,6 @@ private:
     bool m_ignoreYelling = false;
     bool m_ignorePrivateMessages = false;
     bool m_allowVips = false;
-    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 /// The console side of the server's chat messages (CIP:

@@ -94,9 +94,15 @@ void TSkillWheelProtocolMessageHandler::setSkillWheelStorage(TSkillWheelStorage*
     m_storage = storage;
 }
 
-TSkillWheelProtocolMessageHandler::TSkillWheelProtocolMessageHandler(QObject* parent)
-    : cip::tibia::skillwheel::TSkillWheelProtocolMessageHandler(parent)
+TSkillWheelProtocolMessageHandler::TSkillWheelProtocolMessageHandler(
+    TSkillWheelStorage* skillWheelStorage, std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+    std::shared_ptr<cyclopedia::TCharacterInfoStorage> characterInfoStorage, std::shared_ptr<game::TPlayerData> playerData)
+    : m_storage(skillWheelStorage)
+    , m_creatureStorage(std::move(creatureStorage))
+    , m_characterInfoStorage(std::move(characterInfoStorage))
+    , m_playerData(std::move(playerData))
 {
+    // Host: the resource balances reach the handler through the engine's notify.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](const qint64 value, qint64, const int type) { handleResourceBalanceMessage(type, value); });
 }
@@ -150,7 +156,7 @@ void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const Gameserver
     QString name = qtTrId("skill_wheel_dialog_name_dummy");
     bool ownCharacter = false;
     const std::shared_ptr<creatures::TCreature> creature =
-        creatures::TCreatureStorage::instance() ? creatures::TCreatureStorage::instance()->creatureAt(m.player_id()) : nullptr;
+        m_creatureStorage ? m_creatureStorage->creatureAt(m.player_id()) : nullptr;
     if (creature) {
         ownCharacter = creature->isLocalPlayer();
         name = creature->name();

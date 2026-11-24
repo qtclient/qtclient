@@ -6,8 +6,12 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace tibia {
+namespace trade {
+struct TNPCTradeGood;
+}
 namespace input {
 
 /// CIP's game action context kinds (the v2 of every location and object
@@ -113,6 +117,20 @@ class TLocationWorldMapGameActionContext final : public IGameActionContext
 {
 public:
     EGameActionContextType gameActionContextType() const override { return EGameActionContextType::LOCATION_WORLD_MAP; }
+};
+
+/// CIP input::TLocationNpcTradeGameActionContext: a good (+0x8) of the NPC
+/// trade window; two contexts are equal when they hold the same good.
+class TLocationNpcTradeGameActionContext final : public IGameActionContext
+{
+public:
+    explicit TLocationNpcTradeGameActionContext(std::shared_ptr<const trade::TNPCTradeGood> pGood) : m_pGood(std::move(pGood)) {}
+    EGameActionContextType gameActionContextType() const override { return EGameActionContextType::LOCATION_NPC_TRADE; }
+    const std::shared_ptr<const trade::TNPCTradeGood>& good() const { return m_pGood; }
+    bool operator==(const TLocationNpcTradeGameActionContext& other) const { return m_pGood == other.m_pGood; }
+
+private:
+    std::shared_ptr<const trade::TNPCTradeGood> m_pGood;
 };
 
 /// CIP input::TLocationUnknownContext: no location (an object hotkey).

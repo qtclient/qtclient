@@ -3,12 +3,14 @@
 #include "game/serversave.h"
 #include "game/worldtype.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "game/premiummessage.h"
 
 #include "config/clientoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include "hashhelper.h"
+#include "randomnumbergenerator.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -16,6 +18,8 @@
 #include <QTimeZone>
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 namespace tibia::gamewindow {
 
@@ -39,6 +43,13 @@ QString worldColumn(const authentication::TWorld& world)
 
 QString worldRulesColumn(const authentication::TWorld& world) { return QStringList{ game::worldTypeName(world.pvpType) }.join(QStringLiteral(", ")); }
 
+/// The premium features of which one is always advertised.
+std::vector<uint8_t> preferredPremiumFeatures()
+{
+    static const std::vector<uint8_t> Features = { 0, 2, 4, 5, 1, 31 };
+    return Features;
+}
+
 /// Daily reward states in the order the column sorts them.
 int dailyRewardRank(const int state)
 {
@@ -50,10 +61,15 @@ int dailyRewardRank(const int state)
 
 bool TCharacterSelectionController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
-TCharacterSelectionController::TCharacterSelectionController(QObject* parent)
-    : cip::tibia::gamewindow::TCharacterSelectionController(parent)
+TCharacterSelectionController::TCharacterSelectionController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("CharacterSelection.qml"), engine, dialogParentItem, parent)
     , m_preventAutoCloseEventFilter(new TPreventAutoCloseEventFilter(this))
 {
+    // Every premium feature (there is no 13) with its 32x32 icon.
+    for (uint8_t feature = 0; feature <= 0x23; ++feature) {
+        if (feature != 0xd)
+            m_premiumFeatures[feature] = std::make_shared<game::TPremiumMessage>(feature, true);
+    }
     m_lastServerSaveCheck = uint(QDateTime::currentSecsSinceEpoch());
     m_recoverySetupComplete = false;
     m_collator.setNumericMode(true);
@@ -70,8 +86,47 @@ TCharacterSelectionController::TCharacterSelectionController(QObject* parent)
     onOptionsChanged();
 }
 
+TCharacterSelectionController::~TCharacterSelectionController()
+{
+    clearCharacterList();
+    m_premiumFeaturesModel.clear();
+    Q_EMIT premiumFeaturesChanged();
+}
+
+void TCharacterSelectionController::clearCharacterList()
+{
+    const QList<QObject*> rows = std::exchange(m_characterList, {});
+    Q_EMIT characterListChanged();
+    for (QObject* row : rows)
+        delete row;
+}
+
+void TCharacterSelectionController::refreshPremiumFeatures()
+{
+    m_premiumFeaturesModel.clear();
+    Q_EMIT premiumFeaturesChanged();
+    std::vector<uint8_t> features;
+    for (const auto& entry : m_premiumFeatures)
+        features.push_back(entry.first);
+    std::vector<uint8_t> preferred = preferredPremiumFeatures();
+    if (features.size() > 2 && !preferred.empty()) {
+        const auto pick = [this, &features, &preferred](const uint8_t feature) {
+            m_premiumFeaturesModel.append(m_premiumFeatures[feature].get());
+            std::erase(preferred, feature);
+            std::erase(features, feature);
+        };
+        pick(preferred[shared::TRandomNumberGenerator::instance()->getRandomUnsignedLong(0, preferred.size() - 1)]);
+        for (int i = 1; i < 3; ++i)
+            pick(features[shared::TRandomNumberGenerator::instance()->getRandomUnsignedLong(0, features.size() - 1)]);
+    }
+    Q_EMIT premiumFeaturesChanged();
+}
+
 void TCharacterSelectionController::open()
 {
+    refreshPremiumFeatures();
+    dialog()->create();
+    dialog()->show();
     m_autocloseTimer.start();
     m_serverSaveTimer.start();
     if (QCoreApplication* application = QCoreApplication::instance())
@@ -82,9 +137,12 @@ void TCharacterSelectionController::close()
 {
     if (QCoreApplication* application = QCoreApplication::instance())
         application->removeEventFilter(m_preventAutoCloseEventFilter);
+    dialog()->close();
     m_autocloseTimer.stop();
     m_serverSaveTimer.stop();
 }
+
+void TCharacterSelectionController::onControllerFinished() { dialog()->destroy(); }
 
 void TCharacterSelectionController::onAutocloseTimer()
 {
@@ -309,7 +367,7 @@ void TCharacterSelectionController::sortCharacterList()
 
 void TCharacterSelectionController::onCancelClicked()
 {
-    // The host closes the dialog.
+    close();
     Q_EMIT abort();
 }
 

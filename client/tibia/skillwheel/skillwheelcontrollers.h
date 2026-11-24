@@ -270,6 +270,8 @@ public:
     void closeMessageDialog();
     /// CIP (the dialog's reset on this tab): the current wheel's vessels are emptied.
     void resetVessels();
+    /// The skill wheel dialog closed: back to the first page, filters and selection cleared.
+    void clearData();
     void revealGem(int GemQuality) override;
     /// The reshape the reshape dialog confirmed: the storage forgets the attempt, the server applies it.
     void reshapeGem(int GemId, int ModIdx) override;
@@ -342,6 +344,9 @@ public:
     int getFragmentCostsForGrade(int modGrade) override { return fragmentCost(modGrade); }
 
     void onModsChanged();
+    /// The skill wheel dialog closed: back to the first page, filters, selection and pending
+    /// selection cleared.
+    void clearData();
 
 private:
     TSkillWheelStorage* m_storage;

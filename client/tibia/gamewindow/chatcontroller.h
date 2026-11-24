@@ -431,7 +431,7 @@ private:
     QPointer<QQuickItem> m_chatItem;
     chat::TWhiteBlacklist m_blacklist;
     /// The current session's channels' actions (made by the connector).
-    std::optional<chat::TChatGameActionProvider> m_actionProvider;
+    std::shared_ptr<chat::TChatGameActionProvider> m_actionProvider;
     chat::TChatModeManager m_mode;
     /// CIP +0x4b0: the current session.
     std::shared_ptr<game::IGameSession> m_gameSession;

@@ -127,12 +127,8 @@ bool localPlayerAutoWalk(MapPos goal, bool retry = false,
 void localPlayerHoldDirection(tibia::client::Direction direction);
 void localPlayerReleaseDirection();
 void localPlayerRotate(tibia::client::Direction direction);
-/// Drop the walk goal and path (attacking or following a creature).
-void localPlayerClearMovementGoal();
 /// Per-frame movement step.
 void localPlayerMovementTick();
-/// The server moved or placed the local player.
-void onLocalPlayerPositionChanged(const Position& position);
 /// The server rejected a step; the player looks in `direction`.
 void localPlayerCancelWalk(tibia::client::Direction direction);
 /// The server asks to wait `ms` before the next step.
@@ -280,10 +276,6 @@ void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEnt
 void processTutorialHint(uint8_t id);
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
-void processOpenOutfitWindow(const Outfit& currentOutfit,
-                             const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
-                             const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,

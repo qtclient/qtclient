@@ -357,6 +357,16 @@ void TCreateCharacterDialogController::open(const bool accountHasNoCharacters)
     requestAccountCreationStatus();
 }
 
+void TCreateCharacterDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction->gameActionType() == input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE) {
+        cancel();
+        return;
+    }
+    if (pGameAction->gameActionType() == input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG)
+        open(input::gameActionAs<input::gameactions::TGameActionShowCreateCharacterDialog>(pGameAction)->accountIsEmpty());
+}
+
 void TCreateCharacterDialogController::showDialog()
 {
     dialog()->close();

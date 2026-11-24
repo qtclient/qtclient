@@ -7,10 +7,13 @@
 #include "client/gameclient.h"
 #include "client/preventcloseeventfilter.h"
 #include "config/clientoptions.h"
+#include "config/clientsettings.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "crashhandler.h"
+#include "downloadpool.h"
 #include "logging.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QColor>
@@ -21,6 +24,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QLocale>
+#include <QNetworkAccessManager>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -29,6 +33,8 @@
 #include <QScreen>
 #include <QSysInfo>
 #include <QVariant>
+
+#include <google/protobuf/stubs/common.h>
 
 #include <stdexcept>
 
@@ -44,7 +50,12 @@ TGameApplicationBase::TGameApplicationBase(int& argc, char** argv)
         qputenv("QT_D3D_NO_VBLANK_THREAD", "1");
 }
 
-TGameApplicationBase::~TGameApplicationBase() = default;
+TGameApplicationBase::~TGameApplicationBase()
+{
+    // Host: the QML engine goes with the application (CipSoft hands it to
+    // deleteLater); the protobuf library is shut down.
+    google::protobuf::ShutdownProtobufLibrary();
+}
 
 void TGameApplicationBase::setQmlEngine(std::unique_ptr<QQmlEngine> Engine)
 {
@@ -53,6 +64,9 @@ void TGameApplicationBase::setQmlEngine(std::unique_ptr<QQmlEngine> Engine)
 
 TGameApplication::TGameApplication(int& argc, char** argv)
     : TGameApplicationBase(argc, argv)
+    , m_pDownloadPool(std::make_shared<shared::TDownloadPool>(
+          static_cast<int>(config::clientSettingAtLeast(QStringLiteral("NETWORK"), QStringLiteral("maxConcurrentDownloads"), 5, 1)),
+          std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
     , m_pPreventCloseEventFilter(new TPreventCloseEventFilter(this))
 {
 }
@@ -66,6 +80,7 @@ TGameApplication::~TGameApplication()
     delete m_pGameClient.data();
     delete m_pClientWindow;
     m_pClientWindow = nullptr;
+    google::protobuf::ShutdownProtobufLibrary();
 }
 
 TGameClient* TGameApplication::gameClient() const
@@ -162,7 +177,7 @@ bool TGameApplication::createGameClient(const int StartMode, const TStartClient&
     // Host: qtclient's client takes the placeholder with its game window
     // (StartClient) and makes its own crash report sender.
     Q_UNUSED(StartMode);
-    m_pGameClient = new TGameClient(qmlEngine(), m_pTibiaFileSystemHelper, m_pClientOptions);
+    m_pGameClient = new TGameClient(qmlEngine(), m_pTibiaFileSystemHelper, m_pClientOptions, m_pDownloadPool);
     TGameClient* gameClient = m_pGameClient.data();
     connect(gameClient, &TGameClient::showErrorAsPopupAndCriticalLog, this,
             &TGameApplication::showErrorAsPopupAndCriticalLog);

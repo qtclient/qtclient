@@ -3,14 +3,24 @@
 #include "authentication/emailcoderequestuploader.h"
 #include "authentication/loginconfirmationcoderequestuploader.h"
 #include "authentication/loginrequestuploader.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/clientoptions.h"
 #include "controllers/characterselectioncontroller.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/playerguidewidgetcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameaction.h"
+#include "news/newsstorage.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QSysInfo>
 
 #include <algorithm>
 
@@ -204,12 +214,6 @@ void TAuthenticationProcessController::buildStateMachine()
     }
 }
 
-void TAuthenticationProcessController::setLoginCredentials(const QString& EMail, const QString& Password)
-{
-    m_loginData.email = EMail;
-    m_loginData.password = Password;
-}
-
 bool TAuthenticationProcessController::isPostLoginDialog(const EState state)
 {
     switch (state) {
@@ -362,8 +366,91 @@ void TAuthenticationProcessController::showCharacterSelection()
 
 void TAuthenticationProcessController::resetSessionData()
 {
+    m_loginData.email = QString();
+    m_loginData.password = QString();
+    m_loginData.sessionKey = QString();
+    m_loginData.loginConfirmationToken = QString();
+    // A clearance survives unless it expires within two minutes.
+    if (m_loginData.cloudflareClearance) {
+        const QNetworkCookie cookie = cloudflareClearanceCookie(*m_loginData.cloudflareClearance);
+        const bool valid =
+            cookie.isSessionCookie() || cookie.expirationDate() > QDateTime::currentDateTimeUtc().addSecs(120);
+        if (!valid)
+            m_loginData.cloudflareClearance.reset();
+    }
+    if (m_pCharacterSelectionController) {
+        m_pCharacterSelectionController->setCharacters({}, {});
+        m_pCharacterSelectionController->setLastSelectedCharacterName(QString());
+    }
+    setAuthenticated(false);
+    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+        premium->reset();
     if (m_host.resetSessionData)
         m_host.resetSessionData();
+}
+
+std::vector<gamewindow::TCharacterLoginData> TAuthenticationProcessController::characterLoginData() const
+{
+    return m_characterLoginData;
+}
+
+gamewindow::TCharacterLoginData TAuthenticationProcessController::firstCharacterLoginData() const
+{
+    if (m_characterLoginData.empty())
+        return {};
+    return m_characterLoginData.front();
+}
+
+QString TAuthenticationProcessController::trustedDeviceToken(const QString& EMail)
+{
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(EMail.toLower().toLocal8Bit());
+    hash.addData(QSysInfo::machineUniqueId());
+    QString user = QString::fromUtf8(qgetenv("USER"));
+    if (user.isEmpty())
+        user = QString::fromUtf8(qgetenv("USERNAME"));
+    hash.addData(user.toLocal8Bit());
+    hash.addData(systemsurvey::TSystemSurveyValueRetriever::cpuManufacturer().toLocal8Bit());
+    hash.addData(systemsurvey::TSystemSurveyValueRetriever::cpuBrandName().toLocal8Bit());
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+void TAuthenticationProcessController::loginWithCredentials(const QString& EMail, const QString& Password)
+{
+    using config::EClientOption;
+    config::TClientOptions* options = config::TClientOptions::instance();
+    m_loginData.email = EMail;
+    m_loginData.password = Password;
+    m_loginData.stayLoggedIn = options && options->boolOption(EClientOption::sessionRemainLoggedIn);
+    m_loginData.token = QString();
+    m_loginData.emailCode = QString();
+    if (options)
+        m_loginData.deviceCookie = options->deviceCookie(EMail);
+    m_loginData.deviceVerificationCode = QString();
+    m_loginData.trustedDeviceToken = trustedDeviceToken(EMail);
+    // The login mask's address is remembered only when the player asked for it.
+    if (options) {
+        options->setStringOption(EClientOption::loginEmailAddress,
+                                 options->boolOption(EClientOption::rememberLoginEmail) ? EMail : QString());
+    }
+    if (!m_running)
+        start();
+    else
+        Q_EMIT advanceStateMachineToLoginUpload();
+}
+
+void TAuthenticationProcessController::connectToGameSession(const std::shared_ptr<game::TGameSessionBase>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_pGameSession = GameSession;
+    if (m_pLoginRequestUploader)
+        m_pLoginRequestUploader->setGameSession(m_pGameSession);
+    if (!m_pGameSession)
+        return;
+    game::TPlayerData* playerData = m_pGameSession->playerData().get();
+    using C = TAuthenticationProcessController;
+    m_gameSessionConnections.add(connect(playerData, &game::TPlayerData::playerLevelUp, this, &C::onPlayerLevelUp));
+    m_gameSessionConnections.add(connect(playerData, &game::TPlayerData::playerDataChanged, this, &C::onPlayerDataChanged));
 }
 
 void TAuthenticationProcessController::onLoginStateMachineStartedShortcutToCharacterSelection()
@@ -478,9 +565,30 @@ void TAuthenticationProcessController::onShowLoginConfirmationInputStateLeft()
 
 void TAuthenticationProcessController::onShowCharacterSelectionStateEntered()
 {
+    const TCharacterList characters = m_pLoginRequestUploader->characters();
+    m_loginData.sessionKey = m_pLoginRequestUploader->playSessionData().sessionKey;
+    const TPlaySessionData session = m_pLoginRequestUploader->playSessionData();
+    if (news::TNewsStorage* news = news::TNewsStorage::current())
+        news->setReturnerInformation(session.isReturner, session.showRewardNews);
+    // A returner's compendium news are read again.
+    if (session.isReturner)
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
     setAuthenticated(true);
-    if (m_pCharacterSelectionController)
-        m_pCharacterSelectionController->open();
+    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+        m_pCharacterSelectionController->setPremium(premium->premiumState(), premium->remainingDays());
+    m_pCharacterSelectionController->setAccountState(static_cast<int>(session.status));
+    m_pCharacterSelectionController->setCharacters(characters, m_pLoginRequestUploader->worlds());
+    m_pCharacterSelectionController->setRecoverySetupComplete(session.recoverySetupComplete);
+    setFpsTrackingActive(session.fpsTracking);
+    setOptionsTrackingActive(session.optionTracking);
+    // A new account's only character still in the tutorial logs in at once.
+    if (characters.size() == 1 && characters.front().tutorial) {
+        m_pCharacterSelectionController->selectCharacter(characters.front().name);
+        return;
+    }
+    m_pCharacterSelectionController->open();
+    if (characters.empty())
+        Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionShowCreateCharacterDialog>(true));
 }
 
 void TAuthenticationProcessController::onShowCharacterSelectionStateLeft()
@@ -541,15 +649,18 @@ void TAuthenticationProcessController::stopProcess()
 
 void TAuthenticationProcessController::onLoginAbortedStateEntered()
 {
-    // The dialogs close and the login request stops.
+    // The dialogs close; without a game session the account's session and
+    // the news' levels are forgotten.
     if (m_pCharacterSelectionController)
         m_pCharacterSelectionController->close();
     m_pTwoFactorCodeEnterTextDialogController->dialog()->close();
     m_pMessageDialogController->dialog()->close();
     m_pLoginConfirmationCodeEnterTextDialogController->dialog()->close();
-    if (m_host.abortLogin)
-        m_host.abortLogin();
-    setAuthenticated(false);
+    if (!m_pGameSession) {
+        resetSessionData();
+        if (news::TNewsStorage* news = news::TNewsStorage::current())
+            news->resetLevels();
+    }
     stop();
     Q_EMIT abort();
 }
@@ -585,7 +696,9 @@ void TAuthenticationProcessController::onShowCharacterTradeDuePaymentEntered()
 
 void TAuthenticationProcessController::onShowSurveyInvitationStateEntered()
 {
-    if (m_host.showSurveyInvitationDialog && m_host.showSurveyInvitationDialog())
+    // The login answer's survey, unless the player already answered it.
+    const std::optional<TSurveyData>& survey = m_pLoginRequestUploader->survey();
+    if (survey && m_pSurveyInvitationDialogController->showSurveyInvitation(*survey))
         return;
     Q_EMIT advanceStateMachine();
 }
@@ -685,15 +798,40 @@ void TAuthenticationProcessController::onLoginFailedDueToMissingLoginConfirmatio
 
 void TAuthenticationProcessController::onPlayerLevelUp()
 {
+    // A level with a special popup queues it; the news unlock up to the
+    // highest level reached.
+    const uint16_t level = m_pGameSession->playerData()->level();
+    if (const std::shared_ptr<config::TCharacterConfigurationManager>& manager = m_pGameSession->characterConfigurationManager()) {
+        if (config::TSidebarOptions* sidebarOptions = manager->sidebarOptions())
+            gamewindow::TPlayerGuideWidgetController::queueLevelSpecialPopup(level, sidebarOptions);
+    }
+    if (config::TClientOptions* options = config::TClientOptions::instance()) {
+        if (options->newsMaxUnlockLevel() < level)
+            options->setNewsMaxUnlockLevel(level);
+    }
 }
 
 void TAuthenticationProcessController::onPlayerDataChanged()
 {
+    // The news unlock against the account's highest character, the highest
+    // level ever reached and the playing character.
+    news::TNewsStorage* news = news::TNewsStorage::current();
+    if (!news)
+        return;
+    const TCharacterList characters = m_pLoginRequestUploader->characters();
+    const auto highest = std::max_element(characters.begin(), characters.end(),
+                                          [](const TCharacter& a, const TCharacter& b) { return a.level < b.level; });
+    news->raiseAccountLevel(highest == characters.end() ? 0 : static_cast<ushort>(highest->level));
+    if (config::TClientOptions* options = config::TClientOptions::instance())
+        news->raiseAccountLevel(options->newsMaxUnlockLevel());
+    news->raiseCharacterLevel(m_pGameSession->playerData()->level());
 }
 
 void TAuthenticationProcessController::onSolveCloudflareChallengeStateEntered()
 {
-    // Host: the game client runs the Cloudflare solver.
+    // A new challenge for the login service; its clearance replaces the old one.
+    m_loginData.cloudflareClearance.reset();
+    m_pCloudflareChallengeController->startChallenge(m_pCloudflareChallengeController->targetUrl());
 }
 
 void TAuthenticationProcessController::onShowCloudflareChallengeFailedStateEntered()
@@ -713,9 +851,7 @@ void TAuthenticationProcessController::onShowCloudflareChallengeFailedStateEnter
 void TAuthenticationProcessController::onCloudflareSolverSuccess(const TCloudflareChallengeClearanceInfo CloudflareClearanceInfo)
 {
     // The clearance goes with the next login request.
-    m_cloudflareClearance = CloudflareClearanceInfo;
-    if (m_host.applyClearance)
-        m_host.applyClearance(CloudflareClearanceInfo);
+    m_loginData.cloudflareClearance = CloudflareClearanceInfo;
     Q_EMIT advanceStateMachineToLoginUpload();
 }
 

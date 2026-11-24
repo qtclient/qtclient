@@ -15,6 +15,8 @@
 #include <cip_gen.h>
 
 #include <QJsonArray>
+#include <QPointer>
+#include <QQuickItem>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
@@ -55,10 +57,15 @@ class TExaltationForgeDialogController;
 class TGameSessionDisconnectReactionController;
 class TGameWindowController;
 class TMarketController;
+class TMessageDialogController;
+class TMultiOfflineTrainingDialogController;
 class TNaggingMessageDialogController;
+class TOutfitMemorialDialogController;
 class TReportViolationController;
 class TRewardWallDialogController;
 class TSelectObjectAmountDialogController;
+class TShowImageDialogController;
+class TShowSpellBookDialogController;
 class TSoulSealsDialogController;
 class TStoreDialogController;
 }
@@ -70,6 +77,7 @@ class TWeaponProficiencyShapeOptionsDialogController;
 }
 namespace shared {
 class TCrashReportSender;
+class TDownloadPool;
 class TTibiaFileSystemHelper;
 }
 }
@@ -88,6 +96,9 @@ class TStatusbarStorage;
 namespace tibia {
 namespace network {
 class ExtendedOpcodeRouter;
+}
+namespace input {
+class TKeyboardStatusStorage;
 }
 }
 namespace tibia {
@@ -203,7 +214,8 @@ public:
     /// CIP: the client is made with the application's QML engine, the file
     /// system helper and the client options.
     TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                config::TClientOptions* ClientOptions, QObject* parent = nullptr);
+                config::TClientOptions* ClientOptions, std::shared_ptr<shared::TDownloadPool> DownloadPool,
+                QObject* parent = nullptr);
     ~TGameClient() override;
 
     /// Creates the game window and its controllers, storages and input
@@ -265,8 +277,6 @@ public:
     config::TSidebarOptions* sidebarOptions() const;
     game::TStatusbarStorage* statusbarStorage() const;
     config::TActionBarOptions* actionBarOptions() const;
-    /// The character's outfit presets.
-    game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
     /// The current session's; null without one.
     config::TCharacterConfigurationManager* characterConfigurationManager() const;
     /// The session's minimap; null outside the world.
@@ -298,9 +308,10 @@ public:
     /// Abort on CIP's connecting dialog: drop the login HTTP request, or the
     /// game connection if the world is not entered yet.
     void abortPendingEnter();
-    /// CIP: another character while online: this one logs out, the chosen one
-    /// logs in with a new game session once the world is left. False when
-    /// offline or a change is already pending.
+    /// Pack ABI: another character while online. The character selection
+    /// logs it in (CipSoft's path: this character logs out, the chosen one
+    /// logs in once the session disconnected). False when offline or the
+    /// account has no character of that name.
     bool requestCharacterSwitch(const QString& characterName);
     /// End a tutorial sessiondump cinematic and connect to the pending live world.
     void finishTutorialCinematic();
@@ -360,6 +371,35 @@ public Q_SLOTS:
     /// session connects, or with none left there is no current session (and
     /// the client logs in again when the player asked for it).
     void onGameSessionDisconnected();
+    /// CIP: the authentication process controller wants the chosen
+    /// character in the game. Without a session the connecting dialog shows
+    /// and the connection starts on the next event loop pass; with one (a
+    /// character change) it is quit, so that the client logs in again once
+    /// it disconnected.
+    void connectClientToGameserverWithExistingCredentials() override;
+    /// CIP: the queue gets the game sessions of the authentication process
+    /// controller's character login (exactly one character), then the first
+    /// one connects.
+    void onConnectClientToGameserver();
+    /// CIP: Cancel on the connecting dialog: no reconnect, the current
+    /// session goes and the character selection shows again.
+    void onAbortConnectClientToGameserver();
+    /// CIP: the character selection shows again (through the authentication
+    /// process controller).
+    void onShowCharacterSelectionDialogRequested();
+    /// CIP: the game server accepted the connection: the login process ends
+    /// and the FPS drops logger learns the character and its world.
+    void onGameSessionConnected();
+    /// CIP: the window title and the crash report name the character.
+    void onGameSessionLoginSuccessful();
+    /// CIP: the game server's login advice in a message box (OK).
+    void onGameSessionLoginAdvice(const QString& LoginAdvice);
+    /// CIP: a refused game login closes the connecting dialog (the disconnect
+    /// reaction controller shows the error).
+    void onGameSessionLoginError(const QString& LoginError, int Action);
+    /// CIP: during a live session a changed walk key state becomes the
+    /// player's movement intent (SET_PLAYER_MOVEMENT_INTENT).
+    void onKeyboardStatusStorageChanged();
     /// CIP: with FPS tracking on, samples the frame rate every
     /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
     /// (and when the session ends or the client closes); off drops both.
@@ -369,6 +409,8 @@ public Q_SLOTS:
     void onWindowSizeChanged() override;
     /// CIP: the game window's Quit.
     void onExitClientRequested();
+    /// CIP: the login mask's credentials start the account login.
+    void onRequestLoginWithCredentials(const QString& EMailAddress, const QString& Password);
     /// CIP: the start screen's Create Account opens the create-account dialog.
     void onRequestCreateAccount();
     /// CIP: opens the create-character dialog.
@@ -407,19 +449,36 @@ private:
     /// login service at `LoginUrl`, then connects the game client to them.
     void createAuthenticationProcessController(const QUrl& LoginUrl);
     authentication::TLoginRequestUploader* loginRequestUploader() const;
+    /// Host glue: the character selection's choice is the authentication
+    /// process controller's character login (it then asks the client to
+    /// connect).
     void onCharacterChosen(const QString& characterName);
     void onWorldEntered();
     /// Writes the session's minimap and character options.
     void onWorldLeft();
-    /// CIP: the meta infos of a character login: a tutorial character first
-    /// watches the tutorial dump, then the live session logs in.
+    /// CIP: the meta infos of a character login: the live session with the
+    /// account's login data and the character; a tutorial character first
+    /// watches the tutorial dump.
     std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> createGameSessionMetaInfos(
-        const game::GameserverCredentials& loginData, const QString& tutorialSessiondump) const;
+        const authentication::TLoginRequestData& LoginData, const gamewindow::TCharacterLoginData& CharacterLoginData);
     /// The settings every session's meta info carries (queue delays, effect
-    /// and chat limits, movement).
+    /// and chat limits).
     void setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const;
     /// Queues the meta infos and connects the first one.
     void enqueueGameSessions(std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos);
+    /// CIP: during a session the window title names the character of the
+    /// login; without one it has no extension.
+    void updateWindowTitleExtension();
+    /// CIP: during a session a crash report names the character and its
+    /// world; without one the character, world, position and world address
+    /// annotations go.
+    void updateCrashReportAnnotations();
+    /// CIP: a crash report's Character and Server annotations.
+    static void setCharacterCrashReportAnnotations(const QString& CharacterName, const QString& WorldName);
+    /// CIP: no Character, Server and Position annotations.
+    static void removeCharacterCrashReportAnnotations();
+    /// CIP: no UnprotectedWorldAddress and ProtectedWorldAddress annotations.
+    static void removeWorldAddressCrashReportAnnotations();
     /// CIP: makes `GameSession` the current game session (null: none). The
     /// previous one is unhooked and released; every game window controller
     /// connects to the new one, in CipSoft's order.
@@ -430,9 +489,8 @@ private:
     /// The game window controllers' connectors, in CipSoft's order (the
     /// connector calls of setCurrentGameSession); in gameclientgamewindow.cpp.
     void connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    /// Logs the last chosen character in again (after a login wait, or when the
-    /// player logged out to log in again).
-    void loginAgainWithLastCharacter();
+    /// The game window's keyboard status; null before the game window exists.
+    input::TKeyboardStatusStorage* keyboardStatusStorage() const;
     /// The game window's disconnect reaction; null before the game window exists.
     gamewindow::TGameSessionDisconnectReactionController* gameSessionDisconnectReactionController() const;
     void fail(const QString& message);
@@ -478,7 +536,6 @@ private:
     /// signal).
     shared::TQtConnectionWrapper m_gameSessionDisconnected{ 1, true };
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
-    std::unique_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
     /// Host shim: the character configuration storages the game window still
     /// owns; each new session's manager takes them.
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
@@ -489,10 +546,11 @@ private:
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
+    /// CIP: the client window's placeholder the game window is in (its
+    /// windowTitleExtension names the character).
+    QPointer<QQuickItem> m_gameWindowPlaceholder;
     int m_worldType = -1;
     bool m_started = false;
-    /// Logged in once the current character has left the world (CIP switch).
-    std::optional<QString> m_pendingCharacter;
     // CIP: the game window's controllers the client owns, in CipSoft's member
     // order (showGameWindow makes them; the rest still live in TGameWindow).
     std::unique_ptr<gamewindow::TMarketController> m_pMarketController;
@@ -502,9 +560,12 @@ private:
     std::shared_ptr<gamewindow::TGameSessionDisconnectReactionController> m_pGameSessionDisconnectReactionController;
     std::unique_ptr<gamewindow::TDeathDialogController> m_pDeathDialogController;
     std::unique_ptr<gamewindow::TStoreDialogController> m_pStoreDialogController;
+    std::unique_ptr<gamewindow::TMultiOfflineTrainingDialogController> m_pMultiOfflineTrainingDialogController;
     std::unique_ptr<gamewindow::TBlessingsDialogController> m_pBlessingsDialogController;
     std::unique_ptr<gamewindow::TSelectObjectAmountDialogController> m_pSelectObjectAmountDialogController;
     std::unique_ptr<gamewindow::TExaltationForgeDialogController> m_pExaltationForgeDialogController;
+    std::unique_ptr<gamewindow::TShowImageDialogController> m_pShowImageDialogController;
+    std::unique_ptr<gamewindow::TShowSpellBookDialogController> m_pShowSpellBookDialogController;
     std::unique_ptr<gamewindow::TNaggingMessageDialogController> m_pNaggingMessageDialogController;
     std::unique_ptr<proficiency::TWeaponProficiencyDialogController> m_pWeaponProficiencyDialogController;
     std::unique_ptr<proficiency::TWeaponProficiencyReshapeDialogController> m_pWeaponProficiencyReshapeDialogController;
@@ -513,9 +574,16 @@ private:
     std::unique_ptr<gamewindow::TSoulSealsDialogController> m_pSoulSealsDialogController;
     std::unique_ptr<gamewindow::TBossDifficultySelectionDialogController> m_pBossDifficultySelectionDialogController;
     std::unique_ptr<qmlcomponents::TLenshelpManager> m_pLenshelpManager;
+    std::unique_ptr<gamewindow::TOutfitMemorialDialogController> m_pOutfitMemorialDialogController;
     std::unique_ptr<gamewindow::TRewardWallDialogController> m_pRewardWallDialogController;
     std::unique_ptr<gamewindow::TCreateAccountDialogController> m_pCreateAccountDialogController;
     std::unique_ptr<gamewindow::TCreateCharacterDialogController> m_pCreateCharacterDialogController;
+    /// "Connecting to the game world" (Cancel aborts).
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pConnectingDialogController;
+    /// The exit confirmation (Exit / Logout / Cancel, or Exit / Cancel in the tutorial).
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pExitGameDialogController;
+    /// The game server's login advice.
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pLoginAdviceDialogController;
     /// Destroyed first: its objects use the client's storages and session.
     std::unique_ptr<TGameWindow, TGameWindowDeleter> m_gameWindow;
 };

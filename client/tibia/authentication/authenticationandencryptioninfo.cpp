@@ -51,6 +51,26 @@ QString TAuthenticationAndEncryptionInfo::sessionKey() const
     return m_sessionKey;
 }
 
+void TAuthenticationAndEncryptionInfo::setEMail(const QString& EMail)
+{
+    m_eMail = EMail;
+}
+
+QString TAuthenticationAndEncryptionInfo::eMail() const
+{
+    return m_eMail;
+}
+
+void TAuthenticationAndEncryptionInfo::setPassword(const QString& Password)
+{
+    m_password = Password;
+}
+
+QString TAuthenticationAndEncryptionInfo::password() const
+{
+    return m_password;
+}
+
 void TAuthenticationAndEncryptionInfo::setSecondaryLoginFirstString(const QString& FirstString)
 {
     m_secondaryLoginFirstString = FirstString;

@@ -63,9 +63,15 @@ TPlayerMovementIntentHandler::TPlayerMovementIntentHandler(Environment environme
 {
 }
 
+void TPlayerMovementIntentHandler::setPlayer(std::weak_ptr<creatures::TCreature> pPlayer)
+{
+    m_player = pPlayer.lock();
+    connect(m_player.get(), &creatures::TCreature::positionWasUpdated, this, &TPlayerMovementIntentHandler::onPositionChanged);
+}
+
 TWorldMapCoordinate TPlayerMovementIntentHandler::predictedPosition() const
 {
-    const creatures::TCreature* player = m_env.player();
+    const creatures::TCreature* player = m_player.get();
     if (!player)
         return {};
     return offsetBy(TWorldMapCoordinate(player->position()), m_pendingX, m_pendingY);
@@ -75,7 +81,7 @@ void TPlayerMovementIntentHandler::handleMovementIntent(const TMovementIntentPtr
 {
     if (!intent)
         return;
-    const TMovementIntentPtr previous = std::exchange(m_intent, m_env.player() ? intent : std::make_shared<TMovementIntentStop>());
+    const TMovementIntentPtr previous = std::exchange(m_intent, m_player.get() ? intent : std::make_shared<TMovementIntentStop>());
     switch (intent->kind()) {
     case TMovementIntentKind::Target: {
         const auto& target = static_cast<const TMovementIntentTargetCoordinate&>(*intent);
@@ -120,14 +126,9 @@ void TPlayerMovementIntentHandler::stopWalking()
     clearPath();
 }
 
-void TPlayerMovementIntentHandler::clearGoal()
-{
-    clearPath();
-}
-
 void TPlayerMovementIntentHandler::noteIntent(const TMovementIntentKind kind)
 {
-    if (creatures::TCreature* player = m_env.player()) {
+    if (creatures::TCreature* player = m_player.get()) {
         if (const auto& placeholder = player->placeholderAppearance())
             placeholder->setHoldsMovementIntent(kind != TMovementIntentKind::Stop);
     }
@@ -148,7 +149,7 @@ bool TPlayerMovementIntentHandler::canStepTowards(const EMovementDirection direc
 {
     if (creatures::isDiagonal(direction))
         return false;
-    const creatures::TCreature* player = m_env.player();
+    const creatures::TCreature* player = m_player.get();
     if (!player)
         return false;
     const worldmap::TWorldMapExtent offset = creatures::stepOffset(direction);
@@ -181,7 +182,7 @@ void TPlayerMovementIntentHandler::goToAndSend(const TWorldMapCoordinate& goal, 
 int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bool enterUnwalkableGoal,
                                        const bool allowDiagonalStep)
 {
-    creatures::TCreature* player = m_env.player();
+    creatures::TCreature* player = m_player.get();
     if (!player || (m_goal && *m_goal == goal) || goal == offsetBy(predictedPosition(), m_pendingX, m_pendingY))
         return 0;
     if (const quint64 states = m_env.playerStates ? m_env.playerStates() : 0; states & (quint64(1) << RootedState | quint64(1) << FearedState))
@@ -243,7 +244,7 @@ int TPlayerMovementIntentHandler::plan()
 {
     m_path.clear();
     m_replan = false;
-    if (!m_goal || !m_env.player())
+    if (!m_goal || !m_player.get())
         return 0;
     if (std::abs(m_pendingX) + std::abs(m_pendingY) > 1) {
         m_waiting = true;
@@ -280,7 +281,7 @@ int TPlayerMovementIntentHandler::plan()
 
 void TPlayerMovementIntentHandler::predictNextStep()
 {
-    creatures::TCreature* player = m_env.player();
+    creatures::TCreature* player = m_player.get();
     if (!player || m_replan || player->healthPercent() == 0 || m_stepsTaken >= static_cast<int>(m_path.size()))
         return;
     if (m_pendingX != 0 || m_pendingY != 0) {
@@ -311,7 +312,7 @@ void TPlayerMovementIntentHandler::predictNextStep()
 
 void TPlayerMovementIntentHandler::predictStep(const int dx, const int dy)
 {
-    creatures::TCreature* player = m_env.player();
+    creatures::TCreature* player = m_player.get();
     if (!player)
         return;
     worldmap::TWorldMapStorage* map = m_env.map();
@@ -322,7 +323,7 @@ void TPlayerMovementIntentHandler::predictStep(const int dx, const int dy)
 
 qint64 TPlayerMovementIntentHandler::nextStepDelay(const TWorldMapCoordinate& from, const TWorldMapCoordinate& to) const
 {
-    const creatures::TCreature* player = m_env.player();
+    const creatures::TCreature* player = m_player.get();
     worldmap::TWorldMapStorage* map = m_env.map();
     const worldmap::TWorldMapExtent step(to.x - from.x, to.y - from.y, to.z - from.z);
     const qint64 duration = map->speedCalculator().stepDurationWithDiagonalCost(player->speed(), step,
@@ -338,7 +339,7 @@ qint64 TPlayerMovementIntentHandler::nextStepDelay(const TWorldMapCoordinate& fr
 
 bool TPlayerMovementIntentHandler::advance()
 {
-    creatures::TCreature* player = m_env.player();
+    creatures::TCreature* player = m_player.get();
     if (!player || !m_waiting || !player->movementTween().isTweenFinished() || m_env.now() <= m_nextStepMs)
         return false;
     m_waiting = false;
@@ -415,7 +416,7 @@ void TPlayerMovementIntentHandler::onCancelWalk(const creatures::ECreatureLookDi
 bool TPlayerMovementIntentHandler::resetAfterRejectedStep(const creatures::ECreatureLookDirection direction)
 {
     m_path.clear();
-    creatures::TCreature* player = m_env.player();
+    creatures::TCreature* player = m_player.get();
     if (!player) {
         m_pendingX = m_pendingY = 0;
         return false;

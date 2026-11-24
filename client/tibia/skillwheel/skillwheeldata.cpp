@@ -462,7 +462,7 @@ int unlockedVesselCount(const std::array<int, SlotCount>& points, const int voca
 
 bool isAugmentedPerk(const int perk) { return perk >= 0 && perk < 46 && ((0x3e13ef7c7c00ULL >> perk) & 1) != 0; }
 
-const std::array<int, 9>& domainSlots(const int domain) { return DomainSlots[std::clamp(domain, 0, DomainCount - 1)]; }
+const std::array<int, 9>& domainSlots(const int domain) { return DomainSlots.at(static_cast<std::size_t>(domain)); }
 
 int domainOfSlot(const int slot)
 {
@@ -522,8 +522,7 @@ int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, const in
         const std::optional<TGem>& gem = wheel.vessels[v];
         if (!gem || gem->quality != vesselQualityAt(v) || !hasSupreme(*gem) || revelationMasteryPerk(gem->supreme) != perk)
             continue;
-        const auto grade = supremeGrades.find(gem->supreme);
-        total += revelationMasteryBonus(grade != supremeGrades.end() ? grade->second : 0);
+        total += revelationMasteryBonus(modGrade(supremeGrades, gem->supreme));
     }
     return std::clamp(total, 0, 1000);
 }
@@ -543,11 +542,15 @@ int modId(const TGem& gem, const int modIndex)
     }
 }
 
+int modGrade(const TGrades& grades, const int mod)
+{
+    const auto it = grades.find(mod);
+    return it != grades.end() ? it->second : 0;
+}
+
 int gemGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& supremeGrades, const int modIndex)
 {
-    const TGrades& grades = isSupremeModIndex(modIndex) ? supremeGrades : basicGrades;
-    const auto it = grades.find(modId(gem, modIndex));
-    return it != grades.end() ? it->second : 0;
+    return modGrade(isSupremeModIndex(modIndex) ? supremeGrades : basicGrades, modId(gem, modIndex));
 }
 
 int effectiveGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& supremeGrades, const int modIndex)
@@ -1058,10 +1061,7 @@ TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TG
         if (vesselQualityAt(v) == static_cast<int>(EGemQuality::Greater) && gem && hasSupreme(*gem))
             greater[v] = &*gem;
     }
-    const auto supremeGrade = [&](const int mod) {
-        const auto it = supremeGrades.find(mod);
-        return it != supremeGrades.end() ? it->second : 0;
-    };
+    const auto supremeGrade = [&](const int mod) { return modGrade(supremeGrades, mod); };
 
     TActiveMods mods;
 
@@ -1641,7 +1641,21 @@ std::optional<TWheel> decodeWheelCode(const QString& code)
     return result;
 }
 
-bool isValidWheelCode(const TWheel& wheel) { return isValid(wheel.points); }
+bool vesselsValid(const std::array<std::optional<TGem>, VesselCount>& vessels)
+{
+    for (int v = 0; v < VesselCount; ++v) {
+        const std::optional<TGem>& gem = vessels[v];
+        if (!gem)
+            continue;
+        const int quality = VesselQualities[v];
+        if (hasBasic2(*gem) != (quality >= static_cast<int>(EGemQuality::Regular))
+            || hasSupreme(*gem) != (quality >= static_cast<int>(EGemQuality::Greater)))
+            return false;
+    }
+    return true;
+}
+
+bool isValidWheelCode(const TWheel& wheel) { return isValid(wheel.points) && vesselsValid(wheel.vessels); }
 
 int transformCreatureToSkillWheelVocation(const int vocation)
 {

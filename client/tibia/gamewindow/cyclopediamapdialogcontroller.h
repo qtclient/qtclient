@@ -169,11 +169,10 @@ public:
     explicit TCyclopediaMapDialogController(QObject* parent = nullptr);
     ~TCyclopediaMapDialogController() override;
 
-    /// CIP connector: the session's map storage and the character's map
-    /// configuration; nothing is selected.
+    /// The session's map storage, the character's map configuration (its
+    /// loading restores the selection), the time of day and the player's
+    /// gold; the confirmation closes.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-    void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// mod: the instance whose subarea the tab selects when it opens with
     /// nothing selected.
     void setInstanceStorage(mods::InstanceBackend* instance);
@@ -301,7 +300,7 @@ private:
     TSelection m_selection;
     QTimer m_tooltipTimer;
     QTimer m_mouseCursorTimer;
-    QPointer<worldmap::TAmbientLightStorage> m_ambientLight;
+    std::shared_ptr<worldmap::TAmbientLightStorage> m_ambientLight;
     QPointer<mods::InstanceBackend> m_instance;
     input::TGameActionMapper m_mapper;
 };

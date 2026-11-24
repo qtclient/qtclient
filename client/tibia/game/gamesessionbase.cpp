@@ -22,7 +22,9 @@
 #include "container/containergameactionhandler.h"
 #include "container/objectappearanceinstanceinfostorage.h"
 #include "creatures/creaturemovementspeedcalculator.h"
+#include "creatures/battlelistrenderprovider.h"
 #include "creatures/creaturestorage.h"
+#include "gamewindow/battlelistgameactionhandler.h"
 #include "creatures/vipstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
 #include "trade/npctradestorage.h"
@@ -87,11 +89,14 @@
 #include "sound/soundstorage.h"
 #include "renderer/nextframeupdater.h"
 #include "renderer/rendervolumeprovider.h"
+#include "renderer/worldmapcamera.h"
 #include "renderer/worldmaprenderprovider.h"
+#include "input/genericchatgameactionprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/creaturehudrenderprovider.h"
 #include "worldmap/worldmapgameactionhandler.h"
 #include "worldmap/worldmapgameactionprovider.h"
+#include "worldmap/worldmappicker.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
@@ -128,7 +133,7 @@ TGameSessionBase::TGameSessionBase(QObject* parent)
     : IGameSession(parent)
     , m_worldMapViewport(std::make_shared<worldmap::TWorldMapViewport>())
     , m_creatureMovementSpeedCalculator(std::make_shared<creatures::TCreatureMovementSpeedCalculator>())
-    // CIP's world camera (renderer::TWorldMapCamera) is the render provider's here.
+    , m_worldMapCamera(std::make_shared<renderer::TWorldMapCamera>())
     , m_playerData(std::make_shared<TPlayerData>())
     , m_playerSkillStats(std::make_shared<TPlayerSkillStats>())
     , m_questLogStorage(std::make_shared<questlog::TQuestLogStorage>())
@@ -190,6 +195,7 @@ void TGameSessionBase::createStorages()
     characterConfiguration.statusbar = std::make_shared<TStatusbarStorage>();
     characterConfiguration.cyclopediaMap = m_cyclopediaMapCharacterConfigurationStorage.get();
     characterConfiguration.questLog = m_questLogStorage.get();
+    characterConfiguration.outfitDialog = m_outfitDialogStorage.get();
     m_characterConfigurationManager = std::make_shared<config::TCharacterConfigurationManager>(characterConfiguration);
     connect(m_characterConfigurationManager.get(), &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
             &TGameSessionBase::onCharacterConfigurationLoaded);
@@ -249,7 +255,8 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_creatureProtocolMessageHandler = std::make_shared<creatures::TCreatureProtocolMessageHandler>(m_worldMapStorage.get());
     m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
     m_worldmapProtocolMessageHandler->setViewport(m_worldMapViewport.get());
-    m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
+    m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>(m_effectStorage, m_worldMapStorage,
+                                                                                            m_soundStorage, clockService());
     m_chatProtocolMessageHandler =
         std::make_shared<chat::TChatProtocolMessageHandler>(*m_chatChannelStorage, *m_chatStorage, m_creatureStorage->player());
     m_chatProtocolMessageHandler->setTextStorage(m_textStorage.get());
@@ -261,11 +268,14 @@ void TGameSessionBase::createProtocolMessageHandlers()
             &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
     m_playerProtocolMessageHandler = std::make_shared<TPlayerProtocolMessageHandler>(
         m_cooldownStorage.get(), config::TClientOptions::instance()->boolOption(cip::EClientOption::inspectPlayerAllowAllEnabled));
+    m_playerProtocolMessageHandler->setOutfitDialogStorage(m_outfitDialogStorage);
     m_gameProtocolMessageHandler = std::make_shared<TGameProtocolMessageHandler>(m_creatureMovementSpeedCalculator);
     // The sound messages have a handler only when the client plays sound.
     if (sound::TSoundController::instance())
         m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_spellBookProtocolMessageHandler = std::make_shared<TSpellBookProtocolMessageHandler>();
+    // Every WorldEntered message: the session announces the world entered.
+    connect(m_playerProtocolMessageHandler.get(), &TPlayerProtocolMessageHandler::worldEntered, this, &IGameSession::worldEntered);
     {
         TGameProtocolMessageHandler* game = m_gameProtocolMessageHandler.get();
         connect(game, &TGameProtocolMessageHandler::loginSuccess, this, &IGameSession::gameLoginSuccessful);
@@ -283,13 +293,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_playerTradeProtocolMessageHandler = std::make_shared<trade::TPlayerTradeProtocolMessageHandler>(*m_playerTradeStorage);
     m_vipProtocolMessageHandler = std::make_shared<creatures::TVipProtocolMessageHandler>(m_vipStorage.get());
     m_questLogProtocolMessageHandler = std::make_shared<questlog::TQuestLogProtocolMessageHandler>(m_questLogStorage, clockService());
-    m_friendsProtocolMessageHandler = std::make_shared<friends::TFriendsProtocolMessageHandler>(m_friendsStorage.get());
-    // Host: the friends handler's actions go out through the session's queue.
-    connect(m_friendsProtocolMessageHandler.get(), &friends::TFriendsProtocolMessageHandler::sendFriendSystemAction, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageFriendSystemAction& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendFriendSystemAction(message);
-            });
+    m_friendsProtocolMessageHandler = std::make_shared<friends::TFriendsProtocolMessageHandler>(m_friendsStorage);
     m_serverModalDialogProtocolMessageHandler = std::make_shared<TServerModalDialogProtocolMessageHandler>();
     m_ruleViolationProtocolMessageHandler = std::make_shared<reporting::TRuleViolationProtocolMessageHandler>();
     m_bugReportProtocolMessageHandler = std::make_shared<reporting::TBugReportProtocolMessageHandler>();
@@ -301,10 +305,13 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_storeProtocolMessageHandler->setMarketStorage(m_marketStorage.get());
     m_newsProtocolMessageHandler = std::make_shared<news::TNewsProtocolMessageHandler>();
     m_premiumProtocolMessageHandler = std::make_shared<TPremiumProtocolMessageHandler>();
+    m_premiumProtocolMessageHandler->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
     m_tutorialProtocolMessageHandler = std::make_shared<tutorial::TTutorialProtocolMessageHandler>();
     m_preyProtocolMessageHandler = std::make_shared<prey::TPreyProtocolMessageHandler>();
-    m_imbuingProtocolMessageHandler =
-        std::make_shared<imbuing::TImbuingProtocolMessageHandler>(m_imbuingStorage.get(), m_imbuementDurationsStorage.get());
+    if (!m_gameActionContextHelper)
+        m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
+    m_imbuingProtocolMessageHandler = std::make_shared<imbuing::TImbuingProtocolMessageHandler>(
+        m_imbuingStorage, m_gameActionContextHelper, m_imbuementDurationsStorage, clockService());
     m_blessingsProtocolMessageHandler = std::make_shared<TBlessingsProtocolMessageHandler>();
     m_dailyRewardProtocolMessageHandler = std::make_shared<dailyreward::TDailyRewardProtocolMessageHandler>(m_dailyRewardStorage.get());
     cyclopedia::TCyclopediaProtocolMessageHandler::TStorages cyclopediaStorages;
@@ -325,7 +332,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_managedContainersProtocolMessageHandler =
         std::make_shared<quickloot::TManagedContainersProtocolMessageHandler>(m_managedContainerStorage.get(),
                                                                              m_characterConfigurationManager.get());
-    m_exivaOptionsProtocolMessageHandler = std::make_shared<exivaoptions::TExivaOptionsProtocolMessageHandler>(m_exivaOptionsStorage.get());
+    m_exivaOptionsProtocolMessageHandler = std::make_shared<exivaoptions::TExivaOptionsProtocolMessageHandler>(m_exivaOptionsStorage);
     m_gameEventProtocolMessageHandler = std::make_shared<TGameEventProtocolMessageHandler>();
     m_highscoresProtocolMessageHandler = std::make_shared<highscores::THighscoresProtocolMessageHandler>(m_highscoresStorage);
     m_teamFinderProtocolMessageHandler = std::make_shared<teamfinder::TTeamFinderProtocolMessageHandler>(m_teamFinderStorage.get());
@@ -334,13 +341,8 @@ void TGameSessionBase::createProtocolMessageHandlers()
         std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
     m_exaltationProtocolMessageHandler = std::make_shared<exaltation::TExaltationProtocolMessageHandler>();
     m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
-    // Host: the gather-all request goes out through the session's queue.
-    connect(m_gatherAllProtocolMessageHandler.get(), &input::TGatherAllProtocolMessageHandler::sendGatherAll, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageGatherAll& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendGatherAll(message);
-            });
-    m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>();
+    m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>(
+        m_characterConfigurationStorages.skillWheel, m_creatureStorage, m_characterInfoStorage, m_playerData);
     m_spellsProtocolMessageHandler = std::make_shared<spells::TSpellsProtocolMessageHandler>(spells::TSpellInfoStorage::instance());
     // The proficiency handler is made in connectProtocolMessageHandlers (host:
     // the proficiency storage it fills is the game window's).
@@ -353,10 +355,12 @@ void TGameSessionBase::setWhiteBlacklist(chat::TWhiteBlacklist* whiteBlacklist)
 {
     if (m_chatProtocolMessageHandler)
         m_chatProtocolMessageHandler->setWhiteBlacklist(whiteBlacklist);
-    if (m_teamFinderProtocolMessageHandler)
-        m_teamFinderProtocolMessageHandler->setIgnoreList(whiteBlacklist);
+    if (m_genericChatGameActionProvider)
+        m_genericChatGameActionProvider->setWhiteBlacklist(whiteBlacklist);
     if (m_chatGameActionHandler)
         m_chatGameActionHandler->setWhiteBlacklist(whiteBlacklist);
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->setIgnoreList(whiteBlacklist);
 }
 
 void TGameSessionBase::createRenderProviders()
@@ -371,9 +375,13 @@ void TGameSessionBase::createRenderProviders()
     m_worldMapRenderProvider->setRenderVolumeProvider(m_renderVolumeProvider);
     // The provider builds the frame the updater advances to.
     m_nextFrameUpdater->setWorldMapRenderProvider(m_worldMapRenderProvider);
+    m_worldMapPicker =
+        std::make_shared<worldmap::TWorldMapPicker>(m_renderVolumeProvider, m_worldMapRenderProvider, m_worldMapStorage);
     m_creatureHUDRenderProvider = std::make_shared<worldmap::TCreatureHUDRenderProvider>(
         m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData,
         config::TClientOptions::instance());
+    m_battleListRenderProvider = std::make_shared<creatures::TBattleListRenderProvider>(
+        m_creatureStorage, m_worldMapViewport, m_playerData, config::TClientOptions::instance());
     // The pack's status lines (TGameMessageHandler) write into the session's texts.
     m_gameMessageHandler = std::make_shared<chat::TGameMessageHandler>(*m_textStorage);
     m_gameMessageHandler->setOptions(app::ClientOptions::load().options());
@@ -383,15 +391,35 @@ void TGameSessionBase::createRenderProviders()
 void TGameSessionBase::createSoundProviders()
 {
     if (sound::TSoundController* controller = sound::TSoundController::instance()) {
-        m_objectSoundController = std::make_shared<sound::TObjectSoundController>(controller->metadata());
+        m_objectSoundController =
+            std::make_shared<sound::TObjectSoundController>(m_worldMapRenderProvider, controller->metadata());
         m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
     }
 }
 
 void TGameSessionBase::createGameActionProvidersAndHandlers()
 {
+    // The providers: what a click offers where. The party, inspection, generic
+    // object, battle list and container providers are stateless in qtclient
+    // (they read the current session's storages).
+    m_genericChatGameActionProvider =
+        std::make_shared<input::TGenericChatGameActionProvider>(m_chatChannelStorage.get(), m_vipStorage.get());
     m_worldMapGameActionProvider =
         std::make_shared<worldmap::TWorldMapGameActionProvider>(*m_worldMapRenderProvider, *m_worldMapViewport);
+    {
+        // The name actions of a player's entry are the generic chat provider's;
+        // the join / leave lines follow the console option.
+        const std::shared_ptr<input::TGenericChatGameActionProvider> genericChat = m_genericChatGameActionProvider;
+        m_chatGameActionProvider = std::make_shared<chat::TChatGameActionProvider>(
+            *m_chatChannelStorage,
+            [genericChat](input::TGameActionList& actions, const QString& name) { genericChat->appendGameActions(actions, name); },
+            [] {
+                const config::TClientOptions* options = config::TClientOptions::instance();
+                return options && options->boolOption(config::EClientOption::consoleShowJoinLeaveMessages);
+            });
+    }
+    m_vipWidgetGameActionProvider =
+        std::make_shared<creatures::TVipWidgetGameActionProvider>(m_vipStorage.get(), m_exivaOptionsStorage.get());
     if (!m_gameActionContextHelper)
         m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
     m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>();
@@ -401,204 +429,13 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>(
         m_creatureStorage, std::make_shared<shared::TTibiaClipboardHelper>(std::make_shared<shared::TClipboardHelper>(),
                                                                            std::make_shared<shared::TTibiaUrlTools>()));
-    {
-        using Creatures = creatures::TCreaturesGameActionHandler;
-        namespace pb = ::tibia::protobuf::protocol;
-        Creatures* creaturesHandler = m_creaturesGameActionHandler.get();
-        // Host: CipSoft's queue sends the client messages of the game actions
-        // itself; qtclient's handlers emit them and the session forwards them to
-        // its queue. The session state's attack and follow ids follow the
-        // creature storage's targets (providers, the world map and packs read
-        // them), and packs get onAttack for each attack request.
-        connect(creaturesHandler, &Creatures::sendAttack, this, [this](const pb::GameclientMessageAttack& message) {
-            if (!m_protocolMessageQueue || !tibia::game::canPerformGameAction())
-                return;
-            gameSessionState().setAttackingCreatureId(message.creature_id());
-            gameSessionState().setFollowingCreatureId(m_creatureStorage->followID());
-            m_protocolMessageQueue->sendAttack(message);
-            tibia::game::notify("onAttack", static_cast<uint32_t>(message.creature_id()));
-        });
-        connect(creaturesHandler, &Creatures::sendFollow, this, [this](const pb::GameclientMessageFollow& message) {
-            if (!m_protocolMessageQueue || !tibia::game::canPerformGameAction())
-                return;
-            gameSessionState().setFollowingCreatureId(message.creature_id());
-            gameSessionState().setAttackingCreatureId(m_creatureStorage->attackID());
-            m_protocolMessageQueue->sendFollow(message);
-        });
-        connect(creaturesHandler, &Creatures::sendLookAtCreature, this, [this](const pb::GameclientMessageLookAtCreature& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendLookAtCreature(message);
-        });
-        connect(creaturesHandler, &Creatures::sendInspectPlayer, this, [this](const pb::GameclientMessageInspectPlayer& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendInspectPlayer(message);
-        });
-        connect(creaturesHandler, &Creatures::sendInviteToParty, this, [this](const pb::GameclientMessageInviteToParty& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendInviteToParty(message);
-        });
-        connect(creaturesHandler, &Creatures::sendJoinParty, this, [this](const pb::GameclientMessageJoinParty& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendJoinParty(message);
-        });
-        connect(creaturesHandler, &Creatures::sendRevokeInvitation, this, [this](const pb::GameclientMessageRevokeInvitation& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendRevokeInvitation(message);
-        });
-        connect(creaturesHandler, &Creatures::sendPassLeadership, this, [this](const pb::GameclientMessagePassLeadership& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendPassLeadership(message);
-        });
-        connect(creaturesHandler, &Creatures::sendLeaveParty, this, [this](const pb::GameclientMessageLeaveParty& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendLeaveParty(message);
-        });
-        connect(creaturesHandler, &Creatures::sendShareExperience, this, [this](const pb::GameclientMessageShareExperience& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendShareExperience(message);
-        });
-        connect(creaturesHandler, &Creatures::sendGreet, this, [this](const pb::GameclientMessageGreet& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendGreet(message);
-        });
-        connect(creaturesHandler, &Creatures::sendJoinAggression, this, [this](const pb::GameclientMessageJoinAggression& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendJoinAggression(message);
-        });
-    }
     m_playerGameActionHandler = std::make_shared<TPlayerGameActionHandler>(m_creatureStorage, m_playerData);
-    connect(m_playerGameActionHandler.get(), &TPlayerGameActionHandler::sendMount, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageMount& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendMount(message);
-            });
-    connect(m_playerGameActionHandler.get(), &TPlayerGameActionHandler::sendSetHirelingName, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageSetHirelingName& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendSetHirelingName(message);
-            });
-    connect(m_playerGameActionHandler.get(), &TPlayerGameActionHandler::sendInspectPlayer, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageInspectPlayer& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendInspectPlayer(message);
-            });
-    connect(m_playerGameActionHandler.get(), &TPlayerGameActionHandler::sendSetTactics, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageSetTactics& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendSetTactics(message);
-            });
     m_containerGameActionHandler = std::make_shared<container::TContainerGameActionHandler>(m_containerStorage, m_objectCountStorage);
-    {
-        using H = container::TContainerGameActionHandler;
-        namespace P = ::tibia::protobuf::protocol;
-        connect(m_containerGameActionHandler.get(), &H::sendMoveObject, this, [this](const P::GameclientMessageMoveObject& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendMoveObject(message);
-        });
-        connect(m_containerGameActionHandler.get(), &H::sendEquipObject, this, [this](const P::GameclientMessageEquipObject& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendEquipObject(message);
-        });
-        connect(m_containerGameActionHandler.get(), &H::sendStashAction, this, [this](const P::GameclientMessageStashAction& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendStashAction(message);
-        });
-        connect(m_containerGameActionHandler.get(), &H::sendOpenDepotSearch, this,
-                [this](const P::GameclientMessageOpenDepotSearch& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendOpenDepotSearch(message);
-                });
-        connect(m_containerGameActionHandler.get(), &H::sendCloseDepotSearch, this,
-                [this](const P::GameclientMessageCloseDepotSearch& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendCloseDepotSearch(message);
-                });
-        connect(m_containerGameActionHandler.get(), &H::sendDepotSearchType, this,
-                [this](const P::GameclientMessageDepotSearchType& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendDepotSearchType(message);
-                });
-        connect(m_containerGameActionHandler.get(), &H::sendOpenParentContainer, this,
-                [this](const P::GameclientMessageOpenParentContainer& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendOpenParentContainer(message);
-                });
-        connect(m_containerGameActionHandler.get(), &H::sendDepotSearchRetrieve, this,
-                [this](const P::GameclientMessageDepotSearchRetrieve& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendDepotSearchRetrieve(message);
-                });
-    }
     m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>(m_gameActionContextHelper);
-    connect(m_worldMapGameActionHandler.get(), &worldmap::TWorldMapGameActionHandler::sendMoveObject, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageMoveObject& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendMoveObject(message);
-            });
     m_useWithGameActionHandler = std::make_shared<input::TUseWithGameActionHandler>();
-    connect(m_useWithGameActionHandler.get(), &input::TUseWithGameActionHandler::sendUseTwoObjects, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageUseTwoObjects& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendUseTwoObjects(message);
-            });
-    connect(m_useWithGameActionHandler.get(), &input::TUseWithGameActionHandler::sendUseOnCreature, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageUseOnCreature& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendUseOnCreature(message);
-            });
     m_crossHairSpellGameActionHandler = std::make_shared<input::TCrossHairSpellGameActionHandler>();
-    connect(m_crossHairSpellGameActionHandler.get(), &input::TCrossHairSpellGameActionHandler::sendTalkMessage, this,
-            [this](const ::tibia::protobuf::protocol::GameclientMessageTalk& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                    m_protocolMessageQueue->sendTalkMessage(message);
-            });
     m_chatGameActionHandler =
         std::make_shared<chat::TChatGameActionHandler>(m_chatChannelStorage, m_textStorage, spells::TSpellInfoStorage::instance());
-    {
-        using H = chat::TChatGameActionHandler;
-        namespace P = ::tibia::protobuf::protocol;
-        connect(m_chatGameActionHandler.get(), &H::sendGetChanneList, this, [this](const P::GameclientMessageGetChannels& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendGetChanneList(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendJoinChannel, this, [this](const P::GameclientMessageJoinChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendJoinChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendOpenChannel, this, [this](const P::GameclientMessageOpenChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendOpenChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendPrivateChannel, this, [this](const P::GameclientMessagePrivateChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendPrivateChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendCloseNPCChannel, this, [this](const P::GameclientMessageCloseNPCChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendCloseNPCChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendLeaveChannel, this, [this](const P::GameclientMessageLeaveChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendLeaveChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendInviteToChannel, this, [this](const P::GameclientMessageInviteToChannel& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendInviteToChannel(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendExcludeFromChannel, this,
-                [this](const P::GameclientMessageExcludeFromChannel& message) {
-                    if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                        m_protocolMessageQueue->sendExcludeFromChannel(message);
-                });
-        connect(m_chatGameActionHandler.get(), &H::sendGuildMessage, this, [this](const P::GameclientMessageGuildMessage& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendGuildMessage(message);
-        });
-        connect(m_chatGameActionHandler.get(), &H::sendTalkMessage, this, [this](const P::GameclientMessageTalk& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendTalkMessage(message);
-        });
-    }
     m_vipGameActionHandler = std::make_shared<creatures::TVipGameActionHandler>(m_vipStorage.get());
     m_playerTradeGameActionHandler = std::make_shared<trade::TPlayerTradeGameActionHandler>(m_creatureStorage.get());
     m_storeGameActionHandler = std::make_shared<store::TStoreGameActionHandler>(m_storeProtocolMessageHandler);
@@ -617,6 +454,9 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
         spells::TSpellInfoStorage::instance(), m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage);
+    m_battleListGameActionHandler = std::make_shared<gamewindow::TBattleListGameActionHandler>(
+        m_characterConfigurationManager ? m_characterConfigurationManager->sidebarOptions() : nullptr, m_creatureStorage,
+        m_battleListRenderProvider);
 }
 
 void TGameSessionBase::connectGameActionHandlers()
@@ -671,6 +511,8 @@ void TGameSessionBase::connectGameActionHandlers()
             &effects::TEffectGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_actionButtonGameActionHandler.get(),
             &input::TActionButtonGameActionHandler::handleGameAction);
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_battleListGameActionHandler.get(),
+            &gamewindow::TBattleListGameActionHandler::handleGameAction);
     // ... and takes the game actions the session's parts publish.
     connect(m_genericGameActionHandler.get(), &input::TGenericGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
@@ -735,12 +577,16 @@ void TGameSessionBase::connectGameActionHandlers()
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_actionButtonGameActionHandler.get(), &input::TActionButtonGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_battleListGameActionHandler.get(), &gamewindow::TBattleListGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
 }
 
 void TGameSessionBase::onPrepareNextFrameToRender(const qint64 NextFramePredictedTimestamp)
 {
     if (m_nextFrameUpdater)
         m_nextFrameUpdater->update(NextFramePredictedTimestamp);
+    if (m_objectSoundController)
+        m_objectSoundController->updateObjectCounts();
 }
 
 void TGameSessionBase::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)
@@ -766,9 +612,8 @@ void TGameSessionBase::onWorldTypeReceived(const cip::tibia::qmlcomponents::enum
 {
     m_worldType = WorldType;
     Q_EMIT worldTypeSet();
-    // CIP also hands the world type to the session's VIP widget action
-    // provider; qtclient's provider belongs to the VIP widget, which reads the
-    // game client's world type.
+    if (m_vipWidgetGameActionProvider)
+        m_vipWidgetGameActionProvider->setWorldType(static_cast<int>(m_worldType));
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -985,33 +830,6 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedDepotSearchResultMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchResultMessage);
         link(&Queue::receivedDepotSearchDetailListMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage);
         link(&Queue::receivedCloseDepotSearchMessage, containers, &TContainerProtocolMessageHandler::handleCloseDepotSearchMessage);
-        // Its client messages go out through the session's queue while the game takes actions.
-        namespace pb = ::tibia::protobuf::protocol;
-        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendCloseContainerMessage, queue,
-                                             [queue](const pb::GameclientMessageCloseContainer& message) {
-                                                 if (tibia::game::canPerformGameAction())
-                                                     queue->sendCloseContainer(message);
-                                             }));
-        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendUpContainerMessage, queue,
-                                             [queue](const pb::GameclientMessageUpContainer& message) {
-                                                 if (tibia::game::canPerformGameAction())
-                                                     queue->sendUpContainer(message);
-                                             }));
-        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendSeekInContainerMessage, queue,
-                                             [queue](const pb::GameclientMessageSeekInContainer& message) {
-                                                 if (tibia::game::canPerformGameAction())
-                                                     queue->sendSeekInContainer(message);
-                                             }));
-        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendGetObjectInfoMessage, queue,
-                                             [queue](const pb::GameclientMessageGetObjectInfo& message) {
-                                                 if (tibia::game::canPerformGameAction())
-                                                     queue->sendGetObjectInfo(message);
-                                             }));
-        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendContainerActionMessage, queue,
-                                             [queue](const pb::GameclientMessageContainerAction& message) {
-                                                 if (tibia::game::canPerformGameAction())
-                                                     queue->sendContainerActionMessage(message);
-                                             }));
     }
 
 
@@ -1236,19 +1054,15 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
     link(&Queue::receivedBossDifficultySelectionMessage, m_bossDifficultySelectionProtocolMessageHandler.get(),
          &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);
-    // Host: the preview goes out through the session's queue while the game takes actions.
-    m_queueConnections.push_back(connect(
-        m_bossDifficultySelectionProtocolMessageHandler.get(), &TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionDataChanged,
-        this, [this](const ::tibia::protobuf::protocol::GameclientMessageBossDifficultySelection& message) {
-            if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
-                m_protocolMessageQueue->sendBossDifficultySelectionChangedMessage(message);
-        }));
 
 }
 
 void TGameSessionBase::releaseStorages()
 {
-    // The handlers refer to their storages.
+    // The providers and handlers refer to their storages.
+    m_vipWidgetGameActionProvider.reset();
+    m_chatGameActionProvider.reset();
+    m_genericChatGameActionProvider.reset();
     m_playerTradeGameActionHandler.reset();
     m_vipGameActionHandler.reset();
     m_chatGameActionHandler.reset();
@@ -1294,6 +1108,8 @@ void TGameSessionBase::releaseStorages()
     m_worldMapGameActionProvider.reset();
     m_worldMapGameActionHandler.reset();
     m_nextFrameUpdater.reset();
+    m_battleListGameActionHandler.reset();
+    m_battleListRenderProvider.reset();
     m_creatureHUDRenderProvider.reset();
     m_worldMapRenderProvider.reset();
     m_renderVolumeProvider.reset();

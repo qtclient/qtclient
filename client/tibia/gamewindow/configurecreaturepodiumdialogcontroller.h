@@ -93,6 +93,7 @@ public:
 
     /// The look of the chosen race's skin, 0 without one.
     int chosenOutfit() const override;
+    QVariantMap initialDialogProperties() const override;
 
 public Q_SLOTS:
     void onIndexChanged(int SelectedIndex, int ChosenRace) override;

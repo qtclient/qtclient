@@ -163,6 +163,8 @@ ClientOptionsNotifier::ClientOptionsNotifier()
             [changed](const config::EClientOption id) { changed(config::TClientOptions::optionName(id)); });
     connect(options, &config::TClientOptions::clientWindowOptionsChanged, this,
             [changed] { changed(QStringLiteral("clientWindowOptions")); });
+    connect(options, &config::TClientOptions::whiteBlacklistOptionsChanged, this,
+            [changed] { changed(QStringLiteral("whiteBlacklistOptions")); });
 }
 
 ClientOptionsNotifier* ClientOptionsNotifier::instance()

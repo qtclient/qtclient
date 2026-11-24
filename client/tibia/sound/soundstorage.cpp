@@ -17,6 +17,16 @@ void TSoundStorage::setSoundsToPlay(std::vector<TSoundToPlay> sounds, const int6
     Q_EMIT soundsToPlayChanged();
 }
 
+std::vector<TSoundToPlay> TSoundStorage::takeSoundsToPlay()
+{
+    std::vector<TSoundToPlay> sounds;
+    sounds.reserve(m_soundsToPlay.size());
+    for (const TSoundToPlay& sound : m_soundsToPlay)
+        sounds.push_back(sound);
+    m_soundsToPlay.clear();
+    return sounds;
+}
+
 void TSoundStorage::queueSound(const TSoundToPlay& sound)
 {
     m_queuedSounds.push_back(sound);

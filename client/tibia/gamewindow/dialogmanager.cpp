@@ -136,12 +136,6 @@ void TDialogStackController::dialogReleasedFocus(const TDialog* dialog)
             eventFilters->releaseFocus();
 }
 
-void TDialogStackController::setCharacterListOpen(const bool open)
-{
-    m_characterListOpen = open;
-    update();
-}
-
 bool TDialogStackController::closeTopShieldedDialog()
 {
     for (auto it = m_dialogs.rbegin(); it != m_dialogs.rend(); ++it) {
@@ -165,7 +159,7 @@ void TDialogStackController::update()
     // A top dialog without a personal mouse shield blocks the keyboard; an
     // empty stack or a shielded top dialog unblocks it.
     if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance()) {
-        if (m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield()))
+        if (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield())
             eventFilters->block();
         else
             eventFilters->unblock();

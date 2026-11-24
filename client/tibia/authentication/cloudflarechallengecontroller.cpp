@@ -65,8 +65,7 @@ bool TCloudflareChallengeController::isRunning()
 
 void TCloudflareChallengeController::cancel(const QString& Reason)
 {
-    Q_UNUSED(Reason);
-    fail(TCloudflareChallengeError::Cancelled);
+    fail(TCloudflareChallengeError::Cancelled, Reason);
 }
 
 void TCloudflareChallengeController::cancel()
@@ -79,17 +78,17 @@ void TCloudflareChallengeController::startChallenge(const QUrl& url)
     if (m_running)
         cancel(QStringLiteral("restart"));
 
-    m_finished = false;
     m_clearance = {};
     m_error.reset();
+    m_errorReason.clear();
     setTargetUrl(url);
 
 #if !defined(TIBIA_DESKTOP_WEBENGINE)
-    fail(TCloudflareChallengeError::Unknown);
+    failWithoutSolver();
     return;
 #else
     if (!m_profile || !url.isValid()) {
-        fail(TCloudflareChallengeError::Unknown);
+        failWithoutSolver();
         return;
     }
 
@@ -104,49 +103,51 @@ void TCloudflareChallengeController::startChallenge(const QUrl& url)
 
 void TCloudflareChallengeController::onCookieAdded(const QNetworkCookie& Cookie)
 {
-    if (!m_running || m_finished)
+    // Only the clearance cookie is kept; succeed() ignores it unless a challenge runs.
+    if (Cookie.name() != QByteArray(ClearanceCookieName))
         return;
-    m_clearance.cookies.append(Cookie);
-    if (Cookie.name() == QByteArray(ClearanceCookieName) && !Cookie.value().isEmpty())
-        succeed();
+    m_clearance.cookies = { Cookie };
+    succeed();
 }
 
 void TCloudflareChallengeController::stopAndCloseDialog()
 {
-    Q_EMIT stopSolverWebview();
-    if (dialog()->isShown())
-        dialog()->close();
+    m_running = false;
+    m_timeout.stop();
+    dialog()->close();
 }
 
 void TCloudflareChallengeController::onSolveTimeout()
 {
-    fail(TCloudflareChallengeError::Timeout);
+    fail(TCloudflareChallengeError::Timeout, QString());
 }
 
-void TCloudflareChallengeController::fail(const TCloudflareChallengeError error)
+void TCloudflareChallengeController::fail(const TCloudflareChallengeError error, const QString& reason)
 {
-    if (m_finished)
+    if (!m_running)
         return;
-    m_finished = true;
-    m_running = false;
-    m_error = error;
-    m_timeout.stop();
     stopAndCloseDialog();
+    m_error = error;
+    m_errorReason = reason;
     Q_EMIT challengeSolveFailed(error);
+}
+
+void TCloudflareChallengeController::failWithoutSolver()
+{
+    // Host: no WebEngine solver (browser build) or no usable target; the challenge fails at once.
+    m_error = TCloudflareChallengeError::Unknown;
+    Q_EMIT challengeSolveFailed(TCloudflareChallengeError::Unknown);
 }
 
 void TCloudflareChallengeController::succeed()
 {
-    if (m_finished)
+    if (!m_running)
         return;
-    m_finished = true;
-    m_running = false;
-    m_timeout.stop();
+    stopAndCloseDialog();
 #if defined(TIBIA_DESKTOP_WEBENGINE)
     if (m_profile)
         m_clearance.userAgent = m_profile->httpUserAgent();
 #endif
-    stopAndCloseDialog();
     Q_EMIT challengeSolveSuccess(m_clearance);
 }
 

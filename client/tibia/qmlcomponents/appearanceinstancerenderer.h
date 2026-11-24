@@ -41,6 +41,9 @@ public:
     /// A liquid object's liquid; EMPTY for any other instance. Throws
     /// std::invalid_argument for a liquid past the enum.
     static ELiquidType getQmlLiquidType(const appearances::TAppearanceInstancePtr& instance);
+    /// The liquid id of a QML liquid. Throws std::invalid_argument past the
+    /// enum.
+    static uint32_t getLiquidType(ELiquidType liquidType);
     /// A hangable object's hook direction; NONE for any other instance. Throws
     /// std::invalid_argument for a direction past 3.
     static EHookDirection getQmlHookDirection(const appearances::TAppearanceInstancePtr& instance);

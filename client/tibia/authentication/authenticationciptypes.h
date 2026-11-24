@@ -16,13 +16,6 @@ namespace authentication {
 void ownProductSurface(QObject* parent);
 
 
-class TGameserverLoginProcessController final : public cip::tibia::authentication::TGameserverLoginProcessController
-{
-    Q_OBJECT
-public:
-    using cip::tibia::authentication::TGameserverLoginProcessController::TGameserverLoginProcessController;
-};
-
 }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -149,6 +150,13 @@ public:
     /// parameter: the account has no characters yet, so the dialog can be neither
     /// cancelled nor skip the tutorial.
     void open(bool accountHasNoCharacters);
+
+public Q_SLOTS:
+    /// The router's game actions: the character selection's auto close
+    /// cancels the dialog; SHOW_CREATE_CHARACTER_DIALOG opens it.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+public:
 
     /// Closes the dialog and asks for the worlds; the answer shows it.
     void showDialog() override;

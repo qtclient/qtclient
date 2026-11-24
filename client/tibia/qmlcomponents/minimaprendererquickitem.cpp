@@ -1,8 +1,13 @@
 #include "minimaprendererquickitem.h"
 #include "cyclopedia/staticcontentinformation.h"
 
+#include "minimap/minimaprendererscenegraphdrawcommandprovider.h"
+#include "minimap/minimaprenderinfostorage.h"
+#include "qmlcomponents/qsgscenegraphdrawcommandsnode.h"
 #include "qmlcomponents/worldmapqmltypes.h"
+#include "renderer/scenegraphnodeprovider.h"
 #include "renderer/worldmapcamera.h"
+#include "sprites/resourcespritesmanager.h"
 
 #include "client/gameclient.h"
 #include "client/gamecore.h"
@@ -55,34 +60,36 @@ constexpr int MaxLayer = 15;
 minimap::TMinimapTileStorage* g_minimapTiles = nullptr;
 QList<TMinimapRendererQuickItem*> g_minimapRenderers;
 
-/// CIP : the viewport's fill per tile type.
-QColor backgroundColor(const ETileType type)
-{
-    switch (type) {
-        case ETileType::Satellite: return QColor(0x27, 0x4c, 0xa5);
-        case ETileType::Minimap: return QColor(0x33, 0x66, 0x99);
-        default: return QColor(Qt::black);
-    }
-}
+/// The time the draw commands wait after a zoom before they are rebuilt.
+constexpr int RescalingTimerInterval = 500;
 
-/// The scene graph root: owns the textures of the images drawn last frame.
 void deleteTextures(const std::unordered_map<qint64, QSGTexture*>& textures)
 {
     for (const auto& [key, texture] : textures)
         delete texture;
 }
 
+/// Host: the item's scene graph: the draw commands' node, then the pack's
+/// mission zone images (with the textures drawn last frame).
 class TRendererNode final : public QSGNode
 {
 public:
-    ~TRendererNode() override { deleteTextures(textures); }
-    void clear()
+    explicit TRendererNode(TQSGScenegraphDrawCommandsNode* commands)
+        : drawCommands(commands)
     {
-        while (QSGNode* child = firstChild()) {
-            removeChildNode(child);
+        appendChildNode(commands);
+        appendChildNode(missionZones);
+    }
+    ~TRendererNode() override { deleteTextures(textures); }
+    void clearMissionZones()
+    {
+        while (QSGNode* child = missionZones->firstChild()) {
+            missionZones->removeChildNode(child);
             delete child;
         }
     }
+    TQSGScenegraphDrawCommandsNode* drawCommands;
+    QSGNode* missionZones = new QSGNode;
     std::unordered_map<qint64, QSGTexture*> textures;
 };
 
@@ -247,6 +254,8 @@ void TAreaCaptionController::activate() { onClicked(); }
 TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
     : cip::tibia::qmlcomponents::TMinimapRendererQuickItem(parent)
     , m_worldCamera(new TWorldMapCamera(this))
+    , m_renderInfoStorage(std::make_shared<minimap::TMinimapRenderInfoStorage>())
+    , m_resourceSpritesManager(std::make_shared<sprites::TResourceSpritesManager>())
 {
     g_minimapRenderers.append(this);
     setFlag(ItemHasContents, true);
@@ -258,29 +267,42 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
     m_showPassages = true;
     m_showHouses = true;
     m_minimapMarkersFilter = QList<bool>(40, true);
+    // Host: the render infos read the process' static map data, and the item
+    // owns the resource images the markers are drawn with.
+    m_renderInfoStorage->setCamera(m_worldCamera->camera());
+    m_renderInfoStorage->setStaticDataStorage(&TStaticData::instance());
+    m_renderInfoStorage->setResourceSpritesManager(m_resourceSpritesManager.get());
+    m_drawCommandProvider = std::make_shared<minimap::TMinimapRendererScenegraphDrawCommandProvider>(m_renderInfoStorage);
+    m_drawCommandProvider->setResourceSpritesManager(m_resourceSpritesManager.get());
+    m_rescalingTimer.setSingleShot(true);
+    m_rescalingTimer.setInterval(RescalingTimerInterval);
+    connect(&m_rescalingTimer, &QTimer::timeout, this, &TMinimapRendererQuickItem::onRescalingTimerTimeout);
+    connect(m_worldCamera, &TWorldMapCamera::cameraViewportChanged, this, &TMinimapRendererQuickItem::onCameraViewportChanged);
+    connect(m_renderInfoStorage.get(), &minimap::TMinimapRenderInfoStorage::renderInfosChanged, this,
+            &TMinimapRendererQuickItem::onRenderInfosChanged);
+    updateRenderInfoSettings();
     ensureMarkerIcons();
-    connect(m_worldCamera, &TWorldMapCamera::cameraViewportChanged, this, &TMinimapRendererQuickItem::scheduleUpdate);
     connect(this, &TMinimapRendererQuickItem::propertyChanged, this, [this] {
-        syncZoneBlinkTimer();
+        updateRenderInfoSettings();
         scheduleUpdate();
     });
     // Map images come from the sprite system; redraw when one is decompressed.
     connect(tibia::sprites::TSpriteSystem::instance().decompressor().get(),
             &tibia::sprites::TSpritesheetDecompressor::decompressingSpritesheetFinished, this,
-            &TMinimapRendererQuickItem::scheduleUpdate);
+            &TMinimapRendererQuickItem::onRenderInfosChanged);
+    // Host: the player marker follows the local player.
     m_playerTimer.setInterval(250);
     connect(&m_playerTimer, &QTimer::timeout, this, [this] {
         if (!tibia::game::hasLocalPlayer())
             return;
         const Position position = tibia::game::localPlayerPosition();
-        if (QPoint(position.x, position.y) != m_playerField || position.z != m_playerLayer)
-            scheduleUpdate();
+        if (QPoint(position.x, position.y) == m_playerField && position.z == m_playerLayer)
+            return;
+        m_playerField = QPoint(position.x, position.y);
+        m_playerLayer = position.z;
+        m_renderInfoStorage->onPlayerPositionChanged();
     });
     m_playerTimer.start();
-    // CIP updatePaintNode re-polishes while zone overlays are drawn so the
-    // shared highlight alpha can pulse.
-    m_zoneBlinkTimer.setInterval(33);
-    connect(&m_zoneBlinkTimer, &QTimer::timeout, this, &TMinimapRendererQuickItem::scheduleUpdate);
 }
 
 TMinimapRendererQuickItem::~TMinimapRendererQuickItem()
@@ -293,19 +315,15 @@ TMinimapRendererQuickItem::~TMinimapRendererQuickItem()
 void TMinimapRendererQuickItem::notifyMarkersChanged()
 {
     for (TMinimapRendererQuickItem* item : std::as_const(g_minimapRenderers))
-        item->scheduleUpdate();
+        item->m_renderInfoStorage->onMinimapMarkersChanged();
 }
 
 TWorldMapCamera* TMinimapRendererQuickItem::worldCamera() const { return m_worldCamera; }
 
 void TMinimapRendererQuickItem::setStorage(cyclopedia::TCyclopediaMapStorage* storage)
 {
-    if (m_storage)
-        disconnect(m_storage, nullptr, this, nullptr);
     m_storage = storage;
-    if (storage)
-        connect(storage, &cyclopedia::TCyclopediaMapStorage::changed, this, &TMinimapRendererQuickItem::scheduleUpdate);
-    scheduleUpdate();
+    m_renderInfoStorage->setMapStorage(storage);
 }
 
 void TMinimapRendererQuickItem::setHighlightedSubareas(const std::set<int>& subareas)
@@ -313,7 +331,10 @@ void TMinimapRendererQuickItem::setHighlightedSubareas(const std::set<int>& suba
     if (m_highlighted == subareas)
         return;
     m_highlighted = subareas;
-    syncZoneBlinkTimer();
+    std::set<quint16> shown;
+    for (const int subarea : subareas)
+        shown.insert(static_cast<quint16>(subarea));
+    m_renderInfoStorage->setSubAreasToShow(shown);
     scheduleUpdate();
 }
 
@@ -322,7 +343,7 @@ void TMinimapRendererQuickItem::setHighlightedCoordinate(const Position& coordin
     if (m_highlightedCoordinate == coordinate)
         return;
     m_highlightedCoordinate = coordinate;
-    scheduleUpdate();
+    m_renderInfoStorage->setSelectedPassage(worldmap::TWorldMapCoordinate(coordinate));
 }
 
 void TMinimapRendererQuickItem::setMissionZones(std::vector<TMissionZoneOverlay> zones)
@@ -351,23 +372,69 @@ void TMinimapRendererQuickItem::setShowCyclopediaSubareaCaptions(const bool show
     scheduleUpdate();
 }
 
-void TMinimapRendererQuickItem::syncZoneBlinkTimer()
+void TMinimapRendererQuickItem::setMinimapTileStorage(minimap::TMinimapTileStorage* storage) { g_minimapTiles = storage; }
+
+void TMinimapRendererQuickItem::onCameraViewportChanged()
 {
-    if (m_showZones && !m_highlighted.empty()) {
-        if (!m_zoneBlinkTimer.isActive())
-            m_zoneBlinkTimer.start();
-    } else if (m_zoneBlinkTimer.isActive()) {
-        m_zoneBlinkTimer.stop();
+    m_drawCommandsOutdated = true;
+    polish();
+}
+
+void TMinimapRendererQuickItem::onRenderInfosChanged()
+{
+    m_drawCommandsOutdated = true;
+    polish();
+}
+
+void TMinimapRendererQuickItem::onRescalingTimerTimeout()
+{
+    m_rescaling = true;
+    polish();
+}
+
+void TMinimapRendererQuickItem::updateRenderInfoSettings()
+{
+    minimap::TMinimapRenderInfoStorage& renderInfos = *m_renderInfoStorage;
+    bool changed = false;
+    if (renderInfos.showNPCMarkers() != m_showNPCMarkers) {
+        renderInfos.setShowNPCMarkers(m_showNPCMarkers);
+        changed = true;
+    }
+    if (renderInfos.showPassages() != m_showPassages) {
+        renderInfos.setShowPassages(m_showPassages);
+        changed = true;
+    }
+    if (renderInfos.showHouses() != m_showHouses) {
+        renderInfos.setShowHouses(m_showHouses);
+        changed = true;
+    }
+    if (renderInfos.showViewpoints() != m_showExploreOverlay) {
+        renderInfos.setShowViewpoints(m_showExploreOverlay);
+        changed = true;
+    }
+    if (renderInfos.minimapMarkersFilter() != m_minimapMarkersFilter) {
+        renderInfos.setMinimapMarkersFilter(m_minimapMarkersFilter);
+        changed = true;
+    }
+    if (changed)
+        renderInfos.markMarkersOutdated();
+    renderInfos.setTileType(static_cast<minimap::TMinimapRenderInfoStorage::ETileType>(m_tileType));
+
+    minimap::TMinimapRendererScenegraphDrawCommandProvider& provider = *m_drawCommandProvider;
+    if (provider.showAreaCaptions() != m_showAreaCaptions)
+        provider.setShowAreaCaptions(m_showAreaCaptions);
+    if (provider.drawSubAreaOverlays() != m_showZones) {
+        provider.setDrawSubAreaOverlays(m_showZones);
+        m_drawCommandsOutdated = true;
+    }
+    // Host: the level separator setting is a percentage.
+    const float alpha = static_cast<float>(std::clamp(m_levelSeparator, 0, 100)) / 100.0f;
+    if (provider.levelSeparatorAlpha() != alpha) {
+        provider.setLevelSeparatorAlpha(alpha);
+        m_drawCommandsOutdated = true;
+        polish();
     }
 }
-
-float TMinimapRendererQuickItem::zoneHighlightOpacity()
-{
-    // CIP : same pulse as world-map sprite highlights.
-    return renderer::highlightStrength();
-}
-
-void TMinimapRendererQuickItem::setMinimapTileStorage(minimap::TMinimapTileStorage* storage) { g_minimapTiles = storage; }
 
 void TMinimapRendererQuickItem::componentComplete()
 {
@@ -386,13 +453,14 @@ void TMinimapRendererQuickItem::geometryChange(const QRectF& newGeometry, const 
 
 void TMinimapRendererQuickItem::scheduleUpdate()
 {
+    m_drawCommandsOutdated = true;
     polish();
 }
 
 void TMinimapRendererQuickItem::requestRebuild()
 {
     m_rebuildRequested = true;
-    polish();
+    scheduleUpdate();
 }
 
 void TMinimapRendererQuickItem::updatePolish()
@@ -403,22 +471,39 @@ void TMinimapRendererQuickItem::updatePolish()
         m_missionZoneImages.clear();
     }
     m_worldCamera->applyPendingCenter();
-    buildDrawList();
+    if (!m_drawCommandsOutdated && !m_rescaling)
+        return;
+    m_drawCommandsOutdated = false;
+    m_rescaling = false;
+    updateDrawCommands();
+}
+
+void TMinimapRendererQuickItem::updateDrawCommands()
+{
+    if (!m_drawCommandProvider)
+        return;
+    // Host: the game client may install its static map data after the item exists.
+    m_renderInfoStorage->setStaticDataStorage(&TStaticData::instance());
+    // The view's size in fields at the camera's scale.
+    const double scale = m_worldCamera->camera()->scaleFactor();
+    const worldmap::TWorldMapExtent viewExtent(static_cast<int>(static_cast<float>(width() / scale) * 0.03125f),
+                                               static_cast<int>(static_cast<float>(height() / scale) * 0.03125f), 7);
+    m_drawCommandProvider->setViewExtent(viewExtent);
+    m_drawCommandProvider->updateSpriteDrawCommands();
     updateCaptions();
+    // Host: the pack's mission zones and the marker rectangles under the mouse.
+    m_missionZoneDraws.clear();
+    if (m_showZones)
+        addMissionZones(m_missionZoneDraws);
+    updateMarkerHits();
     update();
 }
 
-void TMinimapRendererQuickItem::buildDrawList()
+void TMinimapRendererQuickItem::addMissionZones(std::vector<TImageDraw>& draws)
 {
-    m_drawList.clear();
-    const int z = m_worldCamera->layer();
+    const auto& data = TStaticData::instance();
     const QRectF viewport = boundingRect();
-    TDraw background;
-    background.rects.push_back({ viewport, backgroundColor(m_tileType) });
-    m_drawList.push_back(std::move(background));
-
-    // CIP : the floors from the ground up to the viewed one when
-    // it is above ground; each deeper floor is darkened by the separator.
+    const int z = m_worldCamera->layer();
     std::vector<int> layers;
     if (z <= GroundLayer && m_tileType != ETileType::LocalMinimap) {
         for (int layer = GroundLayer; layer >= z; --layer)
@@ -426,128 +511,30 @@ void TMinimapRendererQuickItem::buildDrawList()
     } else {
         layers.push_back(z);
     }
-    const qreal separator = m_levelSeparator / 100.0;
+    const qreal opacity = renderer::highlightStrength();
     for (const int layer : layers) {
-        TDraw draw;
-        if (m_tileType == ETileType::LocalMinimap)
-            addLocalMinimap(draw, layer);
-        else
-            addTiles(draw, layer);
-        if (m_showZones)
-            addZones(draw, layer);
-        if (layer > z && separator > 0 && z <= GroundLayer) {
-            QColor shade(Qt::black);
-            shade.setAlphaF(static_cast<float>(std::min<qreal>(separator, 1.0)));
-            draw.rects.push_back({ viewport, shade });
-        }
-        m_drawList.push_back(std::move(draw));
-    }
-    TDraw markers;
-    addMarkers(markers);
-    m_drawList.push_back(std::move(markers));
-}
-
-void TMinimapRendererQuickItem::addTiles(TDraw& draw, const int layer)
-{
-    const auto& data = TStaticData::instance();
-    const EFileType type = m_tileType == ETileType::Satellite ? EFileType::Satellite : EFileType::Minimap;
-    // CIP : one level of detail for the whole viewport.
-    const float scale = data.levelOfDetail(static_cast<float>(m_worldCamera->scaleFactor()), type);
-    const QRectF viewport = boundingRect();
-    for (const auto& file : data.mapFiles(type)) {
-        if (file.scale != scale || file.extent.origin.z != layer)
-            continue;
-        const auto& origin = file.extent.origin;
-        const QPointF topLeft = m_worldCamera->pixelOf(origin.x, origin.y, layer);
-        const QPointF bottomRight = m_worldCamera->pixelOf(file.extent.end.x, file.extent.end.y, layer);
-        const QRectF target(topLeft, bottomRight);
-        if (!target.intersects(viewport))
-            continue;
-        const QImage image = TStaticData::mapImage(file.fileName);
-        if (image.isNull())
-            continue;
-        const qreal pixelsPerField = file.scale * SubfieldsPerField;
-        draw.images.push_back({ image, target,
-                                QRectF(0, 0, file.extent.extent.width * pixelsPerField, file.extent.extent.height * pixelsPerField),
-                                type == EFileType::Satellite });
-    }
-}
-
-void TMinimapRendererQuickItem::addLocalMinimap(TDraw& draw, const int layer)
-{
-    constexpr int TileSize = minimap::TMinimapTile::Size;
-    const QPoint topLeft = m_worldCamera->fieldAt(QPointF(0, 0));
-    const QPoint bottomRight = m_worldCamera->fieldAt(QPointF(width(), height()));
-    for (int y = topLeft.y() & ~(TileSize - 1); y <= bottomRight.y(); y += TileSize) {
-        for (int x = topLeft.x() & ~(TileSize - 1); x <= bottomRight.x(); x += TileSize) {
-            QImage image;
-            if (g_minimapTiles) {
-                if (const auto tile = g_minimapTiles->tileAt(Position(x, y, layer)))
-                    image = tile->colorImage();
+        for (const int subareaId : m_highlighted) {
+            if (const auto* subArea = data.subArea(static_cast<quint16>(subareaId)); subArea && !subArea->fileName.isEmpty()) {
+                // The CipSoft overlays show the ground floor's subareas above ground.
+                if (subArea->extent.origin.z == layer && layer == GroundLayer && z <= GroundLayer)
+                    continue;
             }
-            if (image.isNull()) {
-                const qint64 key = (qint64(x) << 32) | (qint64(y) << 8) | layer;
-                auto it = m_localTiles.find(key);
-                if (it == m_localTiles.end()) {
-                    const QString file = minimap::TMinimapManager::minimapDir()
-                        + QStringLiteral("/Minimap_Color_%1_%2_%3.png").arg(x).arg(y).arg(layer);
-                    it = m_localTiles.emplace(key, QImage(file)).first;
-                }
-                image = it->second;
-            }
-            if (image.isNull())
+            const auto zoneIt = m_missionZones.find(subareaId);
+            if (zoneIt == m_missionZones.end())
                 continue;
-            const QRectF target(m_worldCamera->pixelOf(x, y, layer), m_worldCamera->pixelOf(x + TileSize, y + TileSize, layer));
-            draw.images.push_back({ image, target, QRectF(0, 0, TileSize, TileSize), false });
+            const TMissionZoneOverlay& zone = zoneIt->second;
+            if (zone.z != layer || zone.fields.isEmpty() || zone.file.isEmpty())
+                continue;
+            const QRect& fields = zone.fields;
+            const QRectF target(m_worldCamera->pixelOf(fields.x(), fields.y(), layer),
+                                m_worldCamera->pixelOf(fields.x() + fields.width(), fields.y() + fields.height(), layer));
+            if (!target.intersects(viewport))
+                continue;
+            const QImage mask = missionZoneImage(zone);
+            if (mask.isNull())
+                continue;
+            draws.push_back({ mask, target, QRectF(QPointF(0, 0), QSizeF(fields.size())), true, opacity });
         }
-    }
-}
-
-void TMinimapRendererQuickItem::addZones(TDraw& draw, const int layer)
-{
-    const auto& data = TStaticData::instance();
-    const QRectF viewport = boundingRect();
-    // CIP builds the zone with 0xffffe137; draw opacity is
-    // DAT_1077b32c8 so the selection blinks like mouse
-    // / attack highlights on the game world map.
-    const qreal opacity = zoneHighlightOpacity();
-    for (const int subareaId : m_highlighted) {
-        const auto* subArea = data.subArea(static_cast<quint16>(subareaId));
-        if (!subArea || subArea->fileName.isEmpty())
-            continue;
-        const auto& extent = subArea->extent;
-        if (extent.origin.z != layer)
-            continue;
-        const QRectF target(m_worldCamera->pixelOf(extent.origin.x, extent.origin.y, layer),
-                            m_worldCamera->pixelOf(extent.end.x, extent.end.y, layer));
-        if (!target.intersects(viewport))
-            continue;
-        const QImage mask = TStaticData::mapImage(subArea->fileName);
-        if (mask.isNull())
-            continue;
-        // Linear filtering matches CIP cyclopedia zone edges when the mask is scaled.
-        draw.images.push_back({ zoneImage(subareaId, mask), target, QRectF(0, 0, extent.extent.width, extent.extent.height), true, opacity });
-    }
-    for (const int subareaId : m_highlighted) {
-        if (const auto* subArea = data.subArea(static_cast<quint16>(subareaId)); subArea && !subArea->fileName.isEmpty()) {
-            if (subArea->extent.origin.z == layer)
-                continue; // CIP mask already drawn above.
-        }
-        const auto zoneIt = m_missionZones.find(subareaId);
-        if (zoneIt == m_missionZones.end())
-            continue;
-        const TMissionZoneOverlay& zone = zoneIt->second;
-        if (zone.z != layer || zone.fields.isEmpty() || zone.file.isEmpty())
-            continue;
-        const QRect& fields = zone.fields;
-        const QRectF target(m_worldCamera->pixelOf(fields.x(), fields.y(), layer),
-                            m_worldCamera->pixelOf(fields.x() + fields.width(), fields.y() + fields.height(), layer));
-        if (!target.intersects(viewport))
-            continue;
-        const QImage mask = missionZoneImage(zone);
-        if (mask.isNull())
-            continue;
-        draw.images.push_back({ mask, target, QRectF(QPointF(0, 0), QSizeF(fields.size())), true, opacity });
     }
 }
 
@@ -613,14 +600,14 @@ void TMinimapRendererQuickItem::ensureMarkerIcons()
     }
 }
 
-void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
+void TMinimapRendererQuickItem::updateMarkerHits()
 {
     ensureMarkerIcons();
     const int z = m_worldCamera->layer();
     const QRectF viewport = boundingRect();
     const qreal halfField = SubfieldsPerField * 0.5 * m_worldCamera->scaleFactor();
     m_markers.clear();
-    const auto addPin = [&](const QImage& icon, const QColor& fallback, const int x, const int y, const int layer,
+    const auto addPin = [&](const QImage& icon, const QColor&, const int x, const int y, const int layer,
                             const QString& tooltip, const int kind, const quint32 houseId) {
         const TMarkerHit hit{ kind, Position(x, y, static_cast<uint8_t>(layer)), houseId };
         const QPointF center = m_worldCamera->pixelOf(x, y, layer) + QPointF(halfField, halfField);
@@ -628,7 +615,6 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
             const QRectF target(center - QPointF(icon.width() * 0.5, icon.height() * 0.5), icon.size());
             if (!target.intersects(viewport))
                 return;
-            draw.images.push_back({ icon, target, QRectF(QPointF(0, 0), icon.size()), false });
             m_markers.push_back({ target, tooltip, hit });
             return;
         }
@@ -636,7 +622,6 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         const QRectF target(center.x() - size * 0.5, center.y() - size * 0.5, size, size);
         if (!target.intersects(viewport))
             return;
-        draw.rects.push_back({ target, fallback });
         m_markers.push_back({ target, tooltip, hit });
     };
     if (m_showNPCMarkers) {
@@ -650,12 +635,10 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         for (const auto& point : m_storage->viewpoints()) {
             if (point.coordinate.z != z)
                 continue;
-            const QColor color = point.state != 0 ? QColor(0x66, 0xff, 0x5e) : QColor(0xcc, 0x33, 0x91);
             const qreal size = 6 * m_worldCamera->scaleFactor() * SubfieldsPerField / 8.0;
             const QPointF center = m_worldCamera->pixelOf(point.coordinate.x, point.coordinate.y, z) + QPointF(halfField, halfField);
             const QRectF target(center.x() - size * 0.5, center.y() - size * 0.5, size, size);
             if (target.intersects(viewport)) {
-                draw.rects.push_back({ target, color });
                 m_markers.push_back({ target, qtTrId("viewpoint_tooltip"),
                                       { TMarkerHit::Viewpoint,
                                         Position(point.coordinate.x, point.coordinate.y, static_cast<uint8_t>(point.coordinate.z)), 0 } });
@@ -734,11 +717,8 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
                    passage.coordinate.y, z, tooltip, TMarkerHit::Passage, 0);
         }
     }
-    m_playerLayer = -1;
     if (tibia::game::hasLocalPlayer()) {
         const Position position = tibia::game::localPlayerPosition();
-        m_playerField = QPoint(position.x, position.y);
-        m_playerLayer = position.z;
         const bool drawn = position.z == z || (z <= GroundLayer && position.z > z && position.z <= GroundLayer && m_tileType != ETileType::LocalMinimap);
         if (position.isValid() && drawn)
             addPin(m_playerIcon, QColor(0x66, 0xff, 0x5e), position.x, position.y, position.z,
@@ -909,48 +889,59 @@ void TMinimapRendererQuickItem::updateCaptions()
 
 QSGNode* TMinimapRendererQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
-    auto* root = oldNode ? static_cast<TRendererNode*>(oldNode) : new TRendererNode;
-    root->clear();
+    auto* root = static_cast<TRendererNode*>(oldNode);
+    if (!root) {
+        QQuickWindow* quickWindow = window();
+        if (!quickWindow)
+            return nullptr;
+        auto nodeProvider = std::make_shared<renderer::TScenegraphNodeProvider>(quickWindow);
+        root = new TRendererNode(new TQSGScenegraphDrawCommandsNode(
+            renderer::TSpriteTextureProviderManager::sharedProvider(quickWindow), std::move(nodeProvider)));
+    }
+    bool animated = root->drawCommands->update(m_drawCommandProvider->rootDrawCommand());
+
+    // Host: the pack's mission zones over the tree, pulsing like the overlays.
+    root->clearMissionZones();
     std::unordered_map<qint64, QSGTexture*> used;
-    for (const TDraw& draw : m_drawList) {
-        for (const TImageDraw& image : draw.images) {
-            const qint64 key = image.image.cacheKey();
-            QSGTexture* texture = nullptr;
-            if (const auto it = used.find(key); it != used.end()) {
-                texture = it->second;
-            } else if (const auto cached = root->textures.find(key); cached != root->textures.end()) {
-                texture = cached->second;
-                root->textures.erase(cached);
-            } else {
-                texture = window()->createTextureFromImage(image.image);
-            }
-            if (!texture)
-                continue;
-            used.emplace(key, texture);
-            QSGImageNode* node = window()->createImageNode();
-            node->setTexture(texture);
-            node->setOwnsTexture(false);
-            node->setRect(image.target);
-            node->setSourceRect(image.source);
-            node->setFiltering(image.smooth ? QSGTexture::Linear : QSGTexture::Nearest);
-            if (image.opacity < 1.0) {
-                auto* opacityNode = new QSGOpacityNode;
-                opacityNode->setOpacity(image.opacity);
-                opacityNode->appendChildNode(node);
-                root->appendChildNode(opacityNode);
-            } else {
-                root->appendChildNode(node);
-            }
+    for (const TImageDraw& image : m_missionZoneDraws) {
+        const qint64 key = image.image.cacheKey();
+        QSGTexture* texture = nullptr;
+        if (const auto it = used.find(key); it != used.end()) {
+            texture = it->second;
+        } else if (const auto cached = root->textures.find(key); cached != root->textures.end()) {
+            texture = cached->second;
+            root->textures.erase(cached);
+        } else {
+            texture = window()->createTextureFromImage(image.image);
         }
-        for (const TRectDraw& rect : draw.rects) {
-            QSGRectangleNode* node = window()->createRectangleNode();
-            node->setRect(rect.rect);
-            node->setColor(rect.color);
-            root->appendChildNode(node);
-        }
+        if (!texture)
+            continue;
+        used.emplace(key, texture);
+        QSGImageNode* node = window()->createImageNode();
+        node->setTexture(texture);
+        node->setOwnsTexture(false);
+        node->setRect(image.target);
+        node->setSourceRect(image.source);
+        node->setFiltering(image.smooth ? QSGTexture::Linear : QSGTexture::Nearest);
+        auto* opacityNode = new QSGOpacityNode;
+        opacityNode->setOpacity(image.opacity);
+        opacityNode->appendChildNode(node);
+        root->missionZones->appendChildNode(opacityNode);
+        animated = true;
     }
     deleteTextures(root->textures);
     root->textures = std::move(used);
+
+    // A command changing every frame or a sprite still loading: build again.
+    if (animated) {
+        QMetaObject::invokeMethod(
+            this,
+            [this] {
+                m_drawCommandsOutdated = true;
+                polish();
+            },
+            Qt::QueuedConnection);
+    }
     return root;
 }
 

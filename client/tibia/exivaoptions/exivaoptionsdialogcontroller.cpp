@@ -36,8 +36,8 @@ TExivaOptionsStorage::Names lines(const QString& text)
 
 }
 
-TExivaOptionsDialogController::TExivaOptionsDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ExivaOptionsDialog.qml"), parent)
+TExivaOptionsDialogController::TExivaOptionsDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ExivaOptionsDialog.qml"), Engine, DialogParentItem, parent)
 {
     // Until a storage is set, own guild and own party are allowed.
     m_allowGuild = true;

@@ -19,6 +19,8 @@ public:
     ~TSoundStorage() override;
 
     const std::vector<TSoundToPlay>& soundsToPlay() const { return m_soundsToPlay; }
+    /// The sounds to play, handed out once: the storage is empty afterwards.
+    std::vector<TSoundToPlay> takeSoundsToPlay();
     /// The effects of one protocol message.
     void setSoundsToPlay(std::vector<TSoundToPlay> sounds, int64_t timestampMs);
     /// An effect that plays at its timestamp (update).

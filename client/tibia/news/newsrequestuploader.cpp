@@ -61,7 +61,6 @@ void TNewsRequestUploader::requestNews(const TNewsQueryParameters& parameters, c
     uint& tries = m_retries.try_emplace(query, 0u).first->second;
     if (tries < 3 || force) {
         ++tries;
-        m_pending = true;
         upload(m_url, newsQueryDocument(query));
         return;
     }
@@ -78,30 +77,16 @@ void TNewsRequestUploader::requestUpdate()
 
 void TNewsRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
-    // Several uploaders may share one TJsonDocumentHttpPostSender; ignore
-    // replies that are not ours (e.g. newsviewed / eventschedule fan-out).
-    if (!m_pending)
-        return;
-    const QJsonObject root = ReplyFromServerJD.object();
-    const bool newsShaped = root.contains(QStringLiteral("gamenews")) || root.contains(QStringLiteral("maxeditdate"))
-        || root.contains(QStringLiteral("categorycounts"));
-    if (UploadSuccessful && !newsShaped)
-        return;
-    m_pending = false;
     if (!UploadSuccessful) {
         Q_EMIT newsQueryFailed(errorMessage());
         return;
     }
-    try {
-        TNewsData data = parseNewsData(ReplyFromServerJD);
-        data.lastUpdateTimestamp = m_clock->currentDateTime().toSecsSinceEpoch();
-        // A new edit date starts the retry counts over.
-        if (m_storage->version() != data.maxEditDate)
-            m_retries.clear();
-        m_storage->mergeNewsData(data);
-    } catch (const std::exception& e) {
-        Q_EMIT newsQueryFailed(QString::fromUtf8(e.what()));
-    }
+    TNewsData data = parseNewsData(ReplyFromServerJD);
+    data.lastUpdateTimestamp = m_clock->currentDateTime().toSecsSinceEpoch();
+    // A new edit date starts the retry counts over.
+    if (m_storage->version() != data.maxEditDate)
+        m_retries.clear();
+    m_storage->mergeNewsData(data);
 }
 
 TNewsViewsUploader::TNewsViewsUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,

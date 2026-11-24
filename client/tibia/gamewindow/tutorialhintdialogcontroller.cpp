@@ -224,10 +224,6 @@ TTutorialShell::TTutorialShell(QQmlEngine* engine, QQuickItem* dialogParentItem,
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
             overlay->addGuiMarker(action);
-        if (action.creatureId() != 0 && action.markerId() > 0) {
-            if (TBattleListControllerStorage* lists = TBattleListControllerStorage::instance())
-                lists->setCreatureTutorialMarker(action.creatureId(), action.markerId());
-        }
         if (qmlcomponents::TTutorialHelperQmlService* helper = qmlcomponents::TTutorialHelperQmlService::instance()) {
             if (action.markerId() > 0) {
                 if (auto* item = helper->findTutorialMarkerQuickItemWithID(action.markerId()))
@@ -240,8 +236,6 @@ TTutorialShell::TTutorialShell(QQmlEngine* engine, QQuickItem* dialogParentItem,
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
             overlay->removeAllMarkers();
-        if (TBattleListControllerStorage* lists = TBattleListControllerStorage::instance())
-            lists->clearCreatureTutorialMarkers();
         return true;
     });
     m_gameActions.on(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {

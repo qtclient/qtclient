@@ -150,7 +150,7 @@ private:
 
     std::vector<client::gamecore::Hook> m_hooks;
     TMessageDialogController* m_errorMessage;
-    class TSelectOutfitDialogController* m_outfitDialog = nullptr;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     bool m_shown = false;
     /// The data type shown; the inspection until another page is picked.
     int m_dataType = Inspection;

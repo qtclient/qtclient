@@ -48,6 +48,9 @@ struct TCreatureHUDIconFlags
     bool operator==(const TCreatureHUDIconFlags& other) const;
 };
 
+/// The creature's HUD icons followed by those of its status marks.
+std::vector<creatures::TCreatureIcon> hudIconsWithStatusMarks(const creatures::TCreature& creature);
+
 /// One creature's HUD for the frame being drawn, filled by
 /// TCreatureHUDRenderProvider and copied into the creature's
 /// TCreatureHUDController and TCreatureHUDQmlRenderInfo.

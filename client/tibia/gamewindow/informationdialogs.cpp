@@ -100,11 +100,7 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
                      [linkCopyWarning](const input::IGameAction& action) { linkCopyWarning->handleGameAction(action); });
     new TLoginConfirmationCodeEnterTextDialogController(this);
     new TTwoFactorCodeEnterTextDialogController(this);
-    new TMultiOfflineTrainingDialogController(dialogEngine(), dialogParentItem(), this);
-    new TOutfitMemorialDialogController(dialogEngine(), dialogParentItem(), this);
     new TReturnerRewardDialogController(this);
-    new TShowImageDialogController(dialogEngine(), dialogParentItem(), this);
-    forward(new TShowSpellBookDialogController(dialogEngine(), dialogParentItem(), this));
     forward(new TSurveyInvitationDialogController(this));
     new TInfoBannerController(nullptr, this);
 
@@ -133,70 +129,9 @@ void TInformationDialogs::setControlScheme(const int controlScheme) { m_cycloped
 
 void TInformationDialogs::hookOutfitDialog()
 {
-    m_gameActions.on(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::IGameAction&) {
-        tibia::game::requestOutfit();
-        return true;
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOutfitWindowOptions", [this](GameObject*, const Args& args) {
-        TSelectOutfitDialogController::WindowOptions options{
-            .mounted = client::gamecore::argBool(args, 1),
-            .randomMount = client::gamecore::argBool(args, 2),
-            .tryOutfitMode = static_cast<int>(client::gamecore::argInt(args, 0)),
-        };
-        if (const auto* pairs = arg<std::vector<std::tuple<uint16_t, uint16_t>>>(args, 3))
-            for (const auto& [male, female] : *pairs)
-                options.genderPairs.append({ male, female });
-        const auto offers = [&args](const size_t index) {
-            QList<int> list;
-            if (const auto* ids = arg<std::vector<uint32_t>>(args, index))
-                for (const uint32_t id : *ids)
-                    list.append(static_cast<int>(id));
-            return list;
-        };
-        options.outfitOffers = offers(4);
-        options.mountOffers = offers(5);
-        options.summonOffers = offers(6);
-        if (const auto* pos = arg<Position>(args, 7))
-            options.podiumPosition = *pos;
-        options.podiumItemId = static_cast<uint16_t>(client::gamecore::argInt(args, 8));
-        options.podiumStackpos = static_cast<uint8_t>(client::gamecore::argInt(args, 9));
-        options.podiumVisible = client::gamecore::argInt(args, 10) != 0;
-        options.podiumShowOutfit = client::gamecore::argInt(args, 11) != 0;
-        options.podiumDirection = static_cast<uint8_t>(client::gamecore::argInt(args, 12));
-        m_outfitDialog->setWindowOptions(std::move(options));
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenOutfitWindow", [this](GameObject*, const Args& args) {
-        const auto* previewOutfit = arg<Outfit>(args, 0);
-        if (!previewOutfit)
-            return std::any{};
-
-        QList<Entry> outfits;
-        if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>>(args, 1)) {
-            for (const auto& [id, name, addons, mode] : *list)
-                outfits.append({ .id = id, .name = qstr(name), .firstAddOn = (addons & 1) != 0, .secondAddOn = (addons & 2) != 0,
-                                 .type = mode, .canBeColorized = outfitCanBeColorized(id) });
-        }
-        QList<Entry> mounts;
-        if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t>>>(args, 2)) {
-            for (const auto& [id, name, mode] : *list)
-                mounts.append({ .id = id, .name = qstr(name), .type = mode, .canBeColorized = outfitCanBeColorized(id) });
-        }
-        QList<Entry> summons;
-        if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string>>>(args, 3)) {
-            for (const auto& [id, name] : *list)
-                summons.append({ .id = id, .name = qstr(name) });
-        }
-        m_outfitDialog->open(*previewOutfit, std::move(outfits), std::move(mounts), std::move(summons));
-        return std::any{};
-    });
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_outfitDialog->setWindowOptions({});
-        m_questLog->clear();
-    });
+    // CIP: REQUEST_OUTFITS_FROM_SERVER is the session's TPlayerGameActionHandler's; the
+    // outfit dialog follows the session (TSelectOutfitDialogController::connectToGameSession).
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { m_questLog->clear(); });
 }
 
 void TInformationDialogs::hookCreaturePodium()
