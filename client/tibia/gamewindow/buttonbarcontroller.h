@@ -20,6 +20,9 @@ namespace tibia {
 namespace mods {
 class AttentionBackend;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 }
 
 namespace tibia {
@@ -92,6 +95,9 @@ public:
     void setCyclopediaButtonController(QObject* controller);
     void setBosstiaryButtonController(QObject* controller);
     void setAttentionStorage(mods::AttentionBackend* storage);
+    /// Relays the storage's premiumTimeChanged as premiumTimeChanged (a
+    /// previous storage's relay is dropped), then announces it once.
+    void connectToPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
 
     /// CIP: set by DAILY_REWARD_READY_TO_PICK_UP, cleared by
     /// DAILY_REWARD_NOT_COLLECTABLE (handleGameAction).
@@ -159,6 +165,11 @@ public Q_SLOTS:
     /// CIP .
     void onShowContextMenu() override;
 
+    /// Closes the logout question.
+    void onGamesessionChanged() override;
+    /// The model takes the enabled buttons of the button options.
+    void onButtonOptionsChanged();
+
     /// CIP slots 38 / 39 (EWidgetType).
     void onWidgetVisible(int widgetType);
     void onWidgetHidden(int widgetType);
@@ -177,6 +188,7 @@ private:
     QPointer<config::TSidebarOptions> m_options;
     QPointer<TMessageDialogController> m_logoutQuestion;
     QPointer<mods::AttentionBackend> m_attention;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

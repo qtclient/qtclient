@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include <QDateTime>
+
 namespace tibia {
 namespace qmlcomponents {
 
@@ -15,6 +17,16 @@ QString shortDurationString(qint64 seconds);
 QString ultraShortDurationString(qint64 seconds);
 /// "HH:MM:SS" (hours not wrapped).
 QString hoursMinutesSecondsString(qint64 seconds);
+
+/// `Time` in the game world's time zone, Europe/Berlin.
+QDateTime toServerTime(const QDateTime& Time);
+/// Whether a time from toServerTime falls in Berlin's summer time (CEST).
+bool isServerDaylightTime(const QDateTime& ServerTime);
+/// "yyyy-MM-dd, HH:mm" in Berlin time, then " CET" or " CEST".
+QString formatServerDateTime(const QDateTime& Time);
+/// "yyyy-MM-dd, HH:mm", ":ss" when `WithSeconds`, ",zzz" when `WithMilliseconds`, in Berlin
+/// time, then " CET" or " CEST".
+QString formatServerDateTime(const QDateTime& Time, bool WithSeconds, bool WithMilliseconds);
 
 /// QML singleton TextHelper (CIP: TTextHelperQmlService, metacall).
 /// Multi strings join their longest-to-shortest variants with U+009C so QML

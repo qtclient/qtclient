@@ -53,6 +53,14 @@ public:
 
     const TInventorySlot& appearance() const { return m_appearance; }
     bool hasClock() const { return m_appearance.hasClock; }
+
+    /// The object properties come from the kept object appearance instance.
+    uint objectID() const override;
+    uint objectCount() const override;
+    uint upgradeTier() const override;
+    ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType liquidType() const override;
+    ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection hookDirection() const override;
+    uint decoItemObjectID() const override;
     void setBackgroundImage(const QString& image);
     /// CIP : takes the info, signalling what changed.
     void assign(const TSlotInfo& info);

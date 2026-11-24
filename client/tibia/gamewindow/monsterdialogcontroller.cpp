@@ -6,11 +6,14 @@
 
 #include <utility>
 #include "gamewindow/smoothfiltering.h"
+#include "appearances/appearanceinstance.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "game/playerdata.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -55,11 +58,7 @@ const T* arg(const std::vector<std::any>& args, const size_t index)
 QString qstr(const std::string& text) { return QString::fromStdString(text); }
 QString englishNumber(const qlonglong value) { return QLocale(QLocale::English).toString(value); }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 int pageCount(const size_t entries) { return static_cast<int>(std::ceil(static_cast<double>(entries) / PageSize)); }
 
@@ -198,12 +197,18 @@ public:
     {
         m_isEmpty = true;
     }
-    TQmlLoot(const LootItem& item)
-        : m_dropCount(item.amount)
+    /// A loot object: its type, name, drop count and special-event flag; the
+    /// liquid and hook direction come from its appearance instance. Both loot
+    /// value images start empty.
+    TQmlLoot(const uint16_t appearanceTypeID, QString name, const int dropCount, const bool isSpecialEventOnly,
+             const appearances::TAppearanceInstancePtr& instance)
+        : m_dropCount(dropCount)
     {
-        m_appearanceTypeID = item.itemId;
-        m_isSpecialEventOnly = item.specialEvent != 0;
-        m_name = qstr(item.name);
+        m_appearanceTypeID = appearanceTypeID;
+        m_isEmpty = false;
+        m_isSpecialEventOnly = isSpecialEventOnly;
+        m_name = std::move(name);
+        initialiseFromAppearanceInstance(instance);
     }
 
     bool isSecretOrUnknown() const override { return m_appearanceTypeID == 0; }
@@ -219,6 +224,12 @@ public:
     }
 
 private:
+    void initialiseFromAppearanceInstance(const appearances::TAppearanceInstancePtr& instance)
+    {
+        m_liquidType = qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(instance);
+        m_hookDirection = qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(instance);
+    }
+
     int m_dropCount = 0;
 };
 
@@ -230,8 +241,13 @@ public:
         : m_rarity(rarity)
     {
         for (const LootItem& item : loot) {
-            if (item.diffculty == rarity)
-                m_lootItems.append(new TQmlLoot(item));
+            if (item.diffculty != rarity)
+                continue;
+            // The bestiary loot entry carries only the object's type: its
+            // instance is the plain object of that type.
+            const appearances::TAppearanceInstancePtr instance =
+                item.itemId != 0 ? appearances::TAppearanceInstanceFactory::createObject(item.itemId) : nullptr;
+            m_lootItems.append(new TQmlLoot(item.itemId, qstr(item.name), item.amount, item.specialEvent != 0, instance));
         }
         while (m_lootItems.size() % PageSize != 0)
             m_lootItems.append(new TQmlLoot());
@@ -728,9 +744,11 @@ TCyclopediaDialogContext TMonsterDialogController::captureContext() const
 {
     TMonsterInfoCyclopediaContext context;
     context.state = m_dialogState;
+    context.classificationPage = m_monsterClassificationCurrentPage;
     context.classification = m_selectedClassification;
     context.search = m_search;
-    context.raceId = m_selectedRace;
+    context.racesPage = m_monsterRacesCurrentPage;
+    context.raceId = static_cast<uint16_t>(m_selectedRace);
     return context;
 }
 
@@ -743,14 +761,16 @@ void TMonsterDialogController::restoreContext(const TCyclopediaDialogContext& Cy
             onMonsterRaceClicked(static_cast<uint>(context.raceId));
             break;
         case MonsterRaces:
-            // The classification's races, or the search's.
+            // The classification's races, or the search's, on the page shown.
+            m_pendingRacesPage = context.racesPage;
             if (context.search.isEmpty())
                 requestClassificationSelection(context.classification);
             else
                 requestMonsterSearch(context.search);
             break;
         case MonsterClassification:
-            m_selectedClassification = context.classification;
+            // The classifications, on the page shown.
+            m_pendingClassificationPage = context.classificationPage;
             onMonsterClassificationSummaryChanged();
             break;
     }
@@ -857,8 +877,7 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
 {
     // CIP: the loot tile's menu adds the item to the loot black/whitelist or removes it.
     TContextMenuController* menu = TContextMenuController::instance();
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr;
+    quickloot::TQuickLootBlackWhitelistStorage* loot = game::currentQuickLootBlackWhitelistStorage();
     if (!menu || !loot || AppearanceTypeID <= 0)
         return;
     const auto typeId = static_cast<uint16_t>(AppearanceTypeID);
@@ -928,16 +947,22 @@ void TMonsterDialogController::setDialogState(const DialogState state)
 
 void TMonsterDialogController::onMonsterClassificationSummaryChanged()
 {
-    // The page of the selected classification, else the first.
+    // A restored context's page (once, within the pages), else the page of
+    // the selected classification, else the first.
     setDialogState(MonsterClassification);
     m_monsterClassificationCurrentPage = 0;
     const auto& classifications = classificationSummary(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
     m_monsterClassificationTotalPages = pageCount(classifications.size());
     int page = 1;
-    for (size_t i = 0; i < classifications.size(); ++i) {
-        if (classifications[i].name == m_selectedClassification) {
-            page = static_cast<int>(i / PageSize) + 1;
-            break;
+    if (m_pendingClassificationPage != 0) {
+        page = std::max(std::min(m_pendingClassificationPage, m_monsterClassificationTotalPages), 0);
+        m_pendingClassificationPage = 0;
+    } else {
+        for (size_t i = 0; i < classifications.size(); ++i) {
+            if (classifications[i].name == m_selectedClassification) {
+                page = static_cast<int>(i / PageSize) + 1;
+                break;
+            }
         }
     }
     requestClassificationPageSwitch(page);
@@ -952,10 +977,16 @@ void TMonsterDialogController::onMonsterRacesChanged(const QString& MonsterClass
     const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
     m_monsterRacesTotalPages = pageCount(races.size());
     int page = 1;
-    for (size_t i = 0; i < races.size(); ++i) {
-        if (races[i].raceId == m_selectedRace) {
-            page = static_cast<int>(i / PageSize) + 1;
-            break;
+    if (m_pendingRacesPage != 0) {
+        // CipSoft bounds the restored races page by the classification pages.
+        page = std::max(std::min(m_pendingRacesPage, m_monsterClassificationTotalPages), 0);
+        m_pendingRacesPage = 0;
+    } else {
+        for (size_t i = 0; i < races.size(); ++i) {
+            if (races[i].raceId == m_selectedRace) {
+                page = static_cast<int>(i / PageSize) + 1;
+                break;
+            }
         }
     }
     requestMonsterPageSwitch(page);

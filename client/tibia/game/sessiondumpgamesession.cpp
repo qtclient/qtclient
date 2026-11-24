@@ -10,8 +10,6 @@
 #include "sessiondump/sessiondumpplayer.h"
 #include "sessiondump/sessiondumpprogressclockservice.h"
 #include "clockservice.h"
-#include "tutorial/sessiondumphints.h"
-#include "tutorial/sessiondumphintsprocessor.h"
 
 #include "game/tgamenotify.h"
 
@@ -19,9 +17,7 @@
 
 #include <protocol.pb.h>
 
-#include <QDebug>
 #include <QFile>
-#include <QJsonDocument>
 #include <QUrl>
 
 #include <cstdint>
@@ -90,7 +86,6 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
 TSessiondumpGameSession::~TSessiondumpGameSession()
 {
     stopReplay();
-    stopHints();
 }
 
 void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
@@ -110,7 +105,12 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
 
 void TSessiondumpGameSession::startSession()
 {
-    const QUrl& url = m_sessiondumpMetaInfo->sessiondump.url;
+    startSessiondump(m_sessiondumpMetaInfo->sessiondump);
+}
+
+void TSessiondumpGameSession::startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry)
+{
+    const QUrl& url = entry.url;
     replay(url.isLocalFile() ? url.toLocalFile() : url.toString());
 }
 
@@ -122,7 +122,6 @@ bool TSessiondumpGameSession::isTutorial() const
 void TSessiondumpGameSession::replay(const QString& file)
 {
     stopReplay();
-    stopHints();
     if (isSessiondumpDmpdFile(file)) {
         replayDmpd(file);
         return;
@@ -172,7 +171,6 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
     tibia::game::startDecodedReplay();
     player->start();
     m_sessiondumpTimer.start();
-    startHintsForDump(file);
 }
 
 void TSessiondumpGameSession::enqueueGameserverMessage(const sessiondump::TGameserverMessagePointer& message)
@@ -250,7 +248,6 @@ void TSessiondumpGameSession::replayHexDump(const QString& file)
             return;
         }
         startReplay(std::move(bodies));
-        startHintsForDump(file);
     } catch (const std::exception& e) {
         Q_EMIT connectionError(QString::fromUtf8(e.what()));
     }
@@ -298,40 +295,6 @@ void TSessiondumpGameSession::stopReplay()
     m_replayIndex = 0;
 }
 
-void TSessiondumpGameSession::startHintsForDump(const QString& dumpPath)
-{
-    const QString hintsPath = tutorial::hintsPathForDump(dumpPath);
-    if (hintsPath.isEmpty())
-        return;
-    QFile file(hintsPath);
-    if (!file.open(QIODevice::ReadOnly))
-        return;
-    std::shared_ptr<tutorial::TSessiondumpHints> hints;
-    try {
-        hints = std::make_shared<tutorial::TSessiondumpHints>(QJsonDocument::fromJson(file.readAll()));
-    } catch (const std::exception& e) {
-        qWarning() << "Invalid sessiondump hints" << hintsPath << e.what();
-        return;
-    }
-    m_hints = std::make_unique<tutorial::TSessiondumpHintsProcessor>(hints);
-    connect(m_hints.get(), &tutorial::TSessiondumpHintsProcessor::publishGameAction, gameActionRouter()->internalRouter(),
-            &TInternalGameActionRouter::handleGameActionInternal);
-    connect(gameActionRouter()->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_hints.get(),
-            &tutorial::TSessiondumpHintsProcessor::handleGameAction);
-    if (!m_sessiondumpPlayer) {
-        // Text dumps: no player to pause; the hints follow the replay clock.
-        connect(&m_replayTimer, &QTimer::timeout, m_hints.get(), [this] {
-            if (m_hints && m_replaying)
-                m_hints->processHints(m_replayClock.elapsed());
-        });
-    }
-}
-
-void TSessiondumpGameSession::stopHints()
-{
-    m_hints.reset();
-}
-
 void TSessiondumpGameSession::requestLogout()
 {
     disconnectNow();
@@ -343,7 +306,6 @@ void TSessiondumpGameSession::disconnectNow()
     m_sessiondumpProgressClock->pause();
     // Host: the replay stops and the classic session state lets go of it.
     stopReplay();
-    stopHints();
     hubDisconnectNow();
 }
 
@@ -376,32 +338,13 @@ void TSessiondumpGameSession::onRequestResetOfStorages()
     chatChannelStorage()->clearAllChannels();
 }
 
-void TSessiondumpGameSession::processHintsTick()
-{
-    // CipSoft's tutorial session tick: the dump pauses at the next hint until the
-    // hints due by then are processed (a condition stays due until it is met).
-    m_sessiondumpPlayer->setPauseAt(m_hints->nextHintTimestamp());
-    const int64_t progress = m_sessiondumpPlayer->progress();
-    if (m_hints->hasHintToProcess(progress)) {
-        m_sessiondumpPlayer->pause();
-        m_hints->processHints(progress);
-    }
-    if (!m_hints->hasHintToProcess(progress) && !m_sessiondumpPlayer->isRunning())
-        m_sessiondumpPlayer->resume();
-}
-
 void TSessiondumpGameSession::onSessiondumpTimerElapsed()
 {
-    // The hints due by now run before the dump goes on (CipSoft's tutorial
-    // session tick runs ahead of the player's processing).
-    if (m_hints)
-        processHintsTick();
     m_sessiondumpPlayer->processSessiondump();
 }
 
 void TSessiondumpGameSession::onSessiondumpFinished()
 {
-    stopHints();
 }
 
 }

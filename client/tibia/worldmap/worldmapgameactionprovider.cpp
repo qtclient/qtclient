@@ -22,19 +22,18 @@ using input::EGameAction;
 using input::TGameActionList;
 using input::IGameActionPtr;
 using A = EGameAction;
-using Provider = input::TGenericObjectGameActionProvider;
 using Cursor = gamewindow::TMouseCursorController;
 
-TGameActionList actionsOf(const TFieldObject& object, const TWorldMapField* field, const Position& position,
-                          std::initializer_list<EGameAction> types)
+TGameActionList actionsOf(const input::TGenericObjectGameActionProvider& provider, const TFieldObject& object,
+                          const TWorldMapField* field, const Position& position, std::initializer_list<EGameAction> types)
 {
     if (!object)
         return {};
     // The map menu takes a creature's actions from the creature provider (v4);
     // of its object actions only the move.
     if (object.creatureId)
-        return input::filterActions(Provider::objectActions(object, field, position), { A::MOVE_OBJECT });
-    return input::filterActions(Provider::objectActions(object, field, position), types);
+        return input::filterActions(provider.objectActions(object, field, position), { A::MOVE_OBJECT });
+    return input::filterActions(provider.objectActions(object, field, position), types);
 }
 
 std::shared_ptr<const input::TGameActionSmartClick> firstSmartClick(const TGameActionList& actions)
@@ -65,9 +64,10 @@ void append(TGameActionList& to, const TGameActionList& from)
 
 TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) const
 {
+    const input::TGenericObjectGameActionProvider& provider = *m_genericObjectGameActionProvider;
     const TWorldMapPick pick = TWorldMapPicker::pick(m_provider, m_viewport, mapPixel);
     if (!pick.isValid())
-        return Provider::creatureActions(0);
+        return provider.creatureActions(0);
 
     TGameActionList result;
     result.push_back(input::makeMovementIntent(pick.playerFloorPosition));
@@ -76,7 +76,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
         auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, qtTrId("you_see_nothing"), QColor(Qt::green));
         result.push_back(message);
         result.push_back(input::makeSmartClick(message));
-        append(result, Provider::creatureActions(0));
+        append(result, provider.creatureActions(0));
         return result;
     }
     if (!pick.look)
@@ -97,29 +97,29 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     const bool fieldCreatureIsOwn = fieldCreatureId && localId && fieldCreatureId == localId;
 
     const TGameActionList lookActions =
-        pick.look.creatureId ? TGameActionList{} : Provider::objectActions(pick.look, pick.field, pick.position);
+        pick.look.creatureId ? TGameActionList{} : provider.objectActions(pick.look, pick.field, pick.position);
     const TGameActionList lookList = input::filterActions(lookActions, { A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::LENSHELP_SHOW, A::SMART_CLICK, A::GET_TEXT_FOR_REPORT });
     const TGameActionList lootList = input::filterActions(lookActions, { A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST });
     // On the map a container opens in a new window only: OPEN is not offered.
-    const TGameActionList useList = actionsOf(use, pick.field, pick.position,
+    const TGameActionList useList = actionsOf(provider, use, pick.field, pick.position,
                                               { A::USE, A::USE_WITH, A::OPEN_IN_NEW_WINDOW, A::QUICK_LOOT,
                                                 A::GATHER_ALL, A::WRAP, A::UNWRAP, A::ROTATE_OBJECT,
                                                 A::CONFIGURE_SHOW_OFF_SOCKET, A::TRADE_ITEM, A::SMART_CLICK,
                                                 A::GET_TEXT_FOR_REPORT });
     // The quick-loot object adds its own quick loot unless it is the use object.
     const TGameActionList quickLootList = pick.quickLoot.appearance != use.appearance
-                                              ? actionsOf(pick.quickLoot, pick.field, pick.position, { A::QUICK_LOOT })
+                                              ? actionsOf(provider, pick.quickLoot, pick.field, pick.position, { A::QUICK_LOOT })
                                               : TGameActionList{};
-    const TGameActionList targetList = actionsOf(pick.multiUse, pick.field, pick.position, { A::TARGET_SELECTED });
+    const TGameActionList targetList = actionsOf(provider, pick.multiUse, pick.field, pick.position, { A::TARGET_SELECTED });
 
     result.push_back(input::makeObjectGameAction(A::BROWSE_FIELD, pick.position, -1));
     result.push_back(std::make_shared<input::TGameActionReportMapBug>(pick.position));
 
     const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
-    const TGameActionList creatureActions = Provider::creatureActions(pixelCreatureId);
+    const TGameActionList creatureActions = provider.creatureActions(pixelCreatureId);
     result.push_back(input::makeGameAction(A::CONTEXT_MENU));
 
-    const TGameActionList moveList = actionsOf(pick.move, pick.field, pick.position, { A::MOVE_OBJECT });
+    const TGameActionList moveList = actionsOf(provider, pick.move, pick.field, pick.position, { A::MOVE_OBJECT });
 
     std::shared_ptr<const input::TGameActionSmartClick> smartClick;
     std::shared_ptr<const input::TGameActionSmartClick> ownLook;

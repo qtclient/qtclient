@@ -2408,7 +2408,7 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendRequestOutfit();
         return true;
     case 211: // SetOutfit
-        gameclient::sendChangeOutfit(Outfit{}, false, false);
+        gameclient::sendChangeOutfit(::Outfit{}, false, false);
         return true;
     case 212: // Mount
         gameclient::sendMountStatus(false);

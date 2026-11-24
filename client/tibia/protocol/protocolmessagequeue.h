@@ -400,9 +400,8 @@ public:
     virtual void enqueueGameserverMessage(const std::shared_ptr<GameserverMessage>& message);
     virtual void enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message);
 
-    // Host side: the classic wire reader and the client message translator hand over
-    // owned messages; the client wire bytes travel with their message to the connection.
-    void enqueueServer(std::unique_ptr<GameserverMessage> message);
+    // Host side: the client message translator hands over owned messages; the client
+    // wire bytes travel with their message to the connection.
     void enqueueClient(std::unique_ptr<GameclientMessage> message, const QByteArray& wire);
 
     /// The server message being dispatched, or the last one dispatched.
@@ -411,7 +410,6 @@ public:
     /// null outside that signal.
     const GameclientMessage* clientMessageBeingSent() const { return m_clientMessageBeingSent.get(); }
 
-    int serverCount() const { return m_serverCount; }
     int clientCount() const { return m_clientCount; }
 
 Q_SIGNALS:
@@ -809,7 +807,6 @@ private:
 
     std::shared_ptr<GameserverMessage> m_lastGameserverMessage;
     std::shared_ptr<GameclientMessage> m_clientMessageBeingSent;
-    int m_serverCount = 0;
     int m_clientCount = 0;
 };
 

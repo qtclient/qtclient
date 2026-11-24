@@ -19,6 +19,7 @@
 #include <QRect>
 #include <QSize>
 #include "network/gameserverconnection.h"
+#include "input/playermovementintenthandler.h"
 
 namespace tibia::game {
 class TGameserverGameSession;
@@ -259,8 +260,12 @@ public:
     bool getExpertPvpMode() { return m_expertPvpMode; }
     /// The session has a character: from the login until the logout.
     bool hasLocalPlayer() const { return m_playerPresent; }
-    tibia::input::TPlayerMovementIntentHandler* movementIntent() { return m_movementIntent.get(); }
-    void createMovementIntent();
+    /// The live session's player movement intent handler (none in a session dump).
+    tibia::input::TPlayerMovementIntentHandler* movementIntent();
+    /// Host inputs of the live session's player movement intent handler: the
+    /// planner's waypoint costs and avoided fields, the aware range and the pack's
+    /// unreachable-goal claim.
+    static tibia::input::TPlayerMovementIntentHandler::Environment playerMovementIntentEnvironment();
     /// A login (or character switch) starts the character's session.
     void beginPlayerSession(std::string_view characterName);
     std::string getCharacterName() { return m_characterName; }
@@ -320,8 +325,6 @@ public:
     void setFollowingCreatureId(uint32_t creatureId);
 
     bool m_playerPresent{ false };
-    std::shared_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
-    std::shared_ptr<tibia::input::TPlayerMovementGameActionHandler> m_playerMovementGameActions;
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };
     /// The game connection of the running session (null when offline).

@@ -8,6 +8,7 @@
 #include "protocol/protocolciptypes.h"
 #include "assets/things.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "qmlcomponents/texthelper.h"
 
 #include <QLocale>
 #include <QTime>
@@ -21,34 +22,6 @@ namespace {
 QString localDateString(const uint32_t Timestamp)
 {
     return QLocale().toString(QDateTime::fromSecsSinceEpoch(Timestamp), QStringLiteral("ddd yyyy-MM-dd"));
-}
-
-/// `Time` in the server's time zone (Europe/Berlin).
-QDateTime toServerTime(const QDateTime& Time)
-{
-#if QT_CONFIG(timezone)
-    return Time.toTimeZone(QTimeZone("Europe/Berlin"));
-#else
-    // Qt for WebAssembly has no tz database: EU rule, CEST from 01:00 UTC on the last Sunday of
-    // March to 01:00 UTC on the last Sunday of October.
-    const QDateTime utc = Time.toUTC();
-    const int year = utc.date().year();
-    const auto switchAt = [year](const int month) {
-        const QDate last(year, month, QDate(year, month, 1).daysInMonth());
-        return QDateTime(last.addDays(-(last.dayOfWeek() % 7)), QTime(1, 0), QTimeZone::UTC);
-    };
-    const bool summer = utc >= switchAt(3) && utc < switchAt(10);
-    return utc.toOffsetFromUtc(summer ? 7200 : 3600);
-#endif
-}
-
-bool isServerSummerTime(const QDateTime& ServerTime)
-{
-#if QT_CONFIG(timezone)
-    return ServerTime.isDaylightTime();
-#else
-    return ServerTime.offsetFromUtc() == 7200;
-#endif
 }
 
 /// Team listing parameters from the server's settings message.
@@ -143,10 +116,10 @@ QString localDateTimeString(const uint32_t Timestamp)
 
 QString serverDateTimeString(const uint32_t Timestamp)
 {
-    const QDateTime serverTime = toServerTime(QDateTime::fromSecsSinceEpoch(Timestamp));
+    const QDateTime serverTime = qmlcomponents::toServerTime(QDateTime::fromSecsSinceEpoch(Timestamp));
     return qtTrId("%1 %2")
         .arg(QLocale().toString(serverTime, QStringLiteral("ddd yyyy-MM-dd, HH:mm")))
-        .arg(isServerSummerTime(serverTime) ? QStringLiteral("CEST") : QStringLiteral("CET"));
+        .arg(qmlcomponents::isServerDaylightTime(serverTime) ? QStringLiteral("CEST") : QStringLiteral("CET"));
 }
 
 void ownProductSurface(QObject* parent)

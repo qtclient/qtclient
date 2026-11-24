@@ -12,6 +12,9 @@ namespace tibia {
 namespace gamewindow {
 class TBattleListGameActionHandler;
 }
+namespace network {
+struct TNetworkLatency;
+}
 namespace client {
 class TAntiCheatController;
 }
@@ -29,6 +32,8 @@ class TWhiteBlacklist;
 namespace container {
 class TContainerProtocolMessageHandler;
 class TContainerGameActionHandler;
+class TContainerGameActionProvider;
+class TContainerRenderProvider;
 class TContainerStorage;
 class TInventoryContainer;
 class TDepotSearchDetailListStorage;
@@ -39,6 +44,7 @@ class TStashStorage;
 namespace input {
 class TActionButtonGameActionHandler;
 class TGenericChatGameActionProvider;
+class TGenericObjectGameActionProvider;
 class TGatherAllGameActionHandler;
 class TGatherAllProtocolMessageHandler;
 }
@@ -50,9 +56,11 @@ class TMarketStorage;
 namespace quickloot {
 class TManagedContainerStorage;
 class TManagedContainersProtocolMessageHandler;
+class TQuickLootBlackWhitelistStorage;
 class TQuickLootGameActionHandler;
 }
 namespace creatures {
+class TBattleListGameActionProvider;
 class TBattleListRenderProvider;
 class TCreatureMovementSpeedCalculator;
 class TCreatureProtocolMessageHandler;
@@ -66,6 +74,7 @@ class TVipStorage;
 class TVipWidgetGameActionProvider;
 }
 namespace exivaoptions {
+class TExivaOptionsGameActionHandler;
 class TExivaOptionsProtocolMessageHandler;
 class TExivaOptionsStorage;
 }
@@ -159,6 +168,7 @@ class TNewsProtocolMessageHandler;
 }
 namespace reporting {
 class TBugReportProtocolMessageHandler;
+class TReportingStorage;
 class TRuleViolationProtocolMessageHandler;
 }
 namespace tutorial {
@@ -355,6 +365,11 @@ public:
     {
         return m_creatureHUDRenderProvider;
     }
+    /// What the container windows and the inventory show.
+    const std::shared_ptr<container::TContainerRenderProvider>& containerRenderProvider() const
+    {
+        return m_containerRenderProvider;
+    }
     /// The battle list's rows (CIP v62).
     const std::shared_ptr<creatures::TBattleListRenderProvider>& battleListRenderProvider() const
     {
@@ -387,6 +402,23 @@ public:
     {
         return m_inspectPlayerGameActionProvider;
     }
+    /// The actions an object or a creature offers; the battle list, world map
+    /// and container providers build on it.
+    const std::shared_ptr<input::TGenericObjectGameActionProvider>& genericObjectGameActionProvider() const
+    {
+        return m_genericObjectGameActionProvider;
+    }
+    /// The actions of a battle list entry.
+    const std::shared_ptr<creatures::TBattleListGameActionProvider>& battleListGameActionProvider() const
+    {
+        return m_battleListGameActionProvider;
+    }
+    /// The actions of the inventory, container window, supply stash and depot
+    /// search slots.
+    const std::shared_ptr<container::TContainerGameActionProvider>& containerGameActionProvider() const
+    {
+        return m_containerGameActionProvider;
+    }
     /// The actions of a chat tab or of a chat entry.
     const std::shared_ptr<chat::TChatGameActionProvider>& chatGameActionProvider() const { return m_chatGameActionProvider; }
     /// The actions of a click in the VIP widget; it follows the world type.
@@ -402,6 +434,12 @@ public:
     const std::shared_ptr<analysers::TGainWasteStorage>& gainWasteStorage() const { return m_gainWasteStorage; }
     const std::shared_ptr<analysers::TImpactStorage>& impactStorage() const { return m_impactStorage; }
     const std::shared_ptr<analysers::TDamageInputStorage>& damageInputStorage() const { return m_damageInputStorage; }
+    /// The quick-loot black and white lists; the character configuration
+    /// manager saves them with the character.
+    const std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage>& quickLootBlackWhitelistStorage() const
+    {
+        return m_quickLootBlackWhitelistStorage;
+    }
     const std::shared_ptr<analysers::THuntingSessionStorage>& huntingSessionStorage() const { return m_huntingSessionStorage; }
     /// The Cyclopedia map's markers, views and location of the character.
     const std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>& cyclopediaMapCharacterConfigurationStorage() const
@@ -580,6 +618,7 @@ public:
     {
         return m_bugReportProtocolMessageHandler;
     }
+    const std::shared_ptr<reporting::TReportingStorage>& reportingStorage() const { return m_reportingStorage; }
     const std::shared_ptr<TEditTextProtocolMessageHandler>& editTextProtocolMessageHandler() const
     {
         return m_editTextProtocolMessageHandler;
@@ -653,6 +692,8 @@ public:
     }
     /// The base session reports the secondary connection in use.
     virtual network::EConnectionsUsed connectionsUsed() const { return network::EConnectionsUsed::Secondary; }
+    /// The connection's round trip; the base session measures none (zero, not measured).
+    virtual network::TNetworkLatency latency() const;
     /// How many frames the session prepared.
     int preparedFrameCount() const { return m_preparedFrameCount; }
 
@@ -756,6 +797,7 @@ private:
     std::shared_ptr<exaltation::TExaltationProtocolMessageHandler> m_exaltationProtocolMessageHandler;
     std::shared_ptr<exaltation::TExaltationGameActionHandler> m_exaltationGameActionHandler;
     std::shared_ptr<dailyreward::TDailyRewardGameActionHandler> m_dailyRewardGameActionHandler;
+    std::shared_ptr<exivaoptions::TExivaOptionsGameActionHandler> m_exivaOptionsGameActionHandler;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
@@ -764,6 +806,7 @@ private:
     std::shared_ptr<effects::TNumericalEffectRenderProvider> m_numericalEffectRenderProvider;
     std::shared_ptr<worldmap::TCreatureHUDRenderProvider> m_creatureHUDRenderProvider;
     std::shared_ptr<chat::TTextOverlayRenderProvider> m_textOverlayRenderProvider;
+    std::shared_ptr<container::TContainerRenderProvider> m_containerRenderProvider;
     std::shared_ptr<creatures::TBattleListRenderProvider> m_battleListRenderProvider;
     std::shared_ptr<gamewindow::TBattleListGameActionHandler> m_battleListGameActionHandler;
     std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
@@ -772,7 +815,10 @@ private:
     std::shared_ptr<input::TGenericChatGameActionProvider> m_genericChatGameActionProvider;
     std::shared_ptr<creatures::TPartyGameActionProvider> m_partyGameActionProvider;
     std::shared_ptr<creatures::TInspectPlayerGameActionProvider> m_inspectPlayerGameActionProvider;
+    std::shared_ptr<input::TGenericObjectGameActionProvider> m_genericObjectGameActionProvider;
+    std::shared_ptr<creatures::TBattleListGameActionProvider> m_battleListGameActionProvider;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_worldMapGameActionProvider;
+    std::shared_ptr<container::TContainerGameActionProvider> m_containerGameActionProvider;
     std::shared_ptr<chat::TChatGameActionProvider> m_chatGameActionProvider;
     std::shared_ptr<creatures::TVipWidgetGameActionProvider> m_vipWidgetGameActionProvider;
     /// qtclient's status line and centre messages go to the session's texts.
@@ -786,6 +832,7 @@ private:
     std::shared_ptr<analysers::TGainWasteStorage> m_gainWasteStorage;
     std::shared_ptr<analysers::TImpactStorage> m_impactStorage;
     std::shared_ptr<analysers::TDamageInputStorage> m_damageInputStorage;
+    std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_quickLootBlackWhitelistStorage;
     std::shared_ptr<analysers::THuntingSessionStorage> m_huntingSessionStorage;
     std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_cyclopediaMapCharacterConfigurationStorage;
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
@@ -848,6 +895,7 @@ private:
     std::shared_ptr<TServerModalDialogProtocolMessageHandler> m_serverModalDialogProtocolMessageHandler;
     std::shared_ptr<reporting::TRuleViolationProtocolMessageHandler> m_ruleViolationProtocolMessageHandler;
     std::shared_ptr<reporting::TBugReportProtocolMessageHandler> m_bugReportProtocolMessageHandler;
+    std::shared_ptr<reporting::TReportingStorage> m_reportingStorage;
     std::shared_ptr<TEditTextProtocolMessageHandler> m_editTextProtocolMessageHandler;
     std::shared_ptr<creatures::TUnjustifiedPointsProtocolMessageHandler> m_unjustifiedPointsProtocolMessageHandler;
     std::shared_ptr<news::TNewsProtocolMessageHandler> m_newsProtocolMessageHandler;

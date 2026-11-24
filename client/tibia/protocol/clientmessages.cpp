@@ -733,7 +733,7 @@ namespace {
 
 }
 
-void sendChangeOutfit(const Outfit& outfit, const bool mounted, const bool randomMount)
+void sendChangeOutfit(const ::Outfit& outfit, const bool mounted, const bool randomMount)
 {
     auto message = tibia::protocol::newGameclientMessage(211);
     auto* m = message->MutableExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
@@ -757,7 +757,7 @@ void sendChangeOutfit(const Outfit& outfit, const bool mounted, const bool rando
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void sendSetShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, const uint16_t itemId,
+void sendSetShowOffSocketConfiguration(const ::Outfit& outfit, const Position& pos, const uint16_t itemId,
                                                      const uint8_t stackpos, const uint8_t direction,
                                                      const uint8_t podiumVisible)
 {
@@ -785,7 +785,7 @@ void sendSetShowOffSocketConfiguration(const Outfit& outfit, const Position& pos
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void sendSetHirelingOutfit(const Outfit& outfit, const uint32_t hirelingCreatureId)
+void sendSetHirelingOutfit(const ::Outfit& outfit, const uint32_t hirelingCreatureId)
 {
     auto message = tibia::protocol::newGameclientMessage(211);
     auto* m = message->MutableExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);

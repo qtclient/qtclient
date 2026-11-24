@@ -35,14 +35,17 @@ struct TItemInfoCyclopediaContext
     }
 };
 
-/// The bestiary page: the view shown, the classification, the race search and the race.
+/// The bestiary page: the view shown, the classification page, the
+/// classification, the race search, the races page and the race.
 struct TMonsterInfoCyclopediaContext
 {
     cip::tibia::gamewindow::TMonsterDialogController::DialogState state =
         cip::tibia::gamewindow::TMonsterDialogController::MonsterClassification;
+    int classificationPage = 0;
     QString classification;
     QString search;
-    int raceId = 0;
+    int racesPage = 0;
+    uint16_t raceId = 0;
     bool operator==(const TMonsterInfoCyclopediaContext&) const = default;
 };
 

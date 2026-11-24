@@ -27,14 +27,15 @@ qint64 reconnectionWaitSeconds(const int attempt)
 
 TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController(
     std::shared_ptr<authentication::TAuthenticationProcessController> AuthenticationProcessController,
-    std::shared_ptr<TGameWindowController> GameWindowController, QObject* parent)
+    std::shared_ptr<TGameWindowController> GameWindowController, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+    QObject* parent)
     : cip::tibia::gamewindow::TGameSessionDisconnectReactionController(parent)
-    , m_loginErrorDialog(std::make_shared<TMessageDialogController>())
-    , m_connectionErrorDialog(std::make_shared<TMessageDialogController>())
-    , m_clientOutOfDateDialog(std::make_shared<TMessageDialogController>())
-    , m_loginWaitDialog(std::make_shared<TWaitDialogController>())
-    , m_pingTimeoutWaitDialog(std::make_shared<TWaitDialogController>())
-    , m_reconnectionWaitDialog(std::make_shared<TWaitDialogController>())
+    , m_loginErrorDialog(std::make_shared<TMessageDialogController>(Engine, DialogParentItem))
+    , m_connectionErrorDialog(std::make_shared<TMessageDialogController>(Engine, DialogParentItem))
+    , m_clientOutOfDateDialog(std::make_shared<TMessageDialogController>(Engine, DialogParentItem))
+    , m_loginWaitDialog(std::make_shared<TWaitDialogController>(Engine, DialogParentItem))
+    , m_pingTimeoutWaitDialog(std::make_shared<TWaitDialogController>(Engine, DialogParentItem))
+    , m_reconnectionWaitDialog(std::make_shared<TWaitDialogController>(Engine, DialogParentItem))
     , m_authenticationProcessController(std::move(AuthenticationProcessController))
     , m_gameWindowController(std::move(GameWindowController))
 {

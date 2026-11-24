@@ -88,13 +88,14 @@ QVariant TCustomiseCharacterModel::data(const QModelIndex& index, const int role
         return {};
     const Entry& entry = m_entries[index.row()];
     switch (role) {
-        case Qt::DisplayRole:
         case OutfitNameRole: return entry.name;
         case OutfitIDRole: return entry.id;
-        case OutfitSourceRole: return 0;
+        case OutfitSourceRole:
+            return QVariant::fromValue(static_cast<cip::tibia::qmlcomponents::enums::EOutfitSource>(entry.source));
         case FirstAddOnRole: return entry.firstAddOn;
         case SecondAddOnRole: return entry.secondAddOn;
-        case OutfitTypeRole: return entry.type;
+        case OutfitTypeRole:
+            return QVariant::fromValue(static_cast<cip::tibia::qmlcomponents::enums::EOutfitType>(entry.type));
         case CanBeColorizedRole: return entry.canBeColorized;
         case OfferIDRole: return entry.offerId;
         case OutfitGenderRole: return entry.gender;

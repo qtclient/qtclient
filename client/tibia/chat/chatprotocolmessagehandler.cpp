@@ -331,7 +331,6 @@ void TChatProtocolMessageHandler::setOptions(const QJsonObject& options)
     m_showPotionMessages = option(options, "gameWindowShowPotionMessages");
     m_showHotkeyUsageMessages = option(options, "gameWindowShowHotkeyUsageMessages");
     m_showLootMessages = option(options, "gameWindowShowLootMessages");
-    m_storage.setSoundOptions(options);
 }
 
 void TChatProtocolMessageHandler::onChatProtocolMessageHandlerOptionsChanged()

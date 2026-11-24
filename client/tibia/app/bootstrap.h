@@ -11,8 +11,6 @@ class QQmlEngine;
 namespace tibia {
 namespace app {
 
-class ClientOptions;
-
 /// CIP renderer index (option rendererIndex) to the Qt graphics API. Index 0
 /// and unknown indices are QSGRendererInterface::Unknown (Qt picks).
 QSGRendererInterface::GraphicsApi graphicsApiForRenderer(int rendererIndex);
@@ -20,12 +18,21 @@ QSGRendererInterface::GraphicsApi graphicsApiForRenderer(int rendererIndex);
 int rendererIndexForGraphicsApi(QSGRendererInterface::GraphicsApi api);
 /// Accepts the CIP index or a name: auto, software, d3d11, vulkan, opengl, metal, d3d12.
 int parseRendererIndex(const QString& value, int fallback);
+/// CIP: the renderers this machine can run, probed once the application
+/// exists: auto always, Metal, OpenGL and Vulkan when Qt can start them
+/// (Vulkan 1.0; MoltenVK without Metal heaps). Host: Direct3D 11 / 12 on
+/// Windows; the browser has WebGL without a probe.
+void probeSupportedRenderers();
+/// CIP: whether the probe found the renderer.
 bool isRendererSupported(int rendererIndex);
-
-/// What CIP's startup does before QApplication exists:
-/// Quick Controls style, graphics API, render loop, scene graph atlas and
-/// surface format. rendererOverride < 0 keeps the options' renderer.
-void configureProcess(const ClientOptions& options, int rendererOverride);
+/// CIP: the renderer index the process started its graphics with (0 auto).
+void setActiveGraphicsEngine(int rendererIndex);
+int activeGraphicsEngine();
+/// Host: --renderer on the command line (or QTCLIENT_RENDERER), -1 when none.
+int rendererFromCommandLine();
+/// CIP: Qt 5 builds installed QML modules next to the binary; the folder is
+/// removed so they cannot clash with Qt 6's (install directories only).
+void removeOldQtQmlFolder();
 
 /// After QGuiApplication exists: point VK loader at MoltenVK ICD in the qtclient bundle (macOS).
 void applyBundledMoltenVkIcd();

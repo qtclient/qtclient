@@ -86,6 +86,8 @@ public:
 
     /// The group's lock option: the bar is locked while it is on.
     bool locked() const override;
+    /// Left and right bars report their side; any other bar is a bottom bar.
+    EActionBarPosition position() const override;
 
     /// The setting of a button or of one of its multi-action slots.
     config::TActionSetting settingAt(int buttonId, int multiActionIndex) const;

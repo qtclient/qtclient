@@ -56,7 +56,9 @@ class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowCont
     Q_PROPERTY(qreal viewScale READ viewScale NOTIFY fovChanged)
 public:
     /// `pane` is the MapWindowPane item; the controller is its mapWindowController.
-    TMapWindowController(QQuickItem* pane, bool softwareRenderer, QObject* parent = nullptr);
+    /// Clicks on the map map to game actions through the client's shared mapping.
+    TMapWindowController(QQuickItem* pane, bool softwareRenderer, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                         QObject* parent = nullptr);
     ~TMapWindowController() override;
 
     /// Drops the window's pointer filter and the game session.
@@ -155,7 +157,7 @@ private:
     /// area from it.
     worldmap::TWorldMapViewport* m_viewport = nullptr;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_actions;
-    input::TGameActionMapper m_mapper;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     bool m_softwareRenderer = false;
     int m_fovWidth = 15;
     int m_fovHeight = 11;

@@ -16,8 +16,8 @@ namespace {
 using ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed;
 } // namespace
 
-TBugReportProtocolMessageHandler::TBugReportProtocolMessageHandler(QObject* parent)
-    : cip::tibia::reporting::TBugReportProtocolMessageHandler(parent)
+TBugReportProtocolMessageHandler::TBugReportProtocolMessageHandler(std::shared_ptr<TReportingStorage> storage)
+    : m_storage(std::move(storage))
 {
 }
 
@@ -29,6 +29,9 @@ void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
     const uint32_t state = Message.state();
     if (state > 3)
         return;
+    if (m_storage)
+        m_storage->setBugReportState(static_cast<int>(state));
+    // Host: the bug report dialog still reads the state from the session state.
     tibia::game::setBugReportState(static_cast<int>(state));
     tibia::game::setCanReportBugs(state == 0);
 }

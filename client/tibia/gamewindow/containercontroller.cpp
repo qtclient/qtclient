@@ -383,8 +383,10 @@ void TContainerController::setIcon(const container::TInventorySlot& slot)
 
 void TContainerController::update(const bool resetScrollView)
 {
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerRenderProvider> provider = session ? session->containerRenderProvider() : nullptr;
     const std::optional<container::TContainerProperties> properties =
-        container::TContainerRenderProvider::containerProperties(m_containerId, resetScrollView);
+        provider ? provider->containerProperties(m_containerId, resetScrollView) : std::nullopt;
     if (!properties)
         return;
 
@@ -435,7 +437,10 @@ Position TContainerController::slotPosition(const int pageSlot) const
 
 input::TGameActionList TContainerController::slotActions(const int slotId) const
 {
-    return container::TContainerGameActionProvider::containerSlotActions(static_cast<uint8_t>(m_containerId), slotId);
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    return provider ? provider->containerSlotActions(static_cast<uint8_t>(m_containerId), slotId) : input::TGameActionList{};
 }
 
 void TContainerController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)

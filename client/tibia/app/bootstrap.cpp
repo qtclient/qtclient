@@ -31,11 +31,17 @@
 #include <QQuickWindow>
 #include <QRegularExpression>
 #include <QResource>
-#include <QSettings>
+#include <QOffscreenSurface>
 #include <QSurfaceFormat>
 #include <QTranslator>
+#include <QVersionNumber>
+#if QT_CONFIG(vulkan)
+#include <QVulkanInstance>
+#endif
 
-#include <algorithm>
+#include <rhi/qrhi.h>
+
+#include <set>
 #include <stdexcept>
 
 namespace tibia::app {
@@ -58,12 +64,6 @@ constexpr Renderer Renderers[] = {
     { 9, "metal", QSGRendererInterface::Metal },
     { 10, "d3d12", QSGRendererInterface::Direct3D12 },
 };
-
-void setEnvDefault(const char* name, const QByteArray& value)
-{
-    if (!qEnvironmentVariableIsSet(name))
-        qputenv(name, value);
-}
 
 /// CIP's strings name the client and the game "Tibia"; show the application name instead.
 /// Tibia Coins and Embrace of Tibia are game content the server and store use by name.
@@ -115,67 +115,94 @@ int parseRendererIndex(const QString& value, const int fallback)
     return fallback;
 }
 
+namespace {
+
+/// The renderers this machine can run (probeSupportedRenderers).
+std::set<int>& supportedRenderers()
+{
+    static std::set<int> renderers;
+    return renderers;
+}
+
+/// The graphics engine the process started with (setActiveGraphicsEngine).
+int s_activeGraphicsEngine = 0;
+
+}
+
+void probeSupportedRenderers()
+{
+    std::set<int>& renderers = supportedRenderers();
+    renderers.insert(0);
+#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+    QRhiMetalInitParams metalParams;
+    if (QRhi::probe(QRhi::Metal, &metalParams))
+        renderers.insert(9);
+#endif
+#if defined(__EMSCRIPTEN__)
+    // Host: the browser always renders on WebGL; it has no surface to probe
+    // OpenGL on before the page's canvas.
+    renderers.insert(8);
+#elif QT_CONFIG(opengl)
+    QOffscreenSurface* fallbackSurface = QRhiGles2InitParams::newFallbackSurface(QSurfaceFormat::defaultFormat());
+    QRhiGles2InitParams glParams;
+    glParams.fallbackSurface = fallbackSurface;
+    const bool openGl = QRhi::probe(QRhi::OpenGLES2, &glParams);
+    delete fallbackSurface;
+    if (openGl)
+        renderers.insert(8);
+#endif
+#if defined(Q_OS_WIN)
+    // Host: the pinned CipSoft build is the macOS client; on Windows the
+    // Direct3D renderers are probed the same way.
+    QRhiD3D11InitParams d3d11Params;
+    if (QRhi::probe(QRhi::D3D11, &d3d11Params))
+        renderers.insert(6);
+    QRhiD3D12InitParams d3d12Params;
+    if (QRhi::probe(QRhi::D3D12, &d3d12Params))
+        renderers.insert(10);
+#endif
+    qputenv("MVK_CONFIG_USE_MTLHEAP", "0");
+#if QT_CONFIG(vulkan)
+    QVulkanInstance instance;
+    instance.setApiVersion(QVersionNumber(1, 0));
+    if (!instance.create())
+        return;
+    QRhiVulkanInitParams vulkanParams;
+    vulkanParams.inst = &instance;
+    const bool vulkan = QRhi::probe(QRhi::Vulkan, &vulkanParams);
+    instance.destroy();
+    if (vulkan)
+        renderers.insert(7);
+#endif
+}
+
 bool isRendererSupported(const int rendererIndex)
 {
-    return tibia::platform::supportsGraphicsApi(graphicsApiForRenderer(rendererIndex));
+    return supportedRenderers().count(rendererIndex) != 0;
 }
 
-void configureProcess(const ClientOptions& options, const int rendererOverride)
+void setActiveGraphicsEngine(const int rendererIndex)
 {
-    qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
-
-    int renderer = rendererOverride >= 0 ? rendererOverride : options.rendererIndex();
-    if (!isRendererSupported(renderer))
-        renderer = 0;
-    renderer = tibia::platform::autoRenderer(renderer);
-    const auto api = graphicsApiForRenderer(renderer);
-    QQuickWindow::setGraphicsApi(QSGRendererInterface::Unknown);
-    if (api == QSGRendererInterface::Vulkan || api == QSGRendererInterface::Metal)
-        qputenv("QT_MTL_NO_TRANSACTION", "1");
-    QQuickWindow::setGraphicsApi(api);
-    QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
-
-    // The render loop and the scene graph atlas come from the GRAPHICS group of the
-    // client settings; OpenGL always renders on the basic loop.
-    QSettings settings;
-    settings.beginGroup(QStringLiteral("GRAPHICS"));
-    const QString loop = settings.value(QStringLiteral("renderLoopType"), QStringLiteral("threaded")).toString();
-    qputenv("QSG_RENDER_LOOP", renderer == 8 ? QByteArray("basic") : loop.toLocal8Bit());
-
-    if (qEnvironmentVariable("QT_QPA_UPDATE_IDLE_TIME").isEmpty())
-        qputenv("QT_QPA_UPDATE_IDLE_TIME", "4");
-
-    // An atlas side below the minimum is raised to it and stored back.
-    // HD mode (pack option modHdMode) raises the defaults and the size cap so xBRZ 4x
-    // plates stay atlas citizens.
-    const bool hdMode = options.options().value(QLatin1String("modHdMode")).toBool(false);
-    const auto atlasSide = [&settings, hdMode](const QString& key) {
-        constexpr int Minimum = 512;
-        const int value = settings.value(key, hdMode ? 8192 : 4096).toInt();
-        if (value >= Minimum)
-            return value;
-        settings.setValue(key, Minimum);
-        return Minimum;
-    };
-    const int atlasWidth = atlasSide(QStringLiteral("qsgAtlasWidth"));
-    const int atlasHeight = atlasSide(QStringLiteral("qsgAtlasHeight"));
-    settings.endGroup();
-    const int sizeLimit = std::min(std::max(atlasWidth, atlasHeight) >> 3, hdMode ? 1024 : 256);
-    qputenv("QSG_ATLAS_WIDTH", QByteArray::number(atlasWidth));
-    qputenv("QSG_ATLAS_HEIGHT", QByteArray::number(atlasHeight));
-    qputenv("QSG_ATLAS_SIZE_LIMIT", QByteArray::number(sizeLimit + 1));
-
-    qputenv("QML_XHR_ALLOW_FILE_READ", "1");
-
-    QSurfaceFormat format = QSurfaceFormat::defaultFormat();
-    format.setSwapInterval(options.vSyncEnabled());
-    QSurfaceFormat::setDefaultFormat(format);
-    format = QSurfaceFormat::defaultFormat();
-    format.setProfile(QSurfaceFormat::NoProfile);
-    QSurfaceFormat::setDefaultFormat(format);
+    s_activeGraphicsEngine = rendererIndex;
 }
 
-namespace {
+int activeGraphicsEngine()
+{
+    return s_activeGraphicsEngine;
+}
+
+int rendererFromCommandLine()
+{
+    const QStringList arguments = QCoreApplication::arguments() + tibia::platform::extraArguments();
+    for (qsizetype i = 1; i < arguments.size(); ++i) {
+        const QString& argument = arguments.at(i);
+        if (argument.startsWith(QLatin1String("--renderer=")))
+            return parseRendererIndex(argument.mid(11), -1);
+        if (argument == QLatin1String("--renderer") && i + 1 < arguments.size())
+            return parseRendererIndex(arguments.at(i + 1), -1);
+    }
+    return parseRendererIndex(qEnvironmentVariable("QTCLIENT_RENDERER"), -1);
+}
 
 void removeOldQtQmlFolder()
 {
@@ -187,8 +214,6 @@ void removeOldQtQmlFolder()
         qInfo() << "Found old QtQml folder, deleting to prevent conflict with Qt6 files";
         old.removeRecursively();
     }
-}
-
 }
 
 void applyBundledMoltenVkIcd()
@@ -311,7 +336,6 @@ void installTranslations()
 
 std::unique_ptr<QQmlEngine> createEngine()
 {
-    removeOldQtQmlFolder();
     cip::registerQmlTypes();
 
     auto engine = std::make_unique<QQmlEngine>();

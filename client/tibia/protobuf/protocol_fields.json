@@ -487,242 +487,6 @@
       ],
       "note": "CIP TProtobufServerMessageTranslator::v23: u16 look type; non-zero \u2192 4 colours (+ u8 addons for outfits); zero \u2192 u16 item (outfit only)."
     },
-    "ProtocolCreatureIcon": {
-      "fields": [
-        {
-          "name": "icon",
-          "type": "uint32",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "category",
-          "type": "uint32",
-          "number": 2,
-          "label": "optional"
-        },
-        {
-          "name": "value",
-          "type": "uint32",
-          "number": 3,
-          "label": "optional"
-        },
-        {
-          "name": "flag",
-          "type": "bool",
-          "number": 4,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP v19 first icon list: u8 icon, u8 category, u16 value, u8 flag."
-    },
-    "ProtocolCreature": {
-      "fields": [
-        {
-          "name": "kind",
-          "type": "uint32",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "remove_id",
-          "type": "uint32",
-          "number": 2,
-          "label": "optional"
-        },
-        {
-          "name": "id",
-          "type": "uint32",
-          "number": 3,
-          "label": "optional"
-        },
-        {
-          "name": "type",
-          "type": "uint32",
-          "number": 4,
-          "label": "optional"
-        },
-        {
-          "name": "master_id",
-          "type": "uint32",
-          "number": 5,
-          "label": "optional"
-        },
-        {
-          "name": "name",
-          "type": "string",
-          "number": 6,
-          "label": "optional"
-        },
-        {
-          "name": "health_percent",
-          "type": "uint32",
-          "number": 7,
-          "label": "optional"
-        },
-        {
-          "name": "direction",
-          "type": "uint32",
-          "number": 8,
-          "label": "optional"
-        },
-        {
-          "name": "outfit",
-          "type": "ProtocolOutfit",
-          "number": 9,
-          "label": "optional"
-        },
-        {
-          "name": "mount",
-          "type": "ProtocolOutfit",
-          "number": 10,
-          "label": "optional"
-        },
-        {
-          "name": "light_intensity",
-          "type": "uint32",
-          "number": 11,
-          "label": "optional"
-        },
-        {
-          "name": "light_color",
-          "type": "uint32",
-          "number": 12,
-          "label": "optional"
-        },
-        {
-          "name": "speed",
-          "type": "uint32",
-          "number": 13,
-          "label": "optional"
-        },
-        {
-          "name": "icons",
-          "type": "ProtocolCreatureIcon",
-          "number": 14,
-          "label": "repeated"
-        },
-        {
-          "name": "extra_icons",
-          "type": "uint32",
-          "number": 15,
-          "label": "repeated"
-        },
-        {
-          "name": "skull",
-          "type": "uint32",
-          "number": 16,
-          "label": "optional"
-        },
-        {
-          "name": "shield",
-          "type": "uint32",
-          "number": 17,
-          "label": "optional"
-        },
-        {
-          "name": "emblem",
-          "type": "uint32",
-          "number": 18,
-          "label": "optional"
-        },
-        {
-          "name": "vocation",
-          "type": "uint32",
-          "number": 19,
-          "label": "optional"
-        },
-        {
-          "name": "icon",
-          "type": "uint32",
-          "number": 20,
-          "label": "optional"
-        },
-        {
-          "name": "mark",
-          "type": "uint32",
-          "number": 21,
-          "label": "optional"
-        },
-        {
-          "name": "inspection_type",
-          "type": "uint32",
-          "number": 22,
-          "label": "optional"
-        },
-        {
-          "name": "unpassable",
-          "type": "bool",
-          "number": 23,
-          "label": "optional"
-        },
-        {
-          "name": "mana_percent",
-          "type": "uint32",
-          "number": 24,
-          "label": "optional"
-        },
-        {
-          "name": "show_status",
-          "type": "bool",
-          "number": 25,
-          "label": "optional"
-        },
-        {
-          "name": "update_icons",
-          "type": "bool",
-          "number": 26,
-          "label": "optional"
-        },
-        {
-          "name": "update_extra_icons",
-          "type": "bool",
-          "number": 27,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). CIP v42 fills one field of a known creature from a creature update (mana percent, show status, vocation, either icon list). update_icons / update_extra_icons: the message carries that icon list (it may be empty); a creature that turned carries neither."
-    },
-    "ProtocolMapObject": {
-      "fields": [
-        {
-          "name": "item",
-          "type": "ProtocolInventoryItem",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "creature",
-          "type": "ProtocolCreature",
-          "number": 2,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP v16: u16 id; 0x61-0x63 creature, else object."
-    },
-    "ProtocolMapField": {
-      "fields": [
-        {
-          "name": "coordinate",
-          "type": "ProtocolCoordinate",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "objects",
-          "type": "ProtocolMapObject",
-          "number": 2,
-          "label": "repeated"
-        },
-        {
-          "name": "environment_effect",
-          "type": "uint32",
-          "number": 3,
-          "label": "optional"
-        }
-      ],
-      "note": "One described field; a field without objects is cleared (skipped in the classic area)."
-    },
     "ProtocolContainerCategory": {
       "fields": [
         {
@@ -2782,6 +2546,64 @@
         }
       ],
       "note": "character window: u8 slot; string name; item; u8 n x u16 imbuement icon; u8 n x detail."
+    },
+    "KeyValuePair": {
+      "fields": [
+        {
+          "name": "key",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP protobuf::protocol::KeyValuePair (tags from its serializer): string key = 1, string value = 2."
+    },
+    "InspectObjectInformation": {
+      "fields": [
+        {
+          "name": "object",
+          "type": "ProtocolInventoryItem",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "imbuement_slots",
+          "type": "uint32",
+          "number": 3,
+          "label": "repeated"
+        },
+        {
+          "name": "details",
+          "type": "KeyValuePair",
+          "number": 4,
+          "label": "repeated"
+        },
+        {
+          "name": "inventory_slot",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "outfit",
+          "type": "ProtocolOutfit",
+          "number": 6,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP protobuf::protocol::InspectObjectInformation (tags from its serializer; imbuement slots unpacked). object and outfit keep qtclient's object/outfit messages until CipSoft's ObjectInstance / Outfit schema lands."
     },
     "ProtocolTradeCondition": {
       "fields": [
@@ -5502,13 +5324,156 @@
           "label": "optional"
         },
         {
+          "name": "type",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "master_id",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "vocation",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "health_percent",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "direction",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "outfit",
+          "type": "Outfit",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "mount",
+          "type": "Outfit",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "light_intensity",
+          "type": "uint32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "light_color",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
           "name": "speed",
           "type": "uint32",
           "number": 13,
           "label": "optional"
+        },
+        {
+          "name": "skull",
+          "type": "uint32",
+          "number": 14,
+          "label": "optional"
+        },
+        {
+          "name": "shield",
+          "type": "uint32",
+          "number": 15,
+          "label": "optional"
+        },
+        {
+          "name": "emblem",
+          "type": "uint32",
+          "number": 16,
+          "label": "optional"
+        },
+        {
+          "name": "icon",
+          "type": "uint32",
+          "number": 17,
+          "label": "optional"
+        },
+        {
+          "name": "mark",
+          "type": "uint32",
+          "number": 18,
+          "label": "optional"
+        },
+        {
+          "name": "unpassable",
+          "type": "bool",
+          "number": 19,
+          "label": "optional"
+        },
+        {
+          "name": "inspection_type",
+          "type": "uint32",
+          "number": 20,
+          "label": "optional"
+        },
+        {
+          "name": "mana_percent",
+          "type": "uint32",
+          "number": 21,
+          "label": "optional"
+        },
+        {
+          "name": "show_status",
+          "type": "bool",
+          "number": 22,
+          "label": "optional"
+        },
+        {
+          "name": "update_icons",
+          "type": "bool",
+          "number": 23,
+          "label": "optional"
+        },
+        {
+          "name": "icons",
+          "type": "CreatureOtherIcons",
+          "number": 24,
+          "label": "repeated"
+        },
+        {
+          "name": "update_extra_icons",
+          "type": "bool",
+          "number": 25,
+          "label": "optional"
+        },
+        {
+          "name": "extra_icons",
+          "type": "uint32",
+          "number": 26,
+          "label": "repeated"
         }
       ],
-      "note": "CipSoft CreatureData, the fields CreatureSpeed fills (1 replaced/known id, 2 id, 13 speed); the other fields are not recovered yet (ProtocolCreature still carries the creature messages)."
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "creature_data",
+        "number": 100
+      },
+      "note": "CIP CreatureData (TProtobufServerMessageTranslator::v19/v42). remove_id: the creature a new one replaces (0x61, set when non-zero) or the id itself (0x62 known, 0x63 turned): equal ids mean a stored creature. 0x63 carries id, direction and unpassable only. vocation is kept % 10. update_icons / update_extra_icons: the message carries that icon list (it may be empty). Extension 100 of AppearanceInstance: a creature on a map field."
     },
     "GameEventTypeAchievement": {
       "fields": [
@@ -5873,6 +5838,369 @@
         }
       ],
       "note": "CIP ShowOffSocketConfiguration: a creature podium's configuration."
+    },
+    "Extent": {
+      "fields": [
+        {
+          "name": "width",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "height",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "depth",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP Extent (a box size in fields)."
+    },
+    "Outfit": {
+      "fields": [
+        {
+          "name": "look_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "colors",
+          "type": "OutfitColor",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "addons",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "object_type",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP Outfit (TProtobufServerMessageTranslator::v23): u16 look type; non-zero -> colours (left out when all four are zero) and, for an outfit, addons (left out when zero); zero -> for an outfit u16 object type (look type 0 kept when the object type is zero too)."
+    },
+    "CreatureOtherIcons": {
+      "fields": [
+        {
+          "name": "icon",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "special_icon",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "flag",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP CreatureOtherIcons (v19 first icon list): u8 icon, u8 category (0 -> field 1, 1 -> field 2, other -> neither), u16 value, bool flag."
+    },
+    "AppearanceInstance": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "extensions": "100 to max",
+      "note": "CIP AppearanceInstance: one map object: an object type id, or 0x61-0x63 for a creature (CreatureData extension 100). Object extra data are extensions 101-112 (one per appearance kind; 103 is not used by the client, 104/105/111 are effects)."
+    },
+    "CumulativeObject": {
+      "fields": [
+        {
+          "name": "count",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "cumulative_object",
+        "number": 101
+      },
+      "note": "CIP CumulativeObject: u8 count."
+    },
+    "LiquidObject": {
+      "fields": [
+        {
+          "name": "liquid",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "liquid_object",
+        "number": 102
+      },
+      "note": "CIP LiquidObject: u8 liquid."
+    },
+    "ContainerObject": {
+      "fields": [
+        {
+          "name": "flags",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "loot_flags",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "ammo_total",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "obtain_flags",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "container_object",
+        "number": 106
+      },
+      "note": "CIP ContainerObject: u8 flags (left out when zero); bit 1 u32 loot flags, bit 2 u32 ammo total, bit 8 u32 obtain flags."
+    },
+    "ShowOffSocketObject": {
+      "fields": [
+        {
+          "name": "outfit",
+          "type": "Outfit",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "mount",
+          "type": "Outfit",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "direction",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "visible",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "show_off_socket_object",
+        "number": 107
+      },
+      "note": "CIP ShowOffSocketObject: outfit (look type 0 -> object type), mount, u8 direction, bool visible."
+    },
+    "UpgradeableObject": {
+      "fields": [
+        {
+          "name": "tier",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "upgradeable_object",
+        "number": 108
+      },
+      "note": "CIP UpgradeableObject: u8 tier."
+    },
+    "WearoutObject": {
+      "fields": [
+        {
+          "name": "charges",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "brand_new",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "wearout_object",
+        "number": 109
+      },
+      "note": "CIP WearoutObject: u32 charges, bool brand new."
+    },
+    "ExpireObject": {
+      "fields": [
+        {
+          "name": "duration",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "brand_new",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "expire_stop",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "expire_object",
+        "number": 110
+      },
+      "note": "CIP ExpireObject: u32 duration, bool brand new; expire_stop: the type is an expire-stop object."
+    },
+    "DecoItemKitObject": {
+      "fields": [
+        {
+          "name": "deco_item_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "AppearanceInstance",
+        "name": "deco_item_kit_object",
+        "number": 112
+      },
+      "note": "CIP DecoItemKitObject: u16 decoration object type."
+    },
+    "MapField": {
+      "fields": [
+        {
+          "name": "objects",
+          "type": "AppearanceInstance",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "skip",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "extensions": "100 to max",
+      "note": "CIP MapField: the objects of one described field, bottom to top (none: the field is dropped); skip: the number of fields after it the area leaves out (left out when zero)."
+    },
+    "MapFieldExtraData": {
+      "fields": [
+        {
+          "name": "coordinate",
+          "type": "ProtocolCoordinate",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "extend": {
+        "type": "MapField",
+        "name": "map_field_extra_data",
+        "number": 100
+      },
+      "note": "CIP MapFieldExtraData: the field's coordinate, filled by the translator (TProtobufServerMessageTranslator::v15); the handler takes the coordinate from the area volume instead."
+    },
+    "MapFields": {
+      "fields": [
+        {
+          "name": "fields",
+          "type": "MapField",
+          "number": 3,
+          "label": "repeated"
+        }
+      ],
+      "note": "CIP MapFields (field 3 only)."
+    },
+    "MapFieldData": {
+      "fields": [],
+      "oneofs": {
+        "data": [
+          {
+            "name": "fields",
+            "type": "MapFields",
+            "number": 1,
+            "label": "optional"
+          },
+          {
+            "name": "packed_fields",
+            "type": "bytes",
+            "number": 2,
+            "label": "optional"
+          }
+        ]
+      },
+      "note": "CIP MapFieldData: oneof fields (1) or a length-delimited blob (2) the client does not read (its handler then treats the area as having no fields)."
+    },
+    "MapArea": {
+      "fields": [
+        {
+          "name": "coordinate",
+          "type": "ProtocolCoordinate",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "extent",
+          "type": "Extent",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "field_data",
+          "type": "MapFieldData",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP MapArea: the fields of a map volume, column first (y fastest, then x, then the floors: ground to sky above ground, sky to ground underground). The client's translator and handler leave coordinate/extent out: both sides compute the volume from the central position."
     }
   },
   "GameserverMessagePartyLeft": {
@@ -6396,31 +6724,32 @@
   "GameserverMessageFullMap": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "fields",
-        "type": "ProtocolMapField",
+        "name": "coordinate",
+        "type": "ProtocolCoordinate",
         "number": 2,
-        "label": "repeated"
+        "label": "optional"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "position; area of fields of the visible area around it",
+    "note": "CIP FullMap (TProtobufServerMessageTranslator::v8): area 1, central position 2."
   },
   "GameserverMessageCreatureData": {
     "fields": [
       {
         "name": "creature",
-        "type": "ProtocolCreature",
+        "type": "CreatureData",
         "number": 1,
         "label": "optional"
       }
     ],
     "classic": "creature (new creature layout)",
-    "note": "CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61)."
+    "note": "CIP GameserverMessageCreatureData: CreatureData (v19 kind 0x61)."
   },
   "GameserverMessageReadyForSecondaryConnection": {
     "fields": [
@@ -6993,81 +7322,68 @@
   "GameserverMessageTopRow": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's top row",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageRightColumn": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's right column",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageBottomRow": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's bottom row",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageLeftColumn": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's left column",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageFieldData": {
     "fields": [
       {
-        "name": "field",
-        "type": "ProtocolMapField",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "coordinate",
+        "type": "ProtocolCoordinate",
+        "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "coordinate; field"
+    "classic": "position; one field",
+    "note": "CIP FieldData (v13): a one-field area at coordinate."
   },
   "GameserverMessageCreateOnMap": {
     "fields": [
@@ -7078,19 +7394,20 @@
         "label": "optional"
       },
       {
-        "name": "stackpos",
+        "name": "stack_position",
         "type": "uint32",
         "number": 2,
         "label": "optional"
       },
       {
         "name": "object",
-        "type": "ProtocolMapObject",
+        "type": "AppearanceInstance",
         "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "coordinate; u8 stack; object"
+    "classic": "position; u8 stack position (0xff: where the object sorts); object",
+    "note": "CIP CreateOnMap (v34)."
   },
   "GameserverMessageChangeOnMap": {
     "fields": [
@@ -7101,48 +7418,41 @@
         "label": "optional"
       },
       {
-        "name": "stackpos",
+        "name": "stack_position",
         "type": "uint32",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "creature_id",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       },
       {
         "name": "object",
-        "type": "ProtocolMapObject",
-        "number": 4,
-        "label": "optional"
-      }
-    ],
-    "classic": "mapped thing (pos+stack or 0xffff+id); object"
-  },
-  "GameserverMessageDeleteOnMap": {
-    "fields": [
-      {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
-        "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "stackpos",
-        "type": "uint32",
-        "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "creature_id",
-        "type": "uint32",
+        "type": "AppearanceInstance",
         "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "mapped thing (pos+stack or 0xffff+id)"
+    "classic": "position, u8 stack position, object; or 0xffff, u32 creature id, object",
+    "note": "CIP ChangeOnMap (v35): the creature-id form has no coordinate; its object's CreatureData carries the id."
+  },
+  "GameserverMessageDeleteOnMap": {
+    "fields": [],
+    "oneofs": {
+      "position": [
+        {
+          "name": "object_position",
+          "type": "WorldmapObjectPosition",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "creature_id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "classic": "position, u8 stack position; or 0xffff, u32 creature id",
+    "note": "CIP DeleteOnMap (v36)."
   },
   "GameserverMessageContainer": {
     "fields": [
@@ -7487,44 +7797,32 @@
   "GameserverMessageInspectionList": {
     "fields": [
       {
-        "name": "objects",
-        "type": "ProtocolInspectedObject",
+        "name": "list_type",
+        "type": "uint32",
         "number": 1,
-        "label": "repeated"
+        "label": "optional"
       },
       {
-        "name": "player_name",
-        "type": "string",
+        "name": "client_window",
+        "type": "uint32",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "player_details",
-        "type": "ProtocolInspectionDetail",
+        "name": "player_id",
+        "type": "uint32",
         "number": 3,
-        "label": "repeated"
+        "label": "optional"
       },
       {
-        "name": "window_type",
-        "type": "uint32",
+        "name": "objects",
+        "type": "InspectObjectInformation",
         "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "inspection_type",
-        "type": "uint32",
-        "number": 5,
-        "label": "optional"
-      },
-      {
-        "name": "creature_id",
-        "type": "uint32",
-        "number": 6,
-        "label": "optional"
+        "label": "repeated"
       }
     ],
-    "classic": "u8 window; u8 type; u32 creature; u8 n x object; character window: string name, u8 n x detail",
-    "note": "CIP TProtobufServerMessageTranslator::v56."
+    "classic": "u8 list type (1 = player); u8 client window; u32 player id; u8 n x (player list: u8 slot; string name; object; u8 n x u16 imbuement slot; u8 n x (string, string)); player list: string name, u8 n x (string, string) as one more object",
+    "note": "CIP schema (tags from GameserverMessageInspectionList's serializer); CIP TProtobufServerMessageTranslator::v56."
   },
   "GameserverMessageInspectionState": {
     "fields": [
@@ -7976,74 +8274,68 @@
   "GameserverMessageCreatureUpdate": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
         "label": "optional"
       },
       {
         "name": "type",
         "type": "uint32",
-        "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "creature",
-        "type": "ProtocolCreature",
-        "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "mana_percent",
-        "type": "uint32",
-        "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "vocation",
-        "type": "uint32",
-        "number": 6,
+        "number": 100,
         "label": "optional"
       },
       {
         "name": "health_percent",
         "type": "uint32",
-        "number": 9,
+        "number": 101,
         "label": "optional"
       },
       {
         "name": "health",
         "type": "uint32",
-        "number": 10,
+        "number": 102,
         "label": "optional"
       },
       {
         "name": "max_health",
         "type": "uint32",
-        "number": 11,
+        "number": 103,
+        "label": "optional"
+      },
+      {
+        "name": "mana_percent",
+        "type": "uint32",
+        "number": 104,
         "label": "optional"
       },
       {
         "name": "mana",
         "type": "uint32",
-        "number": 12,
+        "number": 105,
         "label": "optional"
       },
       {
         "name": "max_mana",
         "type": "uint32",
-        "number": 13,
+        "number": 106,
+        "label": "optional"
+      },
+      {
+        "name": "vocation",
+        "type": "uint32",
+        "number": 107,
         "label": "optional"
       },
       {
         "name": "level",
         "type": "uint32",
-        "number": 14,
+        "number": 108,
         "label": "optional"
       }
     ],
     "classic": "u32 creatureId; u8 type: 0 u16 kind + creature (0x61-0x63), 11 u8 mana percent, 12 bool show status, 13 u8 vocation (kept % 10), 14 u8 count x (u8 icon, u8 category, u16 value, bool flag), 15 u8 count x u8",
-    "note": "CIP TProtobufServerMessageTranslator::v42: types 0 and 11-15 fill `creature` (types 11-15: the update's creature id and the one field). Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP)."
+    "note": "CIP GameserverMessageCreatureUpdate (TProtobufServerMessageTranslator::v42): CreatureData 1 (id in id and remove_id; type 0 a creature (0x61-0x63, remove_id from the creature), 11 mana percent, 12 show status, 13 vocation % 10, 14 / 15 one icon list). Fields 100+ are host: the classic update type (party notifications) and the product server party extensions (16: u8 health percent, u32 health, u32 max; 17: u8 mana percent, u32 mana, u32 max; 18: u8 vocation, u16 level), not in CIP."
   },
   "GameserverMessageCreatureOutfit": {
     "fields": [
@@ -9456,36 +9748,26 @@
   "GameserverMessageTopFloor": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's top floor",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageBottomFloor": {
     "fields": [
       {
-        "name": "coordinate",
-        "type": "ProtocolCoordinate",
+        "name": "area",
+        "type": "MapArea",
         "number": 1,
         "label": "optional"
-      },
-      {
-        "name": "fields",
-        "type": "ProtocolMapField",
-        "number": 2,
-        "label": "repeated"
       }
     ],
-    "classic": "area of fields (skip counts) from the translator viewport"
+    "classic": "area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's bottom floor",
+    "note": "CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler)."
   },
   "GameserverMessageUpdateManagedContainers": {
     "fields": [
@@ -11590,9 +11872,16 @@
     "note": "CIP TProtobufServerMessageTranslator::v144."
   },
   "GameserverMessageUnknown": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "opcode",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "none: the translator gives a message of an opcode it does not know this extension",
+    "note": "CIP TProtobufServerMessageTranslator::v2 default case: the opcode byte (+0x20)."
   },
   "GameclientMessageLogin": {
     "fields": [

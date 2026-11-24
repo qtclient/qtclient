@@ -1,4 +1,6 @@
 #include "gameclient.h"
+#include "assets/assetmanager.h"
+#include "tutorial/sessiondumphintsprocessor.h"
 #include "game/gameactionrouter.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -360,9 +362,6 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);
     connect(soundHelper, &qmlcomponents::TSoundHelperService::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
-    m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
-    connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
-            &TGameClient::sendCrashReport);
     // CIP: the current session's disconnect reaches the client once, after its signal returned.
     m_gameSessionDisconnected.setAsyncDelay(1);
     m_gameSessionDisconnected.setOnlyFirstSignal(true);
@@ -443,7 +442,7 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     pCloudflareChallenge->setTargetUrl(LoginUrl);
     m_authentication = std::make_shared<authentication::TAuthenticationProcessController>(
         pCharacterSelection, pLoginRequestUploader, pEMailCodeRequestUploader, pLoginConfirmationCodeRequestUploader,
-        pCloudflareChallenge);
+        pCloudflareChallenge, assetManager());
     {
         // The play session data the login machine forgets lives in the client's
         // account; the clearance goes with the next login request.
@@ -646,7 +645,17 @@ void TGameClient::start()
         QString replayArg = resolved.absoluteFilePath();
         if (resolved.absolutePath().endsWith(QLatin1String("/records")))
             replayArg = resolved.fileName();
-        auto metaInfo = std::make_shared<game::TSessiondumpGameSessionMetaInfo>();
+        // Host: a dump with a .hints file next to it is a tutorial dump; CipSoft
+        // has hints only in the tutorial session, so it replays as the tutorial.
+        std::shared_ptr<game::TSessiondumpGameSessionMetaInfo> metaInfo;
+        if (const QString hints = tutorial::hintsPathForDump(resolved.absoluteFilePath()); !hints.isEmpty()) {
+            auto tutorial = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
+            tutorial->sessiondump.hintsUrl = QUrl::fromLocalFile(hints);
+            tutorial->sessiondump.hasHints = true;
+            metaInfo = std::move(tutorial);
+        } else {
+            metaInfo = std::make_shared<game::TSessiondumpGameSessionMetaInfo>();
+        }
         setGameSessionSettings(*metaInfo);
         metaInfo->sessiondump.url = QUrl::fromLocalFile(replayArg);
         metaInfo->startedByGameAction = true;
@@ -1091,8 +1100,15 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
         if (!tutorialSessiondump.isEmpty()) {
             auto tutorial = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
             tutorial->sessiondump.url = QUrl::fromLocalFile(tutorialSessiondump);
+            // Host: qtclient's tutorial hints are the .hints file next to the dump.
+            if (const QString hints = tutorial::hintsPathForDump(tutorialSessiondump); !hints.isEmpty()) {
+                tutorial->sessiondump.hintsUrl = QUrl::fromLocalFile(hints);
+                tutorial->sessiondump.hasHints = true;
+            }
             setGameSessionSettings(*tutorial);
             tutorial->characterName = credentials.characterName;
+            tutorial->isMale = CharacterLoginData.isMale;
+            tutorial->clientSessionId = credentials.sessionKey;
             metaInfos.push_back(std::move(tutorial));
         }
     }
@@ -1371,6 +1387,15 @@ void TGameClient::initialize()
     ::tibia::client::TGameClientBase::initialize();
     // CIP: the marker file is read once the minimap is up.
     minimapTileDiskIO()->loadMinimapMarkerFileContentFromDiskIfPossible();
+    // CIP: the assets start loading once the client is initialized.
+    assetManager()->startLoading();
+    // Host: createGameWindow builds the game window right after this and
+    // reads the appearances there (CIP continues from onAssetFinishedLoading
+    // once the appearances have arrived), so wait for them. The rest of the
+    // assets keeps loading in the background.
+    QString error;
+    if (!assetManager()->waitForAppearances(&error))
+        m_assetLoadError = error;
 }
 
 void TGameClient::initializeSound()

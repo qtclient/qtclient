@@ -288,8 +288,9 @@ void TChatChannelStorage::addLocalEntry(const QColor& color, const QString& name
 
 void TChatChannelStorage::addNpcChannelEntry(const QColor& color, const QString& name, const QString& text)
 {
-    open({ TChatChannelIdentifier::Npc }, false, false)->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
-    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, m_npcMessageSounds);
+    TChatChannel* channel = open({ TChatChannelIdentifier::Npc }, false, false);
+    channel->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
+    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, channel->identifier());
 }
 
 void TChatChannelStorage::addOwnNpcChannelEntry(const QColor& color, const QString& name, const QString& text, const int level)
@@ -312,13 +313,7 @@ void TChatChannelStorage::addChannelEntry(const QColor& color, const uint16_t ch
     channel->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId));
     if (name.toLower() == m_ownName)
         return;
-    const TChatChannelIdentifier& id = channel->identifier();
-    // Team Finder is channel 5.
-    const bool enabled = id.isPartyChannel() ? m_partyMessageSounds
-                         : id.isGuildChannel() ? m_guildMessageSounds
-                         : channelId == 5 ? m_teamFinderMessageSounds
-                                          : true;
-    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, enabled);
+    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, channel->identifier());
 }
 
 void TChatChannelStorage::addChannelSystemEntry(const QColor& color, const uint16_t channelId, const QString& text)
@@ -352,26 +347,13 @@ void TChatChannelStorage::addPrivateEntry(const QColor& color, const QString& pa
     }
     channel->addEntry(entry);
     if (name.toLower() != m_ownName)
-        publishChatSound(sound, m_privateMessageSounds);
+        publishChatSound(sound, channel->identifier());
 }
 
-void TChatChannelStorage::setSoundOptions(const QJsonObject& options)
+void TChatChannelStorage::publishChatSound(const int sound, const TChatChannelIdentifier& channel)
 {
-    const auto option = [&options](const char* key) { return options.value(QLatin1String(key)).toBool(true); };
-    m_chatSoundsEnabled = option("ChatEnabled");
-    m_partyMessageSounds = option("PartyMessagesEnabled");
-    m_guildMessageSounds = option("GuildMessagesEnabled");
-    m_privateMessageSounds = option("PrivateMessagesEnabled");
-    m_npcMessageSounds = option("NpcMessageseEnabled");
-    m_teamFinderMessageSounds = option("TeamFinderMessagesEnabled");
-}
-
-void TChatChannelStorage::publishChatSound(const int sound, const bool categoryEnabled)
-{
-    if (!m_chatSoundsEnabled || !categoryEnabled)
-        return;
-    Q_EMIT publishGameAction(
-        std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ sound }));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSoundTrigger>(
+        input::gameactions::TGameActionSoundTrigger::TSoundEffect{ sound, std::make_shared<const TChatChannelIdentifier>(channel) }));
 }
 
 void TChatChannelStorage::addBroadcastEntry(const QColor& color, const QString& name, const QString& text, const int level,

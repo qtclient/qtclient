@@ -60,10 +60,6 @@ std::string assetsRoot(int version);
 /// CIP sounds directory — sibling `sounds/` under the same Resources search root.
 std::string soundsRoot(int version);
 
-/// Loads appearances, static data, and proficiencies from assetsRoot(), and the
-/// sound bank from soundsRoot().
-bool loadAssets(int version, QString* error);
-
 /// Pack / qtclient subscribe + arg helpers live on allowlisted `tibia/game/tgamenotify.h`.
 using Hook = tibia::game::Hook;
 using Args = tibia::game::Args;

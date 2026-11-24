@@ -7,16 +7,26 @@
 
 #include <cip_gen.h>
 
+#include "qtconnectionmanager.h"
+
 #include <QPointer>
 
 #include <QList>
 
+#include <memory>
+
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace appearances {
 class TAppearanceType;
 }
 namespace container {
 class TInventoryContainer;
+}
+namespace game {
+class IGameSession;
 }
 namespace proficiency {
 class TProficiencyStorage;
@@ -32,10 +42,13 @@ class TStatusBarController final : public cip::tibia::gamewindow::TStatusBarCont
 {
     Q_OBJECT
 public:
-    explicit TStatusBarController(QObject* parent = nullptr);
+    /// CIP: made with the client options (the game window controller's);
+    /// its player states follow the special-condition options.
+    explicit TStatusBarController(config::TClientOptions* ClientOptions = nullptr, QObject* parent = nullptr);
 
-    /// The character's storage; null outside the world.
-    void setStorage(game::TStatusbarStorage* storage);
+    /// CIP: follows the session's player data, its character's status bar
+    /// storage, the proficiency storage and the inventory; null leaves the world.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     DialogAnchor dialogAnchor() const override { return m_dialogAnchor; }
     DialogStyle dialogStyle() const override { return m_dialogStyle; }
@@ -82,16 +95,19 @@ public:
     Q_INVOKABLE void onClickedOpenProficiencies() override;
 
 private:
-    /// On entering the world.
-    void applyStorage();
-    /// The storage changed.
-    void onStorageChanged();
+    /// The hit points, mana, harmony, skills and the mana shield's visibility.
+    void onPlayerDataChanged();
+    /// The storage changed or the character's configuration was loaded: a
+    /// position outside Top..Right becomes Top while statusBarEnabled is on.
+    void onStatusbarOptionsChanged();
+    /// The storage's position and style as they are (no session: no anchor).
+    void applyStatusbarOptions();
+    /// Drops a set anchor to Invalid first so the bar is laid out anew.
+    void resetAndSetDialogAnchor(int anchor);
     /// New entries for the shown skills; an odd count leaves the last one alone.
     void rebuildSkillLists();
     /// The shown entries' values.
     void refreshSkills();
-    void updateFromPlayer();
-    void setAnchorAndStyle(int anchor, int style, bool forceAnchorSignal);
     void setDialogAnchor(DialogAnchor anchor);
     void setDialogStyle(DialogStyle style);
     /// The storage's position as an anchor: anything past Right is Invalid.
@@ -104,6 +120,9 @@ private:
     /// The type of the object in the weapon hand; null with an empty hand.
     const appearances::TAppearanceType* equippedWeapon() const;
 
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<game::IGameSession> m_pGameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
     QPointer<game::TStatusbarStorage> m_storage;
     /// The session's proficiency storage and inventory, while in the world.
     QPointer<proficiency::TProficiencyStorage> m_proficiencyStorage;
@@ -116,7 +135,6 @@ private:
     QList<game::SkillType> m_skillTypes;
     game::SkillType m_remainingSkillType = game::SkillType::Experience;
     bool m_oddSkillCount = false;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

@@ -4,6 +4,8 @@
 #include "appearances/appearanceinstancetracker.h"
 #include "appearances/genericstorage.h"
 #include "assets/assetasyncloader.h"
+#include "assets/assetfilesystemhelper.h"
+#include "assets/assetmanager.h"
 #include "assets/things.h"
 #include "client/gamecore.h"
 #include "config/clientoptions.h"
@@ -36,6 +38,7 @@
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 
+#include <QDir>
 #include <QObject>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -64,7 +67,9 @@ TGameClientBase::~TGameClientBase()
 {
     if (m_pMinimapTileStorage) {
         setMinimapWorldmapProtocolHandler(nullptr);
-        sprites::TSpriteSystem::instance().resolver().setMinimapTileManager(nullptr);
+        // Host: the sprite system goes back to its own resolver.
+        if (m_pSpriteResolver)
+            sprites::TSpriteSystem::instance().setResolver(nullptr);
         m_pMinimapWorldFeed.reset();
         minimap::TMinimapMarkerStorage::setActive(nullptr);
         m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(nullptr);
@@ -207,9 +212,13 @@ void TGameClientBase::initializeSpriteResolver()
     QObject::connect(&sprites::TSpriteSystem::instance().spritesheets(),
                      &sprites::TSpritesheetManager::spritesheetUncompressFailed, m_pResourceSpritesManager.get(),
                      [this](const sprites::TSpritesheetID& SpritesheetID) { onSpritesheetUncompressFailed(SpritesheetID); });
-    // Host: qtclient's resolver is the sprite system's; it draws the
-    // minimap tiles of the client's tile manager.
-    sprites::TSpriteSystem::instance().resolver().setMinimapTileManager(minimapTileManager());
+    // CIP: the client's resolver draws from the spritesheet manager and the
+    // minimap tiles of the client's tile manager. Host: the spritesheet
+    // manager is the sprite system's, and the resolver is installed there for
+    // the code that reaches it process-wide.
+    m_pSpriteResolver = std::make_shared<sprites::TSpriteResolver>(sprites::TSpriteSystem::instance().sharedSpritesheets());
+    m_pSpriteResolver->setMinimapTileManager(minimapTileManager());
+    sprites::TSpriteSystem::instance().setResolver(m_pSpriteResolver);
     m_pEngine->rootContext()->setContextProperty(QStringLiteral("ResourceSpritesManager"), m_pResourceSpritesManager.get());
 }
 
@@ -239,18 +248,49 @@ void TGameClientBase::initializeQmlContext()
 
 void TGameClientBase::initializeAssets()
 {
+    gamecore::setClientVersion(ClientVersion);
+    // Host: the directories the file system helper names (CIP): the assets'
+    // and sounds' search roots of qtclient's data tree.
+    const std::string assetsRoot = gamecore::assetsRoot(ClientVersion);
+    gamecore::soundsRoot(ClientVersion);
+    const QDir assetsDirectory(QString::fromStdString(tibia::files::data().getRealPath(assetsRoot)));
+    const std::string soundsPath = tibia::files::data().getRealPath("sounds");
+    const QDir soundsDirectory = soundsPath.empty() ? assetsDirectory : QDir(QString::fromStdString(soundsPath));
+    m_pAssetAsyncLoader = std::make_shared<assets::TAssetAsyncLoader>(
+        std::make_shared<assets::TAssetFileSystemHelper>(assetsDirectory, soundsDirectory));
+    m_pAssetManager = std::make_shared<assets::TAssetManager>(assetsDirectory.absolutePath(), m_pAssetAsyncLoader, nullptr);
+
     const std::shared_ptr<appearances::TAppearancesManager> appearances = appearancesManager();
+    // Host: the login sends the assets' identifier (assets.json.sha256).
+    appearances->readAssetIdentifier(assetsRoot);
     m_pAssetHandler = std::make_shared<assets::TAssetHandler>(
         sprites::TSpriteSystem::instance().sharedSpritesheets(), appearances, m_pSoundMetadataManager, m_pSoundManager,
         m_pTraderStorage, m_pProficiencyStorage.get(),
         [appearances](auto information) { appearances->setStaticInformation(std::move(information)); },
         [](auto areas) { appearances::TAppearancesManager::setStaticMapData(std::move(areas)); },
         cyclopediaMapStaticDataStorage());
-    sprites::TSpriteSystem::instance().setAssetHandler(m_pAssetHandler.get());
-    gamecore::setClientVersion(ClientVersion);
-    QString error;
-    if (!gamecore::loadAssets(ClientVersion, &error))
-        m_assetLoadError = error;
+
+    assets::TAssetManager* manager = assetManager().get();
+    assets::TAssetHandler* handler = m_pAssetHandler.get();
+    // Host: qtclient's sprite lookups read the metadata through the sprite
+    // system; it gets it before the handler, so the appearances find their
+    // sprite sizes.
+    QObject::connect(manager, &assets::TAssetManager::spritesheetMetadataComplete, manager,
+                     [](const std::shared_ptr<sprites::TSpritesheetsMetadataManager>& metadata) {
+                         sprites::TSpriteSystem::instance().setMetadata(metadata);
+                     });
+    QObject::connect(manager, &assets::TAssetManager::spritesheetMetadataComplete, handler,
+                     &assets::TAssetHandler::handleSpritesheetMetadata);
+    QObject::connect(manager, &assets::TAssetManager::assetDataAccessible, handler, &assets::TAssetHandler::handleAssetData);
+    QObject::connect(manager, &assets::TAssetManager::assetsComplete, manager, [this] { onAssetsComplete(); });
+    QObject::connect(manager, &assets::TAssetManager::error, manager, [this] { onAssetsError(); });
+    QObject::connect(handler, &assets::TAssetHandler::newAssetDataToLoad, manager,
+                     &assets::TAssetManager::onNewAdditionalAssetToLoad);
+    QObject::connect(sprites::TSpriteSystem::instance().sharedSpritesheets().get(),
+                     &sprites::TSpritesheetManager::spritesheetMissing, m_pAssetAsyncLoader.get(),
+                     &assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::QueuedConnection);
+    // Host: the Cyclopedia map's process-wide fallback storage asks this loader.
+    sprites::TSpriteSystem::instance().setAssetLoader(m_pAssetAsyncLoader);
 }
 
 void TGameClientBase::initializeSpriteTextureProviderManager()
@@ -265,7 +305,7 @@ void TGameClientBase::initializeSpriteTextureProviderManager()
 void TGameClientBase::connectToGameActionRouter()
 {
     game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
-    sprites::TSpriteResolver* spriteResolver = &sprites::TSpriteSystem::instance().resolver();
+    sprites::TSpriteResolver* spriteResolver = this->spriteResolver().get();
     cyclopedia::TCyclopediaMapStaticDataStorage* mapStaticData = cyclopediaMapStaticDataStorage().get();
     minimap::TMinimapTileManager* tileManager = minimapTileManager().get();
     QObject::connect(tileManager, &minimap::TMinimapTileManager::publishGameAction, router,
@@ -308,6 +348,13 @@ std::shared_ptr<appearances::TAppearancesManager> TGameClientBase::appearancesMa
     if (!m_pAppearancesManager)
         throw std::logic_error("m_pAppearancesManager was not initialized yet");
     return m_pAppearancesManager;
+}
+
+std::shared_ptr<assets::TAssetManager> TGameClientBase::assetManager() const
+{
+    if (!m_pAssetManager)
+        throw std::logic_error("m_pAssetManager was not initialized yet");
+    return m_pAssetManager;
 }
 
 std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> TGameClientBase::cyclopediaMapStaticDataStorage() const
@@ -364,6 +411,13 @@ std::shared_ptr<minimap::TMinimapTileManager> TGameClientBase::minimapTileManage
     if (!m_pMinimapTileManager)
         throw std::logic_error("m_pMinimapTileManager was not initialized yet");
     return m_pMinimapTileManager;
+}
+
+std::shared_ptr<sprites::TSpriteResolver> TGameClientBase::spriteResolver() const
+{
+    if (!m_pSpriteResolver)
+        throw std::logic_error("m_pSpriteResolver was not initialized yet");
+    return m_pSpriteResolver;
 }
 
 gamewindow::TStoreAndResourceBalanceHelperController* TGameClientBase::storeAndResourceBalanceHelperController() const

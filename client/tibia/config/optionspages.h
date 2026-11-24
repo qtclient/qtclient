@@ -20,6 +20,9 @@ namespace gamewindow {
 class TAssignObjectActionDialogController;
 class TAssignSpellActionDialogController;
 class TAssignTextActionDialogController;
+class TGenericEnterTextDialogController;
+class TMessageDialogController;
+class TRecordKeyboardShortcutDialogController;
 }
 }
 
@@ -379,9 +382,10 @@ class THotkeysOptionsPage final : public cip::tibia::config::THotkeysQMLOptionsP
 {
     Q_OBJECT
 public:
-    /// The page with its spell, object and text assign dialogs; none of them
-    /// names an action bar button. The object dialog's game actions are the
-    /// page's.
+    /// The page with its dialogs: the preset name prompt, the remove preset
+    /// confirmation (closes on any button), the spell, object and text assign
+    /// dialogs (none names an action bar button; the object dialog's game
+    /// actions are the page's) and the key recorder.
     explicit THotkeysOptionsPage(QObject* parent = nullptr);
     ~THotkeysOptionsPage() override;
 
@@ -459,9 +463,12 @@ private:
     void openPresetDialog(EPresetTextMode mode, const QString& caption, const QString& description, const QString& text);
     QString currentSetName() const { return m_options.currentHotkeySetName; }
 
+    std::unique_ptr<gamewindow::TGenericEnterTextDialogController> m_enterTextDialog;
+    std::unique_ptr<gamewindow::TMessageDialogController> m_messageDialog;
     std::unique_ptr<gamewindow::TAssignSpellActionDialogController> m_assignSpellDialog;
     std::unique_ptr<gamewindow::TAssignObjectActionDialogController> m_assignObjectDialog;
     std::unique_ptr<gamewindow::TAssignTextActionDialogController> m_assignTextDialog;
+    std::unique_ptr<gamewindow::TRecordKeyboardShortcutDialogController> m_recordKeyboardShortcutDialog;
     THotkeyOptionsData m_options;
     QList<QObject*> m_rows;
     QObject* m_editRow = nullptr;

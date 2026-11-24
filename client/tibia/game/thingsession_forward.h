@@ -58,11 +58,6 @@ inline auto assetIdentifier()
     return tibia::appearances::TAppearancesManager::instance().getAssetIdentifier();
 }
 
-inline bool isDatLoaded()
-{
-    return tibia::appearances::TAppearancesManager::instance().isDatLoaded();
-}
-
 inline auto findEffectVariant(uint16_t id)
 {
     return tibia::appearances::TAppearancesManager::instance().findEffectVariant(id);
@@ -71,16 +66,6 @@ inline auto findEffectVariant(uint16_t id)
 inline const RaceList& getAllRaces()
 {
     return tibia::appearances::TAppearancesManager::instance().getAllRaces();
-}
-
-inline bool loadAppearances(const std::string& directory)
-{
-    return tibia::appearances::TAppearancesManager::instance().loadAppearances(directory);
-}
-
-inline std::string getProficienciesFile()
-{
-    return tibia::appearances::TAppearancesManager::instance().getProficienciesFile();
 }
 
 }

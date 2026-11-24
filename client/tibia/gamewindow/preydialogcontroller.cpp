@@ -49,11 +49,7 @@ uint64_t totalGold() { return balance(tibia::client::RESOURCE_BANK_BALANCE) + ba
 
 int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(tibia::client::RESOURCE_PREY_WILDCARDS), INT_MAX)); }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 /// CIP .
 QList<TMessageDialogButton*> cancelButton()

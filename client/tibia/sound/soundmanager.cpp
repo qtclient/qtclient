@@ -123,7 +123,7 @@ TSoundManager::~TSoundManager() = default;
 QString TSoundManager::soundName(const TSoundEffectID soundId) const
 {
     if (const auto sound = m_metadata ? m_metadata->sound(soundId) : std::nullopt)
-        return sound->originalFileName.isEmpty() ? sound->fileName : sound->originalFileName;
+        return soundDisplayName(*sound);
     return QStringLiteral("Unknown");
 }
 

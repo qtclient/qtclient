@@ -9,6 +9,9 @@
 
 #include <memory>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia::authentication {
 class TAuthenticationProcessController;
 }
@@ -34,8 +37,8 @@ class TGameSessionDisconnectReactionController final : public cip::tibia::gamewi
     Q_OBJECT
 public:
     TGameSessionDisconnectReactionController(std::shared_ptr<authentication::TAuthenticationProcessController> AuthenticationProcessController,
-                                             std::shared_ptr<TGameWindowController> GameWindowController,
-                                             QObject* parent = nullptr);
+                                             std::shared_ptr<TGameWindowController> GameWindowController, QQmlEngine* Engine,
+                                             QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TGameSessionDisconnectReactionController() override;
 
     /// CIP: follows `GameSession`'s connection, login and end signals (null:

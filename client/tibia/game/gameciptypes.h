@@ -6,6 +6,7 @@
 #include "client/gamecore.h"
 #include "config/icharacterconfiguration.h"
 #include "game/passiveabilityinfostorage.h"
+#include "gamewindow/inspectobjectdata.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -108,6 +109,11 @@ class TSystemSurveyValueRetriever;
 namespace tibia::creatures {
 class TCreatureMovementSpeedCalculator;
 class TCreatureStorage;
+using TCreatureID = uint32_t;
+}
+
+namespace tibia::appearances {
+class TAppearanceInstanceFactory;
 }
 
 namespace tibia::spells {
@@ -128,6 +134,15 @@ class TSelectOutfitDialogData;
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
+
+/// The window an object inspection list is for, as the server numbers it.
+enum EInspectionListWindow : int32_t
+{
+};
+
+/// An inventory slot of the protocol (1..13); throws
+/// std::runtime_error("unhandled enum value") for any other value.
+int checkedInventorySlot(int Slot);
 
 /// What an update of the boss difficulty dialog carries: the selected
 /// difficulty and the modifiers it brings.
@@ -206,9 +221,11 @@ class TGameProtocolMessageHandler final : public cip::tibia::game::TGameProtocol
 {
     Q_OBJECT
 public:
-    /// The session's speed calculator takes the login's speed formula and beat.
-    explicit TGameProtocolMessageHandler(std::shared_ptr<::tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator,
-                                         QObject* parent = nullptr);
+    /// The session's speed calculator takes the login's speed formula and beat;
+    /// the factory makes the inspection lists' appearances, as of the clock.
+    TGameProtocolMessageHandler(std::shared_ptr<::tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator,
+                                std::shared_ptr<::tibia::appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                std::shared_ptr<::tibia::shared::IClockService> ClockService, QObject* parent = nullptr);
 
     /// CIP's ESessionEndInformation of a protocol reason (0..4, 99, 100);
     /// throws std::runtime_error("unhandled enum value") for any other.
@@ -247,7 +264,11 @@ public:
     /// Sends an enter world message; the next pending state enters again.
     void emitSendEnterWorldMessage() override;
 
-    void handleInspectionListMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionList& message);
+    /// The inspection list's entries (name, inventory slot, details, appearance,
+    /// count text, imbuement slots): an object list goes to
+    /// inspectObjectDataReceived with its client window, a player's list
+    /// shown in no other window to requestOpenInspectPlayerDialog.
+    void handleInspectionListMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionList& InspectionListMessage);
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
     void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
@@ -262,16 +283,20 @@ Q_SIGNALS:
     /// penalty) and TFairFightFactor.
     void requestOpenDeathDialog(int DeathType, int FairFightFactor, bool ApplicableForSubsequentBlessing);
     void requestOpenOutfitMemorialDialog(const OutfitMemorialData& MemorialData);
-    /// CIP inspectObjectDataReceived: an inspected object's details.
-    void inspectObjectDataReceived(const ItemInspectionData& InspectObjectData);
-    /// CIP requestOpenInspectPlayerDialog: an inspected player's equipment and details.
-    void requestOpenInspectPlayerDialog(const CyclopediaCharacterInspection& InspectedPlayer);
+    void inspectObjectDataReceived(const std::vector<::tibia::gamewindow::TInspectObjectData>& InspectObjectList,
+                                   ::tibia::game::EInspectionListWindow ClientWindow);
+    /// The player's equipment and, last, the player; 0xffffffff when the list
+    /// names no player.
+    void requestOpenInspectPlayerDialog(const std::vector<::tibia::gamewindow::TInspectObjectData>& InspectObjectList,
+                                        ::tibia::creatures::TCreatureID InspectedPlayerID);
 
 private:
     /// Sends the client details: the retriever's operating system name.
     void sendClientDetailsMessage(const ::tibia::systemsurvey::TSystemSurveyValueRetriever& ValueRetriever);
 
     std::shared_ptr<::tibia::creatures::TCreatureMovementSpeedCalculator> m_speedCalculator;
+    std::shared_ptr<::tibia::appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<::tibia::shared::IClockService> m_clockService;
     /// Cleared by a death, set again when the world is entered.
     bool m_enterWorldOnPendingState = true;
 };

@@ -161,12 +161,16 @@ void TGameserverSessionNetwork::sendFrame(const QByteArray& frame)
     m_frameWriter(frame);
 }
 
-void TGameserverSessionNetwork::processServerData(const QByteArray& data)
+bool TGameserverSessionNetwork::noteServerData(const QByteArray& data)
 {
     if (data.isEmpty() || data.size() > 0xffff)
-        return;
+        return false;
     recordInput(data);
-    deliverPacket(reinterpret_cast<const uint8_t*>(data.constData()), size_t(data.size()));
+    if (m_disconnected)
+        return false;
+    ++m_receivedPackets;
+    m_receivedBytes += int(data.size());
+    return true;
 }
 
 void TGameserverSessionNetwork::deliverPacket(const uint8_t* data, const size_t size)

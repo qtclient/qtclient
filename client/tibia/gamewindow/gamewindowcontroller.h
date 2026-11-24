@@ -28,6 +28,7 @@ namespace config {
 class TClientOptions;
 }
 namespace game {
+class IGameSession;
 class TGameActionRouter;
 class TBoostedCreatureRequestUploader;
 class TLiveInformationRequestUploader;
@@ -54,6 +55,7 @@ namespace gamewindow {
 class TCalendarDialogController;
 class TNewsButtonController;
 class TNewsDialogController;
+class TStatusBarController;
 
 /// gamewindow.qml's controller (CIP: TGameWindowController, metacall
 /// ). Without launcher SSO / --account the start-screen login
@@ -78,7 +80,9 @@ public:
                           std::shared_ptr<shared::IClockService> ClockService, QObject* parent = nullptr);
     ~TGameWindowController() override;
 
-    void setStatusBarController(QObject* controller);
+    /// CIP: hands the session to the status bar controller (the game window
+    /// controller's own, made with the client options).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// The client's news storage (the news dialog, the news button and the
     /// session's news protocol handler read it).
@@ -212,6 +216,7 @@ private:
     QQmlEngine* m_pEngine = nullptr;
     config::TClientOptions* m_pClientOptions = nullptr;
     QPointer<QQuickItem> m_container;
+    std::unique_ptr<TStatusBarController> m_pStatusBarController;
     QPointer<QQuickItem> m_gameWindowItem;
     QUrl m_hintsUrl;
     QVector<tibia::shared::Hint> m_hints;

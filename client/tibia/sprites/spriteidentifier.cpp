@@ -2,6 +2,7 @@
 
 #include <QHash>
 
+#include <cstdint>
 #include <typeinfo>
 
 namespace tibia::sprites {
@@ -12,6 +13,12 @@ size_t hashCombine(const size_t seed, const size_t value)
     x = (x >> 32 ^ x) * 0xe9846af9b1a615dULL;
     x = (x >> 32 ^ x) * 0xe9846af9b1a615dULL;
     return x >> 28 ^ x;
+}
+
+size_t identifierHash(const ISpriteIdentifier& identifier)
+{
+    const size_t seed = hashCombine(0, static_cast<size_t>(static_cast<int64_t>(identifier.identifierKind())));
+    return static_cast<uint32_t>(hashCombine(seed, identifier.hash()));
 }
 
 bool sameSpriteIdentifier(const ISpriteIdentifier& a, const ISpriteIdentifier& b)

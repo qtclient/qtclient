@@ -14,10 +14,7 @@ public:
     TRowOutfit(const authentication::TCharacter& c, QObject* parent)
         : TOutfitQMLInformation(parent)
     {
-        const auto color = [](const int index) {
-            const QColor rgb = tibia::shared::outfitColor(index);
-            return QColor(rgb.red(), rgb.green(), rgb.blue());
-        };
+        const auto color = [](const int index) { return tibia::shared::outfitColor(index); };
         m_id = c.outfitId;
         m_headColor = color(c.headColor);
         m_torsoColor = color(c.torsoColor);

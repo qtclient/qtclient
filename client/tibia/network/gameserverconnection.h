@@ -73,8 +73,9 @@ public:
     /// Product frames (extended opcode transport) -> the session's connection.
     void writeProductFrame(const QByteArray& frame);
 
-    /// Decoded server data of the live connection: recorded, then parsed.
-    void processServerData(const QByteArray& data);
+    /// Decoded server data of the live connection: recorded and counted. False
+    /// when it is not to be read (empty, too long, or the connection ended).
+    bool noteServerData(const QByteArray& data);
     /// A decoded server packet (live or replay) for the classic packet parser.
     void deliverPacket(const uint8_t* data, size_t size);
 

@@ -4,6 +4,7 @@
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "game/currentgamesession.h"
+#include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
@@ -302,7 +303,7 @@ TButtonBarController::TButtonBarController(QObject* parent)
     m_newsButtonController = new cip::tibia::gamewindow::TNewsButtonController(this);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String("controlButtonsOptions"))
-            m_model.reload();
+            onButtonOptionsChanged();
     });
     const auto setRewardWallHighlight = [this](const bool on) {
         if (m_highlightRewardWallButton == on)
@@ -342,6 +343,24 @@ void TButtonBarController::setAttentionStorage(mods::AttentionBackend* storage)
     Q_EMIT highlightRewardWallButtonChanged();
     Q_EMIT highlightWeaponProficiencyButtonChanged();
 }
+
+void TButtonBarController::connectToPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TButtonBarController::premiumTimeChanged);
+    m_premiumTimeStorage = premiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TButtonBarController::premiumTimeChanged);
+    Q_EMIT premiumTimeChanged();
+}
+
+void TButtonBarController::onGamesessionChanged()
+{
+    if (m_logoutQuestion)
+        m_logoutQuestion->dialog()->close();
+}
+
+void TButtonBarController::onButtonOptionsChanged() { m_model.reload(); }
 
 bool TButtonBarController::highlightRewardWallButton() const
 {

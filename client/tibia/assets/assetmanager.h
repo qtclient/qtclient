@@ -71,6 +71,14 @@ public:
     /// The files of the assets that arrived after the catalogs were read.
     const QSet<QString>& loadedAssets() const { return m_loadedAssets; }
 
+    /// Host: qtclient builds the game window right after the client is
+    /// initialized and reads the appearances there (CIP continues once the
+    /// appearances asset has been handed on). Runs the event loop until the
+    /// appearances asset has been handed on (true), or until a catalog or the
+    /// appearances could not be loaded (false, the reason in `error`). Call it
+    /// after startLoading.
+    bool waitForAppearances(QString* error);
+
 Q_SIGNALS:
     void error(QString reason);
     void normalizedProgress(tibia::shared::NormalizedProgress Progress);

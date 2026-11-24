@@ -93,14 +93,6 @@ void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<Gamec
         m_gameclientMessageTimer.start();
 }
 
-void TProtocolMessageQueue::enqueueServer(std::unique_ptr<GameserverMessage> message)
-{
-    if (!message)
-        return;
-    ++m_serverCount;
-    enqueueGameserverMessage(std::shared_ptr<GameserverMessage>(std::move(message)));
-}
-
 void TProtocolMessageQueue::enqueueClient(std::unique_ptr<GameclientMessage> message, const QByteArray& wire)
 {
     enqueueGameclientMessage(std::shared_ptr<GameclientMessage>(std::move(message)), wire);

@@ -65,8 +65,7 @@ QColor TTaskboardShopController::playerOutfitColor(const int part) const
         return Qt::white;
     const Outfit& look = outfit->outfit();
     const int index = part == 0 ? look.getHead() : part == 1 ? look.getBody() : part == 2 ? look.getLegs() : look.getFeet();
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
+    return tibia::shared::outfitColor(index);
 }
 
 QColor TTaskboardShopController::headColor() const { return playerOutfitColor(0); }

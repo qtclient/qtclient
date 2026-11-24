@@ -1,9 +1,9 @@
 #include "numericaleffectoverlay.h"
 
-#include "chat/textstorage.h"
+#include "effects/numericaleffectrenderprovider.h"
 #include "renderer/mapscale.h"
+#include "renderer/rendervolumeprovider.h"
 #include "renderer/worldmaprenderprovider.h"
-#include "effects/effectstorage.h"
 
 #include "worldmap/worldmapfield.h"
 
@@ -58,12 +58,15 @@ void TNumericalEffectOverlayQuickItem::geometryChange(const QRectF& newGeometry,
     cip::tibia::qmlcomponents::TNumericalEffectOverlayQuickItem::geometryChange(newGeometry, oldGeometry);
 }
 
-void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provider, const effects::TEffectStorage* effects)
+void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provider,
+                                                  std::shared_ptr<effects::TNumericalEffectRenderProvider> numericalEffects,
+                                                  std::shared_ptr<renderer::TRenderVolumeProvider> renderVolume)
 {
     disconnect(m_frameConnection);
     m_provider = provider;
-    m_effects = effects;
-    if (!provider || !effects) {
+    m_numericalEffectRenderProvider = std::move(numericalEffects);
+    m_renderVolumeProvider = std::move(renderVolume);
+    if (!provider || !m_numericalEffectRenderProvider || !m_renderVolumeProvider) {
         clear();
         return;
     }
@@ -74,22 +77,6 @@ void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provi
         }
     }
     m_frameConnection = connect(provider, &Provider::overlaysAdvanced, this, &TNumericalEffectOverlayQuickItem::update);
-}
-
-bool TNumericalEffectOverlayQuickItem::isShown(const Position& coordinate) const
-{
-    // : numbers below the top floor show unless a floor between hides them.
-    const int top = m_provider->firstFloor();
-    if (coordinate.z == m_provider->camera().z || coordinate.z <= top)
-        return true;
-    Position above = coordinate;
-    while (above.z > top) {
-        if (!above.coveredUp())
-            return true;
-        if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(above); tile && tile->limitsFloorsView())
-            return false;
-    }
-    return true;
 }
 
 TNumericalEffectOverlayQuickItem::Field TNumericalEffectOverlayQuickItem::create(const Position& coordinate)
@@ -130,7 +117,7 @@ void TNumericalEffectOverlayQuickItem::clear()
 
 void TNumericalEffectOverlayQuickItem::update()
 {
-    if (!m_provider || !m_effects)
+    if (!m_provider || !m_numericalEffectRenderProvider || !m_renderVolumeProvider)
         return;
     const Provider::Frame& frame = m_provider->frame();
     if (!frame.valid) {
@@ -148,15 +135,16 @@ void TNumericalEffectOverlayQuickItem::update()
 
     // The fields with numbers, each in the order its numbers appeared.
     std::vector<std::pair<Position, std::vector<TNumericEffectsItemController::Item>>> groups;
-    for (const Position& coordinate : m_effects->numericalEffectFields(0, 15)) {
-        if (!isShown(coordinate))
-            continue;
+    for (const effects::TNumericalEffectRenderGroup& group : m_numericalEffectRenderProvider->numericalEffectGroups(
+             m_renderVolumeProvider->renderVolume(), m_renderVolumeProvider->visibleAreaFloor())) {
+        const Position coordinate = group.coordinate.toPosition();
         const QRect field(m_provider->mapPixelOf(coordinate), QSize(Provider::FieldSize, Provider::FieldSize));
         if (!visible.intersects(field))
             continue;
         std::vector<TNumericEffectsItemController::Item> items;
-        for (const effects::TNumericalEffectPtr& effect : m_effects->numericalEffectsAt(coordinate))
-            items.push_back({ QString::number(static_cast<int>(effect->value())), effect->color(), effect->progress() });
+        items.reserve(group.effects.size());
+        for (const effects::TNumericalEffectRenderData& effect : group.effects)
+            items.push_back({ effect.text, effect.color, effect.percent });
         groups.emplace_back(coordinate, std::move(items));
     }
 

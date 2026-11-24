@@ -188,7 +188,6 @@ void TPartyHuntStorage::clear()
 
 TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
-    , m_lootBlackWhitelist(std::make_unique<quickloot::TQuickLootBlackWhitelistStorage>())
 {
     s_instance = this;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {

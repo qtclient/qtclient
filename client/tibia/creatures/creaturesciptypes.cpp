@@ -33,7 +33,6 @@ namespace tibia::creatures {
 
 namespace {
 struct CipTypedKeep {
-    TBattleListGameActionProvider tBattleListGameActionProvider;
 };
 CipTypedKeep& typedKeep()
 {
@@ -216,7 +215,7 @@ void TCreatureProtocolMessageHandler::handleSessionDumpStartMessage(const Gamese
 
 void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const GameserverMessageCreatureUpdate& message)
 {
-    const uint32_t id = message.creature_id();
+    const uint32_t id = message.creature().id();
     switch (message.type()) {
     case 0:
     case 13:

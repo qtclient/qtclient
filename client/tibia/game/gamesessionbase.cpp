@@ -1,4 +1,5 @@
 #include "game/gamesessionbase.h"
+#include "appearances/appearanceinstance.h"
 
 #include "game/gamesession.h"
 #include "game/gamesessionmetainfo.h"
@@ -6,6 +7,7 @@
 #include "protocol/protocolciptypes.h"
 #include "protocol/gameactioncontexthelper.h"
 #include "protocol/protocolmessagequeue.h"
+#include "network/networkqualityprotocolmessagehandler.h"
 
 #include <protocol.pb.h>
 #include <stdexcept>
@@ -21,8 +23,10 @@
 #include "chat/textstorage.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionhandler.h"
+#include "container/containergameactionprovider.h"
 #include "container/objectappearanceinstanceinfostorage.h"
 #include "creatures/creaturemovementspeedcalculator.h"
+#include "creatures/battlelistgameactionprovider.h"
 #include "creatures/battlelistrenderprovider.h"
 #include "creatures/creaturestorage.h"
 #include "gamewindow/battlelistgameactionhandler.h"
@@ -75,6 +79,7 @@
 #include "proficiency/proficiencyciptypes.h"
 #include "proficiency/proficiencystorage.h"
 #include "quickloot/managedcontainerstorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "quickloot/quicklootciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "taskboard/taskboardbountytasksstorage.h"
@@ -97,6 +102,7 @@
 #include "renderer/worldmapcamera.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "input/genericchatgameactionprovider.h"
+#include "input/genericobjectgameactionprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/creaturehudrenderprovider.h"
 #include "worldmap/worldmapgameactionhandler.h"
@@ -184,11 +190,13 @@ void TGameSessionBase::createStorages()
     m_gainWasteStorage = std::make_shared<analysers::TGainWasteStorage>(itemPrices);
     m_impactStorage = std::make_shared<analysers::TImpactStorage>();
     m_damageInputStorage = std::make_shared<analysers::TDamageInputStorage>();
+    m_quickLootBlackWhitelistStorage = std::make_shared<quickloot::TQuickLootBlackWhitelistStorage>();
     m_huntingSessionStorage = std::make_shared<analysers::THuntingSessionStorage>(m_progressStorage.get());
     m_cyclopediaMapCharacterConfigurationStorage = std::make_shared<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>();
-    // Host: the quick-loot lists and the skill wheel storage are still the game
-    // client's; it hands them in with setCharacterConfigurationStorages.
+    // Host: the skill wheel storage is still the game client's; it hands it in
+    // with setCharacterConfigurationStorages.
     config::TCharacterConfigurationManager::TStorages characterConfiguration = m_characterConfigurationStorages;
+    characterConfiguration.quickLootBlackWhitelist = m_quickLootBlackWhitelistStorage.get();
     characterConfiguration.itemTracking = m_itemTrackingStorage.get();
     characterConfiguration.gainWaste = m_gainWasteStorage.get();
     characterConfiguration.impact = m_impactStorage.get();
@@ -275,7 +283,11 @@ void TGameSessionBase::createProtocolMessageHandlers()
         m_playerData, m_playerSkillStats, m_creatureStorage, m_cooldownStorage, m_outfitDialogStorage,
         spells::TSpellInfoStorage::instance(), clockService(),
         config::TClientOptions::instance()->boolOption(cip::EClientOption::inspectPlayerAllowAllEnabled));
-    m_gameProtocolMessageHandler = std::make_shared<TGameProtocolMessageHandler>(m_creatureMovementSpeedCalculator);
+    // CipSoft hands the session's appearance instance factory (a session ctor argument); the
+    // session has none of its own yet, and qtclient's factory makes its instances from the
+    // global appearance types.
+    m_gameProtocolMessageHandler = std::make_shared<TGameProtocolMessageHandler>(
+        m_creatureMovementSpeedCalculator, std::make_shared<appearances::TAppearanceInstanceFactory>(nullptr), clockService());
     // The sound messages have a handler only when the client plays sound.
     if (sound::TSoundController::instance())
         m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
@@ -304,13 +316,12 @@ void TGameSessionBase::createProtocolMessageHandlers()
     if (!m_gameActionContextHelper)
         m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
     m_ruleViolationProtocolMessageHandler = std::make_shared<reporting::TRuleViolationProtocolMessageHandler>(m_gameActionContextHelper);
-    m_bugReportProtocolMessageHandler = std::make_shared<reporting::TBugReportProtocolMessageHandler>();
+    m_reportingStorage = std::make_shared<reporting::TReportingStorage>();
+    m_bugReportProtocolMessageHandler = std::make_shared<reporting::TBugReportProtocolMessageHandler>(m_reportingStorage);
     m_editTextProtocolMessageHandler = std::make_shared<TEditTextProtocolMessageHandler>();
     m_unjustifiedPointsProtocolMessageHandler =
         std::make_shared<creatures::TUnjustifiedPointsProtocolMessageHandler>(m_unjustifiedPointsStorage);
-    m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage.get());
-    // The store's coin balance also reaches the session's market storage.
-    m_storeProtocolMessageHandler->setMarketStorage(m_marketStorage.get());
+    m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage, m_marketStorage);
     m_newsProtocolMessageHandler = std::make_shared<news::TNewsProtocolMessageHandler>();
     m_premiumProtocolMessageHandler = std::make_shared<TPremiumProtocolMessageHandler>();
     m_premiumProtocolMessageHandler->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
@@ -361,6 +372,11 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_bossDifficultySelectionProtocolMessageHandler = std::make_unique<TBossDifficultySelectionProtocolMessageHandler>();
 }
 
+network::TNetworkLatency TGameSessionBase::latency() const
+{
+    return {};
+}
+
 void TGameSessionBase::setWhiteBlacklist(chat::TWhiteBlacklist* whiteBlacklist)
 {
     if (m_chatProtocolMessageHandler)
@@ -392,6 +408,8 @@ void TGameSessionBase::createRenderProviders()
         m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData,
         config::TClientOptions::instance());
     m_textOverlayRenderProvider = std::make_shared<chat::TTextOverlayRenderProvider>(m_textStorage);
+    m_containerRenderProvider =
+        std::make_shared<container::TContainerRenderProvider>(m_containerStorage, config::TClientOptions::instance());
     m_battleListRenderProvider = std::make_shared<creatures::TBattleListRenderProvider>(
         m_creatureStorage, m_worldMapViewport, m_playerData, config::TClientOptions::instance());
     // The pack's status lines (TGameMessageHandler) write into the session's texts.
@@ -411,16 +429,21 @@ void TGameSessionBase::createSoundProviders()
 
 void TGameSessionBase::createGameActionProvidersAndHandlers()
 {
-    // The providers: what a click offers where. The generic object, battle list
-    // and container providers are stateless in qtclient (they read the current
-    // session's storages).
+    // The providers: what a click offers where.
     m_genericChatGameActionProvider =
         std::make_shared<input::TGenericChatGameActionProvider>(m_chatChannelStorage.get(), m_vipStorage.get());
     m_partyGameActionProvider = std::make_shared<creatures::TPartyGameActionProvider>(m_creatureStorage, m_playerData);
     m_inspectPlayerGameActionProvider =
         std::make_shared<creatures::TInspectPlayerGameActionProvider>(m_creatureStorage, config::TClientOptions::instance());
-    m_worldMapGameActionProvider =
-        std::make_shared<worldmap::TWorldMapGameActionProvider>(*m_worldMapRenderProvider, *m_worldMapViewport);
+    m_genericObjectGameActionProvider = std::make_shared<input::TGenericObjectGameActionProvider>(
+        m_creatureStorage, m_genericChatGameActionProvider, m_partyGameActionProvider, m_inspectPlayerGameActionProvider,
+        m_quickLootBlackWhitelistStorage);
+    m_battleListGameActionProvider = std::make_shared<creatures::TBattleListGameActionProvider>(m_genericObjectGameActionProvider);
+    m_worldMapGameActionProvider = std::make_shared<worldmap::TWorldMapGameActionProvider>(
+        *m_worldMapRenderProvider, *m_worldMapViewport, m_genericObjectGameActionProvider);
+    m_containerGameActionProvider = std::make_shared<container::TContainerGameActionProvider>(
+        m_containerStorage, m_stashStorage, m_depotSearchDetailListStorage, m_quickLootBlackWhitelistStorage,
+        m_genericObjectGameActionProvider);
     {
         // The name actions of a player's entry are the generic chat provider's;
         // the join / leave lines follow the console option.
@@ -457,6 +480,8 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_preyGameActionHandler = std::make_shared<prey::TPreyGameActionHandler>(m_preyProtocolMessageHandler);
     m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardStorage.get());
     m_questLogGameActionHandler = std::make_shared<questlog::TQuestLogGameActionHandler>(m_questLogStorage);
+    m_exivaOptionsGameActionHandler =
+        std::make_shared<exivaoptions::TExivaOptionsGameActionHandler>(m_exivaOptionsProtocolMessageHandler, m_exivaOptionsStorage);
     m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>();
     m_marketGameActionHandler = std::make_shared<market::TMarketGameActionHandler>(m_marketProtocolMessageHandler);
     m_gatherAllGameActionHandler = std::make_shared<input::TGatherAllGameActionHandler>(m_gatherAllProtocolMessageHandler);
@@ -508,9 +533,8 @@ void TGameSessionBase::connectGameActionHandlers()
             &questlog::TQuestLogGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_quickLootGameActionHandler.get(),
             qOverload<const input::IGameActionPtr&>(&quickloot::TQuickLootGameActionHandler::handleGameAction));
-    // qtclient's exiva options storage handles the exiva options' game actions.
-    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_exivaOptionsStorage.get(),
-            qOverload<const input::IGameActionPtr&>(&exivaoptions::TExivaOptionsStorage::handleGameAction));
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_exivaOptionsGameActionHandler.get(),
+            &exivaoptions::TExivaOptionsGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_marketGameActionHandler.get(),
             &market::TMarketGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_exaltationGameActionHandler.get(),
@@ -557,7 +581,7 @@ void TGameSessionBase::connectGameActionHandlers()
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_exivaOptionsProtocolMessageHandler.get(), &exivaoptions::TExivaOptionsProtocolMessageHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
-    connect(m_exivaOptionsStorage.get(), &exivaoptions::TExivaOptionsStorage::publishGameAction, router,
+    connect(m_exivaOptionsGameActionHandler.get(), &exivaoptions::TExivaOptionsGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_gameEventProtocolMessageHandler.get(), &TGameEventProtocolMessageHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
@@ -1078,6 +1102,9 @@ void TGameSessionBase::releaseStorages()
     // The providers and handlers refer to their storages.
     m_vipWidgetGameActionProvider.reset();
     m_chatGameActionProvider.reset();
+    m_containerGameActionProvider.reset();
+    m_battleListGameActionProvider.reset();
+    m_genericObjectGameActionProvider.reset();
     m_inspectPlayerGameActionProvider.reset();
     m_partyGameActionProvider.reset();
     m_genericChatGameActionProvider.reset();
@@ -1129,6 +1156,7 @@ void TGameSessionBase::releaseStorages()
     m_battleListGameActionHandler.reset();
     m_battleListRenderProvider.reset();
     m_textOverlayRenderProvider.reset();
+    m_containerRenderProvider.reset();
     m_creatureHUDRenderProvider.reset();
     m_numericalEffectRenderProvider.reset();
     m_worldMapRenderProvider.reset();
@@ -1143,6 +1171,7 @@ void TGameSessionBase::releaseStorages()
     m_gatherAllProtocolMessageHandler.reset();
     m_managedContainersProtocolMessageHandler.reset();
     m_marketGameActionHandler.reset();
+    m_exivaOptionsGameActionHandler.reset();
     m_marketProtocolMessageHandler.reset();
     m_containerProtocolMessageHandler.reset();
     m_managedContainerStorage.reset();

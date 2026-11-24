@@ -22,6 +22,15 @@ double clientSettingReal(const QString& group, const QString& key, const double 
     return value;
 }
 
+QString clientSettingString(const QString& group, const QString& key, const QString& defaultValue)
+{
+    QSettings settings;
+    settings.beginGroup(group);
+    const QString value = settings.value(key, defaultValue).toString();
+    settings.endGroup();
+    return value;
+}
+
 qint64 clientSettingAtMost(const QString& group, const QString& key, const qint64 defaultValue, const qint64 maximum)
 {
     const qint64 value = clientSetting(group, key, defaultValue);

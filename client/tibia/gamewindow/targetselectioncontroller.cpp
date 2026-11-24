@@ -74,6 +74,9 @@ void TTargetSelectionController::onTargetSelectionFinished()
     m_selecting = false;
     if (m_filter)
         m_filter->setSelecting(false);
+    // Host: the pending target handler ends without a target (a target the
+    // filter found has already been handed over by then).
+    input::finishTargetSelection(nullptr);
     Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::TARGET_SELECTION_FINISHED));
 }
 

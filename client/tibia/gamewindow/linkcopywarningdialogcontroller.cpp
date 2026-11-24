@@ -6,9 +6,10 @@
 
 namespace tibia::gamewindow {
 
-TLinkCopyWarningDialogController::TLinkCopyWarningDialogController(QObject* parent)
+TLinkCopyWarningDialogController::TLinkCopyWarningDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                                                   QObject* parent)
     : cip::tibia::gamewindow::TLinkCopyWarningDialogController(parent)
-    , m_messageDialog(new TMessageDialogController(this))
+    , m_messageDialog(new TMessageDialogController(Engine, DialogParentItem, this))
 {
     // A click on Yes or No closes the warning.
     m_messageDialog->setCloseOnButtonClicked(true);

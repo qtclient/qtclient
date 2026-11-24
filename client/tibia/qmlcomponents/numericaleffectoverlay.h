@@ -10,9 +10,14 @@
 
 #include <vector>
 
+#include <memory>
+
 namespace tibia {
 namespace effects {
-class TEffectStorage;
+class TNumericalEffectRenderProvider;
+}
+namespace renderer {
+class TRenderVolumeProvider;
 }
 }
 
@@ -56,7 +61,10 @@ public:
     explicit TNumericalEffectOverlayQuickItem(QQuickItem* parent = nullptr);
     ~TNumericalEffectOverlayQuickItem() override;
 
-    void setSources(TWorldMapRenderProvider* provider, const effects::TEffectStorage* effects);
+    /// The pane's render provider (frame and pixels), the session's
+    /// numerical effect render provider and its render volume provider.
+    void setSources(TWorldMapRenderProvider* provider, std::shared_ptr<effects::TNumericalEffectRenderProvider> numericalEffects,
+                    std::shared_ptr<renderer::TRenderVolumeProvider> renderVolume);
 
 protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
@@ -70,15 +78,16 @@ private:
         bool seen = false;
     };
 
-    /// CIP: .
+    /// One item per field with rising numbers of the render volume (the
+    /// numerical effect render provider's groups), placed over its field.
     void update();
-    bool isShown(const Position& coordinate) const;
     Field create(const Position& coordinate);
     void remove(Field& field);
     void clear();
 
     QPointer<TWorldMapRenderProvider> m_provider;
-    const effects::TEffectStorage* m_effects = nullptr;
+    std::shared_ptr<effects::TNumericalEffectRenderProvider> m_numericalEffectRenderProvider;
+    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     QMetaObject::Connection m_frameConnection;
     QQmlComponent* m_component = nullptr;
     std::vector<Field> m_fields;

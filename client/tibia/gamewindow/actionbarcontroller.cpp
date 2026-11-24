@@ -230,6 +230,15 @@ TActionBarController::TActionBarController(const uint8_t actionBarId, const EAct
     createItem(engine, container);
 }
 
+EActionBarPosition TActionBarController::position() const
+{
+    if (m_position == P::ActionBarPositionLeft)
+        return P::ActionBarPositionLeft;
+    if (m_position == P::ActionBarPositionRight)
+        return P::ActionBarPositionRight;
+    return P::ActionBarPositionBottom;
+}
+
 TActionBarController::~TActionBarController()
 {
     if (m_item) {
@@ -510,13 +519,15 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
         onInventoryChanged();
         onEnableConditionsChanged();
     }
+    if (m_spellDialog)
+        m_spellDialog->connectToGameSession(m_gameSession);
+    if (m_passiveAbilityDialog)
+        m_passiveAbilityDialog->connectToGameSession(m_gameSession);
     onActionBarOptionsChanged();
     m_actionBarCharacterOptionsChanged = true;
     onHotkeyOptionsChanged();
     for (TActionButtonController* button : m_buttons)
         button->connectToGameSession(m_gameSession);
-    if (m_passiveAbilityDialog)
-        m_passiveAbilityDialog->connectToGameSession(m_gameSession);
 }
 
 void TActionBarController::tick(const qint64 now)

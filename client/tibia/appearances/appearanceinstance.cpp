@@ -1,6 +1,7 @@
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
 #include "protocol/objectdata.h"
+#include <protocol.pb.h>
 #include "config/clientsettings.h"
 
 #include "tibia/assets/things.h"
@@ -879,6 +880,100 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::pro
             hangable->setHangSide(static_cast<uint8_t>(object.hookState));
     }
     return instance;
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit,
+                                                                           const uint8_t direction)
+{
+    if (outfit.has_look_type()) {
+        const auto lookType = static_cast<uint16_t>(outfit.look_type());
+        const tibia::protobuf::protocol::OutfitColor& colors = outfit.colors();
+        Outfit look;
+        look.setCategory(ThingCategoryCreature);
+        look.setId(lookType);
+        look.setHead(static_cast<uint8_t>(colors.head()));
+        look.setBody(static_cast<uint8_t>(colors.body()));
+        look.setLegs(static_cast<uint8_t>(colors.legs()));
+        look.setFeet(static_cast<uint8_t>(colors.feet()));
+        look.setAddons(static_cast<uint8_t>(outfit.addons()));
+        return createOutfit(appearanceType(ThingCategoryCreature, lookType), look, direction);
+    }
+    if (outfit.has_object_type())
+        return createObjectOutfit(static_cast<uint16_t>(outfit.object_type()));
+    return nullptr;
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object,
+                                                                     const qint64 nowMs)
+{
+    namespace pb = tibia::protobuf::protocol;
+    const auto id = static_cast<uint16_t>(object.id());
+    if (object.HasExtension(pb::LiquidObject::liquid_object))
+        return createLiquidObject(id, object.GetExtension(pb::LiquidObject::liquid_object).liquid());
+    if (object.HasExtension(pb::CumulativeObject::cumulative_object))
+        return createCumulativeObject(id, static_cast<uint8_t>(object.GetExtension(pb::CumulativeObject::cumulative_object).count()));
+    if (object.HasExtension(pb::ContainerObject::container_object)) {
+        const pb::ContainerObject& container = object.GetExtension(pb::ContainerObject::container_object);
+        const uint32_t flags = container.flags();
+        // Bits 1 to 31 of the loot and obtain flags are the categories.
+        std::set<int> lootCategories;
+        std::set<int> obtainCategories;
+        if ((flags & 9) != 0) {
+            for (int bit = 1; bit < 32; ++bit) {
+                if (((container.loot_flags() >> bit) & 1) != 0)
+                    lootCategories.insert(bit);
+            }
+            for (int bit = 1; bit < 32; ++bit) {
+                if (((container.obtain_flags() >> bit) & 1) != 0)
+                    obtainCategories.insert(bit);
+            }
+        }
+        const bool hasAmmo = ((flags >> 1) & 1) != 0;
+        return createContainerObject(id, std::move(lootCategories), std::move(obtainCategories), hasAmmo,
+                                     hasAmmo ? static_cast<int>(container.ammo_total()) : 0, (flags & 4) != 0, nowMs);
+    }
+    if (object.HasExtension(pb::ShowOffSocketObject::show_off_socket_object)) {
+        // Host: qtclient's show-off socket keeps the figure as an Outfit (CIP:
+        // the outfit and mount instances of the protocol outfits).
+        const pb::ShowOffSocketObject& socket = object.GetExtension(pb::ShowOffSocketObject::show_off_socket_object);
+        auto instance = makeTracked<TShowOffSocketAppearanceInstance>(appearanceType(ThingCategoryItem, id));
+        Outfit look;
+        if (socket.outfit().has_look_type()) {
+            const pb::OutfitColor& colors = socket.outfit().colors();
+            look.setCategory(ThingCategoryCreature);
+            look.setId(static_cast<uint16_t>(socket.outfit().look_type()));
+            look.setHead(static_cast<uint8_t>(colors.head()));
+            look.setBody(static_cast<uint8_t>(colors.body()));
+            look.setLegs(static_cast<uint8_t>(colors.legs()));
+            look.setFeet(static_cast<uint8_t>(colors.feet()));
+            look.setAddons(static_cast<uint8_t>(socket.outfit().addons()));
+        } else if (socket.outfit().has_object_type()) {
+            look.setCategory(ThingCategoryItem);
+            look.setAuxId(static_cast<uint16_t>(socket.outfit().object_type()));
+        }
+        if (socket.mount().has_look_type()) {
+            const pb::OutfitColor& colors = socket.mount().colors();
+            look.setMount(static_cast<uint16_t>(socket.mount().look_type()));
+            look.setMountColors(static_cast<uint8_t>(colors.head()), static_cast<uint8_t>(colors.body()),
+                                static_cast<uint8_t>(colors.legs()), static_cast<uint8_t>(colors.feet()));
+        }
+        instance->setLook(look, static_cast<uint8_t>(socket.direction()), socket.visible());
+        return instance;
+    }
+    if (object.HasExtension(pb::UpgradeableObject::upgradeable_object))
+        return createUpgradeableObject(id, static_cast<uint8_t>(object.GetExtension(pb::UpgradeableObject::upgradeable_object).tier()));
+    if (object.HasExtension(pb::WearoutObject::wearout_object)) {
+        const pb::WearoutObject& wearout = object.GetExtension(pb::WearoutObject::wearout_object);
+        return createWearoutObject(appearanceType(ThingCategoryItem, id), wearout.charges(), wearout.brand_new());
+    }
+    if (object.HasExtension(pb::ExpireObject::expire_object)) {
+        const pb::ExpireObject& expire = object.GetExtension(pb::ExpireObject::expire_object);
+        return createExpireObject(appearanceType(ThingCategoryItem, id), static_cast<int64_t>(expire.duration()) * 1000,
+                                  expire.brand_new(), expire.expire_stop());
+    }
+    if (object.HasExtension(pb::DecoItemKitObject::deco_item_kit_object))
+        return createDecoItemKitObject(id, static_cast<uint16_t>(object.GetExtension(pb::DecoItemKitObject::deco_item_kit_object).deco_item_id()));
+    return createObject(id);
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type)

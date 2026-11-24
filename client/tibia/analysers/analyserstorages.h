@@ -604,7 +604,6 @@ public:
     THuntingSessionStorage* huntingSession() { return m_huntingSession.get(); }
     TPartyHuntStorage* partyHunt() { return m_partyHunt.get(); }
     cyclopedia::TItemTrackingStorage* itemTracking() { return m_itemTracking.get(); }
-    quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() { return m_lootBlackWhitelist.get(); }
 
     /// RESET_HUNTING_SESSION (CIP).
     void resetAll();
@@ -633,7 +632,6 @@ private:
     std::shared_ptr<THuntingSessionStorage> m_huntingSession;
     std::shared_ptr<TPartyHuntStorage> m_partyHunt;
     std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
-    std::unique_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_lootBlackWhitelist;
     std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<client::gamecore::Hook> m_hooks;
     bool m_hasCharacter = false;

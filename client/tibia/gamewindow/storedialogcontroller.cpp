@@ -1089,16 +1089,8 @@ void TStoreButtonController::connectToGameSession(const std::shared_ptr<game::IG
 
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
-    // The open action carries the link's detail, or its category / search
-    // text. The deep link stays until the store asks to open its dialog.
-    int detail = m_deeplink.premiumDetail;
-    switch (m_deeplink.openAction) {
-        case store::OPEN_USEFUL_THING: detail = m_deeplink.usefulThing; break;
-        case store::OPEN_OFFER: detail = static_cast<int>(m_deeplink.offerId); break;
-        default: break;
-    }
-    auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplink.openAction, detail, m_deeplink.category);
-    Q_EMIT publishGameAction(action);
+    // The deep link stays until the store asks to open its dialog.
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(m_deeplink));
 }
 
 void TStoreButtonController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)

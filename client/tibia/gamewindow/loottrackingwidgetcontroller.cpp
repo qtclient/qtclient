@@ -38,11 +38,7 @@ QString numberVariants(const qint64 value)
     return variants.join(QChar(0x9c));
 }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using tibia::shared::outfitColor;
 
 QString formatDateTime(const quint32 timestamp)
 {

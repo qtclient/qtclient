@@ -1,37 +1,28 @@
-// CIP protocol::TProtocolServerMessageProcessor: splits a decoded server
-// packet into messages, translates each one and puts it on the protocol queue.
+// Host entries of the server message path: the product messages outside the
+// CIP protocol, and decoded server packets without a network stack behind them.
 
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolclassicwire.h"
 #include "protocol/protocolcodes.h"
+#include "protocol/protocolserverpacketprocessor.h"
+#include "protocol/protocolservermessageprocessor.h"
 #include "tibia/protocol/extendedopcode.h"
 
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include "network/gameserverconnection.h"
+#include "network/gameservernetworkpacket.h"
+#include "network/unencryptedrawmessagestream.h"
 
-#include "clockservice.h"
-
-#include <protocol.pb.h>
-
-#include <QtGlobal>
-#include <format>
-#include <idleot/stats.h>
 #include <tibia/game/gamesession.h>
 
-#include <algorithm>
-#include <format>
 #include <string>
 
 namespace tibia::protocol {
 
 namespace {
 
-/// The packet the messages being read come from.
-uint32_t g_packetNumber = 0;
-int g_connectionType = 0;
-
-// Product messages, outside the CIP protocol: the extended-opcode transport and
-// the same-socket character switch. They return false when the message does
-// not read.
+// Both return false when the message does not read.
 bool readExtendedOpcode(ClassicReader& packet)
 {
     uint8_t opcode = 0;
@@ -61,43 +52,32 @@ bool readCharacterSwitch(ClassicReader& packet)
 
 }
 
-void setServerPacketOrigin(const uint32_t PacketNumber, const int ConnectionType)
+EProductMessage readProductMessage(ClassicReader& Reader)
 {
-    g_packetNumber = PacketNumber;
-    g_connectionType = ConnectionType;
-}
-
-void setServerMessageMetaData(::tibia::protobuf::protocol::GameserverMessage& message)
-{
-    auto* metaData = message.mutable_meta_data();
-    metaData->set_timestamp(shared::TClockService::frameMillis());
-    metaData->set_packet_number(g_packetNumber);
-    metaData->set_value3(g_connectionType);
+    if (Reader.remaining() == 0)
+        return EProductMessage::None;
+    const uint8_t opcode = Reader.p[Reader.i];
+    if (opcode != Proto::GameServerExtendedOpcode && opcode != Proto::GameServerCharacterSwitch)
+        return EProductMessage::None;
+    ++Reader.i;
+    const bool read = opcode == Proto::GameServerExtendedOpcode ? readExtendedOpcode(Reader) : readCharacterSwitch(Reader);
+    return read ? EProductMessage::Read : EProductMessage::Unreadable;
 }
 
 void processServerPacket(const uint8_t* data, const size_t size)
 {
-    auto* translator = serverMessageTranslator();
-    if (!translator)
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (!session || !session->protocolMessageQueue())
         return;
-    ClassicReader packet{ data, size, 0 };
-    while (packet.remaining() > 0) {
-        uint8_t opcode = 0;
-        packet.u8(opcode);
-        AutoStat stat(STATS_PACKETS, std::format("{} (0x{:02X})", opcode, opcode));
-
-        bool read = false;
-        if (opcode == Proto::GameServerExtendedOpcode)
-            read = readExtendedOpcode(packet);
-        else if (opcode == Proto::GameServerCharacterSwitch)
-            read = readCharacterSwitch(packet);
-        else if (translator->hasStructuredLayout(opcode))
-            read = translateAndEnqueueServerMessage(opcode, packet);
-
-        // The message length is unknown, so the rest of the packet cannot be read.
-        if (!read)
-            return;
-    }
+    // A recorded packet log may hold anything: an unknown message ends its
+    // packet instead of the session.
+    auto serverMessageProcessor = std::make_shared<TProtocolServerMessageProcessor>(
+        std::make_shared<TProtobufServerMessageTranslator>(), session->protocolMessageQueue(), false);
+    TProtocolServerPacketProcessor packetProcessor(std::make_shared<network::TUnencryptedRawMessageStream>(),
+                                                   std::move(serverMessageProcessor));
+    packetProcessor.processPacket(network::TGameserverNetworkPacket(
+        network::TGameserverNetworkPacket::Gameserver,
+        QByteArray(reinterpret_cast<const char*>(data), static_cast<qsizetype>(size))));
 }
 
 }

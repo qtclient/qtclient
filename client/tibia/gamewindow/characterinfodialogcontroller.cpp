@@ -47,11 +47,7 @@ using game::SkillType;
 
 QString qstr(const std::string& text) { return QString::fromStdString(text); }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 QString formatDateTime(const uint32_t timestamp)
 {

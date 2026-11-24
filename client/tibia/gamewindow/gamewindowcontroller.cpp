@@ -17,6 +17,7 @@
 #include "gamewindow/calendardialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/newsdialogcontroller.h"
+#include "gamewindow/statusbarcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
@@ -148,6 +149,7 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     , m_pEngine(Engine)
     , m_pClientOptions(ClientOptions)
     , m_container(ClientWindow)
+    , m_pStatusBarController(std::make_unique<TStatusBarController>(ClientOptions))
     , m_hintsUrl(HintsUrl)
     , m_fileSystemHelper(std::move(TibiaFileSystemHelper))
     , m_pClockService(std::move(ClockService))
@@ -165,6 +167,9 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
+    // CIP: the status bar controller's game actions are the game window controller's.
+    m_statusBarController = m_pStatusBarController.get();
+    connect(m_pStatusBarController.get(), &TStatusBarController::publishGameAction, this, &TGameWindowController::publishGameAction);
     connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
             &TGameWindowController::onBoostedCreatureReceived);
     connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
@@ -266,9 +271,9 @@ std::unique_ptr<QObject> TGameWindowController::createGameWindow(QQmlEngine* eng
     return object;
 }
 
-void TGameWindowController::setStatusBarController(QObject* controller)
+void TGameWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_statusBarController = controller;
+    m_pStatusBarController->connectToGameSession(GameSession);
 }
 
 void TGameWindowController::setGameWindowItem(QQuickItem* gameWindowItem)

@@ -4,14 +4,11 @@
 #include "sprites/spritesheetsmetadatamanager.h"
 
 #include <QImage>
-#include <QPointer>
 
 #include <memory>
 
 namespace tibia::assets {
 class TAssetAsyncLoader;
-class TAssetHandler;
-class TContentCatalog;
 }
 
 namespace tibia {
@@ -23,27 +20,30 @@ class TSpritesheetManager;
 
 /// Host: the client's sprite objects (CIP keeps them on the game client): the
 /// catalog's spritesheet metadata, the spritesheet manager with its cache and
-/// decompressor, the sprite resolver and the asset loader that reads the
-/// spritesheet files in the background. Created on the GUI thread.
+/// decompressor and the sprite resolver, for the code that reaches them
+/// process-wide. The game client's asset manager loads the spritesheets and
+/// hands the metadata and its loader in. Created on the GUI thread.
 class TSpriteSystem
 {
 public:
     static TSpriteSystem& instance();
 
-    /// Forgets every spritesheet and stops loading.
+    /// Forgets every spritesheet, the metadata and the loader.
     void clear();
-    /// The game client's asset handler: start hands it the catalog's spritesheet
-    /// metadata and every loaded asset, and loads the assets it asks for.
-    void setAssetHandler(tibia::assets::TAssetHandler* assetHandler);
-    /// Takes the catalog's spritesheets and starts loading their files from `assetsDirectory`.
-    void start(const tibia::assets::TContentCatalog& catalog, const QString& assetsDirectory);
+    /// The content catalog's spritesheet metadata, once the asset manager has read it.
+    void setMetadata(std::shared_ptr<TSpritesheetsMetadataManager> metadata);
+    /// The game client's sprite resolver (CIP keeps it on the game client);
+    /// null goes back to the sprite system's own.
+    void setResolver(std::shared_ptr<TSpriteResolver> resolver);
+    /// The game client's asset loader (the Cyclopedia map's own storage asks it for map images).
+    void setAssetLoader(std::shared_ptr<tibia::assets::TAssetAsyncLoader> assetLoader);
 
-    /// Null before start.
+    /// Null before the asset manager has read the content catalog.
     const std::shared_ptr<TSpritesheetsMetadataManager>& metadata() const { return m_metadata; }
     TSpritesheetManager& spritesheets() { return *m_spritesheets; }
     const std::shared_ptr<TSpritesheetManager>& sharedSpritesheets() const { return m_spritesheets; }
     TSpriteResolver& resolver() { return *m_resolver; }
-    /// Null before start.
+    /// Null before the game client made its loader.
     tibia::assets::TAssetAsyncLoader* assetLoader() { return m_assetLoader.get(); }
     /// The decompressor of asset images (store images decode through it too).
     const std::shared_ptr<TSpritesheetDecompressor>& decompressor() const { return m_decompressor; }
@@ -70,9 +70,10 @@ private:
     std::shared_ptr<TSpritesheetsMetadataManager> m_metadata;
     std::shared_ptr<TSpritesheetDecompressor> m_decompressor;
     std::shared_ptr<TSpritesheetManager> m_spritesheets;
-    std::unique_ptr<TSpriteResolver> m_resolver;
-    std::unique_ptr<tibia::assets::TAssetAsyncLoader> m_assetLoader;
-    QPointer<tibia::assets::TAssetHandler> m_assetHandler;
+    /// Resolves sprites until the game client hands its resolver in.
+    std::shared_ptr<TSpriteResolver> m_ownResolver;
+    std::shared_ptr<TSpriteResolver> m_resolver;
+    std::shared_ptr<tibia::assets::TAssetAsyncLoader> m_assetLoader;
 };
 
 }

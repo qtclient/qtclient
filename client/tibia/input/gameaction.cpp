@@ -140,6 +140,13 @@ std::optional<int> TGameActionSoundTrigger::soundEffectId() const
     return std::nullopt;
 }
 
+std::shared_ptr<const chat::TChatChannelIdentifier> TGameActionSoundTrigger::soundEffectChatChannel() const
+{
+    if (const TSoundEffect* effect = std::get_if<TSoundEffect>(&m_trigger))
+        return effect->chatChannel;
+    return nullptr;
+}
+
 }
 
 TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setRaceId(const uint16_t raceId)

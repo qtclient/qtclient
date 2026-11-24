@@ -2,7 +2,10 @@
 
 #include "app/clientoptions.h"
 #include "appearances/appearancetype.h"
+#include "config/clientoptions.h"
 #include "container/containerciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -17,7 +20,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 using Storage = game::TStatusbarStorage;
 using game::SkillType;
 
@@ -87,91 +89,113 @@ int reachedProficiencyLevel(const uint16_t typeId, const int count, const int xp
 
 }
 
-TStatusBarController::TStatusBarController(QObject* parent)
+TStatusBarController::TStatusBarController(config::TClientOptions* ClientOptions, QObject* parent)
     : cip::tibia::gamewindow::TStatusBarController(parent)
+    , m_pClientOptions(ClientOptions)
     , m_states(config::SpecialConditionsFilter::Bar)
 {
     m_xpEntry = new game::TSkillsWidgetEntryData(this);
     connect(&m_states, &game::TPlayerStatesTracker::restingAreaChanged, this, &TStatusBarController::onRestingAreaChanged);
+    // Host: the states tracker rereads the special conditions options itself.
     connect(&m_states, &game::TPlayerStatesTracker::optionsChanged, this, [this] {
         if (m_states.options().showInBar == m_showPlayerStatesInBar)
             return;
         m_showPlayerStatesInBar = m_states.options().showInBar;
         Q_EMIT showPlayerStatesInBarChanged();
     });
-
-    const auto onPlayer = [this](auto method) {
-        return [this, method](GameObject*, const Args&) {
-            (this->*method)();
-            return std::any{};
-        };
-    };
-    for (const char* event : { "onHealthChange", "onManaChange", "onManaShieldChange", "onHarmonyChange", "onSereneChange", "onVocationChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TStatusBarController::updateFromPlayer));
-    for (const char* event : { "onSkillChange", "onBaseSkillChange", "onMagicLevelChange", "onBaseMagicLevelChange", "onExperienceChange",
-                               "onLevelChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TStatusBarController::refreshSkills));
 }
 
-void TStatusBarController::setStorage(game::TStatusbarStorage* storage)
+void TStatusBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (m_storage)
-        disconnect(m_storage, nullptr, this, nullptr);
-    if (m_proficiencyStorage)
-        disconnect(m_proficiencyStorage, nullptr, this, nullptr);
-    if (m_inventory)
-        disconnect(m_inventory, nullptr, this, nullptr);
-    m_storage = storage;
-    m_proficiencyStorage = storage ? TProficiencyStorage::instance() : nullptr;
-    m_inventory = storage ? container::TInventoryContainer::instance() : nullptr;
-    // The progress follows the weapon's XP, the unspent perk and what the hands hold.
-    if (m_proficiencyStorage) {
-        connect(m_proficiencyStorage, &TProficiencyStorage::currentProficiencyProgressChanged, this,
-                &TStatusBarController::proficiencyStatusChanged);
-        connect(m_proficiencyStorage, &TProficiencyStorage::unspentPerkChanged, this,
-                &TStatusBarController::proficiencyStatusChanged);
+    m_gameSessionConnections.disconnectAll();
+    m_pGameSession = GameSession;
+    m_storage = nullptr;
+    m_proficiencyStorage = nullptr;
+    m_inventory = nullptr;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_pGameSession.get())) {
+        const std::shared_ptr<game::TPlayerData>& playerData = session->playerData();
+        const std::shared_ptr<config::TCharacterConfigurationManager>& configuration = session->characterConfigurationManager();
+        if (playerData)
+            m_gameSessionConnections.add(
+                connect(playerData.get(), &game::TPlayerData::playerDataChanged, this, &TStatusBarController::onPlayerDataChanged));
+        if (configuration) {
+            m_storage = configuration->statusbarStorage();
+            if (m_storage)
+                m_gameSessionConnections.add(
+                    connect(m_storage, &game::TStatusbarStorage::changed, this, &TStatusBarController::onStatusbarOptionsChanged));
+            m_gameSessionConnections.add(connect(configuration.get(), &config::TCharacterConfigurationManager::configurationLoadedForCharacter,
+                                                 this, &TStatusBarController::onStatusbarOptionsChanged));
+        }
+        if (playerData)
+            m_gameSessionConnections.add(
+                connect(playerData.get(), &game::TPlayerData::vocationChanged, this, &TStatusBarController::comboPointsSereneChanged));
+        // The progress follows the unspent perk, the weapon's XP and what the hands hold.
+        m_proficiencyStorage = TProficiencyStorage::instance();
+        if (m_proficiencyStorage) {
+            m_gameSessionConnections.add(connect(m_proficiencyStorage, &TProficiencyStorage::unspentPerkChanged, this,
+                                                 &TStatusBarController::proficiencyStatusChanged));
+            m_gameSessionConnections.add(connect(m_proficiencyStorage, &TProficiencyStorage::currentProficiencyProgressChanged, this,
+                                                 &TStatusBarController::proficiencyStatusChanged));
+        }
+        m_inventory = session->inventoryContainer().get();
+        if (m_inventory)
+            m_gameSessionConnections.add(connect(m_inventory, &container::TInventoryContainer::inventoryChanged, this,
+                                                 &TStatusBarController::proficiencyStatusChanged));
     }
-    if (m_inventory)
-        connect(m_inventory, &container::TInventoryContainer::inventoryChanged, this,
-                &TStatusBarController::proficiencyStatusChanged);
-    // Entering or leaving the world changes what the properties read.
-    Q_EMIT proficiencyStatusChanged();
-    if (!storage) {
-        setAnchorAndStyle(Invalid, Default, false);
-        return;
-    }
-    connect(storage, &game::TStatusbarStorage::changed, this, &TStatusBarController::onStorageChanged);
-    m_states.reloadOptions();
-    const bool showInBar = m_states.options().showInBar;
-    if (showInBar != m_showPlayerStatesInBar) {
-        m_showPlayerStatesInBar = showInBar;
-        Q_EMIT showPlayerStatesInBarChanged();
-    }
-    applyStorage();
-    updateFromPlayer();
+    applyStatusbarOptions();
 }
 
-void TStatusBarController::applyStorage()
+void TStatusBarController::onPlayerDataChanged()
+{
+    Q_EMIT hitpiontManaValuesChanged();
+    Q_EMIT comboPointsSereneChanged();
+    refreshSkills();
+    Q_EMIT skillsChanged();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_pGameSession.get());
+    if (!session || !session->playerData())
+        return;
+    const bool showManaShield = session->playerData()->magicShieldVocation();
+    if (showManaShield != m_showManaShield) {
+        m_showManaShield = showManaShield;
+        Q_EMIT showManaShieldChanged();
+    }
+}
+
+void TStatusBarController::onStatusbarOptionsChanged()
 {
     rebuildSkillLists();
+    if (!m_pGameSession || !m_storage)
+        return;
     int anchor = m_storage->position();
-    if (anchor < Top || anchor > Right) {
+    if (static_cast<unsigned>(anchor - 1) >= 4) {
         anchor = Invalid;
-        if (app::ClientOptions::load().options().value(QLatin1String(StatusBarEnabled)).toBool(true)) {
+        if (m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::statusBarEnabled)) {
             m_storage->setPosition(Top);
             anchor = Top;
         }
     }
-    setAnchorAndStyle(anchor, styleFromStorage(m_storage->style()), true);
+    resetAndSetDialogAnchor(anchor);
+    setDialogStyle(styleFromStorage(m_storage->style()));
 }
 
-void TStatusBarController::onStorageChanged()
+void TStatusBarController::applyStatusbarOptions()
 {
-    if (!m_storage)
-        return;
     rebuildSkillLists();
-    setDialogAnchor(anchorFromPosition(m_storage->position()));
+    if (!m_pGameSession || !m_storage) {
+        setDialogAnchor(Invalid);
+        return;
+    }
+    resetAndSetDialogAnchor(anchorFromPosition(m_storage->position()));
     setDialogStyle(styleFromStorage(m_storage->style()));
+}
+
+void TStatusBarController::resetAndSetDialogAnchor(const int anchor)
+{
+    if (m_dialogAnchor != Invalid) {
+        m_dialogAnchor = Invalid;
+        Q_EMIT dialogAnchorChanged();
+    }
+    setDialogAnchor(static_cast<DialogAnchor>(anchor));
 }
 
 void TStatusBarController::setDialogAnchor(const DialogAnchor anchor)
@@ -211,18 +235,6 @@ void TStatusBarController::setSkillShown(const int index, const bool shown)
 {
     if (m_storage && index >= 0 && index < Storage::EntryCount)
         m_storage->setShown(static_cast<Storage::Entry>(index), shown);
-}
-
-void TStatusBarController::setAnchorAndStyle(const int anchor, const int style, const bool forceAnchorSignal)
-{
-    // CIP drops the anchor to Invalid first so the bar is laid out anew.
-    if (forceAnchorSignal || anchor != m_dialogAnchor) {
-        m_dialogAnchor = Invalid;
-        Q_EMIT dialogAnchorChanged();
-        m_dialogAnchor = static_cast<DialogAnchor>(anchor);
-        Q_EMIT dialogAnchorChanged();
-    }
-    setDialogStyle(static_cast<DialogStyle>(style));
 }
 
 void TStatusBarController::rebuildSkillLists()
@@ -271,17 +283,6 @@ void TStatusBarController::refreshSkills()
         static_cast<game::TSkillsWidgetEntryData*>(m_skillList[i])->assign(game::buildSkillEntry(m_skillTypes[i]));
     if (m_oddSkillCount && m_remainingSkill)
         static_cast<game::TSkillsWidgetEntryData*>(m_remainingSkill)->assign(game::buildSkillEntry(m_remainingSkillType));
-}
-
-void TStatusBarController::updateFromPlayer()
-{
-    Q_EMIT hitpiontManaValuesChanged();
-    Q_EMIT comboPointsSereneChanged();
-    const bool showManaShield = tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsMagicShieldVocation();
-    if (showManaShield != m_showManaShield) {
-        m_showManaShield = showManaShield;
-        Q_EMIT showManaShieldChanged();
-    }
 }
 
 int TStatusBarController::maxHitpoints() const { return static_cast<int>(tibia::game::localPlayerMaxHealth()); }

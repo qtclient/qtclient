@@ -10,12 +10,14 @@
 #include "creatures/creaturesgameactionhandler.h"
 #include "creatures/creaturestorage.h"
 #include "friends/friendsciptypes.h"
+#include "game/gameactionrouter.h"
 #include "game/gameciptypes.h"
 #include "game/playergameactionhandler.h"
 #include "game/tgamenotify.h"
 #include "game/thingsession_forward.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/domainhandlers.h"
+#include "input/playermovementgameactionhandler.h"
 #include "input/playermovementintenthandler.h"
 #include "network/dualconnectioninfo.h"
 #include "network/gameserverconnection.h"
@@ -27,11 +29,15 @@
 #include "network/gameservertcpconnection.h"
 #include "network/networkqualityprotocolmessagehandler.h"
 #include "protocol/protocolclientmessageprocessor.h"
+#include "protocol/protocolserverpacketprocessor.h"
+#include "protocol/protocolservermessageprocessor.h"
 #include "network/unencryptedrawmessagestream.h"
 #include "protocol/extendedopcode.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
 #include "worldmap/worldmapgameactionhandler.h"
+
+#include "config/clientoptions.h"
 
 #include "clockservice.h"
 #include "compressionhelper.h"
@@ -223,6 +229,8 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     m_loginData = gameserverLoginRequestData(gameserverMetaInfo->loginData);
     m_recordTo = gameserverMetaInfo->loginData.recordTo;
     createSessionControllers();
+    m_playerMovementGameActionHandler =
+        std::make_shared<input::TPlayerMovementGameActionHandler>(m_playerMovementIntentHandler);
     // CIP: the session records its last server messages (kept 10 to 20 seconds)
     // and hands them to the crash handler as the report's session dump.
     m_sessiondumpRecorder = std::make_shared<sessiondump::TClientSessiondumpRecorder>(SessiondumpKeepSeconds);
@@ -271,6 +279,11 @@ void TGameserverGameSession::createNetworkStack()
     m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>();
     m_rawDataProcessor = std::make_shared<network::TGameserverNetworkPacketRawDataProcessor>(
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);
+    // A live game server's messages are all known: an unknown one throws.
+    auto serverMessageProcessor = std::make_shared<protocol::TProtocolServerMessageProcessor>(
+        std::make_shared<protocol::TProtobufServerMessageTranslator>(), protocolMessageQueue(), true);
+    m_serverPacketProcessor =
+        std::make_shared<protocol::TProtocolServerPacketProcessor>(m_serverMessageStream, serverMessageProcessor);
 
     protocol::TProtocolMessageQueue* queue = protocolMessageQueue().get();
     TGameserverDualConnection* dualConnection = m_dualConnection.get();
@@ -316,6 +329,18 @@ void TGameserverGameSession::createSessionControllers()
 {
     m_gameserverLoginProcessController = std::make_shared<authentication::TGameserverLoginProcessController>(
         m_dualConnection, m_authenticationAndEncryptionInfo, std::make_shared<shared::THashHelper>());
+
+    using input::TPlayerMovementIntentHandler;
+    // Host: qtclient's client options are the process-wide instance, and the
+    // planner's map inputs come from the session state.
+    m_playerMovementIntentHandler = std::make_shared<TPlayerMovementIntentHandler>(
+        metaInfo() ? metaInfo()->playerMovementIntentHandlerConfiguration : nullptr, config::TClientOptions::instance(),
+        clockService(), worldMapStorage(), textStorage(), creatureStorage(), creatureMovementSpeedCalculator(), playerData(),
+        TGameSessionState::playerMovementIntentEnvironment());
+    TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.get();
+    if (const std::shared_ptr<creatures::TCreature> player = playerCreature().lock())
+        intent->setPlayer(player);
+    connect(this, &IGameSession::playerCreatureAddedToCreatureStorage, intent, &TPlayerMovementIntentHandler::setPlayer);
 }
 
 void TGameserverGameSession::connectProtocolMessageHandlers()
@@ -445,9 +470,24 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
                  &Queue::sendFriendSystemAction));
     link(connect(gatherAllProtocolMessageHandler().get(), &input::TGatherAllProtocolMessageHandler::sendGatherAll, queue,
                  &Queue::sendGatherAll));
+    connectPlayerMovementIntentHandler();
     link(connect(bossDifficultySelectionProtocolMessageHandler(),
                  &TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionDataChanged, queue,
                  &Queue::sendBossDifficultySelectionChangedMessage));
+}
+
+void TGameserverGameSession::connectGameActionHandlers()
+{
+    TGameSessionBase::connectGameActionHandlers();
+    TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
+    using input::TPlayerMovementGameActionHandler;
+    TPlayerMovementGameActionHandler* movement = m_playerMovementGameActionHandler.get();
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, movement,
+            &TPlayerMovementGameActionHandler::handleGameAction);
+    connect(movement, &TPlayerMovementGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_playerMovementIntentHandler.get(), &input::TPlayerMovementIntentHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
 }
 
 void TGameserverGameSession::startSession()
@@ -537,11 +577,10 @@ void TGameserverGameSession::onPacketReady(network::TGameserverNetworkPacket pac
         return;
     m_rawDataProcessor->decodePacket(packet);
     sessionNetwork->notePacketRead();
-    tibia::protocol::setServerPacketOrigin(packet.sequenceNumber(), packet.connectionIndex());
-    m_serverMessageStream->appendData(packet.data());
-    const QByteArray data = m_serverMessageStream->readAllData();
-    m_serverMessageStream->removeReadData();
-    sessionNetwork->processServerData(data);
+    // Host: the classic session state's view records the packet and counts it.
+    if (!sessionNetwork->noteServerData(packet.data()))
+        return;
+    m_serverPacketProcessor->processPacket(packet);
 }
 
 void TGameserverGameSession::sendClientFrame(const QByteArray& frame)
@@ -603,11 +642,22 @@ QString TGameserverGameSession::worldName() const
     return QString::fromStdString(getWorldName());
 }
 
-void TGameserverGameSession::connectPlayerMovementIntentHandler(input::TPlayerMovementIntentHandler* Handler)
+void TGameserverGameSession::updatePlayerMovementIntentHandler()
+{
+    m_playerMovementIntentHandler->tick();
+}
+
+void TGameserverGameSession::connectPlayerMovementIntentHandler()
 {
     using H = TPlayerProtocolMessageHandler;
     using I = input::TPlayerMovementIntentHandler;
     H* player = playerProtocolMessageHandler().get();
+    I* Handler = m_playerMovementIntentHandler.get();
+    // Host: the game window relinks the protocol queue (connectProtocolMessageHandlers
+    // runs again); these links stay single.
+    const auto connect = [](auto* sender, auto signal, auto* receiver, auto slot) {
+        QObject::connect(sender, signal, receiver, slot, Qt::UniqueConnection);
+    };
     connect(Handler, &I::sendGoNorth, player, &H::goNorth);
     connect(Handler, &I::sendGoEast, player, &H::goEast);
     connect(Handler, &I::sendGoSouth, player, &H::goSouth);

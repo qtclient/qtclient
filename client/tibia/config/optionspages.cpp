@@ -1167,11 +1167,17 @@ constexpr uint8_t NoActionBar = 0xff;
 
 THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
     : cip::tibia::config::THotkeysQMLOptionsPage(parent)
+    , m_enterTextDialog(std::make_unique<gamewindow::TGenericEnterTextDialogController>())
+    , m_messageDialog(std::make_unique<gamewindow::TMessageDialogController>())
     , m_assignSpellDialog(std::make_unique<gamewindow::TAssignSpellActionDialogController>(NoActionBar))
     , m_assignObjectDialog(std::make_unique<gamewindow::TAssignObjectActionDialogController>(NoActionBar))
     , m_assignTextDialog(std::make_unique<gamewindow::TAssignTextActionDialogController>(NoActionBar))
+    , m_recordKeyboardShortcutDialog(std::make_unique<gamewindow::TRecordKeyboardShortcutDialogController>())
 {
     using namespace gamewindow;
+    m_messageDialog->setCloseOnButtonClicked(true);
+    connect(m_enterTextDialog.get(), &TGenericEnterTextDialogController::textEntered, this, &THotkeysOptionsPage::onPresetTextEntered);
+    connect(m_messageDialog.get(), &TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
     m_assignObjectDialog->setShowActionBarTarget(false);
     connect(m_assignObjectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this,
             &THotkeysOptionsPage::publishGameAction);
@@ -1191,6 +1197,8 @@ THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
             [this](const uint ButtonId, const int MultiActionIndex, const int SpellId, const QString& Parameters, const ECastType CastType) {
                 onSpellAssignedToHotkeyAction(int(ButtonId), MultiActionIndex, SpellId, Parameters, int(CastType));
             });
+    connect(m_recordKeyboardShortcutDialog.get(), &TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
+            &THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting);
 }
 
 THotkeysOptionsPage::~THotkeysOptionsPage() = default;
@@ -1475,13 +1483,11 @@ void THotkeysOptionsPage::updateHotkeyListModel()
 void THotkeysOptionsPage::openPresetDialog(const EPresetTextMode mode, const QString& caption, const QString& description, const QString& text)
 {
     m_presetTextMode = mode;
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(caption);
-    prompt->setDescription(description);
-    prompt->setMaxInputLength(29);
-    prompt->setText(text);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, &THotkeysOptionsPage::onPresetTextEntered);
-    prompt->dialog()->show();
+    m_enterTextDialog->setCaption(caption);
+    m_enterTextDialog->setDescription(description);
+    m_enterTextDialog->setMaxInputLength(29);
+    m_enterTextDialog->setText(text);
+    m_enterTextDialog->dialog()->show();
 }
 
 void THotkeysOptionsPage::requestAddPreset()
@@ -1512,13 +1518,21 @@ void THotkeysOptionsPage::onPresetTextEntered(const QString& EnteredText)
         Q_EMIT hotkeySetsChanged();
         return;
     case EPresetTextMode::Clone: {
-        const THotkeySet* source = m_options.set(current);
-        m_options.addSet(EnteredText, source ? *source : THotkeySet{});
+        // The current set's keys of both chat modes, then its action bar buttons.
+        const THotkeySet* found = m_options.set(current);
+        const THotkeySet source = found ? *found : THotkeySet{};
+        m_options.setHotkeys(EnteredText, source.chatOff, source.chatOn);
+        if (THotkeySet* clone = m_options.set(EnteredText)) {
+            clone->mappings = source.mappings;
+            clone->actionBarExtra = source.actionBarExtra;
+        }
         break;
     }
-    case EPresetTextMode::Add:
-        m_options.addSet(EnteredText, THotkeyOptions::builtInSet(QStringLiteral("GlobalShortcuts")));
+    case EPresetTextMode::Add: {
+        const THotkeySet defaults = THotkeyOptions::builtInSet(QStringLiteral("GlobalShortcuts"));
+        m_options.setHotkeys(EnteredText, defaults.chatOff, defaults.chatOn);
         break;
+    }
     case EPresetTextMode::None:
         return;
     }
@@ -1530,11 +1544,9 @@ void THotkeysOptionsPage::onPresetTextEntered(const QString& EnteredText)
 
 void THotkeysOptionsPage::requestRemoveCurrentPreset()
 {
-    auto* message = new gamewindow::TMessageDialogController(this);
-    message->setCloseOnButtonClicked(true);
-    message->setButtons(gamewindow::okCancelDialogButtons());
-    connect(message, &gamewindow::TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
-    message->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
+    m_messageDialog->setCloseOnButtonClicked(true);
+    m_messageDialog->setButtons(gamewindow::okCancelDialogButtons());
+    m_messageDialog->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
 }
 
 void THotkeysOptionsPage::onMessageDialogConfirmed()
@@ -1561,15 +1573,12 @@ void THotkeysOptionsPage::closeDialogs()
         if (controller->dialog()->item())
             controller->dialog()->close();
     };
-    for (auto* prompt : findChildren<gamewindow::TGenericEnterTextDialogController*>(Qt::FindDirectChildrenOnly))
-        close(prompt);
-    for (auto* message : findChildren<gamewindow::TMessageDialogController*>(Qt::FindDirectChildrenOnly))
-        close(message);
-    for (auto* record : findChildren<gamewindow::TRecordKeyboardShortcutDialogController*>(Qt::FindDirectChildrenOnly))
-        close(record);
+    close(m_enterTextDialog.get());
+    close(m_messageDialog.get());
     close(m_assignSpellDialog.get());
     close(m_assignObjectDialog.get());
     close(m_assignTextDialog.get());
+    close(m_recordKeyboardShortcutDialog.get());
 }
 
 void THotkeysOptionsPage::resetToDefault()
@@ -1763,10 +1772,9 @@ void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionS
     const QKeySequence current = KeySequenceIndex == 0 ? row->firstKeySequence() : row->secondKeySequence();
     const TActionSetting& setting = row->hotkeyActionSetting();
     const QString actionName = setting.kind == TActionSetting::ACTION ? setting.action : QString();
-    auto* dialog = new gamewindow::TRecordKeyboardShortcutDialogController(row->descriptionText(), actionName, m_chatModeOn, current, this);
-    connect(dialog, &gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
-            &THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting);
-    dialog->dialog()->show();
+    m_recordKeyboardShortcutDialog->showDialog(
+        m_chatModeOn, false, current, row->descriptionText(),
+        gamewindow::TRecordKeyboardShortcutDialogController::occupiedKeys(actionName, m_chatModeOn));
 }
 
 void THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting(const QKeySequence& NewKeySequence)

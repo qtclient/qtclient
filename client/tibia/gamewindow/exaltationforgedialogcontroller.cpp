@@ -114,11 +114,11 @@ void TForgeObjectListModel::onObjectCountsChanged()
         Q_EMIT dataChanged(index(0), index(rowCount() - 1), { TypeCountRole, CountStringRole });
 }
 
-TUpgradeableObjectModel::TUpgradeableObjectModel(TForgeObjectListModel* source, QObject* parent)
+TUpgradeableObjectModel::TUpgradeableObjectModel(container::TObjectCountStorage* counts, QObject* parent)
     : QSortFilterProxyModel(parent)
-    , m_source(source)
+    , m_objects(counts)
 {
-    setSourceModel(source);
+    setSourceModel(&m_objects);
     sort(0, Qt::AscendingOrder);
 }
 
@@ -131,13 +131,13 @@ void TUpgradeableObjectModel::setExcludedTypes(std::set<uint16_t> types)
 
 bool TUpgradeableObjectModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    return !m_excluded.contains(m_source->object(sourceRow).first);
+    return !m_excluded.contains(m_objects.object(sourceRow).first);
 }
 
 bool TUpgradeableObjectModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const auto [leftType, leftTier] = m_source->object(left.row());
-    const auto [rightType, rightTier] = m_source->object(right.row());
+    const auto [leftType, leftTier] = m_objects.object(left.row());
+    const auto [rightType, rightTier] = m_objects.object(right.row());
     if (leftTier != rightTier)
         return leftTier > rightTier;
     const int leftClass = classificationOf(leftType).value_or(0);
@@ -203,10 +203,8 @@ exaltation::TExaltationStorage* exaltationStorageOf(const std::shared_ptr<game::
 TExaltationForgeFusionPageController::TExaltationForgeFusionPageController(QObject* parent)
     : cip::TExaltationForgeFusionPageController(parent)
     , m_counts(new container::TObjectCountStorage(this))
-    , m_fusionObjects(new exaltation::TForgeObjectListModel(m_counts, this))
-    , m_resourceObjects(new exaltation::TForgeObjectListModel(m_counts, this))
-    , m_fusionProxy(new exaltation::TUpgradeableObjectModel(m_fusionObjects, this))
-    , m_resourceProxy(new exaltation::TUpgradeableObjectModel(m_resourceObjects, this))
+    , m_fusionProxy(new exaltation::TUpgradeableObjectModel(m_counts, this))
+    , m_resourceProxy(new exaltation::TUpgradeableObjectModel(m_counts, this))
 {
     m_sucessChance = 50;
     m_sucessChanceBonus = 15;
@@ -394,7 +392,7 @@ void TExaltationForgeFusionPageController::onFusionGroupsChanged()
                 objects.emplace_back(object.typeId, object.tier);
         }
     }
-    m_fusionObjects->setObjects(std::move(objects));
+    m_fusionProxy->objects().setObjects(std::move(objects));
     m_counts->setCounts(std::move(counts));
 }
 
@@ -421,7 +419,7 @@ void TExaltationForgeFusionPageController::setResourceModel()
                 objects.emplace_back(object.typeId, object.tier);
         }
     }
-    m_resourceObjects->setObjects(std::move(objects));
+    m_resourceProxy->objects().setObjects(std::move(objects));
 }
 
 /// CIP .
@@ -430,8 +428,8 @@ void TExaltationForgeFusionPageController::reset()
     m_fusionObjectTypeId = 0;
     m_fusionObjectUpgradeTier = 0;
     m_resourceObjectTypeId = 0;
-    m_fusionObjects->setObjects({});
-    m_resourceObjects->setObjects({});
+    m_fusionProxy->objects().setObjects({});
+    m_resourceProxy->objects().setObjects({});
     m_counts->clear();
     Q_EMIT fusionObjectChanged();
     Q_EMIT resourceObjectChanged();
@@ -444,10 +442,8 @@ TExaltationForgeTransferPageController::TExaltationForgeTransferPageController(Q
     : cip::TExaltationForgeTransferPageController(parent)
     , m_sourceCounts(new container::TObjectCountStorage(this))
     , m_targetCounts(new container::TObjectCountStorage(this))
-    , m_sourceObjects(new exaltation::TForgeObjectListModel(m_sourceCounts, this))
-    , m_targetObjects(new exaltation::TForgeObjectListModel(m_targetCounts, this))
-    , m_sourceProxy(new exaltation::TUpgradeableObjectModel(m_sourceObjects, this))
-    , m_targetProxy(new exaltation::TUpgradeableObjectModel(m_targetObjects, this))
+    , m_sourceProxy(new exaltation::TUpgradeableObjectModel(m_sourceCounts, this))
+    , m_targetProxy(new exaltation::TUpgradeableObjectModel(m_targetCounts, this))
 {
     m_sourceObjectsModel = QVariant::fromValue<QObject*>(m_sourceProxy);
     m_targetObjectsModel = QVariant::fromValue<QObject*>(m_targetProxy);
@@ -595,7 +591,7 @@ void TExaltationForgeTransferPageController::sourceSelected(const int TypeID, co
                 objects.emplace_back(receiver.typeId, receiver.tier);
         }
     }
-    m_targetObjects->setObjects(std::move(objects));
+    m_targetProxy->objects().setObjects(std::move(objects));
     m_targetCounts->setCounts(std::move(counts));
     if (m_targetObjectTypeId != 0) {
         m_targetObjectTypeId = 0;
@@ -633,7 +629,7 @@ void TExaltationForgeTransferPageController::onTransferGroupsChanged()
                 objects.emplace_back(donor.typeId, donor.tier);
         }
     }
-    m_sourceObjects->setObjects(std::move(objects));
+    m_sourceProxy->objects().setObjects(std::move(objects));
     m_sourceCounts->setCounts(std::move(counts));
 }
 
@@ -644,8 +640,8 @@ void TExaltationForgeTransferPageController::reset()
     m_sourceObjectUpgradeTier = 0;
     m_targetObjectTypeId = 0;
     m_targetObjectUpgradeTier = 0;
-    m_sourceObjects->setObjects({});
-    m_targetObjects->setObjects({});
+    m_sourceProxy->objects().setObjects({});
+    m_targetProxy->objects().setObjects({});
     m_targetProxy->setExcludedTypes({});
     m_sourceCounts->clear();
     m_targetCounts->clear();

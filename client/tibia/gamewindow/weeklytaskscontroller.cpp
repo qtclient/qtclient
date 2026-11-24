@@ -9,6 +9,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "taskboard/taskboardciptypes.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
 
@@ -345,7 +346,11 @@ void TWeeklyTasksController::onDeliveryItemClicked(const int TypeID, const int M
 {
     if (!m_gameSession)
         return;
-    const input::TGameActionList candidates = container::TContainerGameActionProvider::typeActions(static_cast<uint16_t>(TypeID));
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    const input::TGameActionList candidates =
+        provider ? provider->typeActions(static_cast<uint16_t>(TypeID)) : input::TGameActionList{};
     const input::IGameActionPtr action =
         m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)

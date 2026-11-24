@@ -1,5 +1,7 @@
 #include "containerslotinformation.h"
+#include "config/clientoptions.h"
 
+#include "qmlcomponents/appearanceinstancerenderer.h"
 #include "qmlcomponents/texthelper.h"
 
 #include <QLocale>
@@ -159,6 +161,36 @@ TContainerSlotQmlInformation::TContainerSlotQmlInformation(QObject* parent)
     // accepted and the slot does not update until the first assign.
 }
 
+uint TContainerSlotQmlInformation::objectID() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlTypeId(m_appearance.appearance);
+}
+
+uint TContainerSlotQmlInformation::objectCount() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(m_appearance.appearance);
+}
+
+uint TContainerSlotQmlInformation::upgradeTier() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlUpgradeTier(m_appearance.appearance);
+}
+
+Info::ELiquidType TContainerSlotQmlInformation::liquidType() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(m_appearance.appearance);
+}
+
+Info::EHookDirection TContainerSlotQmlInformation::hookDirection() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(m_appearance.appearance);
+}
+
+uint TContainerSlotQmlInformation::decoItemObjectID() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlDecoItemObjectID(m_appearance.appearance);
+}
+
 void TContainerSlotQmlInformation::setBackgroundImage(const QString& image)
 {
     if (image == m_backgroundImage)
@@ -223,11 +255,12 @@ void TContainerSlotQmlInformation::assign(const TSlotInfo& info)
 }
 
 TSlotInfo TContainerRenderProvider::inventorySlotInfo(const int slotId, const bool showExpire,
-                                                     const bool showExpireWhenUnused)
+                                                     const bool showExpireWhenUnused) const
 {
     TSlotInfo info;
     info.slotId = static_cast<uint>(slotId);
-    if (const TInventoryContainer* inventory = TInventoryContainer::instance()) {
+    const std::shared_ptr<TInventoryContainer> inventory = m_containerStorage ? m_containerStorage->inventoryContainer() : nullptr;
+    if (inventory) {
         info.appearance = inventory->slotAt(slotId);
         info.tutorialMarkerId = inventory->tutorialMarker(slotId);
     }
@@ -238,9 +271,10 @@ TSlotInfo TContainerRenderProvider::inventorySlotInfo(const int slotId, const bo
     return info;
 }
 
-std::map<uint32_t, TSlotInfo> TContainerRenderProvider::inventorySlotInfos(const bool showExpire,
-                                                                         const bool showExpireWhenUnused)
+std::map<uint32_t, TSlotInfo> TContainerRenderProvider::inventorySlotInfos() const
 {
+    const bool showExpire = m_clientOptions && m_clientOptions->boolOption(config::EClientOption::showExpireInInventory);
+    const bool showExpireWhenUnused = m_clientOptions && m_clientOptions->boolOption(config::EClientOption::showExpireWhenUnused);
     std::map<uint32_t, TSlotInfo> infos;
     for (int slotId = 0; slotId < TInventoryContainer::SlotCount; ++slotId)
         infos[static_cast<uint32_t>(slotId)] = inventorySlotInfo(slotId, showExpire, showExpireWhenUnused);

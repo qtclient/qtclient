@@ -12,20 +12,9 @@
 
 namespace tibia::gamewindow {
 
-namespace {
-TSocialDialogController* g_socialDialog = nullptr;
-}
-
-TSocialDialogController* TSocialDialogController::ensureInstalled(QObject* parent)
-{
-    if (g_socialDialog)
-        return g_socialDialog;
-    g_socialDialog = new TSocialDialogController(parent);
-    return g_socialDialog;
-}
-
-TSocialDialogController::TSocialDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("SocialDialog.qml"), parent)
+TSocialDialogController::TSocialDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine,
+                                                 QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("SocialDialog.qml"), engine, dialogParentItem, parent)
     , m_friends(new TFriendsFriendListPageController(this))
     , m_invites(new TFriendsInvitesPageController(this))
     , m_search(new TFriendsAccountSearchPageController(this))
@@ -33,9 +22,12 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     , m_config(new TFriendsConfigurationPageController(this))
     , m_join(new TTeamJoinPageController(this))
     , m_assemble(new TTeamAssemblePageController(this))
-    , m_button(new TSocialButtonController(this, this))
-    , m_errorDialog(new TMessageDialogController(this))
+    , m_errorDialog(new TMessageDialogController(engine, dialogParentItem, this))
 {
+    // Host: the pages do not take CipSoft's arguments yet (the friend list and
+    // the team assemble page get the engine and the dialog parent item, the
+    // account search page the client options as well).
+    Q_UNUSED(ClientOptions);
     m_friendListController = m_friends;
     m_invitesController = m_invites;
     m_accountSearchController = m_search;
@@ -50,14 +42,11 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     connect(m_config, &TFriendsConfigurationPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
     connect(m_join, &TTeamJoinPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
     connect(m_assemble, &TTeamAssemblePageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
-    connect(m_button, &TSocialButtonController::publishGameAction, this, &TSocialDialogController::publishGameAction);
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
     m_errorDialog->setCloseOnButtonClicked(true);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
-    if (!g_socialDialog)
-        g_socialDialog = this;
 }
 
 void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -74,7 +63,6 @@ void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::I
     m_config->connectToGameSession(GameSession);
     m_join->setGameSession(GameSession);
     m_assemble->connectToGameSession(GameSession);
-    m_button->connectToGameSession(GameSession);
     // Host: the game client hands CipSoft's dialog the premium storage; here
     // it is the live instance.
     setPremiumTimeStorage(GameSession ? game::TPremiumTimeStorage::liveInstance() : nullptr);
@@ -89,11 +77,7 @@ void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::I
                                                &TSocialDialogController::onGenericFriendSystemError));
 }
 
-TSocialDialogController::~TSocialDialogController()
-{
-    if (g_socialDialog == this)
-        g_socialDialog = nullptr;
-}
+TSocialDialogController::~TSocialDialogController() = default;
 
 TSocialDialogController::EDialogTab TSocialDialogController::dialogTab() const
 {

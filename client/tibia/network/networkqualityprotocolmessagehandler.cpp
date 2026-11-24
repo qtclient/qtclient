@@ -25,6 +25,8 @@ constexpr uint32_t MaxOutstandingPings = 3;
 constexpr qint64 LatencyEstimateThreshold = 1000;
 constexpr qint64 LatencyEstimateStep = 500;
 
+}
+
 /// The connection a server message came on (the meta data's connection value).
 EConnectionType connectionTypeFromProtocol(const int Value)
 {
@@ -49,8 +51,6 @@ int connectionTypeToProtocol(const EConnectionType Type)
     if (value == Values.end())
         throw std::runtime_error("unhandled enum value");
     return value->second;
-}
-
 }
 
 TNetworkQualityProtocolMessageHandler::TNetworkQualityProtocolMessageHandler(

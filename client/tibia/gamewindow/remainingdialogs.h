@@ -9,6 +9,7 @@
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "input/gameaction.h"
 #include "qtconnectionmanager.h"
 #include "store/storestorage.h"
 #include "taskboard/monsterlistmodelsortfilterproxy.h"
@@ -450,35 +451,23 @@ class TShowImageDialogController final : public TDialogController<cip::tibia::ga
     Q_OBJECT
 public:
     /// CIP: one image and its tab icon.
-    struct TImage
-    {
-        QString path;
-        QString tabIcon;
-        bool operator==(const TImage&) const = default;
-    };
+    using TImage = input::TGameActionOpenShowImageDialog::TImage;
     /// CIP: what the dialog shows.
-    struct TData
-    {
-        bool showDragonHeader = false;
-        bool showCrestHeader = false;
-        bool showCaption = false;
-        QString caption;
-        QString bannerPath;
-        std::vector<TImage> images;
-        bool operator==(const TData&) const = default;
-    };
+    using TData = input::TGameActionOpenShowImageDialog::TData;
 
     TShowImageDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TShowImageDialogController() override;
     static TShowImageDialogController* instance();
 
-    /// CIP handleShowImageDialogGameAction: takes the data and opens the dialog.
-    void showImages(const QStringList& paths, const QString& caption = {}, bool dragonHeader = false, bool crestHeader = false);
+    /// Takes the action's data and opens the dialog.
+    void handleShowImageDialogGameAction(const input::TGameActionOpenShowImageDialog& pGameAction);
 
     uint imageCount() const override { return static_cast<uint>(m_data.images.size()); }
     QString currentImagePath() const override;
 
 public Q_SLOTS:
+    /// The router's game actions (OPEN_SHOW_IMAGE_DIALOG; connected to publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
     void requestClose() override;
     void nextClicked() override;
     void backClicked() override;
@@ -625,28 +614,6 @@ private:
     QQuickItem* m_item = nullptr;
 };
 
-/// CIP TTwoFactorCodeEnterTextDialogController — TwoFactorTextEnterDialog.qml.
-class TTwoFactorCodeEnterTextDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TTwoFactorCodeEnterTextDialogController>
-{
-    Q_OBJECT
-public:
-    explicit TTwoFactorCodeEnterTextDialogController(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void onCancelClicked() override;
-    void onOkClicked(const QString& EnteredText) override;
-    void onButtonClicked() override;
-    void onControllerFinished() override;
-    bool getIsTrustedDevice() override;
-    /// Sets the flag without a change signal.
-    void setIsTrustedDevice(bool TrustedDevice) override;
-    ETwoFactorMethod getTwoFactorMethod() override;
-    /// Sets the method without a change signal.
-    void setTwoFactorMethod(ETwoFactorMethod Method) override;
-    QString getAdditionalInfoText() override;
-    uint getMaxInputLength() override;
-};
 
 }
 }

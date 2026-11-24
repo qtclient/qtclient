@@ -14,6 +14,7 @@
 #include "config/optionspages.h"
 #include "analysers/analyserstorages.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
+#include "game/currentgamesession.h"
 #include "config/characterconfigurationmanager.h"
 #include "input/gameactionhandlers.h"
 
@@ -66,8 +67,7 @@ using P = TManagedContainersProtocolMessageHandler;
 
 TQuickLootBlackWhitelistStorage* lootBlackWhitelist()
 {
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    return storages ? storages->lootBlackWhitelist() : nullptr;
+    return game::currentQuickLootBlackWhitelistStorage();
 }
 
 constexpr A QuickLootActions[] = { A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER, A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR,

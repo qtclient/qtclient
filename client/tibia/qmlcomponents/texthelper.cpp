@@ -83,6 +83,54 @@ QString hoursMinutesSecondsString(const qint64 seconds)
     return QStringLiteral("%1:%2").arg(hoursMinutes).arg(seconds % 60, 2, 10, QChar(u'0'));
 }
 
+QDateTime toServerTime(const QDateTime& Time)
+{
+#if QT_CONFIG(timezone)
+    return Time.toTimeZone(QTimeZone("Europe/Berlin"));
+#else
+    // Qt for WebAssembly has no tz database: EU rule, CEST from 01:00 UTC on the last Sunday of
+    // March to 01:00 UTC on the last Sunday of October.
+    const QDateTime utc = Time.toUTC();
+    const int year = utc.date().year();
+    const auto switchAt = [year](const int month) {
+        const QDate last(year, month, QDate(year, month, 1).daysInMonth());
+        return QDateTime(last.addDays(-(last.dayOfWeek() % 7)), QTime(1, 0), QTimeZone::UTC);
+    };
+    const bool summer = utc >= switchAt(3) && utc < switchAt(10);
+    return utc.toOffsetFromUtc(summer ? 7200 : 3600);
+#endif
+}
+
+bool isServerDaylightTime(const QDateTime& ServerTime)
+{
+#if QT_CONFIG(timezone)
+    return ServerTime.isDaylightTime();
+#else
+    return ServerTime.offsetFromUtc() == 7200;
+#endif
+}
+
+QString formatServerDateTime(const QDateTime& Time)
+{
+    const QDateTime serverTime = toServerTime(Time);
+    return qtTrId("%1 %2")
+        .arg(serverTime.toString(QStringLiteral("yyyy-MM-dd, HH:mm")))
+        .arg(isServerDaylightTime(serverTime) ? QStringLiteral("CEST") : QStringLiteral("CET"));
+}
+
+QString formatServerDateTime(const QDateTime& Time, const bool WithSeconds, const bool WithMilliseconds)
+{
+    QString format = QStringLiteral("yyyy-MM-dd, HH:mm");
+    if (WithSeconds)
+        format += QStringLiteral(":ss");
+    if (WithMilliseconds)
+        format += QStringLiteral(",zzz");
+    const QDateTime serverTime = toServerTime(Time);
+    return qtTrId("%1 %2")
+        .arg(serverTime.toString(format))
+        .arg(isServerDaylightTime(serverTime) ? QStringLiteral("CEST") : QStringLiteral("CET"));
+}
+
 QString thousandShortcutsMultiString(const qlonglong number, const bool withPlus)
 {
     return shortcutVariants(number, withPlus).join(MultiStringSeparator);
@@ -216,25 +264,7 @@ QString TTextHelperQmlService::formatDateTime(const int Timestamp)
 
 QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timestamp, const bool WithSeconds)
 {
-    QString format = QStringLiteral("yyyy-MM-dd, HH:mm");
-    if (WithSeconds)
-        format += QStringLiteral(":ss");
-#if QT_CONFIG(timezone)
-    const QDateTime berlin = QDateTime::fromSecsSinceEpoch(Timestamp).toTimeZone(QTimeZone("Europe/Berlin"));
-    const bool summer = berlin.isDaylightTime();
-#else
-    // Qt for WebAssembly has no tz database: EU rule, CEST from 01:00 UTC on the last Sunday of
-    // March to 01:00 UTC on the last Sunday of October.
-    const QDateTime utc = QDateTime::fromSecsSinceEpoch(Timestamp, QTimeZone::UTC);
-    const int year = utc.date().year();
-    const auto switchAt = [year](const int month) {
-        const QDate last(year, month, QDate(year, month, 1).daysInMonth());
-        return QDateTime(last.addDays(-(last.dayOfWeek() % 7)), QTime(1, 0), QTimeZone::UTC);
-    };
-    const bool summer = utc >= switchAt(3) && utc < switchAt(10);
-    const QDateTime berlin = utc.toOffsetFromUtc(summer ? 7200 : 3600);
-#endif
-    return qtTrId("%1 %2").arg(berlin.toString(format), summer ? QStringLiteral("CEST") : QStringLiteral("CET"));
+    return formatServerDateTime(QDateTime::fromSecsSinceEpoch(Timestamp), WithSeconds, false);
 }
 
 QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timestamp)

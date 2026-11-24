@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -417,9 +418,10 @@ void TStoreStorage::sortOffers(const int order)
     std::sort(m_offers.begin(), m_offers.end(), TOfferSortPredicate{ order });
 }
 
-TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(TStoreStorage* storage, QObject* parent)
-    : cip::tibia::store::TStoreProtocolMessageHandler(parent)
-    , m_storage(storage)
+TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(std::shared_ptr<TStoreStorage> storage,
+                                                           std::shared_ptr<market::TMarketStorage> marketStorage)
+    : m_storage(std::move(storage))
+    , m_marketStorage(std::move(marketStorage))
 {
 }
 

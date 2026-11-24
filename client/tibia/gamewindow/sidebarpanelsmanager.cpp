@@ -9,6 +9,7 @@
 #include "gamewindow/premiumpanelcontroller.h"
 #include "gamewindow/sidebarmanager.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
+#include "gamewindow/socialbuttoncontroller.h"
 #include "gamewindow/socialdialogcontroller.h"
 #include "input/gameactionmapper.h"
 
@@ -42,22 +43,19 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, co
     , m_pClientOptions(ClientOptions)
     , m_sidebars(SidebarManager)
 {
-    // Host: the minimap and the inventory still keep their own control and
-    // loot scheme (the game client sets them); CipSoft hands them the mapping.
-    Q_UNUSED(GameActionMapper);
     // Host: the button bar's dialogs come with its button controllers.
     Q_UNUSED(DialogParentItem);
 
     // CIP: the panels in this order, each with its item.
     m_minimapItem = createQuickItem(Engine, QStringLiteral("MinimapPanel.qml"));
     if (m_minimapItem) {
-        m_minimap = std::make_unique<TMinimapController>();
+        m_minimap = std::make_unique<TMinimapController>(GameActionMapper);
         m_minimap->setPanelItem(m_minimapItem);
     }
 
     m_inventoryItem = createQuickItem(Engine, QStringLiteral("inventory.qml"));
     if (m_inventoryItem) {
-        m_inventory = std::make_unique<TPlayerInventoryAndStatusController>();
+        m_inventory = std::make_unique<TPlayerInventoryAndStatusController>(ClientOptions, GameActionMapper);
         connect(m_inventory.get(), &TPlayerInventoryAndStatusController::publishGameAction, this,
                 &TSidebarPanelsManager::publishGameAction);
         m_inventory->setPanelItem(m_inventoryItem);
@@ -71,8 +69,15 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, co
 
     m_buttonBarItem = createQuickItem(Engine, QStringLiteral("ButtonBarPanel.qml"));
     m_buttonBar = std::make_unique<TButtonBarController>();
-    if (SocialDialog)
-        m_buttonBar->setSocialButtonController(SocialDialog->socialButton());
+    // CIP: the button bar makes the social button from the social dialog.
+    // Host: the button bar takes no social dialog yet; the button is made here
+    // and owned by the button bar.
+    if (SocialDialog) {
+        auto* socialButton = new TSocialButtonController(SocialDialog, m_buttonBar.get());
+        connect(socialButton, &TSocialButtonController::publishGameAction, m_buttonBar.get(),
+                &TButtonBarController::publishGameAction);
+        m_buttonBar->setSocialButtonController(socialButton);
+    }
     if (m_buttonBarItem)
         m_buttonBar->setPanelItem(m_buttonBarItem);
     connect(m_buttonBar.get(), &TButtonBarController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);

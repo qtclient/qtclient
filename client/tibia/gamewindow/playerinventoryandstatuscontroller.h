@@ -14,10 +14,14 @@
 #include <QTimer>
 
 #include <array>
+#include <memory>
 
 class QQuickItem;
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace container {
 class TContainerSlotQmlInformation;
 }
@@ -36,7 +40,10 @@ class TPlayerInventoryAndStatusController final
 {
     Q_OBJECT
 public:
-    explicit TPlayerInventoryAndStatusController(QObject* parent = nullptr);
+    /// Clicks on the slots map to game actions through the client's shared mapping.
+    TPlayerInventoryAndStatusController(config::TClientOptions* ClientOptions,
+                                        std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                        QObject* parent = nullptr);
     ~TPlayerInventoryAndStatusController() override;
 
     static constexpr int SlotCount = 11;
@@ -46,8 +53,6 @@ public:
     void setPanelItem(QQuickItem* PanelItem) override;
     /// The character's options; null outside the world.
     void setSidebarOptions(config::TSidebarOptions* options);
-    void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
-    void setLootScheme(int lootScheme) { m_mapper.setLootScheme(lootScheme); }
 
     bool inventoryMinimized() const override;
     void setInventoryMinimized(bool minimized) override;
@@ -112,7 +117,8 @@ private:
     QPointer<config::TSidebarOptions> m_options;
     std::array<container::TContainerSlotQmlInformation*, SlotCount> m_slots{};
     game::TPlayerStatesTracker m_states;
-    input::TGameActionMapper m_mapper;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     int m_hoveredSlot = -1;
     bool m_showExpire = true;
     bool m_showExpireWhenUnused = false;

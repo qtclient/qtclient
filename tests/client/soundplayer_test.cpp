@@ -54,6 +54,7 @@ TSoundMetadataManager::TSoundMetadataManager(QObject* parent, float)
     : cip::tibia::sound::TSoundMetadataManager(parent) {}
 std::optional<TSoundMetadata> TSoundMetadataManager::sound(uint16_t) const { return std::nullopt; }
 std::optional<TSoundMetadata> TSoundMetadataManager::soundByFileName(const QString&) const { return std::nullopt; }
+QString soundDisplayName(const TSoundMetadata& sound) { return sound.fileName; }
 
 }
 

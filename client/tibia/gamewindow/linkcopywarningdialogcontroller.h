@@ -6,6 +6,9 @@
 
 #include <QString>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace gamewindow {
 
@@ -18,7 +21,8 @@ class TLinkCopyWarningDialogController final : public cip::tibia::gamewindow::TL
 {
     Q_OBJECT
 public:
-    explicit TLinkCopyWarningDialogController(QObject* parent = nullptr);
+    /// The warning's message dialog is made with `Engine` under `DialogParentItem`.
+    TLinkCopyWarningDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD: keeps the text and
     /// shows the warning.

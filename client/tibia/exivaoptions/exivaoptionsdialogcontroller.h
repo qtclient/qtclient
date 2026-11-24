@@ -23,7 +23,7 @@ class TExivaOptionsStorage;
 
 /// The exiva options dialog, ExivaOptionsDialog.qml, opened by
 /// OPEN_EXIVA_OPTIONS_DIALOG. It shows the TExivaOptionsStorage's flags and whitelists
-/// (one name per line); Apply sends the edited options .
+/// (one name per line); Apply publishes the edited options as EXIVA_UPADATE_OPTIONS.
 class TExivaOptionsDialogController final : public gamewindow::TDialogController<cip::tibia::gamewindow::TExivaOptionsDialogController>
 {
     Q_OBJECT

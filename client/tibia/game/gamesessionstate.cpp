@@ -145,17 +145,15 @@ std::vector<tibia::worldmap::TWorldMapCoordinate> avoidedFieldsInView()
 
 }
 
-void TGameSessionState::createMovementIntent()
+tibia::input::TPlayerMovementIntentHandler* TGameSessionState::movementIntent()
 {
-    using tibia::input::TPlayerMovementIntentHandler;
-    m_playerMovementGameActions.reset();
-    m_movementIntent.reset();
-    if (!m_playerPresent)
-        return;
-    TGameSessionBase* session = currentGameSession();
-    if (!session)
-        return;
-    TPlayerMovementIntentHandler::Environment env;
+    auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession());
+    return session ? session->playerMovementIntentHandler().get() : nullptr;
+}
+
+tibia::input::TPlayerMovementIntentHandler::Environment TGameSessionState::playerMovementIntentEnvironment()
+{
+    tibia::input::TPlayerMovementIntentHandler::Environment env;
     env.waypointCost = snapshotWaypointCost;
     env.blockedFields = avoidedFieldsInView;
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
@@ -172,37 +170,7 @@ void TGameSessionState::createMovementIntent()
         }
         return tibia::mods::claimWalkUnreachable(goal.x, goal.y, goal.z, reason);
     };
-    m_movementIntent = std::make_shared<TPlayerMovementIntentHandler>(
-        session->metaInfo() ? session->metaInfo()->playerMovementIntentHandlerConfiguration : nullptr,
-        tibia::config::TClientOptions::instance(), session->clockService(), session->worldMapStorage(),
-        session->textStorage(), session->creatureStorage(), session->creatureMovementSpeedCalculator(),
-        session->playerData(), std::move(env));
-    TPlayerMovementIntentHandler* intent = m_movementIntent.get();
-    // CIP: the session hands the player's creature to the intent handler, now or
-    // when it joins the creature storage.
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance(); storage && storage->player())
-        intent->setPlayer(storage->player());
-    else if (TGameSessionBase* session = currentGameSession())
-        QObject::connect(session, &IGameSession::playerCreatureAddedToCreatureStorage, intent,
-                         &TPlayerMovementIntentHandler::setPlayer);
-    // CIP: the session's player movement game action handler drives the intent handler.
-    m_playerMovementGameActions = std::make_shared<tibia::input::TPlayerMovementGameActionHandler>(m_movementIntent);
-    if (TGameSessionBase* session = currentGameSession(); session && session->gameActionRouter()) {
-        TInternalGameActionRouter* router = session->gameActionRouter()->internalRouter();
-        QObject::connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_playerMovementGameActions.get(),
-                         &tibia::input::TPlayerMovementGameActionHandler::handleGameAction);
-        QObject::connect(m_playerMovementGameActions.get(), &tibia::input::TPlayerMovementGameActionHandler::publishGameAction,
-                         router, &TInternalGameActionRouter::handleGameActionInternal);
-    }
-    // CIP: the session's movement intent handler publishes through the session's router.
-    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
-        QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
-                         &TInternalGameActionRouter::handleGameActionInternal);
-    // CIP (live session only): the intent handler's sends go to the session's
-    // player protocol message handler, which hands its snap backs and stops to
-    // the intent handler; its messages reach the session's queue.
-    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
-        session->connectPlayerMovementIntentHandler(intent);
+    return env;
 }
 
 void TGameSessionState::resetGameStates()
@@ -223,8 +191,8 @@ void TGameSessionState::resetGameStates()
         storage->setAttackID(0);
         storage->setFollowID(0);
     }
-    m_playerMovementGameActions.reset();
-    m_movementIntent.reset();
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->reset();
     m_playerPresent = false;
     if (TGameSessionBase* session = currentGameSession())
         session->objectCountStorage()->clear();
@@ -282,7 +250,6 @@ void TGameSessionState::beginPlayerSession(const std::string_view characterName)
     if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance())
         data->setCharacterName(characterName);
     tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState().resetLocalPlayer();
-    createMovementIntent();
 }
 
 void TGameSessionState::processEnterGame()
@@ -586,14 +553,15 @@ void TGameSessionState::forceLogout()
 
 bool TGameSessionState::walk(const tibia::client::Direction direction)
 {
-    if (!canPerformGameAction() || direction == tibia::client::InvalidDirection || !m_movementIntent)
+    tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    if (!canPerformGameAction() || direction == tibia::client::InvalidDirection || !intent)
         return false;
     tibia::game::notify("onWalk", direction);
     if (m_mapUpdateTimer.first) {
         m_mapUpdateTimer.second.restart();
         m_mapUpdateTimer.first = false;
     }
-    m_movementIntent->step(tibia::input::toMovementDirection(direction));
+    intent->step(tibia::input::toMovementDirection(direction));
     return true;
 }
 
@@ -608,7 +576,8 @@ void TGameSessionState::interruptAutoWalk()
 {
     if (!m_playerPresent)
         return;
-    const bool hadPath = m_movementIntent && m_movementIntent->hasGoal();
+    const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    const bool hadPath = intent && intent->hasGoal();
     tibia::game::localPlayerStopAutoWalk();
     if (isFollowing())
         cancelFollow();

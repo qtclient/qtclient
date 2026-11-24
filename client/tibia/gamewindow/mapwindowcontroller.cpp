@@ -30,6 +30,7 @@
 #include <QTouchEvent>
 #include <cmath>
 #include <tibia/game/gamesession.h>
+#include <utility>
 
 namespace tibia::gamewindow {
 
@@ -108,9 +109,11 @@ constexpr A ContextMenuOrder[] = {
 
 }
 
-TMapWindowController::TMapWindowController(QQuickItem* pane, const bool softwareRenderer, QObject* parent)
+TMapWindowController::TMapWindowController(QQuickItem* pane, const bool softwareRenderer,
+                                           std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent)
     : cip::tibia::gamewindow::TMapWindowController(parent)
     , m_pane(pane)
+    , m_pGameActionMapper(std::move(GameActionMapper))
     , m_softwareRenderer(softwareRenderer)
 {
     // The pane knows its controller; its items are found by objectName.
@@ -130,9 +133,6 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
 
     const QJsonObject options = app::ClientOptions::load().options();
     m_highlightMouseTarget = options.value(QLatin1String("mouseHighlightTarget")).toBool(true);
-    m_mapper.setControlScheme(options.value(QLatin1String("controlSchemeIndex")).toInt(0));
-    // CIP default lootSchemeIndex is 0 (Loot: Right); match clientoptiondefaults.
-    m_mapper.setLootScheme(options.value(QLatin1String("lootSchemeIndex")).toInt(0));
     refreshClassicView();
     onMapWindowControllerOptionsChanged();
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
@@ -143,10 +143,6 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
             refreshClassicView();
         else if (name == QLatin1String("mouseHighlightTarget"))
             m_highlightMouseTarget = options.value(name).toBool(true);
-        else if (name == QLatin1String("controlSchemeIndex"))
-            m_mapper.setControlScheme(options.value(name).toInt(0));
-        else if (name == QLatin1String("lootSchemeIndex"))
-            m_mapper.setLootScheme(options.value(name).toInt(0));
         else if (name == QLatin1String("gameWindowShowAttackAnimation") || name == QLatin1String("gameWindowShowTargetHighlight"))
             applyTargetHighlightOption();
     });
@@ -638,7 +634,7 @@ void TMapWindowController::updateMouseTarget()
     }
     // CIP : the action a left click with the held modifiers would run.
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::IGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
     if (!action) {
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
@@ -670,7 +666,7 @@ void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY
     }
     const input::TGameActionList candidates = m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)));
     const input::IGameActionPtr action =
-m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
+m_pGameActionMapper->map(candidates, input::TGameActionMapper::WorldMapContext,
                                                       static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
@@ -682,7 +678,7 @@ m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
     }
     TContextMenuController* menu = TContextMenuController::instance();
     if (const input::TGameActionList entries = input::contextMenuActions(candidates, ContextMenuOrder); menu && !entries.empty())
-        menu->showGameActions(entries, input::TGameActionMapper::WorldMapContext, m_mapper);
+        menu->showGameActions(entries, input::TGameActionMapper::WorldMapContext, *m_pGameActionMapper);
 }
 
 void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mouseY, QObject* source)
@@ -821,9 +817,10 @@ void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGam
     if (m_creatureHuds)
         m_creatureHuds->setRenderProviders(session ? session->creatureHUDRenderProvider() : nullptr, provider);
     if (m_speechBubbles)
-        m_speechBubbles->setSources(provider, session ? session->textStorage().get() : nullptr);
+        m_speechBubbles->setSources(provider, session ? session->textOverlayRenderProvider() : nullptr);
     if (m_numericalEffects)
-        m_numericalEffects->setSources(provider, session ? session->effectStorage().get() : nullptr);
+        m_numericalEffects->setSources(provider, session ? session->numericalEffectRenderProvider() : nullptr,
+                                       session ? session->renderVolumeProvider() : nullptr);
     if (m_tutorialMarkers)
         m_tutorialMarkers->setRenderProvider(provider);
     if (!session) {

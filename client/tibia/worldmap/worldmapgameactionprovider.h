@@ -6,6 +6,9 @@
 
 #include <QPoint>
 
+#include <memory>
+#include <utility>
+
 namespace tibia {
 namespace qmlcomponents {
 class TWorldMapRenderProvider;
@@ -13,6 +16,9 @@ class TWorldMapRenderProvider;
 }
 
 namespace tibia {
+namespace input {
+class TGenericObjectGameActionProvider;
+}
 namespace worldmap {
 
 class TWorldMapViewport;
@@ -23,9 +29,11 @@ class TWorldMapGameActionProvider : public ::tibia::CipTyped
 {
 public:
     TWorldMapGameActionProvider(const qmlcomponents::TWorldMapRenderProvider& provider,
-                                const TWorldMapViewport& viewport)
+                                const TWorldMapViewport& viewport,
+                                std::shared_ptr<input::TGenericObjectGameActionProvider> genericObjectGameActionProvider)
         : m_provider(provider)
         , m_viewport(viewport)
+        , m_genericObjectGameActionProvider(std::move(genericObjectGameActionProvider))
     {
     }
 
@@ -52,6 +60,7 @@ public:
 private:
     const qmlcomponents::TWorldMapRenderProvider& m_provider;
     const TWorldMapViewport& m_viewport;
+    std::shared_ptr<input::TGenericObjectGameActionProvider> m_genericObjectGameActionProvider;
 };
 
 }

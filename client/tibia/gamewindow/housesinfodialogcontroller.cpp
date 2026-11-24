@@ -57,8 +57,7 @@ QDateTime fromSecs(const qint64 secs) { return QDateTime::fromSecsSinceEpoch(sec
 /// "yyyy-MM-dd, HH:mm" Berlin time and its zone (CET / CEST).
 QString dateBerlin(const qint64 secs)
 {
-    qmlcomponents::TTextHelperQmlService helper;
-    return helper.formatDateTimeWithTimeZoneBerlin(static_cast<int>(secs), false);
+    return qmlcomponents::formatServerDateTime(fromSecs(secs));
 }
 
 /// The system locale's "MMM dd, HH:mm" Berlin time and its zone.

@@ -5,6 +5,9 @@
 namespace tibia::protobuf::protocol {
 class ProtocolInventoryItem;
 }
+namespace tibia::appearances {
+class TAppearanceInstance;
+}
 
 namespace tibia::protocol {
 
@@ -28,6 +31,16 @@ struct TObjectData
     bool isHangable() const { return kind == EKind::Hangable; }
     bool isUpgradeable() const { return kind == EKind::Upgradeable; }
     bool isDecoItemKit() const { return kind == EKind::DecoItemKit; }
+
+    /// An object without an extra value.
+    static TObjectData plain(uint16_t Id);
+    static TObjectData liquid(uint16_t Id, uint32_t LiquidType);
+    static TObjectData cumulative(uint16_t Id, uint8_t Count);
+    static TObjectData upgradeable(uint16_t Id, uint8_t UpgradeClassification);
+    /// The object data of an object's appearance instance: its kind follows the
+    /// instance's class (liquid, cumulative, hangable, upgradeable, deco item
+    /// kit, else plain). A deco item kit without a deco item names its own type.
+    static TObjectData fromAppearanceInstance(const ::tibia::appearances::TAppearanceInstance& Instance);
 
     /// The object data of an inventory item: its kind follows the protocol's
     /// exclusive object kinds (liquid before cumulative, then upgradeable and

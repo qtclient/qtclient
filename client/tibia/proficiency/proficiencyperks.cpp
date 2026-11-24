@@ -332,6 +332,18 @@ QString perkAugmentTypeName(const TProficiencyPerk& perk)
 
 QString perkAugmentValue(const TProficiencyPerk& perk) { return augmentValue(perk); }
 
+TAugmentTexts augmentTexts(const TProficiencyPerk& perk)
+{
+    TAugmentTexts texts;
+    const spells::TSpellInfo* spell = augmentSpell(perk);
+    if (spell)
+        texts.spellName = spell->name;
+    texts.typeName = perkAugmentTypeName(perk);
+    texts.value = augmentValue(perk);
+    texts.runeSpell = spell && (spell->type == spells::TSpellInfo::CreatableRune || spell->type == spells::TSpellInfo::Rune);
+    return texts;
+}
+
 TQMLProficiencyPerk::TQMLProficiencyPerk(const int index, const TProficiencyPerk& perk, const bool picked, const bool shaped,
                                          const uint rank, QObject* parent)
     : cip::tibia::gamewindow::TQMLProficiencyPerk(parent)

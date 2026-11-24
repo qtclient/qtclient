@@ -29,7 +29,6 @@ namespace creatures {
 void ownProductSurface(QObject* parent);
 
 
-class TBattleListGameActionProvider final : public ::tibia::CipTyped {};
 
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 

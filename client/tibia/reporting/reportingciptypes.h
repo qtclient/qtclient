@@ -2,6 +2,7 @@
 
 // CIP-named reporting surfaces (promoted from cipwire).
 
+#include "reporting/reportingstorage.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -35,12 +36,16 @@ class TBugReportProtocolMessageHandler final : public cip::tibia::reporting::TBu
 {
     Q_OBJECT
 public:
-    explicit TBugReportProtocolMessageHandler(QObject* parent = nullptr);
+    /// The handler writes the server's bug report state into the session's
+    /// reporting storage.
+    explicit TBugReportProtocolMessageHandler(std::shared_ptr<TReportingStorage> storage);
 
     /// CIP slot: BugReportsAllowed (S 0x1A / 26) — native Q→H apply.
     void handleBugReportsAllowedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed& Message);
 
+private:
+    std::shared_ptr<TReportingStorage> m_storage;
 };
 
 class TRuleViolationProtocolMessageHandler final : public cip::tibia::reporting::TRuleViolationProtocolMessageHandler

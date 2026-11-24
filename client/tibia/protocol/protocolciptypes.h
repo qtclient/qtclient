@@ -31,9 +31,22 @@ namespace protocol {
 
 void ownProductSurface(QObject* parent);
 
-class TProtobufServerMessageTranslator final : public ::tibia::CipTyped {
+struct ClassicReader;
+
+/// CIP protocol::TProtobufServerMessageTranslator: reads one server message.
+///
+/// Host: CipSoft's translator reads through its protocol reader's stream;
+/// qtclient's reads the classic wire through the caller's ClassicReader, and
+/// returns null when a known message does not read (CipSoft's reader throws).
+class TProtobufServerMessageTranslator {
 public:
     TProtobufServerMessageTranslator() = default;
+    virtual ~TProtobufServerMessageTranslator() = default;
+
+    /// Reads the opcode and the message's fields. A message of an opcode it
+    /// does not know has only the Unknown extension, with that opcode.
+    virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> translateServerMessage(
+        ClassicReader& Reader) const;
 
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameserverMessage& message) const;
@@ -75,23 +88,12 @@ private:
     uint64_t m_c = 0; // +0x10
 };
 
-class TProtocolServerMessageProcessor final : public ::tibia::CipTyped {
-public:
-    TProtocolServerMessageProcessor() = default;
-};
-
 /// CIP `protocol::TProtocolWriter` — wire enqueue façade (bodies live on the queue).
 class TProtocolWriter final : public ::tibia::CipTyped {
 public:
     TProtocolWriter() = default;
 };
 
-class TUnknownGameserverException final : public ::tibia::CipTyped {
-public:
-    TUnknownGameserverException() = default;
-};
-
-TProtobufServerMessageTranslator* serverMessageTranslator();
 TProtobufClientMessageTranslator* clientMessageTranslator();
 /// The game client's current session's protocol message queue; null without a session.
 TProtocolMessageQueue* protocolMessageQueue();
@@ -100,18 +102,22 @@ TProtocolMessageQueue* protocolMessageQueue();
 /// Empty structured server bodies (measure consumes 0 payload bytes on success).
 bool emptyStructuredServerOpcode(int opcode);
 
-struct ClassicReader;
-/// Reads one message of `opcode` (the reader stands just past the opcode byte),
-/// translates it and puts it on the queue. False when it does not read.
-bool translateAndEnqueueServerMessage(int opcode, ClassicReader& packet);
-/// CIP TProtocolServerMessageProcessor: every message of a decoded server packet.
+/// Host: a decoded server packet that has no network stack behind it (a replay
+/// of a classic packet log, or a session that hands its packets to the
+/// classic session state): its messages are read like a live packet's and put
+/// on the current session's queue.
 void processServerPacket(const uint8_t* data, size_t size);
-/// The packet the next server messages come from: its sequence number and the
-/// connection it arrived on (0 primary, 1 secondary). Every message read from
-/// it carries both in its meta data.
-void setServerPacketOrigin(uint32_t PacketNumber, int ConnectionType);
-/// Fills a server message's meta data from the packet it was read from.
-void setServerMessageMetaData(::tibia::protobuf::protocol::GameserverMessage& message);
+/// Host: the product messages outside the CIP protocol (the extended-opcode
+/// transport and the same-socket character switch).
+enum class EProductMessage
+{
+    /// The next message is a CIP message.
+    None,
+    Read,
+    /// A product message that does not read: the rest of the packet cannot be read.
+    Unreadable,
+};
+EProductMessage readProductMessage(ClassicReader& Reader);
 /// dispatch.gen.cpp: every CIP server message has a handler / every client message a builder.
 bool isHandledServerMessage(uint8_t opcode);
 bool bindClientMessage(uint8_t opcode);
@@ -123,11 +129,6 @@ bool bindClientMessage(uint8_t opcode);
 void sendGameclientMessage(std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message);
 /// A client message of `opcode` with no fields set yet.
 std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> newGameclientMessage(int opcode);
-
-const ::tibia::protobuf::protocol::GameserverMessage* lastShadowServerMessage();
-
-/// The message just enqueued, when it is of `opcode`.
-const ::tibia::protobuf::protocol::GameserverMessage* nativeServerMessage(int opcode);
 
 }
 }

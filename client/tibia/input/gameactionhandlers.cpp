@@ -138,7 +138,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
         A::COPY_CREATURE_NAME_TO_CLIPBOARD, A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD,
         A::SHOW_CREATE_CHARACTER_DIALOG, A::CHARACER_SELECTION_AUTO_CLOSE, A::LENSHELP_SHOW, A::LENSHELP_HIDE,
         A::LENSHELP_ACTIVATE,
-        A::OPEN_SHOW_IMAGE_DIALOG,
         // Login-mask Manage Account / logos / Create Account → PortalUrls handlers.
         A::OPEN_URL, A::OPEN_URL_GET_PREMIUM, A::OPEN_URL_GET_COINS, A::OPEN_URL_TIBIA_PAGE,
         A::OPEN_URL_CREATE_ACCOUNT, A::OPEN_URL_ACCESS_ACCOUNT, A::OPEN_URL_CIPSOFT, A::OPEN_URL_MANUAL,
@@ -194,14 +193,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
             const QString text = field->property("selectedText").toString();
             if (!text.isEmpty())
                 QGuiApplication::clipboard()->setText(text);
-        }
-        break;
-    case A::OPEN_SHOW_IMAGE_DIALOG:
-        if (const auto* show = gameActionAs<TGameActionOpenShowImageDialog>(pGameAction)) {
-            if (gamewindow::TShowImageDialogController* images = gamewindow::TShowImageDialogController::instance()) {
-                const QString& path = show->imagePath();
-                images->showImages(path.isEmpty() ? QStringList{} : QStringList{ path }, path);
-            }
         }
         break;
     default:

@@ -704,8 +704,9 @@ QList<QObject*> spellAugmentStats(const std::vector<IMiscStatsProvider::SpellAug
             perk.augmentType = augment.type;
             perk.spellId = augment.spellId;
             perk.value = augment.value;
-            caption = proficiency::perkAugmentSpellName(perk);
-            sources.push_back({ proficiency::perkAugmentTypeName(perk), proficiency::perkAugmentValue(perk), QString() });
+            const proficiency::TAugmentTexts texts = proficiency::augmentTexts(perk);
+            caption = texts.spellName;
+            sources.push_back({ texts.typeName, texts.value, QString() });
         }
         out.append(makeSourcedStat(caption, QString(), QString(), true, std::move(sources), parent));
     }

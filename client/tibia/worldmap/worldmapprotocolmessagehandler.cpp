@@ -20,60 +20,133 @@
 #include <tibia/schedule/schedule.h>
 #include <protocol.pb.h>
 
+#include <stdexcept>
+
 namespace tibia::worldmap {
 
 namespace {
 
 using namespace ::tibia::protobuf::protocol;
 
-Position positionOf(const ProtocolCoordinate& c)
+TWorldMapCoordinate coordinateOf(const ProtocolCoordinate& c)
 {
-    return Position(static_cast<int32_t>(c.x()), static_cast<int32_t>(c.y()), static_cast<uint8_t>(c.z()));
+    return { static_cast<int>(c.x()), static_cast<int>(c.y()), static_cast<int>(c.z()) };
+}
+
+/// Host: the inventory row of a map object's type and extra data, for the
+/// object instances qtclient builds from inventory rows (CIP builds the
+/// instance from the protocol object directly).
+ProtocolInventoryItem inventoryItemOf(const AppearanceInstance& object)
+{
+    ProtocolInventoryItem item;
+    item.set_item_id(object.id());
+    if (object.HasExtension(CumulativeObject::cumulative_object))
+        item.set_count_or_subtype(object.GetExtension(CumulativeObject::cumulative_object).count());
+    if (object.HasExtension(LiquidObject::liquid_object))
+        item.set_count_or_subtype(object.GetExtension(LiquidObject::liquid_object).liquid());
+    if (object.HasExtension(ContainerObject::container_object)) {
+        const ContainerObject& container = object.GetExtension(ContainerObject::container_object);
+        item.set_container_type(container.flags());
+        if (container.has_loot_flags())
+            item.set_loot_flags(container.loot_flags());
+        if (container.has_ammo_total()) {
+            item.set_container_ammo_total(container.ammo_total());
+            item.set_has_container_ammo(true);
+        }
+        if (container.has_obtain_flags())
+            item.set_obtain_flags(container.obtain_flags());
+    }
+    if (object.HasExtension(ShowOffSocketObject::show_off_socket_object)) {
+        const ShowOffSocketObject& socket = object.GetExtension(ShowOffSocketObject::show_off_socket_object);
+        item.set_has_podium(true);
+        item.set_look_type(socket.outfit().look_type());
+        item.set_look_head(socket.outfit().colors().head());
+        item.set_look_body(socket.outfit().colors().body());
+        item.set_look_legs(socket.outfit().colors().legs());
+        item.set_look_feet(socket.outfit().colors().feet());
+        item.set_look_addons(socket.outfit().addons());
+        item.set_look_type_ex(socket.outfit().object_type());
+        item.set_look_mount(socket.mount().look_type());
+        item.set_look_mount_head(socket.mount().colors().head());
+        item.set_look_mount_body(socket.mount().colors().body());
+        item.set_look_mount_legs(socket.mount().colors().legs());
+        item.set_look_mount_feet(socket.mount().colors().feet());
+        item.set_podium_direction(socket.direction());
+        item.set_podium_visible(socket.visible());
+    }
+    if (object.HasExtension(UpgradeableObject::upgradeable_object))
+        item.set_tier(object.GetExtension(UpgradeableObject::upgradeable_object).tier());
+    if (object.HasExtension(WearoutObject::wearout_object)) {
+        const WearoutObject& wearout = object.GetExtension(WearoutObject::wearout_object);
+        item.set_charges(wearout.charges());
+        item.set_brand_new(wearout.brand_new());
+    }
+    if (object.HasExtension(ExpireObject::expire_object)) {
+        const ExpireObject& expire = object.GetExtension(ExpireObject::expire_object);
+        item.set_duration_seconds(expire.duration());
+        item.set_brand_new(expire.brand_new());
+    }
+    if (object.HasExtension(DecoItemKitObject::deco_item_kit_object))
+        item.set_deco_item_id(object.GetExtension(DecoItemKitObject::deco_item_kit_object).deco_item_id());
+    return item;
 }
 
 } // namespace
 
-appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject(const ProtocolMapObject& object,
-                                                                                   const Position& position)
+appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject(const AppearanceInstance& object,
+                                                                                   const TWorldMapCoordinate& coordinate)
 {
-    if (object.has_creature()) {
+    if (object.HasExtension(CreatureData::creature_data)) {
         // The creature's data is applied first; the creature then stands at
         // the field and its placeholder is what the field holds.
-        const uint32_t id = creatures::applyProtocolCreature(object.creature());
+        const CreatureData& data = object.GetExtension(CreatureData::creature_data);
+        (void)creatures::applyProtocolCreature(data);
         creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-        const std::shared_ptr<creatures::TCreature> creature = id != 0 && storage ? storage->creatureAt(id) : nullptr;
+        const std::shared_ptr<creatures::TCreature> creature = storage ? storage->creatureAt(data.id()) : nullptr;
         if (!creature)
             return nullptr;
-        creature->setPosition(position);
+        creature->setPosition(coordinate.toPosition());
         return creature->placeholderAppearance();
     }
-    if (object.has_item()) {
-        appearances::TAppearanceInstancePtr appearance =
-            container::TInventorySlot::fromProtocolInventoryItem(object.item()).appearance;
-        // An object drawn by its field's pattern takes it from the coordinate.
-        if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
-            patterned->applyWorldMapCoordinate(position);
-        return appearance;
-    }
-    return nullptr;
+    appearances::TAppearanceInstancePtr appearance =
+        container::TInventorySlot::fromProtocolInventoryItem(inventoryItemOf(object)).appearance;
+    // An object drawn by its field's pattern takes it from the coordinate.
+    if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
+        patterned->applyWorldMapCoordinate(coordinate.toPosition());
+    return appearance;
 }
 
-void TWorldmapProtocolMessageHandler::applyField(const ProtocolMapField& field)
+void TWorldmapProtocolMessageHandler::applyArea(const MapArea& area, const TShearedWorldMapCuboid& volume,
+                                                const TWorldMapCentralPosition& central)
 {
-    const Position position = positionOf(field.coordinate());
-    // The storage holds fields of its known area only.
-    if (!game::isAwareOf({ position.x, position.y, position.z }))
-        return;
-    // The objects replace the field's content in their order; objects that
-    // yield nothing are left out, and a field left without objects is dropped.
-    std::vector<appearances::TAppearanceInstancePtr> objects;
-    objects.reserve(static_cast<size_t>(field.objects_size()));
-    for (const ProtocolMapObject& object : field.objects()) {
-        if (appearances::TAppearanceInstancePtr instance = applyObject(object, position))
-            objects.push_back(std::move(instance));
+    // Field data in the other form describes no field.
+    const MapFields& fields = area.field_data().fields();
+    std::size_t index = 0;
+    for (const MapField& field : fields.fields()) {
+        const Position position = central.coordinateOfAreaIndex(volume, index).toPosition();
+        // The storage holds fields of its known area only.
+        if (game::isAwareOf({ position.x, position.y, position.z })) {
+            // The objects replace the field's content in their order; objects
+            // that yield nothing are left out, and a field left without objects
+            // is dropped.
+            std::vector<appearances::TAppearanceInstancePtr> objects;
+            objects.reserve(static_cast<size_t>(field.objects_size()));
+            for (const AppearanceInstance& object : field.objects()) {
+                if (appearances::TAppearanceInstancePtr instance = applyObject(object, TWorldMapCoordinate(position)))
+                    objects.push_back(std::move(instance));
+            }
+            map().setFieldObjects(position, objects);
+            updateMinimapField(position);
+        }
+        index += static_cast<std::size_t>(field.skip()) + 1;
     }
-    map().setFieldObjects(position, objects);
-    updateMinimapField(position);
+    const std::size_t count = volume.getExtent().volume();
+    if (index != count)
+        throw std::runtime_error(
+            QStringLiteral("Number of processed fields (%1) doesn't fit the number of fields in the area to read (%2)")
+                .arg(index)
+                .arg(count)
+                .toStdString());
 }
 
 void TWorldmapProtocolMessageHandler::setMinimapTileStorage(minimap::TMinimapTileStorage* minimap)
@@ -92,8 +165,16 @@ TWorldMapStorage& TWorldmapProtocolMessageHandler::map() const
     return m_storage ? *m_storage : *TWorldMapStorage::ensureStorage();
 }
 
-void TWorldmapProtocolMessageHandler::moveKnownArea(const Position& center)
+TWorldMapCentralPosition TWorldmapProtocolMessageHandler::centralPosition() const
 {
+    const game::MapAwareRange range = game::awareRange();
+    return TWorldMapCentralPosition(m_center, TWorldMapExtent(range.horizontal(), range.vertical(), 1),
+                                    TWorldMapExtent(range.left, range.top, 0));
+}
+
+void TWorldmapProtocolMessageHandler::moveKnownArea()
+{
+    const Position center = m_center.toPosition();
     map().setStoredVolume(center);
     effects::TEffectStorage::instance().removeOutside(
         [](const Position& field) { return game::isAwareOf({ field.x, field.y, field.z }); });
@@ -113,18 +194,12 @@ void TWorldmapProtocolMessageHandler::setCrashReportPosition(const Position& cen
         QStringLiteral("Position"), QStringLiteral("[%1,%2,%3]").arg(center.x).arg(center.y).arg(center.z));
 }
 
-void TWorldmapProtocolMessageHandler::applyArea(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields)
-{
-    // Fields the server skipped keep what they hold.
-    for (const ProtocolMapField& field : fields)
-        applyField(field);
-}
-
 void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessageFullMap& message)
 {
     if (game::isSceneFrozen())
         return;
-    const Position position = positionOf(message.coordinate());
+    m_center = coordinateOf(message.coordinate());
+    const Position position = m_center.toPosition();
     const bool hasPlayer = game::hasLocalPlayer();
     const Position oldPosition = hasPlayer ? game::localPlayerPosition() : Position();
     // The session's first map also places the local player.
@@ -132,15 +207,16 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
         map().sessionState().setLocalPlayerPosition(position);
     // The view centres on the map's field, its top-left subfield.
     if (m_viewport)
-        m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(TWorldMapCoordinate(position), 0, 0));
-    moveKnownArea(position);
+        m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(m_center, 0, 0));
+    moveKnownArea();
     // Every creature counts as off the map until the new area places it on a field.
     if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
         creatures->clearPlacedOnFieldFlags();
     // A jump re-places the view: the step in flight ends before the new map arrives.
     if (hasPlayer && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
         game::localPlayerHandleTeleport();
-    applyArea(message.fields());
+    const TWorldMapCentralPosition central = centralPosition();
+    applyArea(message.area(), central.visibleArea(), central);
     game::updateMapLatency();
     if (!m_mapKnown) {
         schedule::post([] { game::notify("onMapKnown"); });
@@ -150,63 +226,79 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     game::notify("onTeleport", game::localPlayerId(), position, oldPosition);
 }
 
-void TWorldmapProtocolMessageHandler::handleSlice(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
-                                                  const Position& center)
+void TWorldmapProtocolMessageHandler::handleSlice(const MapArea& area, const TShearedWorldMapCuboid& volume)
 {
-    if (game::isSceneFrozen())
-        return;
-    moveKnownArea(center);
-    applyArea(fields);
+    moveKnownArea();
+    applyArea(area, volume, centralPosition());
     game::updateMapLatency();
 }
 
 void TWorldmapProtocolMessageHandler::handleTopRowMessage(const GameserverMessageTopRow& message)
 {
-    handleSlice(message.fields(), positionOf(message.coordinate()));
+    if (game::isSceneFrozen())
+        return;
+    --m_center.y;
+    handleSlice(message.area(), centralPosition().topRow());
 }
 
 void TWorldmapProtocolMessageHandler::handleRightColumnMessage(const GameserverMessageRightColumn& message)
 {
-    handleSlice(message.fields(), positionOf(message.coordinate()));
+    if (game::isSceneFrozen())
+        return;
+    ++m_center.x;
+    handleSlice(message.area(), centralPosition().rightColumn());
 }
 
 void TWorldmapProtocolMessageHandler::handleBottomRowMessage(const GameserverMessageBottomRow& message)
 {
-    handleSlice(message.fields(), positionOf(message.coordinate()));
+    if (game::isSceneFrozen())
+        return;
+    ++m_center.y;
+    handleSlice(message.area(), centralPosition().bottomRow());
 }
 
 void TWorldmapProtocolMessageHandler::handleLeftColumnMessage(const GameserverMessageLeftColumn& message)
 {
-    handleSlice(message.fields(), positionOf(message.coordinate()));
-}
-
-void TWorldmapProtocolMessageHandler::changeFloor(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
-                                                  const Position& center, const Position& from)
-{
-    // The step in flight ends; the new floors land around the moved view.
-    if (game::hasLocalPlayer())
-        game::localPlayerHandleTeleport();
-    moveKnownArea(center);
-    applyArea(fields);
-    game::notify("onTeleport", game::localPlayerId(), center, from);
+    if (game::isSceneFrozen())
+        return;
+    --m_center.x;
+    handleSlice(message.area(), centralPosition().leftColumn());
 }
 
 void TWorldmapProtocolMessageHandler::handleTopFloorMessage(const GameserverMessageTopFloor& message)
 {
-    const Position center = positionOf(message.coordinate());
-    changeFloor(message.fields(), center, Position(center.x - 1, center.y - 1, center.z));
+    // The step in flight ends; the new floors land around the moved view.
+    const Position from = m_center.toPosition();
+    TWorldMapCentralPosition central = centralPosition();
+    central.moveUpFloor();
+    m_center = central.center;
+    if (game::hasLocalPlayer())
+        game::localPlayerHandleTeleport();
+    moveKnownArea();
+    applyArea(message.area(), central.topFloorArea(), central);
+    game::notify("onTeleport", game::localPlayerId(), m_center.toPosition(), from);
 }
 
 void TWorldmapProtocolMessageHandler::handleBottomFloorMessage(const GameserverMessageBottomFloor& message)
 {
-    const Position center = positionOf(message.coordinate());
-    changeFloor(message.fields(), center, Position(center.x + 1, center.y + 1, center.z));
+    const Position from = m_center.toPosition();
+    TWorldMapCentralPosition central = centralPosition();
+    central.moveDownFloor();
+    m_center = central.center;
+    if (game::hasLocalPlayer())
+        game::localPlayerHandleTeleport();
+    moveKnownArea();
+    applyArea(message.area(), central.bottomFloorArea(), central);
+    game::notify("onTeleport", game::localPlayerId(), m_center.toPosition(), from);
 }
 
 void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMessageFieldData& message)
 {
-    if (!game::isSceneFrozen())
-        applyField(message.field());
+    if (game::isSceneFrozen())
+        return;
+    // An area of the one field at the coordinate.
+    const TWorldMapCoordinate at = coordinateOf(message.coordinate());
+    applyArea(message.area(), TShearedWorldMapCuboid(TWorldMapCuboid::ofField(at), at.z), centralPosition());
 }
 
 void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverMessageCreateOnMap& message)
@@ -214,10 +306,10 @@ void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverM
     if (game::isSceneFrozen())
         return;
     // Stack position 0xff puts the object where its kind sorts on the stack.
-    const Position at = positionOf(message.coordinate());
+    const TWorldMapCoordinate at = coordinateOf(message.coordinate());
     if (const appearances::TAppearanceInstancePtr instance = applyObject(message.object(), at)) {
-        map().insertObjectAt(instance, at, static_cast<int>(message.stackpos() & 0xff));
-        updateMinimapField(at);
+        map().insertObjectAt(instance, at.toPosition(), static_cast<int>(message.stack_position() & 0xff));
+        updateMinimapField(at.toPosition());
     }
 }
 
@@ -225,19 +317,19 @@ void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverM
 {
     if (game::isSceneFrozen())
         return;
-    if (message.has_creature_id()) {
-        // CIP: the id form only updates the creature; its field entry stays.
-        if (message.object().has_creature())
-            (void)creatures::applyProtocolCreature(message.object().creature());
+    if (!message.has_coordinate()) {
+        // The creature form only updates the creature; its field entry stays.
+        if (message.object().HasExtension(CreatureData::creature_data))
+            (void)creatures::applyProtocolCreature(message.object().GetExtension(CreatureData::creature_data));
         return;
     }
     // The object at the stack position leaves the field and the new one takes
     // its place (a creature's data is applied either way).
-    const Position at = positionOf(message.coordinate());
+    const TWorldMapCoordinate at = coordinateOf(message.coordinate());
     if (const appearances::TAppearanceInstancePtr instance = applyObject(message.object(), at))
-        map().replaceObjectAt(instance, at, static_cast<int>(message.stackpos() & 0xff));
+        map().replaceObjectAt(instance, at.toPosition(), static_cast<int>(message.stack_position() & 0xff));
     // The minimap records the field whether or not an object was placed.
-    updateMinimapField(at);
+    updateMinimapField(at.toPosition());
 }
 
 void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverMessageDeleteOnMap& message)
@@ -253,8 +345,8 @@ void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverM
     }
     // The field drops the object at the stack position, then the minimap
     // records the field.
-    const Position at = positionOf(message.coordinate());
-    (void)map().removeObjectAt(at, static_cast<int>(message.stackpos() & 0xff));
+    const Position at = coordinateOf(message.object_position().coordinate()).toPosition();
+    (void)map().removeObjectAt(at, static_cast<int>(message.object_position().stack_position() & 0xff));
     updateMinimapField(at);
 }
 

@@ -3,9 +3,11 @@
 
 #include "chat/chatchannel.h"
 #include "config/sidebaroptions.h"
+#include "creatures/battlelistgameactionprovider.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/creaturesciptypes.h"
 #include "game/gameciptypes.h"
+#include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -67,12 +69,13 @@ constexpr const char* SortMenuEntries[] = {
 using TCreature = creatures::TCreature;
 using TCreaturePtr = std::shared_ptr<TCreature>;
 
-/// A battle list entry's actions: the creature's, then CONTEXT_MENU.
+/// A battle list entry's actions: the session's battle list provider's.
 input::TGameActionList battleListGameActions(const uint32_t creatureId)
 {
-    input::TGameActionList actions = input::TGenericObjectGameActionProvider::creatureActions(creatureId);
-    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    return actions;
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<creatures::TBattleListGameActionProvider> provider =
+        session ? session->battleListGameActionProvider() : nullptr;
+    return provider ? provider->battleListGameActions(creatureId) : input::TGameActionList{};
 }
 
 /// The first of the actions with `type`, or none.

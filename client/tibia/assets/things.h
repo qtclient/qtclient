@@ -54,9 +54,9 @@ public:
     void init();
     void terminate();
 
-    bool loadAppearances(const std::string& directory);
-    bool loadStaticData(const std::string& directory);
-    bool resolveProficienciesFile(const std::string& directory);
+    /// Host: the assets' identifier the login sends (assets.json.sha256 next
+    /// to the assets in `directory` or at the package root).
+    void readAssetIdentifier(const std::string& directory);
 
     /// The type of `id`, or the empty type (isNull()) when there is none.
     TAppearanceTypePtr getThingType(uint16_t id, ThingCategory category);
@@ -66,7 +66,6 @@ public:
     {
         return category < ThingLastCategory && id >= 1 && findType(category, id) != nullptr;
     }
-    bool isDatLoaded() const { return m_datLoaded; }
 
     uint32_t getDatSignature() const { return 0; }
     uint16_t getContentRevision() const { return 0; }
@@ -125,7 +124,6 @@ public:
     std::string getCyclopediaItemName(uint16_t id);
     /// The NPCs that buy more than nine kinds of creature products (computed once).
     std::set<QString> creatureProductBuyerNames() const;
-    std::string getProficienciesFile();
 
     bool setThingShape(uint16_t itemId, const std::string& shape);
     /// The pack's shape override of an object (Auto without one).
@@ -163,9 +161,7 @@ private:
     TAppearanceTypeList m_marketObjectTypes;
     TAppearanceTypeList m_skillWheelGemObjectTypes;
     std::shared_ptr<TSpecialAppearancesForProtocolParsing> m_specialAppearances;
-    bool m_datLoaded = false;
     std::string m_assetIdentifier;
-    std::string m_proficienciesFile;
     std::unordered_map<uint16_t, EffectVariant> m_effectVariants;
     std::unordered_map<uint16_t, ThingShape> m_thingShapes;
 };

@@ -114,9 +114,8 @@ TCooldownStorage* currentCooldownStorage()
 
 quickloot::TQuickLootBlackWhitelistStorage* currentQuickLootBlackWhitelistStorage()
 {
-    // Client-wide until the quick-loot lists are a session member (CIP createStorages).
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    return storages ? storages->lootBlackWhitelist() : nullptr;
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->quickLootBlackWhitelistStorage().get() : nullptr;
 }
 
 bool currentCharacterConfigurationLoaded()

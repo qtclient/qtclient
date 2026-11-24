@@ -102,28 +102,53 @@ QVariantMap TMessageDialogController::initialDialogProperties() const
     return properties;
 }
 
-void TMessageDialogController::applyProperties()
+void TMessageDialogController::showButtons(const QList<TMessageDialogButton*>& buttons)
 {
+    qDeleteAll(m_shownButtons);
+    m_shownButtons.clear();
     QQuickItem* item = dialog()->item();
     if (!item)
         return;
-    const QVariantMap properties = initialDialogProperties();
-    for (auto it = properties.begin(); it != properties.end(); ++it)
-        item->setProperty(it.key().toUtf8().constData(), it.value());
+    QList<QObject*> shown;
+    for (const TMessageDialogButton* button : buttons) {
+        auto* copy = new TMessageDialogButton(*button);
+        copy->setParent(this);
+        shown.append(copy);
+        m_shownButtons.push_back(copy);
+    }
+    item->setProperty("buttons", QVariant::fromValue(QList<QObject*>()));
+    item->setProperty("buttons", QVariant::fromValue(shown));
+}
+
+void TMessageDialogController::showMessage(const QString& caption, const QString& message,
+                                           const QList<TMessageDialogButton*>& buttons)
+{
+    m_caption = caption;
+    m_message = message;
+    dialog()->create();
+    if (QQuickItem* item = dialog()->item()) {
+        item->setProperty("textCentered", m_textCentered);
+        item->setProperty("caption", caption);
+        item->setProperty("message", message);
+    }
+    showButtons(buttons);
+    dialog()->show();
 }
 
 void TMessageDialogController::showMessage(const QString& caption, const QString& message)
 {
-    m_caption = caption;
-    m_message = message;
-    applyProperties();
-    dialog()->show();
+    showMessage(caption, message, m_buttons);
 }
 
 void TMessageDialogController::showMessageWithCheckBox(const QString& caption, const QString& message, const QString& checkBoxText, const bool checked)
 {
     m_checkBoxText = checkBoxText;
     m_checkBoxIsChecked = checked;
+    dialog()->create();
+    if (QQuickItem* item = dialog()->item()) {
+        item->setProperty("checkBoxText", checkBoxText);
+        item->setProperty("checkBoxIsChecked", checked);
+    }
     showMessage(caption, message);
 }
 

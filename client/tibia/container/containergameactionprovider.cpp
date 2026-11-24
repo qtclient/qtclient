@@ -1,6 +1,5 @@
 #include "container/containergameactionprovider.h"
 
-#include "analysers/analyserstorages.h"
 #include "input/genericobjectgameactionprovider.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
@@ -58,41 +57,54 @@ TGameActionList typeActionsBeforeLoot(const TAppearanceType& type, const uint16_
     return actions;
 }
 
-/// The loot list toggle of a pickupable, movable type that is not a corpse.
-void addLootListToggle(TGameActionList& actions, const TAppearanceType& type, const uint16_t typeId)
+}
+
+TContainerGameActionProvider::TContainerGameActionProvider(
+    std::shared_ptr<TContainerStorage> containerStorage, std::shared_ptr<TStashStorage> stashStorage,
+    std::shared_ptr<TDepotSearchDetailListStorage> depotSearchDetailListStorage,
+    std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> quickLootBlackWhitelistStorage,
+    std::shared_ptr<input::TGenericObjectGameActionProvider> genericObjectGameActionProvider)
+    : m_containerStorage(std::move(containerStorage))
+    , m_stashStorage(std::move(stashStorage))
+    , m_depotSearchDetailListStorage(std::move(depotSearchDetailListStorage))
+    , m_quickLootBlackWhitelistStorage(std::move(quickLootBlackWhitelistStorage))
+    , m_genericObjectGameActionProvider(std::move(genericObjectGameActionProvider))
 {
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    const quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr;
+}
+
+void TContainerGameActionProvider::addLootListToggle(TGameActionList& actions, const TAppearanceType& type,
+                                                     const uint16_t typeId) const
+{
+    const quickloot::TQuickLootBlackWhitelistStorage* loot = m_quickLootBlackWhitelistStorage.get();
     if (loot && type.isPickupable() && !type.isNotMoveable() && !type.isCorpse() && !type.isPlayerCorpse()) {
         actions.push_back(std::make_shared<input::TGameActionToggleBlackWhitelistStatus>(
             loot->isListed(typeId) ? A::LOOT_REMOVE_FROM_BLACKWHITELIST : A::LOOT_ADD_TO_BLACKWHITELIST, typeId));
     }
 }
 
-void addMarketBrowse(TGameActionList& actions, const TAppearanceType& type, const uint16_t typeId, const uint8_t tier)
+void TContainerGameActionProvider::addMarketBrowse(TGameActionList& actions, const TAppearanceType& type,
+                                                   const uint16_t typeId, const uint8_t tier) const
 {
-    const TContainerStorage* containers = TContainerStorage::instance();
+    const TContainerStorage* containers = m_containerStorage.get();
     if (containers && containers->isMarketAvailable() && type.isMarketable())
         actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
             input::TObjectGameActionContext{ {}, -1, typeId }, tier));
 }
 
-}
-
-TGameActionList TContainerGameActionProvider::inventorySlotActions(const TInventorySlot& slot, const int slotId)
+TGameActionList TContainerGameActionProvider::inventorySlotActions(const TInventorySlot& slot, const int slotId) const
 {
     if (slot.empty())
         return {};
     const Position position(UINT16_MAX, static_cast<uint16_t>(slotId), 0);
     TGameActionList actions{ input::makeGameAction(A::CONTEXT_MENU) };
-    append(actions, input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, 0),
+    append(actions, input::filterActions(m_genericObjectGameActionProvider->objectActions(slot, position, 0),
                                          InventorySlotActionTypes));
     return actions;
 }
 
-TGameActionList TContainerGameActionProvider::containerSlotActions(const uint8_t containerId, const int slotId)
+TGameActionList TContainerGameActionProvider::containerSlotActions(const uint8_t containerId, const int slotId) const
 {
-    TContainerStorage* storage = TContainerStorage::instance();
+    TContainerStorage* storage = m_containerStorage.get();
     const TStoredContainer* row = storage ? storage->containerAt(containerId) : nullptr;
     if (!row || slotId < 0)
         return {};
@@ -109,12 +121,12 @@ TGameActionList TContainerGameActionProvider::containerSlotActions(const uint8_t
             actions.push_back(input::makeObjectGameAction(A::MOVE_UP, position, pageSlot, slot.typeId));
     }
     actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    append(actions, input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot),
+    append(actions, input::filterActions(m_genericObjectGameActionProvider->objectActions(slot, position, pageSlot),
                                          ContainerSlotActionTypes));
     return actions;
 }
 
-TGameActionList TContainerGameActionProvider::stashTypeActions(const uint16_t typeId, const uint32_t storedCount)
+TGameActionList TContainerGameActionProvider::stashTypeActions(const uint16_t typeId, const uint32_t storedCount) const
 {
     TAppearanceType* type = typeOf(typeId);
     if (!type)
@@ -130,7 +142,7 @@ TGameActionList TContainerGameActionProvider::stashTypeActions(const uint16_t ty
     return actions;
 }
 
-TGameActionList TContainerGameActionProvider::typeActions(const uint16_t typeId)
+TGameActionList TContainerGameActionProvider::typeActions(const uint16_t typeId) const
 {
     TAppearanceType* type = typeOf(typeId);
     if (!type)
@@ -140,21 +152,21 @@ TGameActionList TContainerGameActionProvider::typeActions(const uint16_t typeId)
     return actions;
 }
 
-TGameActionList TContainerGameActionProvider::depotSearchSlotActions(const bool inbox, const int index, const TInventorySlot& slot)
+TGameActionList TContainerGameActionProvider::depotSearchSlotActions(const bool inbox, const int index, const TInventorySlot& slot) const
 {
     if (slot.empty() || index < 0)
         return {};
     const input::TGameActionContextPtr location =
         inbox ? input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchInboxItemGameActionContext>(index))
               : input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchDepotItemGameActionContext>(index));
-    TGameActionList actions = input::filterActions(input::TGenericObjectGameActionProvider::objectActions(location, slot),
+    TGameActionList actions = input::filterActions(m_genericObjectGameActionProvider->objectActions(location, slot),
                                                    ContainerSlotActionTypes);
     actions.push_back(std::make_shared<input::TGameActionOpenParentContainer>(location));
     actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     return actions;
 }
 
-TGameActionList TContainerGameActionProvider::depotSearchTypeActions(const uint16_t typeId, const std::optional<uint8_t> tier)
+TGameActionList TContainerGameActionProvider::depotSearchTypeActions(const uint16_t typeId, const std::optional<uint8_t> tier) const
 {
     TAppearanceType* type = typeOf(typeId);
     if (!type)

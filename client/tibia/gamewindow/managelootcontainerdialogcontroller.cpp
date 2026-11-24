@@ -124,7 +124,6 @@ void TLootContainerQMLInfo::onOpenObtainContainerClicked() { Q_EMIT requestOpenO
 TManageLootContainerDialogController::TManageLootContainerDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
                                                                            config::TClientOptions* ClientOptions, QObject* parent)
     : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), Engine, DialogParentItem, parent)
-    , m_lootBlackWhitelist(analysers::TAnalyserStorages::instance() ? analysers::TAnalyserStorages::instance()->lootBlackWhitelist() : nullptr)
     , m_listModel([](uint16_t, uint8_t) { return 1; }, this)
     , m_listProxy(&m_listModel, this)
 {
@@ -159,9 +158,7 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QQmlE
                 [this](const int c) { Q_EMIT publishGameAction(containerAction(A::OBTAIN_CONTAINER_OPEN, c)); });
     }
 
-    if (m_lootBlackWhitelist) {
-        m_blackWhiteListType = m_lootBlackWhitelist->listType();
-        analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance()) {
         connect(storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
             if (!m_lootBlackWhitelist)
                 return;
@@ -328,14 +325,18 @@ void TManageLootContainerDialogController::connectToGameSession(const std::share
     m_listModel.reset({});
     m_gameSession = GameSession;
     m_containers.reset();
+    m_lootBlackWhitelist = nullptr;
     if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
         m_containers = session->managedContainerStorage();
+        m_lootBlackWhitelist = session->quickLootBlackWhitelistStorage().get();
+        if (m_lootBlackWhitelist)
+            m_blackWhiteListType = m_lootBlackWhitelist->listType();
         using Self = TManageLootContainerDialogController;
         m_gameSessionConnections.add(
             connect(m_containers.get(), &quickloot::TManagedContainerStorage::managedContainersUpdated, this, &Self::onLootContainersUpdated));
         m_gameSessionConnections.add(
             connect(m_containers.get(), &quickloot::TManagedContainerStorage::useMainBackpackAsFallbackChanged, this, &Self::syncFallback));
-        // Host: the loot list is still the client's (TAnalyserStorages).
+        // The session's loot list.
         if (m_lootBlackWhitelist)
             m_gameSessionConnections.add(connect(m_lootBlackWhitelist, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput,
                                                  this, &Self::onLootBlackWhitelisteChanged));

@@ -5,13 +5,10 @@
 #include <stdexcept>
 #include "things.h"
 
-#include "loader.h"
-
 #include "cyclopedia/staticcontentinformation.h"
 
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
-#include "assets/assetasyncloader.h"
 #include "sprites/appearancetypespritesheetmapping.h"
 #include "sprites/spritesystem.h"
 
@@ -24,7 +21,6 @@
 
 #include <appearances.pb.h>
 #include <staticdata.pb.h>
-#include "assets/contentcatalog.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -108,25 +104,6 @@ uint8_t checkedEnum(const uint32_t value, const uint32_t count)
     return static_cast<uint8_t>(value);
 }
 
-QJsonDocument catalogDocument(const std::string& directory)
-{
-    const auto path = tibia::files::data().resolvePath(tibia::files::data().guessFilePath(directory + "catalog-content", "json"));
-    const auto bytes = tibia::files::data().readFileContents(path);
-    return QJsonDocument::fromJson(QByteArray::fromStdString(bytes));
-}
-
-std::string catalogFile(const tibia::assets::TAssetCatalog& catalog, const tibia::assets::TAsset::EType type)
-{
-    return catalog.fileOf(type).toStdString();
-}
-
-std::string proficienciesFileOf(const std::string& directory)
-{
-    tibia::assets::TAssetCatalog catalog;
-    catalog.load(catalogDocument(directory));
-    return catalogFile(catalog, tibia::assets::TAsset::Proficiencies);
-}
-
 }
 
 namespace tibia::appearances {
@@ -179,9 +156,7 @@ void TAppearancesManager::terminate()
     m_monsterRaces.clear();
     m_marketObjectTypes.clear();
     m_skillWheelGemObjectTypes.clear();
-    m_proficienciesFile.clear();
     m_effectVariants.clear();
-    m_datLoaded = false;
     tibia::sprites::TSpriteSystem::instance().clear();
 }
 
@@ -284,56 +259,12 @@ void TAppearancesManager::postprocessAppearances()
 
 }
 
-bool TAppearancesManager::loadAppearances(const std::string& directory)
+void TAppearancesManager::readAssetIdentifier(const std::string& directory)
 {
-    try {
-        init();
-        m_assetIdentifier = loadAssetIdentifier(directory);
-        if (m_assetIdentifier.empty()) {
-            // Expected for bare --data extracts until make extract stamps the file.
-            m_assetIdentifier = "appearancesHash";
-        }
-
-        tibia::assets::TContentCatalog catalog;
-        catalog.load(catalogDocument(directory));
-        const std::string appearancesFile = catalogFile(catalog, tibia::assets::TAsset::Appearances);
-        tibia::sprites::TSpriteSystem::instance().start(
-            catalog, QString::fromStdString(tibia::files::data().getRealPath(directory)));
-        if (appearancesFile.empty())
-            throw std::runtime_error("catalog has no appearances file");
-
-        const auto appearancesPath = tibia::files::data().resolvePath(directory + appearancesFile);
-        initialize(tibia::files::data().readFileContents(appearancesPath));
-        postprocessAppearances();
-        m_datLoaded = true;
-        return true;
-    } catch (const std::exception&) {
-        return false;
-    }
-}
-
-bool TAppearancesManager::loadStaticData(const std::string& directory)
-{
-    try {
-        tibia::assets::TAssetCatalog catalog;
-        catalog.load(catalogDocument(directory));
-        const auto fileName = catalogFile(catalog, tibia::assets::TAsset::StaticData);
-        if (fileName.empty())
-            throw std::runtime_error("catalog has no staticdata file");
-        const auto bytes = tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + fileName));
-        setStaticInformation(parseStaticInformation(bytes));
-        // The houses' map areas come with the static data (CIP: asset type 6),
-        // handed to the static content's house table.
-        const auto mapFileName = catalogFile(catalog, tibia::assets::TAsset::StaticMapData);
-        std::vector<THouseMapArea> areas;
-        if (!mapFileName.empty()) {
-            areas = parseStaticMapData(
-                tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + mapFileName)));
-        }
-        setStaticMapData(std::move(areas));
-        return true;
-    } catch (const std::exception&) {
-        return false;
+    m_assetIdentifier = loadAssetIdentifier(directory);
+    if (m_assetIdentifier.empty()) {
+        // Expected for bare --data extracts until make extract stamps the file.
+        m_assetIdentifier = "appearancesHash";
     }
 }
 
@@ -430,24 +361,6 @@ void TAppearancesManager::setStaticInformation(TStaticInformation information)
     m_cyclopediaHouses = std::move(information.houses);
     m_cyclopediaAchievements = std::move(information.achievements);
     m_cyclopediaQuests = std::move(information.quests);
-}
-
-bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
-{
-    m_proficienciesFile.clear();
-    try {
-        const auto fileName = proficienciesFileOf(directory);
-        if (fileName.empty())
-            return false;
-        const auto path = directory + fileName;
-        if (!tibia::files::data().fileExists(path))
-            return false;
-        m_proficienciesFile = path;
-        return true;
-    } catch (const std::exception&) {
-        m_proficienciesFile.clear();
-        return false;
-    }
 }
 
 TAppearanceTypePtr TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
@@ -642,13 +555,6 @@ std::set<QString> TAppearancesManager::creatureProductBuyerNames() const
     return names;
 }
 
-std::string TAppearancesManager::getProficienciesFile()
-{
-    if (!m_proficienciesFile.empty() && tibia::files::data().fileExists(m_proficienciesFile))
-        return m_proficienciesFile;
-    return {};
-}
-
 bool TAppearancesManager::setThingShape(const uint16_t itemId, const std::string& shape)
 {
     static constexpr std::pair<std::string_view, ThingShape> names[] = {
@@ -675,25 +581,6 @@ void TAppearancesManager::registerEffectVariant(const uint16_t virtualId, const 
         return;
     }
     m_effectVariants[virtualId] = EffectVariant{ baseId, shader, underCreatures };
-}
-
-}
-
-namespace tibia::assets {
-
-bool load(const std::string& directory)
-{
-    return tibia::appearances::TAppearancesManager::instance().loadAppearances(directory);
-}
-
-bool loadStaticData(const std::string& directory)
-{
-    return tibia::appearances::TAppearancesManager::instance().loadStaticData(directory);
-}
-
-bool resolveProficiencies(const std::string& directory)
-{
-    return tibia::appearances::TAppearancesManager::instance().resolveProficienciesFile(directory);
 }
 
 }

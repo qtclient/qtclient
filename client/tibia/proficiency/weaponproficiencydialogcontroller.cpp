@@ -1,4 +1,5 @@
 #include "proficiency/weaponproficiencydialogcontroller.h"
+#include "game/inspectedobject.h"
 
 #include "platform/platform.h"
 
@@ -366,7 +367,10 @@ void TWeaponProficiencyDialogController::connectToGameSession(const std::shared_
     m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this,
                                          [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); }));
     m_gameSessionConnections.add(connect(session->gameProtocolMessageHandler().get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived,
-                                         this, &TWeaponProficiencyDialogController::onInspectObjectDataReceived));
+                                         this, [this](const std::vector<gamewindow::TInspectObjectData>& list,
+                                                      const game::EInspectionListWindow window) {
+                                             onInspectObjectDataReceived(game::toItemInspectionData(list, window));
+                                         }));
     m_gameSessionConnections.add(
         connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &TWeaponProficiencyDialogController::onPlayerDataChanged));
     m_gameSessionConnections.add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,

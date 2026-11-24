@@ -6,6 +6,7 @@
 #include "readonlymemoryblob.h"
 
 #include <QDebug>
+#include <QEventLoop>
 #include <QJsonDocument>
 
 #include <stdexcept>
@@ -107,6 +108,44 @@ void TAssetManager::assetLoaded(const TAsset& Asset, const std::shared_ptr<tibia
 void TAssetManager::assetLoadError(const TAsset& Asset, const std::string& ErrorText)
 {
     reportError(QStringLiteral("Failed to load asset '%1': %2").arg(Asset.file()).arg(QString::fromStdString(ErrorText)));
+}
+
+bool TAssetManager::waitForAppearances(QString* error)
+{
+    if (m_state == AppearancesLoaded || m_state == Complete)
+        return true;
+    if (m_state == Initial || !m_loader) {
+        if (error)
+            *error = QStringLiteral("The asset loading has not been started");
+        return false;
+    }
+    QEventLoop loop;
+    bool loaded = false;
+    QString failure;
+    const QMetaObject::Connection accessible =
+        connect(this, &TAssetManager::assetDataAccessible, &loop,
+                [&loop, &loaded](const TAsset& Asset, const std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob>&) {
+                    if (Asset.type() != TAsset::Appearances)
+                        return;
+                    loaded = true;
+                    loop.quit();
+                });
+    // Without both catalogs or the appearances the appearances never arrive.
+    const QMetaObject::Connection failed =
+        connect(m_loader.get(), &TAssetAsyncLoader::assetLoadError, &loop,
+                [&loop, &failure](const TAsset& Asset, const std::string& ErrorText) {
+                    if (Asset.type() != TAsset::ContentCatalog && Asset.type() != TAsset::SoundCatalog
+                        && Asset.type() != TAsset::Appearances)
+                        return;
+                    failure = QStringLiteral("Failed to load asset '%1': %2").arg(Asset.file(), QString::fromStdString(ErrorText));
+                    loop.quit();
+                });
+    loop.exec();
+    disconnect(accessible);
+    disconnect(failed);
+    if (!loaded && error)
+        *error = failure;
+    return loaded;
 }
 
 void TAssetManager::reportError(const QString& message)

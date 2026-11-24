@@ -938,8 +938,8 @@ void localPlayerReleaseDirection()
 
 void localPlayerMovementTick()
 {
-    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline())
-        intent->tick();
+    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()); session && isOnline())
+        session->updatePlayerMovementIntentHandler();
 }
 
 void localPlayerCancelWalk(const tibia::client::Direction direction)

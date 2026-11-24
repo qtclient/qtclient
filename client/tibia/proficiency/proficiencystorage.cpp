@@ -271,26 +271,6 @@ void TProficiencyStorage::setLunarAscensionOrbs(const uint32_t orbs)
     Q_EMIT resourceBalanceChanged();
 }
 
-void TProficiencyStorage::loadTables() const
-{
-    if (m_tablesLoaded)
-        return;
-    const std::string path = tibia::game::getProficienciesFile();
-    if (path.empty())
-        return;
-    m_tablesLoaded = true;
-    try {
-        readTables(path);
-    } catch (const std::exception&) {
-        m_tables.clear();
-    }
-}
-
-void TProficiencyStorage::readTables(const std::string& path) const
-{
-    setTables(parseProficiencies(QByteArray::fromStdString(tibia::files::data().readFileContents(path))));
-}
-
 void TProficiencyStorage::setTables(const std::vector<TProficiencyInfo>& proficiencies) const
 {
     m_tables.clear();
@@ -303,7 +283,6 @@ const TProficiencyInfo* TProficiencyStorage::info(const uint16_t typeId) const
     const TAppearanceTypePtr type = itemType(typeId);
     if (!type || type->getProficiencyId() == 0)
         return nullptr;
-    loadTables();
     const auto it = m_tables.find(type->getProficiencyId());
     return it == m_tables.end() ? nullptr : &it->second;
 }

@@ -410,6 +410,7 @@ if(TIBIA_WITH_GAMECORE)
     prey/preyprotocolmessagehandler.cpp prey/preyprotocolmessagehandler.h
     prey/preygameactionhandler.cpp prey/preygameactionhandler.h
     reporting/reportingciptypes.cpp reporting/reportingciptypes.h
+    reporting/reportingstorage.h
     screenshot/screenshotciptypes.cpp screenshot/screenshotciptypes.h
     spells/spellsciptypes.cpp spells/spellsciptypes.h
     proficiency/proficiencyciptypes.cpp proficiency/proficiencyciptypes.h
@@ -701,6 +702,8 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/vipwidgetcontroller.cpp gamewindow/vipwidgetcontroller.h
     exivaoptions/exivaoptionsstorage.cpp exivaoptions/exivaoptionsstorage.h
     exivaoptions/exivaoptionsdialogcontroller.cpp exivaoptions/exivaoptionsdialogcontroller.h
+    exivaoptions/exivaoptionsgameactionhandler.cpp exivaoptions/exivaoptionsgameactionhandler.h
+    exivaoptions/exivaoptionsprotocolmessagehandler.cpp exivaoptions/exivaoptionsprotocolmessagehandler.h
     gamewindow/sidebarpanelsmanager.cpp gamewindow/sidebarpanelsmanager.h
     gamewindow/sidebarwidgetsmanager.cpp gamewindow/sidebarwidgetsmanager.h
     gamewindow/skillswidgetcontroller.cpp gamewindow/skillswidgetcontroller.h
@@ -724,6 +727,9 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/passiveabilitylistdatamodelsortfilterproxy.cpp gamewindow/passiveabilitylistdatamodelsortfilterproxy.h
     gamewindow/battlelistgameactionhandler.cpp gamewindow/battlelistgameactionhandler.h
     gamewindow/taskboardhuntingtaskrewardpurchaseconfirmationdialogcontroller.cpp gamewindow/taskboardhuntingtaskrewardpurchaseconfirmationdialogcontroller.h
+    gamewindow/twofactorcodeentertextdialogcontroller.cpp gamewindow/twofactorcodeentertextdialogcontroller.h
+    gamewindow/tooltiptextvisitor.cpp gamewindow/tooltiptextvisitor.h
+    gamewindow/inspectobjectdata.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -758,6 +764,9 @@ if(TIBIA_WITH_GAMECORE)
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
     protocol/objectdata.cpp protocol/objectdata.h
     protocol/protocolclientmessageprocessor.cpp protocol/protocolclientmessageprocessor.h
+    protocol/unknowngameserverexception.cpp protocol/unknowngameserverexception.h
+    protocol/protocolservermessageprocessor.cpp protocol/protocolservermessageprocessor.h
+    protocol/protocolserverpacketprocessor.cpp protocol/protocolserverpacketprocessor.h
     network/gameserverconnection.cpp network/gameserverconnection.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
@@ -788,6 +797,7 @@ if(TIBIA_WITH_GAMECORE)
     creatures/creatureprotocolapply.cpp creatures/creatureprotocolapply.h
     creatures/creaturesgameactionhandler.cpp creatures/creaturesgameactionhandler.h
     creatures/battlelistrenderprovider.cpp creatures/battlelistrenderprovider.h
+    creatures/battlelistgameactionprovider.cpp creatures/battlelistgameactionprovider.h
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h

@@ -1,6 +1,6 @@
 #include "speechbubbleoverlay.h"
 
-#include "chat/textstorage.h"
+#include "chat/textoverlayrenderprovider.h"
 #include "renderer/mapscale.h"
 #include "renderer/worldmaprenderprovider.h"
 
@@ -166,12 +166,21 @@ TSpeechBubbleOverlayQuickItem::TSpeechBubbleOverlayQuickItem(QQuickItem* parent)
 
 TSpeechBubbleOverlayQuickItem::~TSpeechBubbleOverlayQuickItem() = default;
 
-void TSpeechBubbleOverlayQuickItem::setSources(TWorldMapRenderProvider* provider, const chat::TTextStorage* texts)
+void TSpeechBubbleOverlayQuickItem::setSources(TWorldMapRenderProvider* provider,
+                                               std::shared_ptr<chat::TTextOverlayRenderProvider> textOverlays)
 {
     disconnect(m_frameConnection);
     m_provider = provider;
-    m_texts = texts;
-    if (provider && texts) {
+    if (textOverlays != m_textOverlays) {
+        // A provider reports the on-screen lines that differ from hidden ones
+        // first: the lines start hidden.
+        for (TSpeechBubbleController* controller : m_fixed) {
+            if (controller)
+                controller->setHidden(true);
+        }
+    }
+    m_textOverlays = std::move(textOverlays);
+    if (provider && m_textOverlays) {
         setup();
         m_frameConnection = connect(provider, &Provider::overlaysAdvanced, this, &TSpeechBubbleOverlayQuickItem::triggerUpdate);
     }
@@ -221,52 +230,60 @@ TSpeechBubbleController* TSpeechBubbleOverlayQuickItem::createController()
     return controller;
 }
 
-QPointF TSpeechBubbleOverlayQuickItem::anchorOf(const Position& field) const
+QPointF TSpeechBubbleOverlayQuickItem::anchorOf(const worldmap::TWorldMapSubfieldCoordinate& anchor) const
 {
     const int MapWidth = m_provider->frame().visibleWidth * Provider::FieldSize;
     const int MapHeight = m_provider->frame().visibleHeight * Provider::FieldSize;
     const MapCoverScale cover = MapCoverScale::placed(width(), height(), MapWidth, MapHeight, m_provider->frame().viewScale);
     const QPoint camera = m_provider->frame().camera;
-    const QPoint pixel = m_provider->mapPixelOf(field) + QPoint(Provider::FieldSize / 2, 0) - camera;
+    // The anchor's field on the screen, then the anchor's place in the field.
+    const QPoint subfield = anchor.toMapPixel();
+    const QPoint inField(subfield.x() % Provider::FieldSize, subfield.y() % Provider::FieldSize);
+    const Position field((subfield.x() - inField.x()) / Provider::FieldSize, (subfield.y() - inField.y()) / Provider::FieldSize,
+                         static_cast<uint8_t>(anchor.z));
+    const QPoint pixel = m_provider->mapPixelOf(field) + inField - camera;
     return cover.toPaneRounded(pixel.x(), pixel.y());
 }
 
-void TSpeechBubbleOverlayQuickItem::placeAbove(TSpeechBubbleController& controller, const Position& field) const
+void TSpeechBubbleOverlayQuickItem::placeAbove(TSpeechBubbleController& controller, const worldmap::TWorldMapSubfieldCoordinate& anchor) const
 {
-    const QPointF anchor = anchorOf(field);
+    const QPointF point = anchorOf(anchor);
     const QSize size = controller.calculatedSize();
-    controller.desiredPosition = QPoint(static_cast<int>(std::floor(anchor.x() - size.width() * 0.5)),
-                                        static_cast<int>(std::floor(anchor.y() - size.height())));
+    controller.desiredPosition = QPoint(static_cast<int>(std::floor(point.x() - size.width() * 0.5)),
+                                        static_cast<int>(std::floor(point.y() - size.height())));
+}
+
+void TSpeechBubbleOverlayQuickItem::updateScreenOverlays()
+{
+    for (const chat::TTextOverlay& overlay : m_textOverlays->changedScreenOverlays()) {
+        if (overlay.type >= Status && overlay.type < FixedCount)
+            m_fixed[overlay.type]->setText(overlay.visible, overlay.text, overlay.color, overlay.isHtml);
+    }
+}
+
+void TSpeechBubbleOverlayQuickItem::updateWorldBubbles(std::vector<TSpeechBubbleController*>& controllers,
+                                                       const std::vector<chat::TTextOverlay>& overlays)
+{
+    for (TSpeechBubbleController* controller : controllers)
+        controller->setHidden(true);
+    size_t index = 0;
+    for (const chat::TTextOverlay& overlay : overlays) {
+        if (index == controllers.size())
+            controllers.push_back(createController());
+        TSpeechBubbleController& controller = *controllers[index++];
+        controller.setText(overlay.visible, overlay.text, overlay.color, overlay.isHtml);
+        placeAbove(controller, overlay.coordinate);
+    }
 }
 
 void TSpeechBubbleOverlayQuickItem::updateNpcBubbles()
 {
-    for (TSpeechBubbleController* controller : m_npcBubbles)
-        controller->setHidden(true);
-    size_t index = 0;
-    for (const chat::TNpcSpeechBubble& bubble : m_texts->npcBubbles()) {
-        if (!bubble.isVisible())
-            continue;
-        if (index == m_npcBubbles.size())
-            m_npcBubbles.push_back(createController());
-        TSpeechBubbleController& controller = *m_npcBubbles[index++];
-        controller.setText(true, bubble.bubbleText(), bubble.color(), true);
-        placeAbove(controller, bubble.coordinate());
-    }
+    updateWorldBubbles(m_npcBubbles, m_textOverlays->npcOverlays());
 }
 
 void TSpeechBubbleOverlayQuickItem::updateCreatureBubbles()
 {
-    for (TSpeechBubbleController* controller : m_creatureBubbles)
-        controller->setHidden(true);
-    size_t index = 0;
-    for (const auto& bubble : m_texts->creatureBubbles()) {
-        if (index == m_creatureBubbles.size())
-            m_creatureBubbles.push_back(createController());
-        TSpeechBubbleController& controller = *m_creatureBubbles[index++];
-        controller.setText(true, bubble->text(), bubble->color(), false);
-        placeAbove(controller, bubble->coordinate());
-    }
+    updateWorldBubbles(m_creatureBubbles, m_textOverlays->creatureOverlays());
 }
 
 void TSpeechBubbleOverlayQuickItem::layout()
@@ -309,17 +326,18 @@ void TSpeechBubbleOverlayQuickItem::triggerUpdate()
 {
     if (!m_fixed[Status])
         return;
-    if (!m_provider || !m_texts || !m_provider->frame().valid) {
-        for (TSpeechBubbleController* controller : m_all) {
-            controller->setHidden(true);
+    if (!m_provider || !m_textOverlays || !m_provider->frame().valid) {
+        // The on-screen lines keep their state: the provider reports only
+        // the lines that change.
+        for (TSpeechBubbleController* controller : m_all)
             controller->setVisible(false);
-        }
+        for (TSpeechBubbleController* controller : m_npcBubbles)
+            controller->setHidden(true);
+        for (TSpeechBubbleController* controller : m_creatureBubbles)
+            controller->setHidden(true);
         return;
     }
-    m_fixed[Status]->setText(m_texts->isStatusVisible(), m_texts->statusText(), m_texts->statusColor(), false);
-    m_fixed[Look]->setText(m_texts->isLookVisible(), m_texts->lookText(), m_texts->lookColor(), m_texts->isLookHtml());
-    m_fixed[Center]->setText(m_texts->centerMessages().isVisible(), m_texts->centerMessages().text(), m_texts->centerMessages().color(), false);
-    m_fixed[Private]->setText(m_texts->privateMessages().isVisible(), m_texts->privateMessages().text(), m_texts->privateMessages().color(), false);
+    updateScreenOverlays();
     updateNpcBubbles();
     updateCreatureBubbles();
     layout();

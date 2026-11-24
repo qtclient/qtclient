@@ -9,6 +9,8 @@
 #include "gameactioncontext.h"
 #include "playermovementintent.h"
 #include "exaltation/exaltationstorage.h"
+#include "exivaoptions/exivaoptionsstorage.h"
+#include "store/storestorage.h"
 
 #include <QColor>
 #include <QJsonDocument>
@@ -22,6 +24,7 @@
 #include <optional>
 #include <variant>
 #include <memory>
+#include <set>
 #include <span>
 #include <string>
 #include <utility>
@@ -94,6 +97,8 @@ public:
     struct TSoundEffect
     {
         int id = 0;
+        /// The channel a chat message arrived in, for its sound; empty for other sounds.
+        std::shared_ptr<const chat::TChatChannelIdentifier> chatChannel;
     };
     using TTrigger = std::variant<bool, TSoundEffect>;
 
@@ -106,6 +111,8 @@ public:
     std::optional<bool> pauseLoopingSounds() const;
     /// The sound effect to play; empty when the looping sounds pause or resume.
     std::optional<int> soundEffectId() const;
+    /// The sound effect's chat channel; empty when there is none or no sound effect.
+    std::shared_ptr<const chat::TChatChannelIdentifier> soundEffectChatChannel() const;
 
 private:
     TTrigger m_trigger;
@@ -1327,14 +1334,25 @@ private:
 // ---------------------------------------------------------------------------
 // Exiva options, loot lists
 
-/// CIP input::TGameActionUpdateExivaOptions (EXIVA_UPADATE_OPTIONS).
+/// CIP input::TGameActionUpdateExivaOptions (EXIVA_UPADATE_OPTIONS): the exiva
+/// options dialog's flags and its character / guild whitelists.
 class TGameActionUpdateExivaOptions final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionUpdateExivaOptions()
+    TGameActionUpdateExivaOptions(const exivaoptions::TExivaOptionsStorage::Options& options,
+                                  exivaoptions::TExivaOptionsStorage::Whitelists whitelists)
         : TGameActionSimple(EGameAction::EXIVA_UPADATE_OPTIONS)
+        , m_options(options)
+        , m_whitelists(std::move(whitelists))
     {
     }
+    const exivaoptions::TExivaOptionsStorage::Options& options() const { return m_options; }
+    /// A copy of both whitelists.
+    exivaoptions::TExivaOptionsStorage::Whitelists whitelists() const { return m_whitelists; }
+
+private:
+    exivaoptions::TExivaOptionsStorage::Options m_options;
+    exivaoptions::TExivaOptionsStorage::Whitelists m_whitelists;
 };
 
 /// CIP input::TGameActionToggleBlackWhitelistStatus (LOOT_ADD_TO_BLACKWHITELIST /
@@ -1770,37 +1788,56 @@ public:
     int page() const { return m_value; }
 };
 
-/// qtclient's subset of CIP's store::TStoreOpenParameters: the open action
-/// (store::EStoreOpenAction), its detail (category / offer) and a search text.
-struct TStoreOpenParameters
-{
-    int openAction = 0;
-    int detail = 0;
-    QString text;
-};
-
 /// CIP input::TGameActionOpenStore (OPEN_STORE): the store's open parameters.
 class TGameActionOpenStore final : public gameactions::TGameActionSimple
 {
 public:
-    using TStoreOpenParameters = input::TStoreOpenParameters;
-    TGameActionOpenStore()
-        : TGameActionSimple(EGameAction::OPEN_STORE)
-    {
-    }
-    explicit TGameActionOpenStore(TStoreOpenParameters parameters)
+    explicit TGameActionOpenStore(store::TStoreOpenParameters parameters)
         : TGameActionSimple(EGameAction::OPEN_STORE)
         , m_parameters(std::move(parameters))
     {
     }
+    /// Host: qtclient's callers name an open action with one detail and one
+    /// text; this fills the open parameters field the action names: 1 premium
+    /// time / boosts (detail), 2 the category (text), 3 the useful thing
+    /// (detail), 4 the offer (detail), 5 search for the text; anything else,
+    /// and a category or search without text, opens home.
     explicit TGameActionOpenStore(int openAction, int detail = 0, QString text = {})
-        : TGameActionOpenStore(TStoreOpenParameters{ openAction, detail, std::move(text) })
+        : TGameActionOpenStore(openParameters(openAction, detail, std::move(text)))
     {
     }
-    const TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
+    const store::TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
 
 private:
-    TStoreOpenParameters m_parameters;
+    static store::TStoreOpenParameters openParameters(int openAction, int detail, QString text)
+    {
+        store::TStoreOpenParameters parameters;
+        switch (openAction) {
+        case store::OPEN_PREMIUM_OR_BOOSTS:
+            parameters.openAction = openAction;
+            parameters.premiumDetail = detail;
+            break;
+        case store::OPEN_CATEGORY:
+        case store::OPEN_SEARCH:
+            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
+            parameters.category = std::move(text);
+            break;
+        case store::OPEN_USEFUL_THING:
+            parameters.openAction = openAction;
+            parameters.usefulThing = detail;
+            break;
+        case store::OPEN_OFFER:
+            parameters.openAction = openAction;
+            parameters.offerId = static_cast<store::TOfferID>(detail);
+            break;
+        default:
+            parameters.openAction = store::OPEN_HOME;
+            break;
+        }
+        return parameters;
+    }
+
+    store::TStoreOpenParameters m_parameters;
 };
 
 /// CIP input::TGameActionOpenNewsDialog (OPEN_NEWS_DIALOG): optionally the
@@ -2364,13 +2401,14 @@ class TGameActionBuyHirelingNameOrSexChange final : public gameactions::TGameAct
 public:
     TGameActionBuyHirelingNameOrSexChange()
         : TGameActionSimple(EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
-        , m_parameters{ 1, 7, {} }
     {
+        m_parameters.openAction = store::OPEN_PREMIUM_OR_BOOSTS;
+        m_parameters.premiumDetail = 7;
     }
-    const TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
+    const store::TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
 
 private:
-    TStoreOpenParameters m_parameters;
+    store::TStoreOpenParameters m_parameters;
 };
 
 /// CIP input::TGameActionExaltationForgeFusion (EXALTATION_FORGE_FUSION).
@@ -2713,19 +2751,39 @@ private:
     Position m_coordinate;
 };
 
-/// CIP input::TGameActionOpenShowImageDialog (OPEN_SHOW_IMAGE_DIALOG): the image.
+/// CIP input::TGameActionOpenShowImageDialog (OPEN_SHOW_IMAGE_DIALOG): what the
+/// show-image dialog shows (gamewindow::TShowImageDialogController's data).
 class TGameActionOpenShowImageDialog final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionOpenShowImageDialog(QString imagePath)
+    /// One image and its tab icon.
+    struct TImage
+    {
+        QString path;
+        QString tabIcon;
+        bool operator==(const TImage&) const = default;
+    };
+    /// The headers, the caption, the banner and the images.
+    struct TData
+    {
+        bool showDragonHeader = false;
+        bool showCrestHeader = false;
+        bool showCaption = false;
+        QString caption;
+        QString bannerPath;
+        std::vector<TImage> images;
+        bool operator==(const TData&) const = default;
+    };
+
+    explicit TGameActionOpenShowImageDialog(const TData& data)
         : TGameActionSimple(EGameAction::OPEN_SHOW_IMAGE_DIALOG)
-        , m_imagePath(std::move(imagePath))
+        , m_data(data)
     {
     }
-    const QString& imagePath() const { return m_imagePath; }
+    const TData& data() const { return m_data; }
 
 private:
-    QString m_imagePath;
+    TData m_data;
 };
 
 namespace gameactions {

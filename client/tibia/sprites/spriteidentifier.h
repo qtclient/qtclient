@@ -43,6 +43,8 @@ bool sameSpriteIdentifier(const ISpriteIdentifier& a, const ISpriteIdentifier& b
 
 /// boost::hash_combine (64 bit) as CipSoft's identifier hashes use it.
 size_t hashCombine(size_t seed, size_t value);
+/// The hash identifiers are kept by: kind and hash() combined, cut to 32 bits.
+size_t identifierHash(const ISpriteIdentifier& identifier);
 
 /// A whole asset spritesheet as one sprite (CIP sprites::TAssetSpritesheetIdentifier).
 class TAssetSpritesheetIdentifier final : public ISpriteIdentifier

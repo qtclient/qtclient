@@ -665,3 +665,14 @@ qtclient_add_port_test(client_networkquality_tests
 set_target_properties(client_networkquality_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_networkquality_tests PRIVATE cip_messages)
 target_compile_definitions(client_networkquality_tests PRIVATE QT_NO_KEYWORDS)
+# Wave 13: CipSoft's map message layout decoded from the tutorial dump.
+qtclient_add_port_test(client_worldmapfullmap_tests worldmapfullmap_test.cpp)
+target_link_libraries(client_worldmapfullmap_tests PRIVATE cip_messages)
+# protocol.pb.h names fields "slots"; like the tibia target.
+target_compile_definitions(client_worldmapfullmap_tests PRIVATE QT_NO_KEYWORDS
+    QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
+# Wave 13: CipSoft's unknown game server message exception.
+qtclient_add_port_test(client_unknowngameserverexception_tests
+    unknowngameserverexception_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/unknowngameserverexception.cpp
+)

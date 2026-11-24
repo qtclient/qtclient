@@ -538,6 +538,8 @@ void TCreateCharacterDialogController::setPending(const int pending)
 
 void TCreateCharacterDialogController::showError(const QString& message)
 {
+    m_error->setCloseOnButtonClicked(true);
+    m_error->setMessageDialogTextFormat(TMessageDialogController::RICH_TEXT);
     m_error->showMessage(qtTrId("error"), message);
 }
 

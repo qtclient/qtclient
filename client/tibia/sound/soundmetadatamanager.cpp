@@ -34,37 +34,6 @@ QString fromStd(const std::string& value)
 
 }
 
-bool TSoundMetadataManager::loadBank(const std::string& directory)
-{
-    const auto read = [](const std::string& path) -> std::optional<std::string> {
-        try {
-            return tibia::files::data().readFileContents(path);
-        } catch (...) {
-            return std::nullopt;
-        }
-    };
-    const auto catalog = read(tibia::files::data().guessFilePath(directory + "catalog-sound", "json"));
-    if (!catalog)
-        return false;
-    const QJsonDocument document = QJsonDocument::fromJson(QByteArray::fromStdString(*catalog));
-    for (const QJsonValue& value : document.array()) {
-        const QJsonObject entry = value.toObject();
-        if (entry.value(QLatin1String("type")).toString() != QLatin1String("sounds"))
-            continue;
-        const std::string file = entry.value(QLatin1String("file")).toString().toStdString();
-        const auto bank = file.empty() ? std::nullopt : read(directory + file);
-        if (!bank)
-            return false;
-        try {
-            initialize(QByteArray::fromStdString(*bank));
-        } catch (const std::exception&) {
-            return false;
-        }
-        return !m_sounds.empty();
-    }
-    return false;
-}
-
 TSoundMetadataManager::TSoundMetadataManager(QObject* parent, const float delayFactor)
     : cip::tibia::sound::TSoundMetadataManager(parent)
     , m_delayFactor(delayFactor)
@@ -179,12 +148,21 @@ void TSoundMetadataManager::initialize(const QByteArray& bankData)
 #endif
 }
 
+QString soundDisplayName(const TSoundMetadata& sound)
+{
+    if (!sound.originalFileName.isEmpty())
+        return QStringLiteral("%1 (%2)").arg(sound.originalFileName).arg(sound.id);
+    if (!sound.fileName.isEmpty())
+        return QStringLiteral("%1 (%2)").arg(sound.fileName).arg(sound.id);
+    return QStringLiteral("%1").arg(sound.id);
+}
+
 void TSoundMetadataManager::assignLoadTypes()
 {
     for (auto& [id, sound] : m_sounds) {
         switch (sound.memoryPriority) {
         case 0:
-            qCDebug(lcSound) << "sound" << sound.fileName << "has no memory priority";
+            qCDebug(lcSound) << "sound" << soundDisplayName(sound) << "has no memory priority";
             break;
         case kPriorityMusic:
         case kPriorityAmbienceStream:

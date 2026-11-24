@@ -3,6 +3,7 @@
 #include <cip_gen.h>
 
 #include "appearances/appearanceinstance.h"
+#include "worldmap/coordinates.h"
 
 #include <client/declarations.h>
 #include <client/position.h>
@@ -10,11 +11,10 @@
 #include <QByteArray>
 #include <QPointer>
 
-#include <google/protobuf/repeated_ptr_field.h>
-
 namespace tibia {
 namespace protobuf {
 namespace protocol {
+class AppearanceInstance;
 class GameserverMessageAmbientLight;
 class GameserverMessageBottomFloor;
 class GameserverMessageBottomRow;
@@ -28,8 +28,7 @@ class GameserverMessageRightColumn;
 class GameserverMessageTibiaTime;
 class GameserverMessageTopFloor;
 class GameserverMessageTopRow;
-class ProtocolMapField;
-class ProtocolMapObject;
+class MapArea;
 }
 }
 }
@@ -71,15 +70,12 @@ public:
     void handleChangeOnMapMessage(const ::tibia::protobuf::protocol::GameserverMessageChangeOnMap& message);
     void handleDeleteOnMapMessage(const ::tibia::protobuf::protocol::GameserverMessageDeleteOnMap& message);
 
-    /// Replace a field's content with `field`'s objects; a field without objects
-    /// leaves the storage. Fields outside the known area are ignored.
-    void applyField(const ::tibia::protobuf::protocol::ProtocolMapField& field);
-    /// The instance an object of the field at `position` stands for: a
-    /// creature's data is applied, the creature placed at `position` and its
-    /// placeholder returned; an item's instance takes the field's patterns.
-    /// Null when the object yields nothing.
-    appearances::TAppearanceInstancePtr applyObject(const ::tibia::protobuf::protocol::ProtocolMapObject& object,
-                                                    const Position& position);
+    /// The instance a map object at `coordinate` stands for: a creature's data
+    /// is applied, the creature placed at the field and its placeholder
+    /// returned; an object's instance takes the field's patterns. Null when the
+    /// object yields nothing.
+    appearances::TAppearanceInstancePtr applyObject(const ::tibia::protobuf::protocol::AppearanceInstance& object,
+                                                    const TWorldMapCoordinate& coordinate);
 
     /// CIP slot: AmbientLight (S 0x82 / 130) — native Q→H apply (skips classic bridge).
     void handleAmbientLightMessage(
@@ -91,18 +87,22 @@ Q_SIGNALS:
 
 private:
     TWorldMapStorage& map() const;
-    /// The view's centre moved to `center`: the storage keeps the fields of its
-    /// visible area and drops the others, and effects outside it go too.
-    void moveKnownArea(const Position& center);
+    /// The central position moved: the storage keeps the fields of its visible
+    /// area and drops the others, effects outside it go too, and the minimap
+    /// follows its floor.
+    void moveKnownArea();
     void setCrashReportPosition(const Position& center);
-    /// The described fields of an area, in the server's order.
-    void applyArea(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields);
-    /// A row or column: the view moved one field to `center`.
-    void handleSlice(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields,
-                     const Position& center);
-    /// A floor change: the view moved to `center` on the floor above or below.
-    void changeFloor(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields,
-                     const Position& center, const Position& from);
+    /// The described fields of `area`, the `index`th of them at the `index`th
+    /// field of `volume` (skipped fields counted): each field the storage
+    /// holds takes the field's objects (none: the field is dropped). Throws
+    /// when the fields do not cover the volume exactly.
+    void applyArea(const ::tibia::protobuf::protocol::MapArea& area, const TShearedWorldMapCuboid& volume,
+                   const TWorldMapCentralPosition& central);
+    /// A row, column or floor change: the area the move of the central
+    /// position added.
+    void handleSlice(const ::tibia::protobuf::protocol::MapArea& area, const TShearedWorldMapCuboid& volume);
+    /// The central position with the session's aware area.
+    TWorldMapCentralPosition centralPosition() const;
 
     /// A described field (or one an object was created on, changed or
     /// deleted from) is recorded on the minimap.
@@ -112,6 +112,8 @@ private:
     TWorldMapViewport* m_viewport = nullptr;
     QPointer<minimap::TMinimapTileStorage> m_minimap;
     bool m_mapKnown = false;
+    /// The centre of the map messages (CIP: the handler's central position).
+    TWorldMapCoordinate m_center;
 };
 
 }

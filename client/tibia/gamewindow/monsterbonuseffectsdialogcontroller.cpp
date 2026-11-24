@@ -33,11 +33,7 @@ using cyclopedia::TCharm;
 
 QString englishNumber(const qulonglong value) { return QLocale(QLocale::English).toString(value); }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 /// The charm points (major) or minor charm echoes (minor) of the player.
 quint64 charmResource(const bool minor)
@@ -56,7 +52,7 @@ public:
     {
         m_id = charm.id;
         m_name = charm.name();
-        m_description = charm.description();
+        m_description = bonusEffectDescription(charm);
         m_imageSource = cyclopedia::charmImageSource(charm.id);
         m_isMinor = charm.isMinor();
         const int nextCost = charm.nextGradeCost();
@@ -92,6 +88,22 @@ public:
                                       .arg(cyclopedia::charmPercent(charm.id, charm.grade + 1) / 100.0, 0, 'g');
         else
             m_upgradeButtonText = qtTrId("monster_bonus_effects_not_unlocked_button_text");
+    }
+
+    /// A charm not unlocked yet describes its first grade; an unlocked one the
+    /// description the charm message was read with (its current grade).
+    static QString bonusEffectDescription(const TCharm& charm)
+    {
+        if (charm.grade == 0)
+            return tableDescription(charm);
+        return cyclopedia::charmDescription(charm.id, charm.grade);
+    }
+
+    /// The charm table's description at the grade after the charm's own,
+    /// capped to the last grade.
+    static QString tableDescription(const TCharm& charm)
+    {
+        return cyclopedia::charmDescription(charm.id, std::min(charm.grade, 2) + 1);
     }
 };
 

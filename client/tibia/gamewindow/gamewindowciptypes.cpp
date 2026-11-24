@@ -1,4 +1,5 @@
 #include "gamewindowciptypes.h"
+#include "game/inspectedobject.h"
 #include "qmlcomponents/texthelper.h"
 #include "store/storestorage.h"
 #include "game/worldtype.h"
@@ -45,24 +46,32 @@ namespace {
 using A = input::EGameAction;
 using TargetItem = cip::tibia::qmlcomponents::TTargetSelectionQuickItem;
 
-TargetItem* targetItemAt(QQuickItem* item, const QPointF& scenePosition)
+/// The topmost visible, enabled target selection item under `scenePosition`
+/// among `items` and their children (a clipping item hides children outside
+/// its clip rectangle).
+TargetItem* targetItemAt(QList<QQuickItem*> items, const QPointF& scenePosition)
 {
-    QList<QQuickItem*> children = item->childItems();
-    std::stable_sort(children.begin(), children.end(), [](const QQuickItem* a, const QQuickItem* b) { return a->z() < b->z(); });
-    for (auto it = children.crbegin(); it != children.crend(); ++it) {
-        QQuickItem* child = *it;
-        if (!child->isVisible() || !child->isEnabled())
+    std::stable_sort(items.begin(), items.end(), [](const QQuickItem* a, const QQuickItem* b) { return a->z() < b->z(); });
+    for (auto it = items.crbegin(); it != items.crend(); ++it) {
+        QQuickItem* item = *it;
+        if (!item->isVisible() || !item->isEnabled())
             continue;
-        const QPointF local = child->mapFromScene(scenePosition);
-        const bool inside = child->contains(local);
-        if (child->clip() && !inside)
+        if (item->clip() && !item->clipRect().contains(item->mapFromScene(scenePosition)))
             continue;
-        if (TargetItem* found = targetItemAt(child, scenePosition))
-            return found;
-        if (auto* target = qobject_cast<TargetItem*>(child); target && inside)
-            return target;
+        if (!item->childItems().isEmpty())
+            if (TargetItem* found = targetItemAt(item->childItems(), scenePosition))
+                return found;
+        if (item->contains(item->mapFromScene(scenePosition)))
+            if (auto* target = qobject_cast<TargetItem*>(item))
+                return target;
     }
     return nullptr;
+}
+
+/// The target selection item under `scenePosition` among the root's children.
+TargetItem* targetSelectionItemAt(const QPointF& scenePosition, QQuickItem* root)
+{
+    return root ? targetItemAt(root->childItems(), scenePosition) : nullptr;
 }
 }
 
@@ -111,10 +120,7 @@ void TTargetSelectionEventFilter::setSelecting(const bool selecting)
 
 void TTargetSelectionEventFilter::emitTargetSelected(const QPointF& scenePosition)
 {
-    QQuickWindow* window = m_root ? m_root->window() : nullptr;
-    if (!window)
-        return;
-    if (TargetItem* target = targetItemAt(window->contentItem(), scenePosition)) {
+    if (TargetItem* target = targetSelectionItemAt(scenePosition, m_root)) {
         const QPointF local = target->mapFromScene(scenePosition);
         Q_EMIT target->targetSelected(static_cast<int>(local.x()), static_cast<int>(local.y()));
     }
@@ -122,7 +128,6 @@ void TTargetSelectionEventFilter::emitTargetSelected(const QPointF& scenePositio
 
 bool TTargetSelectionEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
-    // CIP .
     const QEvent::Type type = event->type();
     bool consume = false;
     bool keepSelecting = true;
@@ -143,13 +148,11 @@ bool TTargetSelectionEventFilter::eventFilter(QObject* watched, QEvent* event)
         }
         if (button == Qt::LeftButton)
             emitTargetSelected(mouse->scenePosition());
-        input::finishTargetSelection(nullptr);
         Q_EMIT targetSelectionFinished();
         return consume;
     }
     if (keepSelecting)
         return consume;
-    input::finishTargetSelection(nullptr);
     Q_EMIT targetSelectionFinished();
     Q_UNUSED(watched);
     return consume;
@@ -586,12 +589,6 @@ const char* const InspectSlotBackgrounds[] = {
     "/images/inventory-hip.png",
 };
 
-QColor inspectOutfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
-
 class TInspectObjectRow final : public cip::tibia::gamewindow::TInspectObjectQMLData
 {
 public:
@@ -671,10 +668,10 @@ public:
         setDetails(QString::fromStdString(data.playerName), data.playerDescriptions);
         m_appearanceID = data.outfit.getId();
         m_objectCount = 1;
-        m_headColor = inspectOutfitColor(data.outfit.getHead());
-        m_torsoColor = inspectOutfitColor(data.outfit.getBody());
-        m_legsColor = inspectOutfitColor(data.outfit.getLegs());
-        m_detailColor = inspectOutfitColor(data.outfit.getFeet());
+        m_headColor = tibia::shared::outfitColor(data.outfit.getHead());
+        m_torsoColor = tibia::shared::outfitColor(data.outfit.getBody());
+        m_legsColor = tibia::shared::outfitColor(data.outfit.getLegs());
+        m_detailColor = tibia::shared::outfitColor(data.outfit.getFeet());
         m_firstAddOn = (data.outfit.getAddons() & 1) != 0;
         m_secondAddOn = (data.outfit.getAddons() & 2) != 0;
     }
@@ -697,10 +694,7 @@ TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const
                                              const int addons, QObject* parent)
     : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
 {
-    const auto color = [](const int index) {
-        const QColor c = tibia::shared::outfitColor(index);
-        return QColor(c.red(), c.green(), c.blue());
-    };
+    const auto color = [](const int index) { return tibia::shared::outfitColor(index); };
     m_id = id;
     m_headColor = color(head);
     m_torsoColor = color(torso);
@@ -730,9 +724,9 @@ void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGam
     // the Cyclopedia's item inspections the same way; those stay with the Cyclopedia.
     disconnect(m_inspectionConnection);
     m_inspectionConnection = connect(session->gameProtocolMessageHandler().get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived,
-                                     this, [this](const ItemInspectionData& data) {
-                                         if (data.inspectionType != CyclopediaInspectionType)
-                                             showObject(data);
+                                     this, [this](const std::vector<TInspectObjectData>& list, const game::EInspectionListWindow window) {
+                                         if (window != CyclopediaInspectionType)
+                                             showObject(game::toItemInspectionData(list, window));
                                      });
     const auto* inspect = dynamic_cast<const input::TGameActionInspectObject*>(pGameAction.get());
     if (!inspect)
@@ -830,7 +824,9 @@ void TInspectPlayerDialogController::connectToGameSession(const std::shared_ptr<
         return;
     m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
                                                &game::TGameProtocolMessageHandler::requestOpenInspectPlayerDialog, this,
-                                               &TInspectPlayerDialogController::showPlayer));
+                                               [this](const std::vector<TInspectObjectData>& list, const creatures::TCreatureID playerId) {
+                                                   showPlayer(game::toCharacterInspection(list, playerId));
+                                               }));
 }
 
 TInspectPlayerDialogController* TInspectPlayerDialogController::instance()

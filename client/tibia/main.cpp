@@ -25,6 +25,7 @@
 #include <QEvent>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QLoggingCategory>
 #include <QSaveFile>
 #include <QSettings>
 #include <QGuiApplication>
@@ -69,20 +70,6 @@ Q_IMPORT_QML_PLUGIN(QtQuickControls2UniversalStylePlugin)
 using namespace tibia;
 
 namespace {
-
-/// --renderer must be known before QGuiApplication exists (the graphics API is
-/// process-wide), so it is read straight from argv.
-int rendererFromArgs(const int argc, char** argv)
-{
-    for (int i = 1; i < argc; ++i) {
-        const char* arg = argv[i];
-        if (std::strncmp(arg, "--renderer=", 11) == 0)
-            return app::parseRendererIndex(QString::fromLocal8Bit(arg + 11), -1);
-        if (std::strcmp(arg, "--renderer") == 0 && i + 1 < argc)
-            return app::parseRendererIndex(QString::fromLocal8Bit(argv[i + 1]), -1);
-    }
-    return app::parseRendererIndex(qEnvironmentVariable("QTCLIENT_RENDERER"), -1);
-}
 
 QStringList commandLine()
 {
@@ -217,10 +204,19 @@ int main(int argc, char** argv)
     client::TGameApplication::setUpLogging();
 #endif
 
-    app::configureProcess(app::ClientOptions::readStoredFile(), rendererFromArgs(argc, argv));
-
 #if defined(TIBIA_DESKTOP_WEBENGINE)
+    // CIP: Chromium logs errors only; the web engine starts before the
+    // application, and its context warnings stay out of the log.
+    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--log-level=3");
     QtWebEngineQuick::initialize();
+    QLoggingCategory::setFilterRules(QStringLiteral("js=false\nqt.webenginecontext.warning=false\n"));
+#endif
+    // CIP: the windows do not share one OpenGL context.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts, false);
+#ifndef TIBIA_WITH_GAMECORE
+    // Standalone QML shell: CipSoft's controls style (the game application
+    // runs the rest of the process setup).
+    qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
 #endif
 
 #ifdef TIBIA_WITH_GAMECORE
@@ -267,9 +263,9 @@ int main(int argc, char** argv)
 
     const auto env = app::LauncherEnv::load(QDir::currentPath());
 #ifdef TIBIA_WITH_GAMECORE
-    // CIP: the application's setup (crash handler, its connections, the
-    // command line) before the game starts.
-    application.initialize(env.loginUrl());
+    // CIP: the application's setup (graphics, client options, crash
+    // handler, its connections, the command line) before the game starts.
+    application.initialize();
 #endif
     // CIP links (dialogs, translations, Wheel planner) → this deployment's origins.
     app::PortalUrls::installCipUrlHandler(env);

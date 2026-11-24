@@ -1,6 +1,8 @@
 #include "sound/soundconfiguration.h"
 
+#include "chat/chatchannel.h"
 #include "config/clientoptions.h"
+#include "game/gamesessionbase.h"
 #include "sound/soundengine.h"
 #include "worldmap/worldmapobjectcounter.h"
 
@@ -25,6 +27,11 @@ TSoundConfiguration::TSoundConfiguration(const TSoundSettings& settings, config:
     worldmap::TWorldMapObjectCounter::setFloorDistance(m_settings.floorDistance);
     if (m_settings.noSound)
         TSoundEngine::instance().setInitialized(false);
+}
+
+void TSoundConfiguration::setGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    m_gameSession = std::move(GameSession);
 }
 
 void TSoundConfiguration::onSoundOptionsChanged()
@@ -198,12 +205,42 @@ float TSoundConfiguration::creatureBattleVolume() const
 
 bool TSoundConfiguration::chatMessageSoundEnabled(const std::optional<TChatSoundContext>& chat) const
 {
-    // CipSoft looks up the channel here (the active tab mutes it; the channel
-    // kind picks the option). qtclient's chat storage does that before it
-    // triggers the sound and marks the request as gated.
+    using Identifier = chat::TChatChannelIdentifier;
     if (!chatSoundsEnabled())
         return false;
-    return chat && chat->gatedByChannel;
+    if (!chat || !chat->channel)
+        return false;
+    const Identifier& identifier = *chat->channel;
+    // A muted channel of the session makes no sound.
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        if (const std::shared_ptr<chat::TChatChannelStorage>& storage = session->chatChannelStorage()) {
+            if (const chat::TChatChannel* channel = storage->find(identifier); channel && channel->isMuted())
+                return false;
+        }
+    }
+    switch (identifier.identifierType()) {
+    case Identifier::Local:
+        return privateMessagesWithoutTabSoundEnabled();
+    case Identifier::Npc:
+        return npcMessageSoundsEnabled();
+    case Identifier::ChannelId:
+        if (identifier.id < 10)
+            return globalMessageSoundsEnabled();
+        if (identifier.isGuildChannel())
+            return guildMessageSoundsEnabled();
+        // Party channels: ids 30000 to 65533.
+        if (identifier.isChannelIdInRange(30000, 65533))
+            return partyMessageSoundsEnabled();
+        if (identifier.isPrivateChannelId())
+            return privateMessageSoundsEnabled();
+        if (identifier.isTeamFinderChannel())
+            return teamFinderMessageSoundsEnabled();
+        return false;
+    case Identifier::MessageTo:
+        return privateMessageSoundsEnabled();
+    default:
+        return false;
+    }
 }
 
 TSoundConfiguration::TEffectSettings TSoundConfiguration::effectSettings(const int type,

@@ -7,6 +7,7 @@
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -412,7 +413,10 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     const auto stored = counts.find({ typeId, 0 });
     if (stored == counts.end())
         return {};
-    return container::TContainerGameActionProvider::stashTypeActions(typeId, stored->second);
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    return provider ? provider->stashTypeActions(typeId, stored->second) : input::TGameActionList{};
 }
 
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)

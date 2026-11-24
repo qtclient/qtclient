@@ -347,12 +347,14 @@ void TPlayerGuideWidgetController::showLevelSpecialPopup()
     if (level <= 0)
         return;
     const TLevelSpecialPopup popup = levelSpecialPopup(level);
-    if (TShowImageDialogController* images = TShowImageDialogController::instance()) {
-        QStringList pages;
-        for (const TPopupPage& page : popup.pages)
-            pages << page.image;
-        images->showImages(pages, popup.caption, popup.showDragonHeader, popup.showCrestHeader);
-    }
+    input::TGameActionOpenShowImageDialog::TData data;
+    data.showDragonHeader = popup.showDragonHeader;
+    data.showCrestHeader = popup.showCrestHeader;
+    data.caption = popup.caption;
+    data.bannerPath = popup.banner;
+    for (const TPopupPage& page : popup.pages)
+        data.images.push_back({ page.image, page.icon });
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenShowImageDialog>(data));
     // The popup moves from pending to seen.
     if (m_options) {
         QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();

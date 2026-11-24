@@ -25,6 +25,7 @@ namespace tibia::sessiondump {
 class TClientSessiondumpRecorder;
 }
 namespace tibia::input {
+class TPlayerMovementGameActionHandler;
 class TPlayerMovementIntentHandler;
 }
 namespace tibia::authentication {
@@ -36,6 +37,7 @@ class TCompressionHelper;
 }
 namespace tibia::protocol {
 class TProtocolClientMessageProcessor;
+class TProtocolServerPacketProcessor;
 }
 namespace tibia::network {
 class TNetworkQualityProtocolMessageHandler;
@@ -90,7 +92,7 @@ public:
     /// Which of the session's connections are in use.
     network::EConnectionsUsed connectionsUsed() const override;
     /// The connection's round trip time (the network quality handler's).
-    network::TNetworkLatency latency() const;
+    network::TNetworkLatency latency() const override;
 
     bool isOnline() const;
     QString characterName() const;
@@ -107,11 +109,15 @@ public:
         return m_loginProtocolMessageHandler;
     }
 
-    /// The player's movement intent handler sends through the session's player
-    /// protocol message handler, which hands it its snap backs and stops.
-    /// qtclient: the intent handler belongs to the session state, which calls
-    /// this for each new one.
-    void connectPlayerMovementIntentHandler(input::TPlayerMovementIntentHandler* Handler);
+    /// The session's player movement intent handler (walks, held directions,
+    /// rotations of the own character).
+    const std::shared_ptr<input::TPlayerMovementIntentHandler>& playerMovementIntentHandler() const
+    {
+        return m_playerMovementIntentHandler;
+    }
+    /// Once per frame: the player movement intent handler repeats a held
+    /// direction and sends the next step of its path when it is due.
+    void updatePlayerMovementIntentHandler();
 
     /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
@@ -134,6 +140,12 @@ protected:
     /// The session dump recorder and the base's links, then the login handler's
     /// messages and every handler's client messages to the protocol queue.
     void connectProtocolMessageHandlers() override;
+    /// The base's links, then the player movement game action handler and the
+    /// player movement intent handler with the game action router.
+    void connectGameActionHandlers() override;
+    /// The player's movement intent handler sends through the session's player
+    /// protocol message handler, which hands it its snap backs and stops.
+    void connectPlayerMovementIntentHandler();
 
 protected Q_SLOTS:
     /// The login allows the secondary connection.
@@ -145,7 +157,8 @@ private:
     /// connections to each other, to the protocol queue and to the session.
     void createNetworkStack();
     /// The game server login process controller over the dual connection and
-    /// the authentication info.
+    /// the authentication info, and the player movement intent handler with the
+    /// player's creature (now or once the creature storage adds it).
     void createSessionControllers();
     /// A packet in order from the sequence flow processor: decoded and handed
     /// to the protocol layer.
@@ -161,12 +174,14 @@ private:
     std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
     std::shared_ptr<network::TNetworkQualityProtocolMessageHandler> m_networkQualityProtocolMessageHandler;
     std::shared_ptr<protocol::TProtocolClientMessageProcessor> m_clientMessageProcessor;
-    /// Host: qtclient's server packets go through the classic parser, which
-    /// reads them from this stream (CipSoft's server packet processor).
+    /// The decoded bytes of the server packets, read by the server packet processor.
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_serverMessageStream;
+    std::shared_ptr<protocol::TProtocolServerPacketProcessor> m_serverPacketProcessor;
     std::shared_ptr<network::TGameserverNetworkPacketRawDataProcessor> m_rawDataProcessor;
     std::shared_ptr<authentication::TAuthenticationAndEncryptionInfo> m_authenticationAndEncryptionInfo;
     std::shared_ptr<authentication::TGameserverLoginProcessController> m_gameserverLoginProcessController;
+    std::shared_ptr<input::TPlayerMovementGameActionHandler> m_playerMovementGameActionHandler;
+    std::shared_ptr<input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
     authentication::TGameserverLoginRequestData m_loginData;
     std::shared_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::shared_ptr<network::TGameserverNetworkPacketSequenceFlowProcessor> m_sequenceFlowProcessor;

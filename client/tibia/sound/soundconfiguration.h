@@ -9,8 +9,14 @@
 #include <optional>
 
 namespace tibia {
+namespace chat {
+struct TChatChannelIdentifier;
+}
 namespace config {
 class TClientOptions;
+}
+namespace game {
+class IGameSession;
 }
 namespace sound {
 
@@ -53,11 +59,11 @@ struct TSoundSettings
     int32_t soundCacheSeconds = 60;
 };
 
-/// Request context of a chat message sound (type 14). The chat storage
-/// already decided the channel's own option before triggering the sound.
+/// Request context of a chat message sound (type 14): the channel the message
+/// arrived in (the trigger's variant; empty for any other sound).
 struct TChatSoundContext
 {
-    bool gatedByChannel = false;
+    std::shared_ptr<const chat::TChatChannelIdentifier> channel;
 };
 
 /// CIP sound::TSoundConfiguration: the sound options and the settings.
@@ -68,6 +74,8 @@ public:
     TSoundConfiguration(const TSoundSettings& settings, config::TClientOptions* options);
 
     const TSoundSettings& settings() const { return m_settings; }
+    /// The session whose chat channels mute chat message sounds.
+    void setGameSession(std::shared_ptr<game::IGameSession> GameSession);
 
     /// usedSoundDevice.
     QString usedSoundDevice() const;
@@ -140,10 +148,13 @@ private:
     float ownBattleVolume() const;
     float othersBattleVolume() const;
     float creatureBattleVolume() const;
+    /// Chat sounds on, a channel given, the session's channel of it not
+    /// muted, then the option of the channel's kind.
     bool chatMessageSoundEnabled(const std::optional<TChatSoundContext>& chat) const;
 
     TSoundSettings m_settings;
     config::TClientOptions* m_options = nullptr;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

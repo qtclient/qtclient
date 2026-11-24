@@ -55,7 +55,8 @@ class TMinimapController final : public TSidebarPanelController<cip::tibia::game
 {
     Q_OBJECT
 public:
-    explicit TMinimapController(QObject* parent = nullptr);
+    /// Clicks on the minimap map to game actions through the client's shared mapping.
+    explicit TMinimapController(std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent = nullptr);
     ~TMinimapController() override;
 
     /// CIP : the minimap data to show; null shows nothing.
@@ -69,7 +70,6 @@ public:
     void setPanelItem(QQuickItem* PanelItem) override;
     /// CIP v15: lets go of the minimap item, then the base's.
     void releasePanelItem() override;
-    void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
 
     /// The minimap hotkeys (CIP , actions 93-101).
     void handleGameAction(const input::IGameAction& action);
@@ -123,7 +123,7 @@ private:
 
     minimap::TMinimapVisibleArea m_area;
     minimap::TMinimapGameActionProvider m_actions;
-    input::TGameActionMapper m_mapper;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     QPointer<minimap::TMinimapTileStorage> m_storage;
     std::unique_ptr<minimap::TMinimapRenderProvider> m_renderProvider;
     QPointer<worldmap::TAmbientLightStorage> m_ambientLight;

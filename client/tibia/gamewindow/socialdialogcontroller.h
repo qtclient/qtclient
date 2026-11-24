@@ -7,7 +7,6 @@
 #include "gamewindow/friendsconfigurationpagecontroller.h"
 #include "gamewindow/friendsfriendlistpagecontroller.h"
 #include "gamewindow/friendsinvitespagecontroller.h"
-#include "gamewindow/socialbuttoncontroller.h"
 #include "gamewindow/teamassemblepagecontroller.h"
 #include "gamewindow/teamjoinpagecontroller.h"
 
@@ -19,7 +18,13 @@
 #include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
@@ -37,12 +42,11 @@ class TSocialDialogController final : public TDialogController<cip::tibia::gamew
 {
     Q_OBJECT
 public:
-    explicit TSocialDialogController(QObject* parent = nullptr);
+    /// CIP: made with the client options, the engine and the dialog parent
+    /// item; the button bar makes the social button from it.
+    TSocialDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem,
+                            QObject* parent = nullptr);
     ~TSocialDialogController() override;
-
-    /// Stock qtclient install: dialog + button bar controller under `parent`.
-    /// Pack (IdleOT) owns the live social surfaces when mods are on.
-    static TSocialDialogController* ensureInstalled(QObject* parent);
 
     /// CIP connector: the dialog closes, its pages follow `GameSession`, and
     /// the session's friend system errors show here.
@@ -51,7 +55,6 @@ public:
     /// pages get it.
     void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
 
-    TSocialButtonController* socialButton() const { return m_button; }
     TFriendsFriendListPageController* friendListPage() const { return m_friends; }
     TFriendsInvitesPageController* invitesPage() const { return m_invites; }
     TFriendsAccountSearchPageController* accountSearchPage() const { return m_search; }
@@ -104,7 +107,6 @@ private:
     TFriendsConfigurationPageController* m_config = nullptr;
     TTeamJoinPageController* m_join = nullptr;
     TTeamAssemblePageController* m_assemble = nullptr;
-    TSocialButtonController* m_button = nullptr;
     TMessageDialogController* m_errorDialog = nullptr;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     /// CIP +0x40: the current session; +0x60: its connections.

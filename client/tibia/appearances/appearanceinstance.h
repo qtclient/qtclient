@@ -29,6 +29,10 @@ class TAppearancesManager;
 namespace tibia::protocol {
 struct TObjectData;
 }
+namespace tibia::protobuf::protocol {
+class AppearanceInstance;
+class Outfit;
+}
 using TAppearanceType = tibia::appearances::TAppearanceType;
 class Item;
 
@@ -641,6 +645,15 @@ public:
     /// upgradeable, deco item kit, else a plain object (a hangable one takes
     /// the hook state of a hangable kind).
     static TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
+    /// CIP v20: the instance of a protocol map object by its extension:
+    /// liquid, cumulative, container, show-off socket, upgradeable, wearout,
+    /// expire (the duration in seconds) or deco item kit; a plain object
+    /// without one. `nowMs` starts a container's field effect.
+    static TAppearanceInstancePtr createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object, qint64 nowMs);
+    /// CIP v19: the outfit of a protocol outfit: with a look type that outfit
+    /// (its colours and addons), else with an object type that object drawn
+    /// as an outfit, else none.
+    static TAppearanceInstancePtr createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit, uint8_t direction);
     /// Effect `id` on `field` from `source`, created at `nowMs` (CIP v7).
     static std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
                                                                    qint64 nowMs);

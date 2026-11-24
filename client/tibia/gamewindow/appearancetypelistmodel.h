@@ -1,22 +1,38 @@
 #pragma once
 
+#include "qtconnectionmanager.h"
 #include "shared/sortedvectorlistmodel.h"
 
 #include <cip_gen.h>
 
 #include <QCollator>
-#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <set>
 #include <vector>
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
+namespace config {
+class TClientOptions;
+}
+namespace container {
+class TObjectCountStorage;
+}
+namespace cyclopedia {
+class TItemTrackingStorage;
+}
+namespace proficiency {
+class TProficiencyStorage;
+}
 namespace gamewindow {
 
 /// One object type of the list (CIP: the 0x148-byte entries of
@@ -72,7 +88,29 @@ public:
 
     using CountProvider = std::function<int(uint16_t typeId, uint8_t tier)>;
 
+    /// Two display flags the roles read, whether the list shows a type under
+    /// its display type id, and the client options whose list options
+    /// refresh the loot value roles (none: no refresh).
+    TAppearanceTypeListModel(bool firstDisplayFlag, bool secondDisplayFlag, bool useDisplayTypeId,
+                             config::TClientOptions* clientOptions, QObject* parent = nullptr);
+    /// Counts from `counts` until the owner hands over its object count
+    /// storage (connectToStorages).
     explicit TAppearanceTypeListModel(CountProvider counts, QObject* parent = nullptr);
+
+    /// Takes the storages the roles read and follows their changes (each may
+    /// be null): the loot value configuration, the tracked objects, the
+    /// object counts and the proficiencies. Earlier storages are dropped.
+    void connectToStorages(analysers::TItemPriceStorage* itemPriceStorage,
+                           std::shared_ptr<cyclopedia::TItemTrackingStorage> itemTrackingStorage,
+                           std::shared_ptr<container::TObjectCountStorage> objectCountStorage,
+                           proficiency::TProficiencyStorage* proficiencyStorage);
+    /// Drops the storages and their connections.
+    void disconnectFromStorages();
+    /// The count storage's count of the type (of the tier, with one); 0
+    /// without a count storage.
+    uint32_t objectCount(uint16_t typeId, std::optional<uint8_t> tier) const;
+    /// `amount` with English digit grouping.
+    static QString formatAmount(qulonglong amount);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -108,8 +146,18 @@ private:
     /// Announces the proficiency roles of every row.
     void onProficiencyTimerTimeout();
 
-    CountProvider m_counts;
+    shared::TQtConnectionManager m_clientOptionsConnections;
+    shared::TQtConnectionManager m_storageConnections;
+    bool m_firstDisplayFlag = false;
+    bool m_secondDisplayFlag = false;
+    bool m_useDisplayTypeId = false;
+    config::TClientOptions* m_clientOptions = nullptr;
     QTimer m_proficiencyTimer;
+    analysers::TItemPriceStorage* m_itemPriceStorage = nullptr;
+    std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTrackingStorage;
+    std::shared_ptr<container::TObjectCountStorage> m_objectCountStorage;
+    proficiency::TProficiencyStorage* m_proficiencyStorage = nullptr;
+    CountProvider m_counts;
     std::vector<TAppearanceTypeEntry> m_entries;
 };
 

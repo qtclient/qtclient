@@ -10,11 +10,7 @@ namespace tibia {
 
 namespace {
 
-QColor outfitColor(const uint8_t index)
-{
-    const QColor color = tibia::shared::outfitColor(index);
-    return QColor(color.red(), color.green(), color.blue());
-}
+using ::tibia::shared::outfitColor;
 
 /// "yyyy-MM-dd, HH:mm:ss" in local time.
 QString formatDateTime(const uint32_t timestamp)

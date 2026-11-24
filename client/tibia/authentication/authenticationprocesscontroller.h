@@ -19,6 +19,9 @@ namespace tibia {
 namespace game {
 class TGameSessionBase;
 }
+namespace assets {
+class TAssetManager;
+}
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCharacterTradeDuePaymentDialogController;
@@ -128,8 +131,6 @@ public:
     /// What the host provides.
     struct THost
     {
-        /// Whether the assets are loaded, so the game server login can start.
-        std::function<bool()> assetsComplete;
         /// The host's copy of the play session data is forgotten too.
         std::function<void()> resetSessionData;
     };
@@ -139,7 +140,8 @@ public:
         std::shared_ptr<TLoginRequestUploader> LoginRequestUploader = {},
         std::shared_ptr<TEmailCodeRequestUploader> EMailCodeRequestUploader = {},
         std::shared_ptr<TLoginConfirmationCodeRequestUploader> LoginConfirmationCodeRequestUploader = {},
-        std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController = {}, QObject* parent = nullptr);
+        std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController = {},
+        std::shared_ptr<assets::TAssetManager> AssetManager = {}, QObject* parent = nullptr);
     ~TAuthenticationProcessController() override;
 
     gamewindow::TCharacterSelectionController* characterSelectionController() const
@@ -312,6 +314,9 @@ private:
     std::shared_ptr<game::TGameSessionBase> m_pGameSession;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<TCloudflareChallengeController> m_pCloudflareChallengeController;
+    /// The client's asset loading; the game server login waits for it. Host:
+    /// none while qtclient loads its assets before the login.
+    std::shared_ptr<assets::TAssetManager> m_pAssetManager;
 
     THost m_host;
     std::vector<TTransition> m_transitions;

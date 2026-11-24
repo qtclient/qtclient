@@ -68,8 +68,11 @@ public:
     /// CIP : a button click closes the dialog.
     void setCloseOnButtonClicked(bool close) { m_closeOnButtonClicked = close; }
     void setTextCentered(bool centered) { m_textCentered = centered; }
-    /// CIP .
+    /// Shows `caption` and `message` with the buttons set by setButtons().
     void showMessage(const QString& caption, const QString& message);
+    /// Makes the item, sets textCentered, caption and message on it, puts copies
+    /// of `buttons` into it and shows the dialog.
+    void showMessage(const QString& caption, const QString& message, const QList<TMessageDialogButton*>& buttons);
     /// CIP .
     void showMessageWithCheckBox(const QString& caption, const QString& message, const QString& checkBoxText, bool checked);
 
@@ -86,9 +89,13 @@ public:
 
 private:
     void pressButtonWithKey(const QKeySequence& key);
-    void applyProperties();
+    /// Replaces the buttons shown in the item by copies of `buttons`; without an
+    /// item none are kept.
+    void showButtons(const QList<TMessageDialogButton*>& buttons);
 
     QList<TMessageDialogButton*> m_buttons;
+    /// The copies the item shows.
+    std::vector<TMessageDialogButton*> m_shownButtons;
     QString m_caption;
     QString m_message;
     QString m_checkBoxText;

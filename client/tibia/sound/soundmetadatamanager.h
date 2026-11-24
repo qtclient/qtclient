@@ -37,6 +37,9 @@ struct TSoundMetadata
     QString originalFileName;
 };
 
+/// How logs name a sound: "<original file name> (<id>)", else "<file name> (<id>)", else the id.
+QString soundDisplayName(const TSoundMetadata& sound);
+
 struct TSingleSoundEffectMetadata
 {
     uint16_t soundId = 0;
@@ -104,9 +107,6 @@ public:
     /// v12: replaces all metadata from a sounds-*.dat bank. Throws
     /// std::invalid_argument on malformed data.
     void initialize(const QByteArray& bankData);
-    /// Host: reads catalog-sound.json in `directory` and initialises from its
-    /// sounds bank (CipSoft's asset catalog does this). False without a bank.
-    bool loadBank(const std::string& directory);
     /// v13: derives each sound's load type from its memory priority.
     void assignLoadTypes();
 

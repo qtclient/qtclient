@@ -1,4 +1,5 @@
 #include "iteminfodialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "game/gameciptypes.h"
 
@@ -150,10 +151,6 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
         // itemTracking is null until connectToGameSession; connecting it here
         // logs QObject::connect(ICharacterConfigurationBase, TItemInfoDialogController).
         ensureItemTrackingConnection();
-        if (quickloot::TQuickLootBlackWhitelistStorage* list = container->lootBlackWhitelist()) {
-            connect(list, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
-                    &TItemInfoDialogController::lootBlackWhitelistChanged);
-        }
         connect(container, &analysers::TAnalyserStorages::premiumTimeChanged, this, [this] {
             Q_EMIT lootValueChanged();
             Q_EMIT trackingChanged();
@@ -321,6 +318,15 @@ void TItemInfoDialogController::setButtons(const bool level, const bool vocation
 
 void TItemInfoDialogController::ensureItemTrackingConnection()
 {
+    // The loot list is the session's: follow the current one.
+    if (quickloot::TQuickLootBlackWhitelistStorage* list = lootBlackWhitelist(); list != m_connectedLootBlackWhitelist) {
+        QObject::disconnect(m_lootBlackWhitelistConnection);
+        m_lootBlackWhitelistConnection = {};
+        m_connectedLootBlackWhitelist = list;
+        if (list)
+            m_lootBlackWhitelistConnection = connect(list, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput,
+                                                     this, &TItemInfoDialogController::lootBlackWhitelistChanged);
+    }
     if (m_itemTrackingConnected)
         return;
     cyclopedia::TItemTrackingStorage* tracking = itemTracking();
@@ -439,7 +445,7 @@ cyclopedia::TItemTrackingStorage* TItemInfoDialogController::itemTracking() cons
 
 quickloot::TQuickLootBlackWhitelistStorage* TItemInfoDialogController::lootBlackWhitelist() const
 {
-    return storages() ? storages()->lootBlackWhitelist() : nullptr;
+    return game::currentQuickLootBlackWhitelistStorage();
 }
 
 bool TItemInfoDialogController::hasCharacter() const { return storages() && storages()->hasCharacter(); }

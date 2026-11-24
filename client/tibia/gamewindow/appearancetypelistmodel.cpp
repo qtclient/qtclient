@@ -1,6 +1,9 @@
 #include "appearancetypelistmodel.h"
 
 #include "analysers/itempricestorage.h"
+#include "config/clientoptions.h"
+#include "container/containerciptypes.h"
+#include "cyclopedia/itemtrackingstorage.h"
 #include "platform/platform.h"
 #include "proficiency/proficiencystorage.h"
 
@@ -21,14 +24,73 @@ constexpr int MaximumShownCount = 65000;
 
 }
 
-TAppearanceTypeListModel::TAppearanceTypeListModel(CountProvider counts, QObject* parent)
+TAppearanceTypeListModel::TAppearanceTypeListModel(const bool firstDisplayFlag, const bool secondDisplayFlag,
+                                                   const bool useDisplayTypeId, config::TClientOptions* clientOptions,
+                                                   QObject* parent)
     : TSortedVectorListModel(parent)
-    , m_counts(std::move(counts))
+    , m_firstDisplayFlag(firstDisplayFlag)
+    , m_secondDisplayFlag(secondDisplayFlag)
+    , m_useDisplayTypeId(useDisplayTypeId)
+    , m_clientOptions(clientOptions)
 {
+    if (m_clientOptions != nullptr)
+        m_clientOptionsConnections.add(connect(m_clientOptions, &config::TClientOptions::appearanceTypeListModelOptionsChanged,
+                                               this, &TAppearanceTypeListModel::onItemPriceVisualizationChanged));
     m_proficiencyTimer.setInterval(0);
     m_proficiencyTimer.setSingleShot(true);
     connect(&m_proficiencyTimer, &QTimer::timeout, this, &TAppearanceTypeListModel::onProficiencyTimerTimeout);
 }
+
+TAppearanceTypeListModel::TAppearanceTypeListModel(CountProvider counts, QObject* parent)
+    : TAppearanceTypeListModel(false, false, false, nullptr, parent)
+{
+    m_counts = std::move(counts);
+}
+
+void TAppearanceTypeListModel::connectToStorages(analysers::TItemPriceStorage* itemPriceStorage,
+                                                 std::shared_ptr<cyclopedia::TItemTrackingStorage> itemTrackingStorage,
+                                                 std::shared_ptr<container::TObjectCountStorage> objectCountStorage,
+                                                 proficiency::TProficiencyStorage* proficiencyStorage)
+{
+    m_storageConnections.disconnectAll();
+    m_itemPriceStorage = itemPriceStorage;
+    m_itemTrackingStorage = std::move(itemTrackingStorage);
+    m_objectCountStorage = std::move(objectCountStorage);
+    m_proficiencyStorage = proficiencyStorage;
+    if (m_itemPriceStorage != nullptr)
+        m_storageConnections.add(connect(m_itemPriceStorage, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                                         &TAppearanceTypeListModel::onItemPriceVisualizationChanged));
+    if (m_itemTrackingStorage)
+        m_storageConnections.add(connect(m_itemTrackingStorage.get(), &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput,
+                                         this, &TAppearanceTypeListModel::onItemTrackingChanged));
+    if (m_objectCountStorage)
+        m_storageConnections.add(connect(m_objectCountStorage.get(), &container::TObjectCountStorage::objectCountsChanged, this,
+                                         &TAppearanceTypeListModel::onObjectCountsChanged));
+    // This connection is not dropped by a later connect or disconnect.
+    if (m_proficiencyStorage != nullptr)
+        connect(m_proficiencyStorage, &proficiency::TProficiencyStorage::proficiencyDataChanged, this,
+                [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); });
+}
+
+void TAppearanceTypeListModel::disconnectFromStorages()
+{
+    m_storageConnections.disconnectAll();
+    m_itemPriceStorage = nullptr;
+    m_itemTrackingStorage.reset();
+    m_objectCountStorage.reset();
+    m_proficiencyStorage = nullptr;
+}
+
+uint32_t TAppearanceTypeListModel::objectCount(const uint16_t typeId, const std::optional<uint8_t> tier) const
+{
+    if (!m_objectCountStorage)
+        return 0;
+    if (!tier)
+        return m_objectCountStorage->count(typeId);
+    return m_objectCountStorage->count(typeId, *tier);
+}
+
+QString TAppearanceTypeListModel::formatAmount(const qulonglong amount) { return QLocale(QLocale::English).toString(amount); }
 
 int TAppearanceTypeListModel::rowCount(const QModelIndex& parent) const
 {
@@ -37,6 +99,8 @@ int TAppearanceTypeListModel::rowCount(const QModelIndex& parent) const
 
 int TAppearanceTypeListModel::count(const TAppearanceTypeEntry& entry) const
 {
+    if (m_objectCountStorage)
+        return static_cast<int>(objectCount(entry.typeId, entry.hasTier ? std::optional<uint8_t>(entry.tier) : std::nullopt));
     return m_counts ? m_counts(entry.typeId, entry.tier) : 0;
 }
 
@@ -65,7 +129,7 @@ QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role
         if (entry.name.isEmpty())
             return QString();
         const int n = count(entry);
-        const QString amount = n > MaximumShownCount ? QStringLiteral("65k+") : QLocale(QLocale::English).toString(n);
+        const QString amount = n > MaximumShownCount ? QStringLiteral("65k+") : formatAmount(static_cast<qulonglong>(n));
         return QStringLiteral("%1x %2").arg(amount, entry.name);
     }
     case TypeName:

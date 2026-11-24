@@ -13,12 +13,8 @@ TMarketCoinTransactionDetailsDialogController::TMarketCoinTransactionDetailsDial
 
 TMarketCoinTransactionDetailsDialogController::~TMarketCoinTransactionDetailsDialogController()
 {
-    // Host: no dialog close while the owner is torn down; the child transactions go with it.
-    const QList<QObject*> children = std::exchange(m_multiTransactionChildTransactionList, {});
-    for (QObject* child : children) {
-        if (child)
-            child->deleteLater();
-    }
+    // The dialog closes first; that also lets go of the child transactions.
+    closeDialog();
 }
 
 void TMarketCoinTransactionDetailsDialogController::setTransactionDetails(const store::TTransactionDetails& details)

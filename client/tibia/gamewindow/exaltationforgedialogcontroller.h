@@ -75,14 +75,18 @@ private:
     std::vector<std::pair<uint16_t, uint8_t>> m_objects;
 };
 
-/// CIP: (anonymous)::TUpgradeableObjectModel (vtable): hides the
-/// excluded types; highest tier, then classification first, then type id.
+/// CIP: (anonymous)::TUpgradeableObjectModel: owns its object list and shows
+/// it without the excluded types; highest tier, then classification first,
+/// then type id.
 class TUpgradeableObjectModel final : public QSortFilterProxyModel
 {
     Q_OBJECT
 public:
-    explicit TUpgradeableObjectModel(TForgeObjectListModel* source, QObject* parent = nullptr);
+    /// The list counts its objects in `counts`.
+    explicit TUpgradeableObjectModel(container::TObjectCountStorage* counts, QObject* parent = nullptr);
 
+    /// The object list this model sorts and filters.
+    TForgeObjectListModel& objects() { return m_objects; }
     void setExcludedTypes(std::set<uint16_t> types);
 
 protected:
@@ -90,7 +94,7 @@ protected:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    TForgeObjectListModel* m_source;
+    TForgeObjectListModel m_objects;
     std::set<uint16_t> m_excluded;
 };
 
@@ -167,8 +171,6 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<exaltation::TExaltationStorage> m_storage;
     container::TObjectCountStorage* m_counts;
-    exaltation::TForgeObjectListModel* m_fusionObjects;
-    exaltation::TForgeObjectListModel* m_resourceObjects;
     exaltation::TUpgradeableObjectModel* m_fusionProxy;
     exaltation::TUpgradeableObjectModel* m_resourceProxy;
 };
@@ -217,8 +219,6 @@ private:
     QPointer<exaltation::TExaltationStorage> m_storage;
     container::TObjectCountStorage* m_sourceCounts;
     container::TObjectCountStorage* m_targetCounts;
-    exaltation::TForgeObjectListModel* m_sourceObjects;
-    exaltation::TForgeObjectListModel* m_targetObjects;
     exaltation::TUpgradeableObjectModel* m_sourceProxy;
     exaltation::TUpgradeableObjectModel* m_targetProxy;
 };

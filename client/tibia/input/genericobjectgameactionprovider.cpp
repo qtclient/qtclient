@@ -1,26 +1,18 @@
-#include "creatures/vipstorage.h"
-#include "game/gamesessionbase.h"
-#include "game/currentgamesession.h"
 #include "genericobjectgameactionprovider.h"
+
 #include "input/genericchatgameactionprovider.h"
-#include "chat/chatchannel.h"
-#include "chat/chatprotocolmessagehandler.h"
 
 #include "appearances/appearanceinstance.h"
-#include "app/clientoptions.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
-#include "analysers/analyserstorages.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include "protocol/protocolcodes.h"
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
-#include <QJsonArray>
 #include <stdexcept>
-#include <QJsonObject>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -43,11 +35,24 @@ bool isHireling(const tibia::creatures::TCreature& stored)
     return stored.isNpc() && stored.inspectionType() == 7;
 }
 
-TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t creatureId)
+TGenericObjectGameActionProvider::TGenericObjectGameActionProvider(
+    std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+    std::shared_ptr<TGenericChatGameActionProvider> genericChatGameActionProvider,
+    std::shared_ptr<creatures::TPartyGameActionProvider> partyGameActionProvider,
+    std::shared_ptr<creatures::TInspectPlayerGameActionProvider> inspectPlayerGameActionProvider,
+    std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> quickLootBlackWhitelistStorage)
+    : m_creatureStorage(std::move(creatureStorage))
+    , m_genericChatGameActionProvider(std::move(genericChatGameActionProvider))
+    , m_partyGameActionProvider(std::move(partyGameActionProvider))
+    , m_inspectPlayerGameActionProvider(std::move(inspectPlayerGameActionProvider))
+    , m_quickLootBlackWhitelistStorage(std::move(quickLootBlackWhitelistStorage))
 {
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+}
+
+TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t creatureId) const
+{
     const std::shared_ptr<tibia::creatures::TCreature> stored =
-        creatureId && storage ? storage->creatureAt(creatureId) : nullptr;
+        creatureId && m_creatureStorage ? m_creatureStorage->creatureAt(creatureId) : nullptr;
     if (!stored)
         return { makeCreatureAction(A::TEMPORARY_SELECT_CREATURE, 0) };
 
@@ -81,20 +86,15 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
 
     if (stored->isPlayer() && !own) {
         // The chat actions on the name, then the bot report by name.
-        if (const game::TGameSessionBase* session = game::currentGameSession()) {
-            if (const auto& chatActions = session->genericChatGameActionProvider())
-                chatActions->appendGameActions(actions, name);
-        }
+        if (m_genericChatGameActionProvider)
+            m_genericChatGameActionProvider->appendGameActions(actions, name);
         actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
-        // The session's party and inspection providers.
-        if (const game::TGameSessionBase* session = game::currentGameSession()) {
-            if (const auto& party = session->partyGameActionProvider())
-                party->appendActions(actions, creatureId);
-            if (const auto& inspect = session->inspectPlayerGameActionProvider())
-                inspect->appendActions(actions, creatureId);
-        }
+        if (m_partyGameActionProvider)
+            m_partyGameActionProvider->appendActions(actions, creatureId);
+        if (m_inspectPlayerGameActionProvider)
+            m_inspectPlayerGameActionProvider->appendActions(actions, creatureId);
     }
 
     push(A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD);
@@ -105,11 +105,10 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     return actions;
 }
 
-IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId)
+IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId) const
 {
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> stored =
-        creatureId && storage ? storage->creatureAt(creatureId) : nullptr;
+        creatureId && m_creatureStorage ? m_creatureStorage->creatureAt(creatureId) : nullptr;
     EGameAction inner = A::LOOK_AT_CREATURE;
     if (stored) {
         if (stored->isNpc())
@@ -173,10 +172,13 @@ TGameActionContextPtr locationOf(const Position& position, const int stackPositi
     return flagged;
 }
 
-/// CIP v6: what can be done to an object, in CipSoft's order.
-TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const TGameActionContextPtr& objectContext,
-                                  const uint32_t creatureId, const uint8_t fieldTier, TAppearanceType* flags,
-                                  const uint16_t fieldCount, const appearances::TAppearanceInstance* instance)
+} // namespace
+
+TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameActionContextPtr& location,
+                                                                    const TGameActionContextPtr& objectContext,
+                                                                    const uint32_t creatureId, const uint8_t fieldTier,
+                                                                    TAppearanceType* flags, const uint16_t fieldCount,
+                                                                    const appearances::TAppearanceInstance* instance) const
 {
     TGameActionList actions;
     const uint16_t clientId = appearanceTypeIdOf(objectContext.get());
@@ -236,8 +238,7 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
     if (take && !unmove)
         push(A::TRADE_ITEM);
     // The loot list offers a pickupable object that is not a corpse.
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    if (const quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr;
+    if (const quickloot::TQuickLootBlackWhitelistStorage* loot = m_quickLootBlackWhitelistStorage.get();
         loot && take && !unmove && !has(&TAppearanceType::isCorpse) && !has(&TAppearanceType::isPlayerCorpse)) {
         actions.push_back(std::make_shared<TGameActionToggleBlackWhitelistStatus>(
             loot->isListed(clientId) ? A::LOOT_REMOVE_FROM_BLACKWHITELIST : A::LOOT_ADD_TO_BLACKWHITELIST, clientId));
@@ -253,9 +254,7 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
 
     // A creature is targeted as itself, except the player's own one.
     const std::shared_ptr<tibia::creatures::TCreature> creature =
-        creatureId && tibia::creatures::TCreatureStorage::instance()
-            ? tibia::creatures::TCreatureStorage::instance()->creatureAt(creatureId)
-            : nullptr;
+        creatureId && m_creatureStorage ? m_creatureStorage->creatureAt(creatureId) : nullptr;
     const bool ownCreature = creature && creature->isLocalPlayer();
     if (creatureId && !ownCreature)
         actions.push_back(std::make_shared<TGameActionTargetSelected>(
@@ -289,7 +288,7 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
     if (!has(&TAppearanceType::hasAction)) {
         if (creatureId) {
             // v5 adds the creature's smart click itself.
-            actions.push_back(TGenericObjectGameActionProvider::creatureSmartClick(creatureId));
+            actions.push_back(creatureSmartClick(creatureId));
         } else {
             inner = has(&TAppearanceType::isUsable) ? use : look;
         }
@@ -323,8 +322,6 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
             object, flags->hasUpgradeClassification() ? fieldTier : uint8_t(0)));
     return actions;
 }
-
-} // namespace
 
 bool TGenericObjectGameActionProvider::canStowObject(const TAppearanceType* type,
                                                      const appearances::TAppearanceInstance* instance)
@@ -364,15 +361,14 @@ TGameActionContextPtr TGenericObjectGameActionProvider::objectContext(const TApp
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::TFieldObject& object,
                                                                 const worldmap::TWorldMapField* field,
-                                                                const Position& position)
+                                                                const Position& position) const
 {
     (void)field;
     // A creature is the object of its outfit's appearance.
     appearances::TAppearanceInstancePtr appearance = object.appearance;
-    if (!appearance && object.creatureId) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(object.creatureId))
-                appearance = row->outfitAppearance();
+    if (!appearance && object.creatureId && m_creatureStorage) {
+        if (const std::shared_ptr<tibia::creatures::TCreature> row = m_creatureStorage->creatureAt(object.creatureId))
+            appearance = row->outfitAppearance();
     }
     if (!appearance)
         return {};
@@ -387,13 +383,13 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::
 }
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const container::TInventorySlot& slot,
-                                                                const Position& position, const int stackPosition)
+                                                                const Position& position, const int stackPosition) const
 {
     return objectActions(locationOf(position, stackPosition), slot);
 }
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const TGameActionContextPtr& location,
-                                                                const container::TInventorySlot& slot)
+                                                                const container::TInventorySlot& slot) const
 {
     if (slot.empty())
         return {};

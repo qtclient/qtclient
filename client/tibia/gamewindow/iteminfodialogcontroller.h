@@ -159,6 +159,8 @@ private:
     bool m_entriesBuilt = false;
     bool m_shown = false;
     bool m_itemTrackingConnected = false;
+    const quickloot::TQuickLootBlackWhitelistStorage* m_connectedLootBlackWhitelist = nullptr;
+    QMetaObject::Connection m_lootBlackWhitelistConnection;
     uint16_t m_typeId = 0;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     int m_primaryLootValueSource = 0;

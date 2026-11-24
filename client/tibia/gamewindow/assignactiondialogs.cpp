@@ -5,6 +5,7 @@
 #include "game/passiveabilityinfostorage.h"
 
 #include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/smoothfiltering.h"
@@ -371,15 +372,32 @@ TSpellListDataModelSortFilterProxy::~TSpellListDataModelSortFilterProxy()
 
 void TSpellListDataModelSortFilterProxy::onGameSessionChanged()
 {
-    if (game::TPlayerData* player = game::TPlayerData::liveInstance())
-        connect(player, &game::TPlayerData::playerDataChanged, this, &TSpellListDataModelSortFilterProxy::onPlayerDataChanged,
-                Qt::UniqueConnection);
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession.reset();
+    const game::TGameSessionBase* session = game::currentGameSession();
+    followPlayerData(session ? session->playerData() : nullptr);
+}
+
+void TSpellListDataModelSortFilterProxy::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    followPlayerData(session ? session->playerData() : nullptr);
+}
+
+void TSpellListDataModelSortFilterProxy::followPlayerData(std::shared_ptr<game::TPlayerData> playerData)
+{
+    m_playerData = std::move(playerData);
+    if (m_playerData)
+        m_gameSessionConnections.add(connect(m_playerData.get(), &game::TPlayerData::playerDataChanged, this,
+                                             &TSpellListDataModelSortFilterProxy::onPlayerDataChanged));
     onPlayerDataChanged();
 }
 
 void TSpellListDataModelSortFilterProxy::onPlayerDataChanged()
 {
-    const game::TPlayerData* player = tibia::game::isOnline() ? game::TPlayerData::liveInstance() : nullptr;
+    const game::TPlayerData* player = tibia::game::isOnline() ? m_playerData.get() : nullptr;
     if (!player) {
         m_knownSpells.clear();
         m_playerVocation = 0;
@@ -830,6 +848,11 @@ TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogCo
     m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(game::TPassiveAbilityInfoStorage::instance());
     m_proxy->setParent(this);
     m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
+}
+
+void TAssignSpellActionDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_proxy.connectToGameSession(GameSession);
 }
 
 void TAssignPassiveAbilityActionDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)

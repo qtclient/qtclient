@@ -21,9 +21,6 @@ class TSessiondumpAsyncLoader;
 class TSessiondumpPlayer;
 class TSessiondumpProgressClockService;
 }
-namespace tutorial {
-class TSessiondumpHintsProcessor;
-}
 namespace protobuf::protocol {
 class GameserverMessage;
 }
@@ -40,7 +37,8 @@ namespace game {
 /// - CIP `dmp` dumps, played by a sessiondump::TSessiondumpPlayer over a
 /// TSessiondumpAsyncLoader; each published GameserverMessage goes straight into
 /// the session's protocol queue
-/// - Sibling `.hints` JSON via `TSessiondumpHintsProcessor` (tutorial cues)
+///
+/// The tutorial's hints belong to TTutorialSessiondumpGameSession.
 ///
 /// Live `--record` writes the decoded stream from the primary game connection.
 class TSessiondumpGameSession : public TGameSessionBase
@@ -52,8 +50,10 @@ public:
 
     /// Builds the session from a TSessiondumpGameSessionMetaInfo.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
-    /// Plays the meta info's sessiondump.
+    /// Plays the meta info's sessiondump (startSessiondump).
     void startSession() override;
+    /// Plays the sessiondump of a catalog entry.
+    virtual void startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry);
     /// True for the tutorial dump a new character watches before its live session.
     bool isTutorial() const;
 
@@ -90,8 +90,9 @@ protected Q_SLOTS:
     /// the containers and chat channels are cleared.
     void onRequestResetOfStorages();
     /// The process timer's tick: the player processes the dump up to its clock.
-    void onSessiondumpTimerElapsed();
-    void onSessiondumpFinished();
+    virtual void onSessiondumpTimerElapsed();
+    /// The player played the dump to its end; nothing for the base session.
+    virtual void onSessiondumpFinished();
 
 private:
     struct ReplayBody
@@ -108,11 +109,6 @@ private:
     void startReplay(std::vector<ReplayBody> packets);
     void pumpReplay();
     void stopReplay();
-    void startHintsForDump(const QString& dumpPath);
-    /// The tutorial's hints at the dump's progress: the dump pauses at the
-    /// next hint until the hints due by then are processed.
-    void processHintsTick();
-    void stopHints();
 
     std::shared_ptr<const TSessiondumpGameSessionMetaInfo> m_sessiondumpMetaInfo;
     QTimer m_replayTimer;
@@ -128,7 +124,6 @@ private:
     bool m_sawPendingStateEntered = false;
 
     std::vector<tibia::game::SoftHook> m_hooks;
-    std::unique_ptr<tutorial::TSessiondumpHintsProcessor> m_hints;
 };
 
 }

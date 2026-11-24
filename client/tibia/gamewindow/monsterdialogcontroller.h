@@ -190,6 +190,10 @@ private:
     QString m_selectedClassification;
     QString m_search;
     int m_selectedRace = 0;
+    /// The page a restored context asks for, used once by the next
+    /// classification / races summary (0: the selected entry's page).
+    int m_pendingClassificationPage = 0;
+    int m_pendingRacesPage = 0;
 
     /// The confirmation's action (CIP: the dialog's +0x58: 0 assign, 1 remove).
     int m_confirmAction = 0;

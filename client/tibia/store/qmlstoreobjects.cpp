@@ -22,11 +22,7 @@ QString englishNumber(const qint64 value)
     return QLocale(QLocale::English).toString(value);
 }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 /// "yyyy-MM-dd, HH:mm" (with seconds when asked) of a Unix time.
 QString dateString(const uint32_t time, const bool withSeconds)

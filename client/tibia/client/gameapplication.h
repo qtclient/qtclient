@@ -38,21 +38,30 @@ class TPreventCloseEventFilter;
 /// and the client options.
 ///
 /// Host: CipSoft's base is a QApplication; qtclient's tip has no Qt Widgets,
-/// so it is a QGuiApplication. The process setup CipSoft runs in its
-/// initialization (Quick Controls style, graphics API, render loop, scene
-/// graph atlas, surface format) runs in app::configureProcess before the
-/// application exists, the QML engine is app::createEngine's (handed over
-/// with setQmlEngine), the client settings are the process's QSettings and
-/// the translations are app::installTranslations.
+/// so it is a QGuiApplication. The QML engine is app::createEngine's (handed
+/// over with setQmlEngine), the client settings are the process's QSettings
+/// and the translations are app::installTranslations.
 class TGameApplicationBase : public QGuiApplication
 {
     Q_OBJECT
 public:
     /// CIP: the application on the command line, with the file system helper;
     /// Direct3D's vblank thread is turned off unless the environment says
-    /// otherwise. The client options come with TGameApplication::initialize.
+    /// otherwise. The client options come with initialize.
     TGameApplicationBase(int& argc, char** argv);
     ~TGameApplicationBase() override;
+
+    /// CIP: the process setup once the application exists and before any
+    /// window: Quick Controls style, the client options, the GPU blacklist,
+    /// the renderers the machine can run, the graphics API of the renderer
+    /// option (auto when it cannot run) and the active graphics engine, native
+    /// text rendering, the render loop, the scene graph atlas, the surface
+    /// format (vertical sync of the options, no profile) and the old QtQml
+    /// folder removed. Host: the application's name and the process log are
+    /// set up by main before the application (the pack's identity names the
+    /// data folders); the QML engine, the graphics resources and the QML
+    /// types follow in main (app::createEngine, app::mountGraphicsResources).
+    virtual void initialize();
 
     /// Host: the QML engine app::createEngine made; the application owns it.
     void setQmlEngine(std::unique_ptr<QQmlEngine> Engine);
@@ -100,7 +109,7 @@ public:
     /// timer, the application's own connections (quit, the held back close,
     /// the client options' save errors), the client options saved once, and
     /// the command line.
-    void initialize(const QUrl& LoginUrl);
+    void initialize() override;
     /// CIP: the default locale and clientwindow.qml in the QML engine; the
     /// window's content item is the `clientRootQmlObject` context property,
     /// its colour the client's dark blue; then the window is connected and

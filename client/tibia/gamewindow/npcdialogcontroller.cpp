@@ -30,11 +30,7 @@ namespace tibia::gamewindow {
 
 namespace {
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using ::tibia::shared::outfitColor;
 
 }
 

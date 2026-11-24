@@ -1119,17 +1119,17 @@ TShowImageDialogController* TShowImageDialogController::instance()
     return s_instance;
 }
 
-void TShowImageDialogController::showImages(const QStringList& paths, const QString& caption, const bool dragonHeader,
-                                            const bool crestHeader)
+void TShowImageDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    TData data;
-    data.showDragonHeader = dragonHeader;
-    data.showCrestHeader = crestHeader;
-    data.showCaption = !caption.isEmpty();
-    data.caption = caption;
-    for (const QString& path : paths)
-        data.images.push_back({ path, path });
-    setData(data);
+    if (!pGameAction || pGameAction->gameActionType() != input::EGameAction::OPEN_SHOW_IMAGE_DIALOG)
+        return;
+    if (const auto* action = input::gameActionAs<input::TGameActionOpenShowImageDialog>(pGameAction))
+        handleShowImageDialogGameAction(*action);
+}
+
+void TShowImageDialogController::handleShowImageDialogGameAction(const input::TGameActionOpenShowImageDialog& pGameAction)
+{
+    setData(pGameAction.data());
     if (!dialog()->item()) {
         dialog()->create();
         dialog()->show();
@@ -1541,70 +1541,5 @@ TTutorialOverlayMouseFilterController::~TTutorialOverlayMouseFilterController()
     m_item = nullptr;
 }
 
-TTwoFactorCodeEnterTextDialogController::TTwoFactorCodeEnterTextDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("TwoFactorTextEnterDialog.qml"), parent)
-{
-    m_maxInputLength = 6;
-}
-
-void TTwoFactorCodeEnterTextDialogController::onCancelClicked()
-{
-    dialog()->close();
-    Q_EMIT abort();
-}
-
-/// A code is passed on; an empty one aborts.
-void TTwoFactorCodeEnterTextDialogController::onOkClicked(const QString& EnteredText)
-{
-    dialog()->close();
-    if (!EnteredText.isEmpty()) {
-        m_enteredText = EnteredText;
-        Q_EMIT textEntered(EnteredText);
-        return;
-    }
-    m_enteredText.clear();
-    Q_EMIT abort();
-}
-
-void TTwoFactorCodeEnterTextDialogController::onButtonClicked()
-{
-    Q_EMIT buttonClicked();
-}
-
-void TTwoFactorCodeEnterTextDialogController::onControllerFinished()
-{
-    dialog()->close();
-    Q_EMIT dialogClosed();
-}
-
-bool TTwoFactorCodeEnterTextDialogController::getIsTrustedDevice()
-{
-    return m_trustedDevice;
-}
-
-void TTwoFactorCodeEnterTextDialogController::setIsTrustedDevice(const bool TrustedDevice)
-{
-    m_trustedDevice = TrustedDevice;
-}
-
-void TTwoFactorCodeEnterTextDialogController::setTwoFactorMethod(const ETwoFactorMethod Method)
-{
-    m_twoFactorMethod = Method;
-}
-
-TTwoFactorCodeEnterTextDialogController::ETwoFactorMethod TTwoFactorCodeEnterTextDialogController::getTwoFactorMethod()
-{
-    return m_twoFactorMethod;
-}
-
-QString TTwoFactorCodeEnterTextDialogController::getAdditionalInfoText()
-{
-    return m_additionalInfoText;
-}
-
-uint TTwoFactorCodeEnterTextDialogController::getMaxInputLength()
-{
-    return m_maxInputLength;
-}
 
 } // namespace tibia::gamewindow

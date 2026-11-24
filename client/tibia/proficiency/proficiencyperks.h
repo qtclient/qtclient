@@ -25,6 +25,17 @@ QString perkAugmentTypeName(const TProficiencyPerk& perk);
 /// The signed value text of a spell augment.
 QString perkAugmentValue(const TProficiencyPerk& perk);
 
+/// How the combat stats and the perk lists show a spell augment: the spell's name,
+/// the augment type's name, the value text and whether the spell is a rune spell.
+struct TAugmentTexts
+{
+    QString spellName;
+    QString typeName;
+    QString value;
+    bool runeSpell = false;
+};
+TAugmentTexts augmentTexts(const TProficiencyPerk& perk);
+
 /// One perk of a level column (CIP: TQMLProficiencyPerk, vtable , 0x50 bytes).
 /// No Q_OBJECT: a QList<QObject*> delegate model only maps the most-derived
 /// metaobject's own properties to required delegate properties.

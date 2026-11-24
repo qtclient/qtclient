@@ -119,3 +119,26 @@ TEST(HotkeyOptions, NoSetsGiveTheVocationPresetsWithKnightCurrent)
     EXPECT_EQ(data.currentHotkeySetName, QStringLiteral("Knight"));
     EXPECT_TRUE(data.autoSwitchHotkeyPreset);
 }
+
+TEST(HotkeyOptions, SetHotkeysMakesTheSetAndReplacesBothChatModes)
+{
+    THotkeyOptionsData data;
+    THotkeySet existing;
+    existing.chatOff = { THotkeyBinding{ QKeySequence(QStringLiteral("F1")), TActionSetting::fromJson(action("Look")) } };
+    existing.mappings[{ 1, 2 }] = TActionSetting::fromJson(action("Use"));
+    data.addSet(QStringLiteral("A"), existing);
+
+    const std::vector<THotkeyBinding> off{ THotkeyBinding{ QKeySequence(QStringLiteral("F2")), TActionSetting::fromJson(action("Attack")) } };
+    const std::vector<THotkeyBinding> on{ THotkeyBinding{ QKeySequence(QStringLiteral("F3")), TActionSetting::fromJson(action("Follow")) } };
+    data.setHotkeys(QStringLiteral("A"), off, on);
+    data.setHotkeys(QStringLiteral("B"), off, {});
+
+    ASSERT_NE(data.set(QStringLiteral("A")), nullptr);
+    EXPECT_EQ(data.set(QStringLiteral("A"))->chatOff, off);
+    EXPECT_EQ(data.set(QStringLiteral("A"))->chatOn, on);
+    // The action bar buttons stay.
+    EXPECT_EQ(data.set(QStringLiteral("A"))->mappings.size(), 1u);
+    ASSERT_NE(data.set(QStringLiteral("B")), nullptr);
+    EXPECT_EQ(data.set(QStringLiteral("B"))->chatOff, off);
+    EXPECT_TRUE(data.set(QStringLiteral("B"))->chatOn.empty());
+}

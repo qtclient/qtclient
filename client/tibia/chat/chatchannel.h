@@ -294,9 +294,6 @@ public:
     /// The NPC dialog's own line; prefer addOwnNpcChannelEntry.
     void addNpcEntry(const QColor& color, const QString& text, const QString& name);
 
-    /// Host: the UI Sounds chat options the arrived sounds follow (CIP's
-    /// sound service reads them).
-    void setSoundOptions(const QJsonObject& options);
     void setOwnName(const QString& name) { m_ownName = name.toLower(); }
     const QString& ownName() const { return m_ownName; }
 
@@ -326,15 +323,8 @@ private:
     /// Lower case.
     QString m_ownName;
 
-    /// The game action that plays a chat sound (CIP SOUND_TRIGGER), when the
-    /// UI Sounds options allow it.
-    void publishChatSound(int sound, bool categoryEnabled);
-    bool m_chatSoundsEnabled = true;
-    bool m_partyMessageSounds = true;
-    bool m_guildMessageSounds = true;
-    bool m_privateMessageSounds = true;
-    bool m_npcMessageSounds = true;
-    bool m_teamFinderMessageSounds = true;
+    /// The game action that plays a chat sound (CIP SOUND_TRIGGER) for a message of `channel`.
+    void publishChatSound(int sound, const TChatChannelIdentifier& channel);
 };
 
 /// CIP's chat message mode of a protocol mode (the same numbers; 41 and

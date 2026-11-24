@@ -8,11 +8,16 @@
 #include <QPointer>
 #include <QQmlComponent>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
 namespace chat {
-class TTextStorage;
+class TTextOverlayRenderProvider;
+struct TTextOverlay;
+}
+namespace worldmap {
+class TWorldMapSubfieldCoordinate;
 }
 }
 
@@ -54,8 +59,9 @@ public:
     explicit TSpeechBubbleOverlayQuickItem(QQuickItem* parent = nullptr);
     ~TSpeechBubbleOverlayQuickItem() override;
 
-    /// Shows `texts` over `provider`'s world, refreshed every frame.
-    void setSources(TWorldMapRenderProvider* provider, const chat::TTextStorage* texts);
+    /// Shows the session's text overlays over `provider`'s world, refreshed
+    /// every frame.
+    void setSources(TWorldMapRenderProvider* provider, std::shared_ptr<chat::TTextOverlayRenderProvider> textOverlays);
 
     /// Extra bottom inset for the status line (product automation / FABs band).
     void setStatusBottomMargin(int margin);
@@ -72,14 +78,19 @@ private:
 
     void setup();
     TSpeechBubbleController* createController();
+    /// The on-screen lines that changed since the last frame.
+    void updateScreenOverlays();
     void updateNpcBubbles();
     void updateCreatureBubbles();
+    /// Shows `overlays` in `controllers` (made as needed), each above its
+    /// anchor; the rest are hidden.
+    void updateWorldBubbles(std::vector<TSpeechBubbleController*>& controllers, const std::vector<chat::TTextOverlay>& overlays);
     void layout();
-    QPointF anchorOf(const Position& field) const;
-    void placeAbove(TSpeechBubbleController& controller, const Position& field) const;
+    QPointF anchorOf(const worldmap::TWorldMapSubfieldCoordinate& anchor) const;
+    void placeAbove(TSpeechBubbleController& controller, const worldmap::TWorldMapSubfieldCoordinate& anchor) const;
 
     QPointer<TWorldMapRenderProvider> m_provider;
-    const chat::TTextStorage* m_texts = nullptr;
+    std::shared_ptr<chat::TTextOverlayRenderProvider> m_textOverlays;
     QMetaObject::Connection m_frameConnection;
     QQmlComponent* m_component = nullptr;
     /// CIP's overlay+0x20 and +0x24.

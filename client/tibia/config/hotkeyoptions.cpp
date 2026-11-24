@@ -240,6 +240,14 @@ void THotkeyOptionsData::setBindings(const QString& setName, const bool chatOn, 
         (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff) = bindings;
 }
 
+void THotkeyOptionsData::setHotkeys(const QString& setName, const std::vector<THotkeyBinding>& chatOffBindings,
+                                    const std::vector<THotkeyBinding>& chatOnBindings)
+{
+    THotkeySet& hotkeySet = hotkeySets[setName];
+    hotkeySet.chatOff = chatOffBindings;
+    hotkeySet.chatOn = chatOnBindings;
+}
+
 void THotkeyOptionsData::addGlobalShortcuts(const bool rotateWithCtrl, const bool rotateWithShift, const bool rotateWithAlt)
 {
     static const QStringList movementActions = {

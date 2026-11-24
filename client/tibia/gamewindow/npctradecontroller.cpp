@@ -318,7 +318,7 @@ QString TNPCTradeController::inventoryBalance() const
 
 QString TNPCTradeController::totalBalance() const
 {
-    return formatNumberVariants(m_storage ? m_storage->money() : 0);
+    return formatNumberVariants(availableCurrencyAmount());
 }
 
 bool TNPCTradeController::npcIsBuying() const
@@ -412,7 +412,7 @@ int TNPCTradeController::maximumAmount(const TNPCTradeGood* good) const
         return 0;
     if (m_storage->direction() == ENPCTradeDirection::SELL)
         return trade::maximumSellAmount(*good, m_storage->ownedCount(*good, m_options.sellEquipped));
-    return trade::maximumBuyAmount(*good, m_storage->money(), m_storage->freeCapacity(), m_options.ignoreCapacity,
+    return trade::maximumBuyAmount(*good, availableCurrencyAmount(), m_storage->freeCapacity(), m_options.ignoreCapacity,
                                    m_options.buyWithBackpacks && !m_storage->hasCurrency());
 }
 
@@ -454,9 +454,24 @@ void TNPCTradeController::refresh()
     Q_EMIT buyOrSellPriceChanged();
 }
 
+uint64_t TNPCTradeController::availableCurrencyAmount() const
+{
+    if (!m_storage)
+        return 0;
+    if (m_storage->currencyIsItem()) {
+        // A liquid currency object is never counted.
+        const TAppearanceTypePtr& type = tibia::game::thingType(m_storage->currencyTypeId(), ThingCategoryItem);
+        if (type && (type->isFluidContainer() || type->isSplash()))
+            return 0;
+    }
+    // The currency objects the player carries, the quest flag balance of a
+    // named currency (never below 0), or the player's gold.
+    return m_storage->money();
+}
+
 void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChagned()
 {
-    const uint64_t money = m_storage ? m_storage->money() : 0;
+    const uint64_t money = availableCurrencyAmount();
     if (money == m_money)
         return;
     m_money = money;

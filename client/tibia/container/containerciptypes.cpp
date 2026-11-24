@@ -41,7 +41,6 @@ namespace tibia::container {
 namespace {
 struct CipTypedKeep {
     TContainer tContainer;
-    TContainerRenderProvider tContainerRenderProvider;
 };
 CipTypedKeep& typedKeep()
 {
@@ -592,10 +591,17 @@ void TContainerStorage::applyView(const TContainerID id, const uint32_t filterCa
     emitUpdated(id, false);
 }
 
-std::optional<TContainerProperties> TContainerRenderProvider::containerProperties(const TContainerID id,
-                                                                                 const bool resetScrollView)
+TContainerRenderProvider::TContainerRenderProvider(std::shared_ptr<TContainerStorage> containerStorage,
+                                                   config::TClientOptions* clientOptions)
+    : m_containerStorage(std::move(containerStorage))
+    , m_clientOptions(clientOptions)
 {
-    const TContainerStorage* storage = TContainerStorage::instance();
+}
+
+std::optional<TContainerProperties> TContainerRenderProvider::containerProperties(const TContainerID id,
+                                                                                 const bool resetScrollView) const
+{
+    const TContainerStorage* storage = m_containerStorage.get();
     const TStoredContainer* row = storage ? storage->containerAt(id) : nullptr;
     // A container that is not open shows as "not found", without slots.
     TContainerProperties properties;

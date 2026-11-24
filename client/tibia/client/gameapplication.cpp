@@ -4,6 +4,7 @@
 
 #include "app/bootstrap.h"
 #include "app/clientoptions.h"
+#include "app/launcherenv.h"
 #include "client/gameclient.h"
 #include "client/preventcloseeventfilter.h"
 #include "config/clientoptions.h"
@@ -23,6 +24,7 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
 #include <QLocale>
 #include <QNetworkAccessManager>
@@ -31,12 +33,15 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QScreen>
+#include <QSurfaceFormat>
 #include <QSysInfo>
 #include <QVariant>
 
 #include <google/protobuf/stubs/common.h>
 
+#include <algorithm>
 #include <stdexcept>
 
 extern "C" const char qtclient_host_build_id[];
@@ -56,6 +61,76 @@ TGameApplicationBase::~TGameApplicationBase()
     // Host: the QML engine goes with the application (CipSoft hands it to
     // deleteLater); the protobuf library is shut down.
     google::protobuf::ShutdownProtobufLibrary();
+}
+
+void TGameApplicationBase::initialize()
+{
+    // Host: CipSoft names the application Tibia / CipSoft GmbH / tibia.com
+    // here and starts the process log; main did both before the application
+    // (the pack's identity names the data folders the options are read from).
+    qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
+    // Host: qtclient's client options are the process-wide object.
+    m_pClientOptions = config::TClientOptions::instance();
+    // Host: the JSON view of the same options (the pack's HD mode is no CIP option).
+    const app::ClientOptions options = app::ClientOptions::load();
+
+    app::probeSupportedRenderers();
+    qputenv("QT_OPENGL_BUGLIST",
+            m_pTibiaFileSystemHelper->getConfigFilePath(QStringLiteral("gpublacklist.json")).toLocal8Bit());
+
+    // The renderer option, auto when this machine cannot run it. Host: a
+    // renderer on the command line (smoke runs) passes when the platform
+    // has its graphics API; the browser's auto is WebGL.
+    int renderer = options.rendererIndex();
+    if (!app::isRendererSupported(renderer))
+        renderer = 0;
+    const int rendererOverride = app::rendererFromCommandLine();
+    if (rendererOverride >= 0)
+        renderer = tibia::platform::supportsGraphicsApi(app::graphicsApiForRenderer(rendererOverride)) ? rendererOverride : 0;
+    renderer = tibia::platform::autoRenderer(renderer);
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::Unknown);
+    const QSGRendererInterface::GraphicsApi api = app::graphicsApiForRenderer(renderer);
+    if (api == QSGRendererInterface::Vulkan || api == QSGRendererInterface::Metal)
+        qputenv("QT_MTL_NO_TRANSACTION", "1");
+    if (api != QSGRendererInterface::Unknown)
+        QQuickWindow::setGraphicsApi(api);
+    app::setActiveGraphicsEngine(renderer);
+    QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
+
+    // OpenGL always renders on the basic loop; the others on the client
+    // settings' loop.
+    const QString renderLoop = app::activeGraphicsEngine() == 8
+        ? QStringLiteral("basic")
+        : config::clientSettingString(QStringLiteral("GRAPHICS"), QStringLiteral("renderLoopType"), QStringLiteral("threaded"));
+    qputenv("QSG_RENDER_LOOP", renderLoop.toLocal8Bit());
+    if (qEnvironmentVariable("QT_QPA_UPDATE_IDLE_TIME").isEmpty())
+        qputenv("QT_QPA_UPDATE_IDLE_TIME", "4");
+
+    // The scene graph atlas from the client settings (at least 512 a side,
+    // a smaller stored side is written back); textures up to an eighth of
+    // the longer side, at most 256, go into it. Host: the pack's HD mode
+    // (option modHdMode) raises the defaults and the cap so xBRZ 4x plates
+    // stay in the atlas.
+    const bool hdMode = options.options().value(QLatin1String("modHdMode")).toBool(false);
+    const QString graphics = QStringLiteral("GRAPHICS");
+    const qint64 atlasDefault = hdMode ? 8192 : 4096;
+    const int atlasWidth = int(config::clientSettingAtLeast(graphics, QStringLiteral("qsgAtlasWidth"), atlasDefault, 512));
+    const int atlasHeight = int(config::clientSettingAtLeast(graphics, QStringLiteral("qsgAtlasHeight"), atlasDefault, 512));
+    const int sizeLimit = std::min(std::max(atlasWidth, atlasHeight) >> 3, hdMode ? 1024 : 256);
+    qputenv("QSG_ATLAS_WIDTH", QByteArray::number(atlasWidth));
+    qputenv("QSG_ATLAS_HEIGHT", QByteArray::number(atlasHeight));
+    qputenv("QSG_ATLAS_SIZE_LIMIT", QByteArray::number(sizeLimit + 1));
+
+    qputenv("QML_XHR_ALLOW_FILE_READ", "1");
+
+    QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+    format.setSwapInterval(options.vSyncEnabled() ? 1 : 0);
+    QSurfaceFormat::setDefaultFormat(format);
+    format = QSurfaceFormat::defaultFormat();
+    format.setProfile(QSurfaceFormat::NoProfile);
+    QSurfaceFormat::setDefaultFormat(format);
+
+    app::removeOldQtQmlFolder();
 }
 
 void TGameApplicationBase::registerGraphicsResources()
@@ -94,13 +169,13 @@ TGameClient* TGameApplication::gameClient() const
     return m_pGameClient.data();
 }
 
-void TGameApplication::initialize(const QUrl& LoginUrl)
+void TGameApplication::initialize()
 {
+    TGameApplicationBase::initialize();
     m_firstStart = !QFile::exists(m_pTibiaFileSystemHelper->getConfigFilePath(QStringLiteral("clientoptions.json")));
-    // CIP: the base setup makes the client options. Host: the process setup
-    // that reads them ran before the application (app::configureProcess).
-    m_pClientOptions = config::TClientOptions::instance();
-    setUpCrashHandler(LoginUrl);
+    // Host: CipSoft's crash reports name the login host of the client
+    // settings; qtclient's login comes from the launcher's environment.
+    setUpCrashHandler(app::LauncherEnv::load(QDir::currentPath()).loginUrl());
     m_clientWindowChangedReactionTimer.setSingleShot(true);
     m_clientWindowChangedReactionTimer.setInterval(50);
     connect(&m_clientWindowChangedReactionTimer, &QTimer::timeout, this, &TGameApplication::onDelayedCliendWindowChanged);
@@ -310,8 +385,7 @@ void TGameApplication::initializeCrashHandler(const QString& dumpPath)
     crashHandler.initialize(QStringLiteral("Tibia Client"), version, dumpPath);
     crashHandler.setAnnotation(QStringLiteral("HardwareID"), hardwareId());
     crashHandler.setAnnotation(QStringLiteral("OperatingSystem"), QSysInfo::prettyProductName());
-    // Host: CipSoft annotates its active graphics engine; qtclient's is the renderer option.
-    crashHandler.setAnnotation(QStringLiteral("EngineID"), QString::number(app::ClientOptions::load().rendererIndex()));
+    crashHandler.setAnnotation(QStringLiteral("EngineID"), QString::number(app::activeGraphicsEngine()));
 }
 
 void TGameApplication::setCrashReportLoginHost(const QString& loginHost)

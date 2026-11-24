@@ -572,10 +572,15 @@ void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, con
 
 input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t typeId) const
 {
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    if (!provider)
+        return {};
     // The detail list's type is the searched one, with its tier.
     if (m_detailList && m_detailList->typeId() == typeId)
-        return container::TContainerGameActionProvider::depotSearchTypeActions(typeId, m_detailList->tier());
-    return container::TContainerGameActionProvider::typeActions(typeId);
+        return provider->depotSearchTypeActions(typeId, m_detailList->tier());
+    return provider->typeActions(typeId);
 }
 
 void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId, const int, const int MouseButtonRaw,
@@ -632,8 +637,11 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
         storageLocation == Inbox ? m_detailList->inboxObjects() : m_detailList->depotObjects();
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
-    return container::TContainerGameActionProvider::depotSearchSlotActions(storageLocation == Inbox, slotId,
-                                                                           objects[static_cast<size_t>(slotId)]);
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    return provider ? provider->depotSearchSlotActions(storageLocation == Inbox, slotId, objects[static_cast<size_t>(slotId)])
+                    : input::TGameActionList{};
 }
 
 void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const int SlotIDRaw, const int MouseButtonRaw,

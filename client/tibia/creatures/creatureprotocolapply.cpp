@@ -23,9 +23,6 @@ namespace tibia::creatures {
 
 namespace {
 
-constexpr uint32_t NewCreature = 0x61;
-constexpr uint32_t KnownCreature = 0x62;
-
 /// The NPC category shown for the protocol's creature icon; other values show none.
 uint8_t npcCategory(const uint32_t icon)
 {
@@ -90,6 +87,37 @@ Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& look, const 
     return outfit;
 }
 
+Outfit outfitFromProtocol(const protobuf::protocol::Outfit& look, const protobuf::protocol::Outfit* mount)
+{
+    Outfit outfit;
+    if (uint16_t lookType = static_cast<uint16_t>(look.look_type()); lookType != 0) {
+        outfit.setCategory(ThingCategoryCreature);
+        if (!game::isValidDatId(lookType, ThingCategoryCreature))
+            lookType = 0;
+        outfit.setId(lookType);
+        outfit.setHead(static_cast<uint8_t>(look.colors().head()));
+        outfit.setBody(static_cast<uint8_t>(look.colors().body()));
+        outfit.setLegs(static_cast<uint8_t>(look.colors().legs()));
+        outfit.setFeet(static_cast<uint8_t>(look.colors().feet()));
+        outfit.setAddons(static_cast<uint8_t>(look.addons()));
+    } else if (uint16_t item = static_cast<uint16_t>(look.object_type()); item == 0) {
+        outfit.setCategory(ThingCategoryEffect);
+        outfit.setAuxId(13);
+    } else {
+        if (!game::isValidDatId(item, ThingCategoryItem))
+            item = 0;
+        outfit.setCategory(ThingCategoryItem);
+        outfit.setAuxId(item);
+    }
+    if (mount) {
+        if (mount->look_type() != 0)
+            outfit.setMountColors(static_cast<uint8_t>(mount->colors().head()), static_cast<uint8_t>(mount->colors().body()),
+                                  static_cast<uint8_t>(mount->colors().legs()), static_cast<uint8_t>(mount->colors().feet()));
+        outfit.setMount(static_cast<uint16_t>(mount->look_type()));
+    }
+    return outfit;
+}
+
 void syncFieldStackFor(const uint32_t creatureId)
 {
     TCreatureStorage* storage = TCreatureStorage::instance();
@@ -101,7 +129,7 @@ void syncFieldStackFor(const uint32_t creatureId)
 }
 
 bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature,
-                                 const protobuf::protocol::ProtocolCreature& c)
+                                 const protobuf::protocol::CreatureData& c)
 {
     TCreature& target = *creature;
     if (c.has_name())
@@ -148,16 +176,17 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
         }
         target.setVocation(*vocation);
     }
-    if (c.has_update_icons()) {
+    if (c.update_icons()) {
         target.clearIcons();
         for (const auto& icon : c.icons()) {
-            // A player shows only player icons.
-            const uint32_t kind = icon.category();
+            // Category 0 is a player icon, 1 a creature icon; a player shows only
+            // player icons.
+            const uint32_t kind = icon.has_special_icon() ? 1 : icon.has_icon() ? 0 : 2;
             if (kind > 1 || (kind == 1 && target.isPlayer()))
                 continue;
             // An unknown icon abandons the rest of the message.
             const std::optional<uint8_t> id = kind == 0 ? playerIconFromProtocol(icon.icon())
-                                                        : creatureIconFromProtocol(icon.icon());
+                                                        : creatureIconFromProtocol(icon.special_icon());
             if (!id) {
                 return false;
             }
@@ -180,7 +209,7 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
     return true;
 }
 
-uint32_t applyProtocolCreature(const protobuf::protocol::ProtocolCreature& c)
+uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
 {
     TCreatureStorage* storage = TCreatureStorage::instance();
     if (!storage)
@@ -188,13 +217,13 @@ uint32_t applyProtocolCreature(const protobuf::protocol::ProtocolCreature& c)
     const uint32_t id = c.id();
     // Host: before the login named it (a replay), the session takes its own id
     // from the own character's creature.
-    if (game::hasLocalPlayer() && storage->playerID() == 0 && c.kind() == NewCreature
+    if (game::hasLocalPlayer() && storage->playerID() == 0 && c.has_name()
         && c.type() == Proto::CreatureTypePlayer && c.name() == game::localPlayerName())
         storage->setPlayerID(id);
 
-    // A new creature replaces the one the message names; known and turned
-    // creatures (and a new one naming itself) must already be stored.
-    const uint32_t removeId = c.kind() == NewCreature ? c.remove_id() : id;
+    // A new creature replaces the one the message names; a creature naming
+    // itself (known, turned, or new under its own id) must already be stored.
+    const uint32_t removeId = c.remove_id();
     const bool created = removeId != id;
     std::shared_ptr<TCreature> creature;
     if (!created) {

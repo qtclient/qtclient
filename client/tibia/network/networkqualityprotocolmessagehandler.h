@@ -25,6 +25,14 @@ namespace network {
 /// The sequence number of a game server packet.
 using TPacketSequenceNumber = uint32_t;
 
+/// The connection a server message came on, from its meta data's connection
+/// value; throws std::runtime_error("unhandled enum value") for any other value.
+EConnectionType connectionTypeFromProtocol(int Value);
+/// The connection value of a connection (a server message's meta data, a
+/// connection ping back); throws std::runtime_error("unhandled enum value")
+/// for any other connection.
+int connectionTypeToProtocol(EConnectionType Type);
+
 /// The session's round trip time: measured from the last ping's answer, or,
 /// while a ping is unanswered for more than a second, the time it has been
 /// waiting (rounded down to half seconds).

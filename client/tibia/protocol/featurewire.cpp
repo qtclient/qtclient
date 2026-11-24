@@ -3178,35 +3178,52 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
     }
     case 118: {
         auto* m = msg.MutableExtension(GameserverMessageInspectionList::gameserver_message_inspection_list);
-        uint8_t window = 0, type = 0, count = 0;
-        uint32_t creature = 0;
-        if (!r.u8(window) || !r.u8(type) || !r.u32(creature) || !r.u8(count))
+        uint8_t listType = 0, clientWindow = 0, count = 0;
+        uint32_t playerId = 0;
+        if (!r.u8(listType) || !r.u8(clientWindow) || !r.u32(playerId) || !r.u8(count))
             return 0;
-        m->set_window_type(window);
-        m->set_inspection_type(type);
-        m->set_creature_id(creature);
+        m->set_list_type(listType);
+        m->set_client_window(clientWindow);
+        m->set_player_id(playerId);
+        const auto readDetails = [&r](InspectObjectInformation* object) {
+            uint8_t details = 0;
+            if (!r.u8(details))
+                return false;
+            for (uint8_t k = 0; k < details; ++k) {
+                KeyValuePair* detail = object->add_details();
+                if (!r.string(*detail->mutable_key()) || !r.string(*detail->mutable_value()))
+                    return false;
+            }
+            return true;
+        };
         for (uint8_t i = 0; i < count; ++i) {
-            ProtocolInspectedObject* object = m->add_objects();
-            if (window == 1) { // character: the inventory slot
+            InspectObjectInformation* object = m->add_objects();
+            if (listType == 1) { // a player's list: the inventory slot
                 uint8_t slot = 0;
                 if (!r.u8(slot))
                     return 0;
-                object->set_slot(slot);
+                object->set_inventory_slot(slot);
             }
-            uint8_t icons = 0;
-            if (!r.string(*object->mutable_name()) || !readInventoryItem(r, object->mutable_item()) || !r.u8(icons))
+            uint8_t slots = 0;
+            if (!r.string(*object->mutable_name()) || !readInventoryItem(r, object->mutable_object()) || !r.u8(slots))
                 return 0;
-            for (uint8_t k = 0; k < icons; ++k) {
-                uint16_t icon = 0;
-                if (!r.u16(icon))
+            for (uint8_t k = 0; k < slots; ++k) {
+                uint16_t slot = 0;
+                if (!r.u16(slot))
                     return 0;
-                object->add_imbuement_icons(icon);
+                object->add_imbuement_slots(slot);
             }
-            if (!readInspectionDetails(r, object->mutable_details()))
+            if (!readDetails(object))
                 return 0;
         }
-        if (window == 1 && (!r.string(*m->mutable_player_name()) || !readInspectionDetails(r, m->mutable_player_details())))
-            return 0;
+        // A player's list ends with the player: name and details as one more
+        // object. CipSoft reads the player's outfit after the name; the server
+        // does not send it to this client.
+        if (listType == 1) {
+            InspectObjectInformation* player = m->add_objects();
+            if (!r.string(*player->mutable_name()) || !readDetails(player))
+                return 0;
+        }
         return r.i;
     }
     case 128: {

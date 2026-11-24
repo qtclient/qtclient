@@ -1,6 +1,9 @@
 #include "spells/spellinfostorage.h"
 #include "game/gameciptypes.h"
 #include "game/inspectedobject.h"
+#include "appearances/appearanceinstance.h"
+#include "gamewindow/inspectobjectdata.h"
+#include "protocol/objectdata.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include <utility>
 #include <algorithm>
@@ -102,9 +105,13 @@ using ::tibia::protobuf::protocol::GameclientMessageEnterWorld;
 } // namespace
 
 TGameProtocolMessageHandler::TGameProtocolMessageHandler(
-    std::shared_ptr<tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator, QObject* parent)
+    std::shared_ptr<tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+    std::shared_ptr<tibia::shared::IClockService> ClockService, QObject* parent)
     : cip::tibia::game::TGameProtocolMessageHandler(parent)
     , m_speedCalculator(std::move(SpeedCalculator))
+    , m_appearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_clockService(std::move(ClockService))
 {
 }
 
@@ -196,44 +203,55 @@ void TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage(
     Q_EMIT requestShowMultiOfflineTrainingDialog();
 }
 
-void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMessageInspectionList& m)
+int checkedInventorySlot(const int Slot)
 {
-    const auto details = [](const auto& list) { return inspectionDetails(list); };
-    const auto fill = [](auto& dest, const auto& item) { fillInspectedAppearance(dest, item); };
-    if (m.window_type() == 1) {
-        CyclopediaCharacterInspection data;
-        data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
-        data.creatureId = m.creature_id();
-        for (const auto& o : m.objects()) {
-            InspectionInventoryItem entry;
-            entry.slot = static_cast<uint8_t>(o.slot());
-            entry.name = o.name();
-            fill(entry, o.item());
-            entry.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
-            entry.descriptions = details(o.details());
-            data.inventoryItems.push_back(std::move(entry));
+    if (static_cast<unsigned>(Slot - 1) > 12)
+        throw std::runtime_error("unhandled enum value");
+    return Slot;
+}
+
+void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMessageInspectionList& InspectionListMessage)
+{
+    const GameserverMessageInspectionList& m = InspectionListMessage;
+    std::vector<gamewindow::TInspectObjectData> list;
+    for (const auto& information : m.objects()) {
+        std::vector<std::pair<QString, QString>> details;
+        for (const auto& detail : information.details())
+            details.emplace_back(QString::fromStdString(detail.key()), QString::fromStdString(detail.value()));
+        // The entry's look: its object (one with a type), else its outfit.
+        appearances::TAppearanceInstancePtr appearance;
+        // CipSoft's factory also takes the clock's now as the object's
+        // animation start; qtclient's starts object animations at time 0.
+        if (information.has_object() && information.object().item_id() != 0) {
+            appearance = m_appearanceInstanceFactory->createObject(
+                protocol::TObjectData::fromProtocolInventoryItem(information.object()));
+        } else if (information.has_outfit()) {
+            // Looking south.
+            appearance = m_appearanceInstanceFactory->fromOutfit(
+                creatures::outfitFromProtocol(information.outfit(), nullptr), nullptr);
         }
-        data.playerName = m.player_name();
-        // The server sends no outfit; the inspected creature shows its current one.
-        if (auto* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const auto row = storage->creatureAt(m.creature_id()))
-                data.outfit = row->outfit();
+        // A cumulative object's count shows when it is more than one.
+        QString amountText;
+        if (const auto* cumulative = dynamic_cast<const appearances::TCumulativeObjectAppearanceInstance*>(appearance.get())) {
+            if (static_cast<uint8_t>(cumulative->count()) > 1)
+                amountText = QString::number(static_cast<uint8_t>(cumulative->count()));
         }
-        data.playerDescriptions = details(m.player_details());
-        Q_EMIT requestOpenInspectPlayerDialog(data);
-    } else if (m.objects_size() > 0) {
-        const auto& o = m.objects(0);
-        ItemInspectionData data;
-        data.inspectionType = static_cast<uint8_t>(m.inspection_type());
-        data.creatureId = m.creature_id();
-        data.name = o.name();
-        fill(data, o.item());
-        data.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
-        data.descriptions = details(o.details());
-        Q_EMIT inspectObjectDataReceived(data);
+        int inventorySlot = gamewindow::TInspectObjectData::NoInventorySlot;
+        if (information.has_inventory_slot())
+            inventorySlot = checkedInventorySlot(static_cast<int>(information.inventory_slot()));
+        const std::vector<uint32_t> imbuementSlots(information.imbuement_slots().begin(), information.imbuement_slots().end());
+        list.emplace_back(QString::fromStdString(information.name()), inventorySlot, details, appearance, amountText,
+                          imbuementSlots);
+    }
+    if (list.empty())
+        return;
+    if (m.list_type() == 0) {
+        Q_EMIT inspectObjectDataReceived(list, static_cast<EInspectionListWindow>(m.client_window()));
         // Host: the item info dialog still follows the notify hook (its
         // connector is not ported).
-        tibia::game::processItemDetail(data);
+        tibia::game::processItemDetail(toItemInspectionData(list, static_cast<int>(m.client_window())));
+    } else if (m.client_window() == 0) {
+        Q_EMIT requestOpenInspectPlayerDialog(list, m.has_player_id() ? m.player_id() : 0xffffffffu);
     }
 }
 
@@ -529,9 +547,16 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
             storage->syncLocalPlayerStatsFromMap();
         break;
     case tibia::client::TYPES_MONK_VIRTUE: {
+        // The virtue spells become the spell info storage's active spells.
         std::vector<uint16_t> spellIds;
         for (const uint32_t id : m.virtue_spell_ids())
             spellIds.push_back(static_cast<uint16_t>(id));
+        if (m_spellInfoStorage) {
+            m_spellInfoStorage->clearUnlockedSpells();
+            m_spellInfoStorage->setUnlockedSpells(spellIds);
+            Q_EMIT m_spellInfoStorage->activeSpellsChanged();
+        }
+        // Host: the action bar's virtue borders still follow the notify hook.
         tibia::game::notify("onVirtuesYellowBorder", spellIds);
         break;
     }

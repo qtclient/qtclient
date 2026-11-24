@@ -48,6 +48,8 @@ public:
         QString name;
         bool firstAddOn = false;
         bool secondAddOn = false;
+        /// TibiaEnums.EOutfitSource; the dialog leaves it standard (0).
+        int source = 0;
         /// TibiaEnums.EOutfitType; the server's mode byte.
         int type = 0;
         bool canBeColorized = false;
@@ -126,6 +128,9 @@ class TSelectOutfitDialogController final : public TDialogController<cip::tibia:
 public:
     explicit TSelectOutfitDialogController(QObject* parent = nullptr);
     ~TSelectOutfitDialogController() override;
+
+    /// CIP v28: the dialog's item goes.
+    void destroyDialog() { dialog()->destroy(); }
 
     /// Follows the session's player handler and character configuration: closes
     /// the rename dialog, opens the dialog on showSelectOutfitDialog and reloads

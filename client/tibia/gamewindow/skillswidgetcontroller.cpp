@@ -106,16 +106,18 @@ void TSkillsWidgetController::createEntries()
     m_skillsModel.clear();
     m_skillsModel.reserve(static_cast<qsizetype>(m_entries.size()));
     for (const auto& [type, separator] : m_entries) {
-        auto* data = new game::TSkillsWidgetEntryData(this);
+        // The row of the type (its name, its bar, the separator below it); a
+        // skill row's bar then follows the widget's hidden bars.
+        auto* data = new game::TSkillsWidgetEntryData(type, separator, this);
         m_skillsModel.append(data);
-        game::SkillsWidgetEntry initial;
-        initial.separatorType = separator;
         if (separator == Separator::NONE) {
+            game::SkillsWidgetEntry initial;
+            initial.caption = data->caption();
+            initial.separatorType = separator;
             initial.progressBarVisible = !isHidden(m_widgetOptions, type);
             data->assign(initial);
             m_entriesByType[type] = data;
         } else {
-            data->assign(initial);
             m_separatorEntries.emplace_back(type, data);
         }
     }

@@ -107,15 +107,16 @@ void TExivaOptionsDialogController::closeButtonClicked()
     closeDialog();
 }
 
-/// The dialog's flags and the edited whitelists, one name per line, become
-/// the exiva options update.
+/// The dialog's flags and the edited whitelists, one name per line, go to the
+/// router as an exiva options update.
 void TExivaOptionsDialogController::applyButtonClicked(const QString& CharacterWhitelistString, const QString& GuildWhitelistString)
 {
     if (!m_storage)
         return;
     const TExivaOptionsStorage::Options options{ m_allowEveryone, m_allowGuild, m_allowParty, m_allowVIPs, m_allowCharacterWhitelist,
                                                  m_allowGuildWhitelist };
-    m_storage->update(options, lines(CharacterWhitelistString), lines(GuildWhitelistString));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionUpdateExivaOptions>(
+        options, TExivaOptionsStorage::Whitelists{ lines(CharacterWhitelistString), lines(GuildWhitelistString) }));
 }
 
 void TExivaOptionsDialogController::onAllowEveryoneChanged()

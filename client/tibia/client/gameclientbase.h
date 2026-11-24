@@ -12,7 +12,9 @@ class QQuickWindow;
 
 namespace tibia {
 namespace assets {
+class TAssetAsyncLoader;
 class TAssetHandler;
+class TAssetManager;
 }
 namespace appearances {
 class TAppearanceInstanceFactory;
@@ -52,6 +54,7 @@ class TTibiaFileSystemHelper;
 }
 namespace sprites {
 class TResourceSpritesManager;
+class TSpriteResolver;
 }
 namespace spells {
 class TSpellInfoStorage;
@@ -127,6 +130,8 @@ public:
     config::TClientOptions* clientOptions() const { return m_pClientOptions; }
     /// Throws std::logic_error before it exists.
     std::shared_ptr<appearances::TAppearancesManager> appearancesManager() const;
+    /// CIP: throws std::logic_error before initializeAssets.
+    std::shared_ptr<assets::TAssetManager> assetManager() const;
     /// Throws std::logic_error before it exists.
     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage() const;
     /// The spell table; null before it exists.
@@ -147,6 +152,8 @@ public:
     std::shared_ptr<game::TTraderStorage> traderStorage() const;
     /// The client's built-in resource images; null before the storages exist.
     std::shared_ptr<sprites::TResourceSpritesManager> resourceSpritesManager() const { return m_pResourceSpritesManager; }
+    /// The client's sprite resolver. Throws std::logic_error before it exists.
+    std::shared_ptr<sprites::TSpriteResolver> spriteResolver() const;
 
     /// Where the minimap's tiles and marker file are read and written.
     /// Throws std::logic_error before it exists.
@@ -234,10 +241,14 @@ protected:
     /// engine (app::createEngine); the Appearance type helper reads the
     /// appearances through their instance().
     virtual void initializeQmlContext();
-    /// CIP: the assets: the Cyclopedia map's static data asks the asset
-    /// loading for its files, the client version is set and the assets, the
-    /// static data, the Cyclopedia map and the sound bank are read. Host:
-    /// qtclient reads them at once; a failure is kept in m_assetLoadError.
+    /// CIP: the asset loader and the asset manager, the asset handler with the
+    /// spritesheet manager, appearances, sound metadata and sound manager,
+    /// trader storage, proficiency storage, the static data callbacks and the
+    /// Cyclopedia map's static data. The manager hands the spritesheet
+    /// metadata and every loaded asset to the handler and reports completion
+    /// and errors to this client; the handler's requests go back to the
+    /// manager; a spritesheet missing from the cache is loaded first.
+    /// TGameClient starts the loading.
     virtual void initializeAssets();
     /// CIP: the sprite texture provider manager the renderers draw from, the
     /// root context's `SpriteTextureProviderManager`. Host: qtclient's
@@ -269,6 +280,8 @@ protected:
     config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    std::shared_ptr<assets::TAssetAsyncLoader> m_pAssetAsyncLoader;
+    std::shared_ptr<assets::TAssetManager> m_pAssetManager;
     std::shared_ptr<assets::TAssetHandler> m_pAssetHandler;
     std::shared_ptr<game::TTraderStorage> m_pTraderStorage;
     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_pCyclopediaMapStaticDataStorage;
@@ -290,6 +303,7 @@ protected:
     std::shared_ptr<minimap::TMinimapMarkerStorage> m_pMinimapMarkerStorage;
     std::shared_ptr<minimap::TMinimapManager> m_pMinimapManager;
     std::shared_ptr<minimap::TMinimapTileManager> m_pMinimapTileManager;
+    std::shared_ptr<sprites::TSpriteResolver> m_pSpriteResolver;
     /// Host: the tile manager's own disk (CipSoft does not keep it); it is
     /// told where CipSoft's bundled minimap is once the assets are known.
     std::shared_ptr<minimap::TMinimapDiskIOAsync> m_pMinimapTileManagerDiskIO;
@@ -298,7 +312,7 @@ protected:
     QPointer<worldmap::TWorldmapProtocolMessageHandler> m_pMinimapWorldmapProtocolHandler;
     /// CIP: started by a marker change; its timeout writes the markers.
     QTimer m_minimapMarkerStorageTimer;
-    /// Host: what initializeAssets could not read; empty when all loaded.
+    /// Host: why the appearances could not be loaded; empty when they were.
     QString m_assetLoadError;
 };
 

@@ -151,58 +151,6 @@ message ProtocolOutfit {
   optional uint32 look_type_ex = 7;
 }
 
-// CIP v19 first icon list: u8 icon, u8 category, u16 value, u8 flag.
-message ProtocolCreatureIcon {
-  optional uint32 icon = 1;
-  optional uint32 category = 2;
-  optional uint32 value = 3;
-  optional bool flag = 4;
-}
-
-// CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). CIP v42 fills one field of a known creature from a creature update (mana percent, show status, vocation, either icon list). update_icons / update_extra_icons: the message carries that icon list (it may be empty); a creature that turned carries neither.
-message ProtocolCreature {
-  optional uint32 kind = 1;
-  optional uint32 remove_id = 2;
-  optional uint32 id = 3;
-  optional uint32 type = 4;
-  optional uint32 master_id = 5;
-  optional string name = 6;
-  optional uint32 health_percent = 7;
-  optional uint32 direction = 8;
-  optional ProtocolOutfit outfit = 9;
-  optional ProtocolOutfit mount = 10;
-  optional uint32 light_intensity = 11;
-  optional uint32 light_color = 12;
-  optional uint32 speed = 13;
-  repeated ProtocolCreatureIcon icons = 14;
-  repeated uint32 extra_icons = 15;
-  optional uint32 skull = 16;
-  optional uint32 shield = 17;
-  optional uint32 emblem = 18;
-  optional uint32 vocation = 19;
-  optional uint32 icon = 20;
-  optional uint32 mark = 21;
-  optional uint32 inspection_type = 22;
-  optional bool unpassable = 23;
-  optional uint32 mana_percent = 24;
-  optional bool show_status = 25;
-  optional bool update_icons = 26;
-  optional bool update_extra_icons = 27;
-}
-
-// CIP v16: u16 id; 0x61-0x63 creature, else object.
-message ProtocolMapObject {
-  optional ProtocolInventoryItem item = 1;
-  optional ProtocolCreature creature = 2;
-}
-
-// One described field; a field without objects is cleared (skipped in the classic area).
-message ProtocolMapField {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapObject objects = 2;
-  optional uint32 environment_effect = 3;
-}
-
 // CIP TProtobufServerMessageTranslator::v207: u8 id, string name.
 message ProtocolContainerCategory {
   optional uint32 id = 1;
@@ -766,6 +714,22 @@ message ProtocolInspectedObject {
   repeated uint32 imbuement_icons = 3;
   repeated ProtocolInspectionDetail details = 4;
   optional uint32 slot = 5;
+}
+
+// CIP protobuf::protocol::KeyValuePair (tags from its serializer): string key = 1, string value = 2.
+message KeyValuePair {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+// CIP protobuf::protocol::InspectObjectInformation (tags from its serializer; imbuement slots unpacked). object and outfit keep qtclient's object/outfit messages until CipSoft's ObjectInstance / Outfit schema lands.
+message InspectObjectInformation {
+  optional ProtocolInventoryItem object = 1;
+  optional string name = 2;
+  repeated uint32 imbuement_slots = 3;
+  repeated KeyValuePair details = 4;
+  optional uint32 inventory_slot = 5;
+  optional ProtocolOutfit outfit = 6;
 }
 
 // string, bool.
@@ -1452,11 +1416,37 @@ message EquipmentDamageReduction {
   optional double value = 2;
 }
 
-// CipSoft CreatureData, the fields CreatureSpeed fills (1 replaced/known id, 2 id, 13 speed); the other fields are not recovered yet (ProtocolCreature still carries the creature messages).
+// CIP CreatureData (TProtobufServerMessageTranslator::v19/v42). remove_id: the creature a new one replaces (0x61, set when non-zero) or the id itself (0x62 known, 0x63 turned): equal ids mean a stored creature. 0x63 carries id, direction and unpassable only. vocation is kept % 10. update_icons / update_extra_icons: the message carries that icon list (it may be empty). Extension 100 of AppearanceInstance: a creature on a map field.
 message CreatureData {
   optional uint32 remove_id = 1;
   optional uint32 id = 2;
+  optional uint32 type = 3;
+  optional uint32 master_id = 4;
+  optional uint32 vocation = 5;
+  optional string name = 6;
+  optional uint32 health_percent = 7;
+  optional uint32 direction = 8;
+  optional Outfit outfit = 9;
+  optional Outfit mount = 10;
+  optional uint32 light_intensity = 11;
+  optional uint32 light_color = 12;
   optional uint32 speed = 13;
+  optional uint32 skull = 14;
+  optional uint32 shield = 15;
+  optional uint32 emblem = 16;
+  optional uint32 icon = 17;
+  optional uint32 mark = 18;
+  optional bool unpassable = 19;
+  optional uint32 inspection_type = 20;
+  optional uint32 mana_percent = 21;
+  optional bool show_status = 22;
+  optional bool update_icons = 23;
+  repeated CreatureOtherIcons icons = 24;
+  optional bool update_extra_icons = 25;
+  repeated uint32 extra_icons = 26;
+  extend AppearanceInstance {
+    optional CreatureData creature_data = 100;
+  }
 }
 
 // CIP GameEventTypeAchievement: the achievement's name.
@@ -1583,11 +1573,148 @@ message ShowOffSocketConfiguration {
   optional uint32 direction = 4;
 }
 
+// CIP Extent (a box size in fields).
+message Extent {
+  optional uint32 width = 1;
+  optional uint32 height = 2;
+  optional uint32 depth = 3;
+}
+
+// CIP Outfit (TProtobufServerMessageTranslator::v23): u16 look type; non-zero -> colours (left out when all four are zero) and, for an outfit, addons (left out when zero); zero -> for an outfit u16 object type (look type 0 kept when the object type is zero too).
+message Outfit {
+  optional uint32 look_type = 1;
+  optional OutfitColor colors = 2;
+  optional uint32 addons = 3;
+  optional uint32 object_type = 4;
+}
+
+// CIP CreatureOtherIcons (v19 first icon list): u8 icon, u8 category (0 -> field 1, 1 -> field 2, other -> neither), u16 value, bool flag.
+message CreatureOtherIcons {
+  optional uint32 icon = 1;
+  optional uint32 special_icon = 2;
+  optional uint32 value = 3;
+  optional bool flag = 4;
+}
+
+// CIP AppearanceInstance: one map object: an object type id, or 0x61-0x63 for a creature (CreatureData extension 100). Object extra data are extensions 101-112 (one per appearance kind; 103 is not used by the client, 104/105/111 are effects).
+message AppearanceInstance {
+  optional uint32 id = 1;
+  extensions 100 to max;
+}
+
+// CIP CumulativeObject: u8 count.
+message CumulativeObject {
+  optional uint32 count = 2;
+  extend AppearanceInstance {
+    optional CumulativeObject cumulative_object = 101;
+  }
+}
+
+// CIP LiquidObject: u8 liquid.
+message LiquidObject {
+  optional uint32 liquid = 2;
+  extend AppearanceInstance {
+    optional LiquidObject liquid_object = 102;
+  }
+}
+
+// CIP ContainerObject: u8 flags (left out when zero); bit 1 u32 loot flags, bit 2 u32 ammo total, bit 8 u32 obtain flags.
+message ContainerObject {
+  optional uint32 flags = 1;
+  optional uint32 loot_flags = 2;
+  optional uint32 ammo_total = 3;
+  optional uint32 obtain_flags = 4;
+  extend AppearanceInstance {
+    optional ContainerObject container_object = 106;
+  }
+}
+
+// CIP ShowOffSocketObject: outfit (look type 0 -> object type), mount, u8 direction, bool visible.
+message ShowOffSocketObject {
+  optional Outfit outfit = 1;
+  optional Outfit mount = 2;
+  optional uint32 direction = 3;
+  optional bool visible = 4;
+  extend AppearanceInstance {
+    optional ShowOffSocketObject show_off_socket_object = 107;
+  }
+}
+
+// CIP UpgradeableObject: u8 tier.
+message UpgradeableObject {
+  optional uint32 tier = 1;
+  extend AppearanceInstance {
+    optional UpgradeableObject upgradeable_object = 108;
+  }
+}
+
+// CIP WearoutObject: u32 charges, bool brand new.
+message WearoutObject {
+  optional uint32 charges = 1;
+  optional bool brand_new = 2;
+  extend AppearanceInstance {
+    optional WearoutObject wearout_object = 109;
+  }
+}
+
+// CIP ExpireObject: u32 duration, bool brand new; expire_stop: the type is an expire-stop object.
+message ExpireObject {
+  optional uint32 duration = 1;
+  optional bool brand_new = 2;
+  optional bool expire_stop = 3;
+  extend AppearanceInstance {
+    optional ExpireObject expire_object = 110;
+  }
+}
+
+// CIP DecoItemKitObject: u16 decoration object type.
+message DecoItemKitObject {
+  optional uint32 deco_item_id = 1;
+  extend AppearanceInstance {
+    optional DecoItemKitObject deco_item_kit_object = 112;
+  }
+}
+
+// CIP MapField: the objects of one described field, bottom to top (none: the field is dropped); skip: the number of fields after it the area leaves out (left out when zero).
+message MapField {
+  repeated AppearanceInstance objects = 1;
+  optional uint32 skip = 2;
+  extensions 100 to max;
+}
+
+// CIP MapFieldExtraData: the field's coordinate, filled by the translator (TProtobufServerMessageTranslator::v15); the handler takes the coordinate from the area volume instead.
+message MapFieldExtraData {
+  optional ProtocolCoordinate coordinate = 1;
+  extend MapField {
+    optional MapFieldExtraData map_field_extra_data = 100;
+  }
+}
+
+// CIP MapFields (field 3 only).
+message MapFields {
+  repeated MapField fields = 3;
+}
+
+// CIP MapFieldData: oneof fields (1) or a length-delimited blob (2) the client does not read (its handler then treats the area as having no fields).
+message MapFieldData {
+  oneof data {
+    MapFields fields = 1;
+    bytes packed_fields = 2;
+  }
+}
+
+// CIP MapArea: the fields of a map volume, column first (y fastest, then x, then the floors: ground to sky above ground, sky to ground underground). The client's translator and handler leave coordinate/extent out: both sides compute the volume from the central position.
+message MapArea {
+  optional ProtocolCoordinate coordinate = 1;
+  optional Extent extent = 2;
+  optional MapFieldData field_data = 3;
+}
+
 // server opcode 0x03 (3) — CreatureData
 // classic: creature (new creature layout)
-// CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61).
+// CIP GameserverMessageCreatureData: CreatureData (v19 kind 0x61).
 message GameserverMessageCreatureData {
-  optional ProtocolCreature creature = 1;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureData gameserver_message_creature_data = 3;
   }
@@ -2000,93 +2127,99 @@ message GameserverMessageClientCheck {
 }
 
 // server opcode 0x64 (100) — FullMap
-// classic: area of fields (skip counts) from the translator viewport
+// classic: position; area of fields of the visible area around it
+// CIP FullMap (TProtobufServerMessageTranslator::v8): area 1, central position 2.
 message GameserverMessageFullMap {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
+  optional ProtocolCoordinate coordinate = 2;
   extend GameserverMessage {
     optional GameserverMessageFullMap gameserver_message_full_map = 100;
   }
 }
 
 // server opcode 0x65 (101) — TopRow
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's top row
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageTopRow {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageTopRow gameserver_message_top_row = 101;
   }
 }
 
 // server opcode 0x66 (102) — RightColumn
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's right column
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageRightColumn {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageRightColumn gameserver_message_right_column = 102;
   }
 }
 
 // server opcode 0x67 (103) — BottomRow
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's bottom row
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageBottomRow {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageBottomRow gameserver_message_bottom_row = 103;
   }
 }
 
 // server opcode 0x68 (104) — LeftColumn
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's left column
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageLeftColumn {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageLeftColumn gameserver_message_left_column = 104;
   }
 }
 
 // server opcode 0x69 (105) — FieldData
-// classic: coordinate; field
+// classic: position; one field
+// CIP FieldData (v13): a one-field area at coordinate.
 message GameserverMessageFieldData {
-  optional ProtocolMapField field = 1;
+  optional MapArea area = 1;
+  optional ProtocolCoordinate coordinate = 2;
   extend GameserverMessage {
     optional GameserverMessageFieldData gameserver_message_field_data = 105;
   }
 }
 
 // server opcode 0x6A (106) — CreateOnMap
-// classic: coordinate; u8 stack; object
+// classic: position; u8 stack position (0xff: where the object sorts); object
+// CIP CreateOnMap (v34).
 message GameserverMessageCreateOnMap {
   optional ProtocolCoordinate coordinate = 1;
-  optional uint32 stackpos = 2;
-  optional ProtocolMapObject object = 3;
+  optional uint32 stack_position = 2;
+  optional AppearanceInstance object = 3;
   extend GameserverMessage {
     optional GameserverMessageCreateOnMap gameserver_message_create_on_map = 106;
   }
 }
 
 // server opcode 0x6B (107) — ChangeOnMap
-// classic: mapped thing (pos+stack or 0xffff+id); object
+// classic: position, u8 stack position, object; or 0xffff, u32 creature id, object
+// CIP ChangeOnMap (v35): the creature-id form has no coordinate; its object's CreatureData carries the id.
 message GameserverMessageChangeOnMap {
   optional ProtocolCoordinate coordinate = 1;
-  optional uint32 stackpos = 2;
-  optional uint32 creature_id = 3;
-  optional ProtocolMapObject object = 4;
+  optional uint32 stack_position = 2;
+  optional AppearanceInstance object = 3;
   extend GameserverMessage {
     optional GameserverMessageChangeOnMap gameserver_message_change_on_map = 107;
   }
 }
 
 // server opcode 0x6C (108) — DeleteOnMap
-// classic: mapped thing (pos+stack or 0xffff+id)
+// classic: position, u8 stack position; or 0xffff, u32 creature id
+// CIP DeleteOnMap (v36).
 message GameserverMessageDeleteOnMap {
-  optional ProtocolCoordinate coordinate = 1;
-  optional uint32 stackpos = 2;
-  optional uint32 creature_id = 3;
+  oneof position {
+    WorldmapObjectPosition object_position = 1;
+    uint32 creature_id = 2;
+  }
   extend GameserverMessage {
     optional GameserverMessageDeleteOnMap gameserver_message_delete_on_map = 108;
   }
@@ -2230,15 +2363,13 @@ message GameserverMessageGameEvent {
 }
 
 // server opcode 0x76 (118) — InspectionList
-// classic: u8 window; u8 type; u32 creature; u8 n x object; character window: string name, u8 n x detail
-// CIP TProtobufServerMessageTranslator::v56.
+// classic: u8 list type (1 = player); u8 client window; u32 player id; u8 n x (player list: u8 slot; string name; object; u8 n x u16 imbuement slot; u8 n x (string, string)); player list: string name, u8 n x (string, string) as one more object
+// CIP schema (tags from GameserverMessageInspectionList's serializer); CIP TProtobufServerMessageTranslator::v56.
 message GameserverMessageInspectionList {
-  repeated ProtocolInspectedObject objects = 1;
-  optional string player_name = 2;
-  repeated ProtocolInspectionDetail player_details = 3;
-  optional uint32 window_type = 4;
-  optional uint32 inspection_type = 5;
-  optional uint32 creature_id = 6;
+  optional uint32 list_type = 1;
+  optional uint32 client_window = 2;
+  optional uint32 player_id = 3;
+  repeated InspectObjectInformation objects = 4;
   extend GameserverMessage {
     optional GameserverMessageInspectionList gameserver_message_inspection_list = 118;
   }
@@ -2479,19 +2610,18 @@ message GameserverMessageExaltationResult {
 
 // server opcode 0x8B (139) — CreatureUpdate
 // classic: u32 creatureId; u8 type: 0 u16 kind + creature (0x61-0x63), 11 u8 mana percent, 12 bool show status, 13 u8 vocation (kept % 10), 14 u8 count x (u8 icon, u8 category, u16 value, bool flag), 15 u8 count x u8
-// CIP TProtobufServerMessageTranslator::v42: types 0 and 11-15 fill `creature` (types 11-15: the update's creature id and the one field). Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP).
+// CIP GameserverMessageCreatureUpdate (TProtobufServerMessageTranslator::v42): CreatureData 1 (id in id and remove_id; type 0 a creature (0x61-0x63, remove_id from the creature), 11 mana percent, 12 show status, 13 vocation % 10, 14 / 15 one icon list). Fields 100+ are host: the classic update type (party notifications) and the product server party extensions (16: u8 health percent, u32 health, u32 max; 17: u8 mana percent, u32 mana, u32 max; 18: u8 vocation, u16 level), not in CIP.
 message GameserverMessageCreatureUpdate {
-  optional uint32 creature_id = 1;
-  optional uint32 type = 2;
-  optional ProtocolCreature creature = 3;
-  optional uint32 mana_percent = 4;
-  optional uint32 vocation = 6;
-  optional uint32 health_percent = 9;
-  optional uint32 health = 10;
-  optional uint32 max_health = 11;
-  optional uint32 mana = 12;
-  optional uint32 max_mana = 13;
-  optional uint32 level = 14;
+  optional CreatureData creature = 1;
+  optional uint32 type = 100;
+  optional uint32 health_percent = 101;
+  optional uint32 health = 102;
+  optional uint32 max_health = 103;
+  optional uint32 mana_percent = 104;
+  optional uint32 mana = 105;
+  optional uint32 max_mana = 106;
+  optional uint32 vocation = 107;
+  optional uint32 level = 108;
   extend GameserverMessage {
     optional GameserverMessageCreatureUpdate gameserver_message_creature_update = 139;
   }
@@ -3147,20 +3277,20 @@ message GameserverMessageBossTracking {
 }
 
 // server opcode 0xBE (190) — TopFloor
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's top floor
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageTopFloor {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageTopFloor gameserver_message_top_floor = 190;
   }
 }
 
 // server opcode 0xBF (191) — BottomFloor
-// classic: area of fields (skip counts) from the translator viewport
+// classic: area of fields (u16 object ids, 0xffNN ends a field and skips NN) of the moved view's bottom floor
+// CIP area message: the map area only; the volume follows from the central position moved by the message (TProtobufServerMessageTranslator v9-v12 / the handler).
 message GameserverMessageBottomFloor {
-  optional ProtocolCoordinate coordinate = 1;
-  repeated ProtocolMapField fields = 2;
+  optional MapArea area = 1;
   extend GameserverMessage {
     optional GameserverMessageBottomFloor gameserver_message_bottom_floor = 191;
   }
@@ -4027,8 +4157,10 @@ message GameserverMessageStoreSuccess {
 }
 
 // server opcode 0x12C (300) — Unknown
-// classic: bridge — classic side-channel until CIP field RE
+// classic: none: the translator gives a message of an opcode it does not know this extension
+// CIP TProtobufServerMessageTranslator::v2 default case: the opcode byte (+0x20).
 message GameserverMessageUnknown {
+  optional uint32 opcode = 1;
   extend GameserverMessage {
     optional GameserverMessageUnknown gameserver_message_unknown = 300;
   }

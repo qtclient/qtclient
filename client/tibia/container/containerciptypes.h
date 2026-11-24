@@ -32,6 +32,9 @@
 namespace tibia::appearances {
 class TAppearanceType;
 }
+namespace tibia::config {
+class TClientOptions;
+}
 using TAppearanceType = tibia::appearances::TAppearanceType;
 
 // Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
@@ -386,20 +389,31 @@ struct TContainerProperties
 
 struct TSlotInfo;
 class TInventoryContainer;
+class TContainerStorage;
 
-class TContainerRenderProvider final : public ::tibia::CipTyped
+/// What the container windows and the inventory show (CIP:
+/// TContainerRenderProvider). The session makes it from its container storage
+/// and the client options.
+class TContainerRenderProvider final
 {
 public:
+    TContainerRenderProvider(std::shared_ptr<TContainerStorage> containerStorage, config::TClientOptions* clientOptions);
+
     /// The properties of container `id`; a container that is not open is
     /// captioned container_not_found and has no slots.
-    static std::optional<TContainerProperties> containerProperties(TContainerID id, bool resetScrollView);
-    /// What every inventory slot shows, by slot. `showExpire` and
-    /// `showExpireWhenUnused` are the options showExpireInInventory and
-    /// showExpireWhenUnused.
-    static std::map<uint32_t, TSlotInfo> inventorySlotInfos(bool showExpire, bool showExpireWhenUnused);
+    std::optional<TContainerProperties> containerProperties(TContainerID id, bool resetScrollView) const;
+    /// What every inventory slot shows, by slot, with the options
+    /// showExpireInInventory and showExpireWhenUnused.
+    std::map<uint32_t, TSlotInfo> inventorySlotInfos() const;
     /// What inventory slot `slotId` shows: its object, the object's text, the
     /// managed container tooltip; a slot without an object is not updatable.
-    static TSlotInfo inventorySlotInfo(int slotId, bool showExpire, bool showExpireWhenUnused);
+    /// `showExpire` and `showExpireWhenUnused` are the options
+    /// showExpireInInventory and showExpireWhenUnused.
+    TSlotInfo inventorySlotInfo(int slotId, bool showExpire, bool showExpireWhenUnused) const;
+
+private:
+    std::shared_ptr<TContainerStorage> m_containerStorage;
+    config::TClientOptions* m_clientOptions = nullptr;
 };
 
 /// Session open-containers storage (CIP: TContainerStorage). Installed while TGameClient is live.

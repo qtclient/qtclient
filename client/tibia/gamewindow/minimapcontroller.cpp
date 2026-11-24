@@ -21,6 +21,7 @@
 #include <cmath>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
+#include <utility>
 
 namespace tibia::gamewindow {
 
@@ -46,8 +47,9 @@ int roundToInt(const float v)
 
 }
 
-TMinimapController::TMinimapController(QObject* parent)
+TMinimapController::TMinimapController(std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent)
     : TSidebarPanelController(parent)
+    , m_pGameActionMapper(std::move(GameActionMapper))
 {
     // CIP: Thais temple until the player is known.
     m_area.setCenter(Position(32369, 32215, 7));
@@ -286,7 +288,7 @@ void TMinimapController::onMinimapDragged(const float deltaX, const float deltaY
 void TMinimapController::dispatchClick(const input::TGameActionList& actions, const int mouseButton, const int modifiers,
                                        const std::span<const input::EGameAction> contextMenuOrder)
 {
-    const input::IGameActionPtr action = m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -297,7 +299,7 @@ void TMinimapController::dispatchClick(const input::TGameActionList& actions, co
     if (entries.empty())
         return;
     if (TContextMenuController* menu = TContextMenuController::instance())
-        menu->showGameActions(entries, input::TGameActionMapper::MinimapContext, m_mapper);
+        menu->showGameActions(entries, input::TGameActionMapper::MinimapContext, *m_pGameActionMapper);
 }
 
 void TMinimapController::onMinimapClick(const int x, const int y, const int triggeringMouseButton, const Qt::KeyboardModifiers modifiers)
@@ -335,7 +337,7 @@ void TMinimapController::updateMouseCursor()
         return;
     }
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::IGameActionPtr action = m_mapper.map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
     const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
     if (auto* cursor = Cursor::instance())
         cursor->setLayerShape(Cursor::Minimap, shape);

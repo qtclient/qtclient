@@ -1,4 +1,5 @@
 #include "authentication/authenticationprocesscontroller.h"
+#include "assets/assetmanager.h"
 #include "authentication/cloudflarechallengecontroller.h"
 #include "authentication/emailcoderequestuploader.h"
 #include "authentication/loginconfirmationcoderequestuploader.h"
@@ -13,6 +14,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/playerguidewidgetcontroller.h"
 #include "gamewindow/remainingdialogs.h"
+#include "gamewindow/twofactorcodeentertextdialogcontroller.h"
 #include "input/gameaction.h"
 #include "news/newsstorage.h"
 #include "systemsurvey/systemsurveyvalueretriever.h"
@@ -41,13 +43,15 @@ TAuthenticationProcessController::TAuthenticationProcessController(
     std::shared_ptr<TLoginRequestUploader> LoginRequestUploader,
     std::shared_ptr<TEmailCodeRequestUploader> EMailCodeRequestUploader,
     std::shared_ptr<TLoginConfirmationCodeRequestUploader> LoginConfirmationCodeRequestUploader,
-    std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController, QObject* parent)
+    std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController,
+    std::shared_ptr<assets::TAssetManager> AssetManager, QObject* parent)
     : QObject(parent)
     , m_pCharacterSelectionController(std::move(CharacterSelectionController))
     , m_pLoginRequestUploader(std::move(LoginRequestUploader))
     , m_pEMailCodeRequestUploader(std::move(EMailCodeRequestUploader))
     , m_pLoginConfirmationCodeRequestUploader(std::move(LoginConfirmationCodeRequestUploader))
-    , m_pTwoFactorCodeEnterTextDialogController(std::make_unique<gamewindow::TTwoFactorCodeEnterTextDialogController>())
+    , m_pTwoFactorCodeEnterTextDialogController(
+          std::make_unique<gamewindow::TTwoFactorCodeEnterTextDialogController>(6, nullptr, nullptr))
     , m_pLoginConfirmationCodeEnterTextDialogController(
           std::make_unique<gamewindow::TLoginConfirmationCodeEnterTextDialogController>())
     , m_pDeviceVerificationCodeEnterTextDialogController(std::make_unique<gamewindow::TGenericEnterTextDialogController>(
@@ -58,6 +62,7 @@ TAuthenticationProcessController::TAuthenticationProcessController(
     , m_pEmergencyDialogController(std::make_unique<gamewindow::TEmergencyDialogController>())
     , m_pCharacterTradeDuePaymentDialogController(std::make_unique<gamewindow::TCharacterTradeDuePaymentDialogController>())
     , m_pCloudflareChallengeController(std::move(CloudflareChallengeController))
+    , m_pAssetManager(std::move(AssetManager))
 {
     buildStateMachine();
 }
@@ -160,6 +165,9 @@ void TAuthenticationProcessController::buildStateMachine()
             [this] { trigger(T::AdvanceDirectlyToCharacterSelection); });
     connect(this, &C::advanceStateMachineToWaitForAssetCompletion, this,
             [this] { trigger(T::AdvanceToWaitForAssetCompletion); });
+    // The asset loading's completion ends the wait for it.
+    if (m_pAssetManager)
+        connect(m_pAssetManager.get(), &assets::TAssetManager::assetsComplete, this, [this] { trigger(T::AssetsComplete); });
 
     // The dialogs' answers move the machine.
     {
@@ -614,8 +622,14 @@ void TAuthenticationProcessController::onStartGameServerLoginStateEntered()
         if (!m_characterLoginData.empty())
             m_pCharacterSelectionController->setLastSelectedCharacterName(m_characterLoginData.front().characterName);
     }
-    // The character's game server login waits for the assets.
-    if (!m_host.assetsComplete || m_host.assetsComplete()) {
+    // The character's game server login waits for the assets: all of them, or,
+    // with quick login, the appearances. Host: without an asset manager they
+    // were loaded before the login.
+    using assets::TAssetManager;
+    const config::TClientOptions* options = config::TClientOptions::instance();
+    const TAssetManager::EState assetState = m_pAssetManager ? m_pAssetManager->state() : TAssetManager::Complete;
+    if ((options && options->boolOption(config::EClientOption::quickLogin) && assetState == TAssetManager::AppearancesLoaded)
+        || assetState == TAssetManager::Complete) {
         Q_EMIT requestCharacterGameserverLogin();
         Q_EMIT advanceStateMachine();
     } else {

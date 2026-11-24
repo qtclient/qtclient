@@ -57,15 +57,6 @@ QString ClientOptions::userFilePath()
     return config::TClientOptions::userFilePath();
 }
 
-ClientOptions ClientOptions::readStoredFile()
-{
-    ClientOptions o;
-    QFile file(userFilePath());
-    if (file.open(QIODevice::ReadOnly))
-        o.m_root = config::clientoptionsmigration::migrate(QJsonDocument::fromJson(file.readAll()).object());
-    return o;
-}
-
 ClientOptions ClientOptions::load()
 {
     ClientOptions o;

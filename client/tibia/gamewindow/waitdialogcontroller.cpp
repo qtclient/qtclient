@@ -5,7 +5,12 @@
 namespace tibia::gamewindow {
 
 TWaitDialogController::TWaitDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("WaitDialog.qml"), parent)
+    : TWaitDialogController(nullptr, nullptr, parent)
+{
+}
+
+TWaitDialogController::TWaitDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("WaitDialog.qml"), engine, dialogParentItem, parent)
 {
     m_timer.setInterval(100);
     m_timer.setSingleShot(true);

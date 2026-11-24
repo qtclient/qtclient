@@ -175,14 +175,12 @@ Q_SIGNALS:
     void unspentPerkChanged();
 
 private:
-    void loadTables() const;
-    void readTables(const std::string& path) const;
     int reachedLevel(uint16_t typeId, int count) const;
 
     std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
     std::unordered_map<uint16_t, TProficiencyData> m_data;
+    /// The Proficiencies asset (the asset handler sets it).
     mutable std::map<uint32_t, TProficiencyInfo> m_tables;
-    mutable bool m_tablesLoaded = false;
     bool m_listRequested = false;
     uint32_t m_currentProficiencyXP = 0;
     bool m_unspentPerk = false;

@@ -155,6 +155,9 @@ struct THotkeyOptionsData
     void clearBindings(const QString& setName, bool chatOn);
     void addBinding(const QString& setName, bool chatOn, const QKeySequence& keys, const TActionSetting& setting);
     void setBindings(const QString& setName, bool chatOn, const std::vector<THotkeyBinding>& bindings);
+    /// The set (made when missing) gets these key bindings of both chat modes.
+    void setHotkeys(const QString& setName, const std::vector<THotkeyBinding>& chatOffBindings,
+                    const std::vector<THotkeyBinding>& chatOnBindings);
 };
 
 /// `conf/clientoptions.json` `hotkeyOptions` (CIP: THotkeyOptions; user file

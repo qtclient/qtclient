@@ -17,6 +17,7 @@ class TWaitDialogController final : public TDialogController<cip::tibia::gamewin
     Q_OBJECT
 public:
     explicit TWaitDialogController(QObject* parent = nullptr);
+    TWaitDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// Shows the dialog and starts a wait of `seconds`; `waitTextFormat`'s %1
     /// is the remaining time.

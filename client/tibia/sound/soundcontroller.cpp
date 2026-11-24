@@ -123,7 +123,9 @@ void TSoundController::handleGameAction(const tibia::input::IGameActionPtr& pGam
         return;
     TSoundEffectRequest request;
     request.effectId = static_cast<TSoundEffectID>(effect);
-    request.chat = TChatSoundContext{ true };
+    // The trigger's chat channel, if it is a chat message's sound.
+    if (std::shared_ptr<const chat::TChatChannelIdentifier> channel = action->soundEffectChatChannel())
+        request.chat = TChatSoundContext{ std::move(channel) };
     handleSoundTrigger(request);
 }
 
@@ -165,6 +167,8 @@ void TSoundController::onQueuedSoundsTimerTriggered()
 void tibia::sound::TSoundController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_gameSession = GameSession;
+    if (configuration())
+        configuration()->setGameSession(GameSession);
     // qtclient's sessions are TGameSessionBase; CIP asks the IGameSession.
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)

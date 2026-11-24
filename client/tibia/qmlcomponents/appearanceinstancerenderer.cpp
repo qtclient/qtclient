@@ -149,6 +149,20 @@ void TObjectAppearanceInstanceInfoQmlType::setPosition(const QPoint& v)
         cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::setPosition(v);
 }
 
+uint8_t TObjectAppearanceInstanceInfoQmlType::getQmlUpgradeTier(const appearances::TAppearanceInstancePtr& instance)
+{
+    if (const auto* upgradeable = dynamic_cast<const appearances::TUpgradeableObjectAppearanceInstance*>(instance.get()))
+        return upgradeable->tier();
+    return 0;
+}
+
+uint16_t TObjectAppearanceInstanceInfoQmlType::getQmlDecoItemObjectID(const appearances::TAppearanceInstancePtr& instance)
+{
+    if (const auto* kit = dynamic_cast<const appearances::TDecoItemKitAppearanceInstance*>(instance.get()))
+        return kit->decoItemId();
+    return 0;
+}
+
 void TObjectAppearanceInstanceInfoQmlType::setCumulativeCount(const int v)
 {
     if (v != m_cumulativeCount)

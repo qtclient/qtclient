@@ -4,6 +4,7 @@
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "container/containerslotinformation.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -20,6 +21,7 @@
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
+#include <utility>
 
 namespace tibia::gamewindow {
 
@@ -92,9 +94,12 @@ input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A
 
 }
 
-TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject* parent)
+TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
+    config::TClientOptions* ClientOptions, std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent)
     : TSidebarPanelController(parent)
     , m_states(config::SpecialConditionsFilter::Bar)
+    , m_pClientOptions(ClientOptions)
+    , m_pGameActionMapper(std::move(GameActionMapper))
 {
     m_playerStates = m_states.model();
     m_showPlayerStatesInBar = m_states.options().showInBar;
@@ -256,15 +261,21 @@ void TPlayerInventoryAndStatusController::setShowPlayerStatesInBar(const bool sh
 
 input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const int slotId) const
 {
-    return container::TContainerGameActionProvider::inventorySlotActions(slotAppearance(slotId), slotId);
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerGameActionProvider> provider =
+        session ? session->containerGameActionProvider() : nullptr;
+    return provider ? provider->inventorySlotActions(slotAppearance(slotId), slotId) : input::TGameActionList{};
 }
 
 void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    m_slots[slotId]->assign(
-        container::TContainerRenderProvider::inventorySlotInfo(slotId, m_showExpire, m_showExpireWhenUnused));
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const std::shared_ptr<container::TContainerRenderProvider> provider = session ? session->containerRenderProvider() : nullptr;
+    if (!provider)
+        return;
+    m_slots[slotId]->assign(provider->inventorySlotInfo(slotId, m_showExpire, m_showExpireWhenUnused));
 }
 
 void TPlayerInventoryAndStatusController::onInventoryChanged()
@@ -499,7 +510,7 @@ void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()
 void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = input::filterActions(slotActions(slotId), ClickActionTypes);
-    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -513,7 +524,7 @@ void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const 
     std::erase(order, A::CONTEXT_MENU);
     std::erase(order, A::SMART_CLICK);
     if (const input::TGameActionList entries = input::contextMenuActions(candidates, order); !entries.empty())
-        menu->showGameActions(entries, ContainerContext, m_mapper);
+        menu->showGameActions(entries, ContainerContext, *m_pGameActionMapper);
 }
 
 void TPlayerInventoryAndStatusController::onSlotEntered(const int slotId)
@@ -538,7 +549,7 @@ void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::IGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 

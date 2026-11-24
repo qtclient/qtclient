@@ -48,6 +48,10 @@ public:
     /// A hangable object's hook direction; NONE for any other instance. Throws
     /// std::invalid_argument for a direction past 3.
     static EHookDirection getQmlHookDirection(const appearances::TAppearanceInstancePtr& instance);
+    /// An upgradeable object's tier; 0 for any other instance.
+    static uint8_t getQmlUpgradeTier(const appearances::TAppearanceInstancePtr& instance);
+    /// A deco item kit's deco item id; 0 for any other instance.
+    static uint16_t getQmlDecoItemObjectID(const appearances::TAppearanceInstancePtr& instance);
 };
 
 /// A creature outfit placed in an AppearanceInstanceRenderer (QML OutfitAppearanceInstance;

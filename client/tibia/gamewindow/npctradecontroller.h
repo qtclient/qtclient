@@ -181,6 +181,8 @@ private:
     void buildContextMenu(TContextMenuController* menu, int typeId, uint liquidType);
     /// CIP .
     void refresh();
+    /// The amount of the trade's currency the player has: 0 without a trade.
+    uint64_t availableCurrencyAmount() const;
     /// CIP .
     void onAvailableCurrencyBalanceMightHaveChagned();
     /// CIP .

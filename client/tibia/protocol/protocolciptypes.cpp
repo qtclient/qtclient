@@ -27,17 +27,12 @@ namespace tibia::protocol {
 
 namespace {
 
-TProtobufServerMessageTranslator* g_serverTranslator = nullptr;
 TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
-std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> g_lastServerMessage;
 
 struct CipTypedKeep {
     TProtobufClientMessageTranslator tProtobufClientMessageTranslator;
-    TProtobufServerMessageTranslator tProtobufServerMessageTranslator;
     TProtocolReader tProtocolReader;
-    TProtocolServerMessageProcessor tProtocolServerMessageProcessor;
     TProtocolWriter tProtocolWriter;
-    TUnknownGameserverException tUnknownGameserverException;
 };
 CipTypedKeep& typedKeep()
 {
@@ -1980,14 +1975,8 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    g_serverTranslator = &typedKeep().tProtobufServerMessageTranslator;
     g_clientTranslator = &typedKeep().tProtobufClientMessageTranslator;
     (void)parent;
-}
-
-TProtobufServerMessageTranslator* serverMessageTranslator()
-{
-    return g_serverTranslator;
 }
 
 TProtobufClientMessageTranslator* clientMessageTranslator()
@@ -2113,28 +2102,26 @@ QByteArray TProtobufClientMessageTranslator::translateToClassic(const Gameclient
     return out;
 }
 
-bool translateAndEnqueueServerMessage(const int opcode, ClassicReader& packet)
+std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::translateServerMessage(ClassicReader& Reader) const
 {
-    auto* queue = protocolMessageQueue();
-    auto message = std::make_unique<GameserverMessage>();
+    using ::tibia::protobuf::protocol::GameserverMessageUnknown;
+    uint8_t opcode = 0;
+    if (!Reader.u8(opcode))
+        return nullptr;
+    auto message = std::make_shared<GameserverMessage>();
     message->set_type(opcode);
-    if (!mutableServerExtensionGenerated(*message, opcode))
-        return false;
-    setServerMessageMetaData(*message);
-    const size_t begin = packet.i - 1; // the opcode byte
-    ClassicReader body{ packet.p + packet.i, packet.remaining(), 0 };
+    if (!hasStructuredLayout(opcode) || !mutableServerExtensionGenerated(*message, opcode)) {
+        message->MutableExtension(GameserverMessageUnknown::gameserver_message_unknown)->set_opcode(opcode);
+        return message;
+    }
+    ClassicReader body{ Reader.p + Reader.i, Reader.remaining(), 0 };
     const size_t consumed = fillStructuredServer(*message, opcode, body);
     if (consumed == 0 && !emptyStructuredServerOpcode(opcode))
-        return false;
-    packet.i += consumed;
+        return nullptr;
+    Reader.i += consumed;
     if (isMapMessage(opcode))
         advanceMapViewport(*message);
-    (void)begin;
-    if (queue)
-        queue->enqueueServer(std::move(message));
-    else
-        g_lastServerMessage = std::move(message);
-    return true;
+    return message;
 }
 
 std::unique_ptr<GameclientMessage> newGameclientMessage(const int opcode)
@@ -2160,19 +2147,6 @@ void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
     // Before the queue exists: straight to the wire.
     if (auto* processor = network::TGameserverSessionNetwork::live())
         processor->writeClientFrame(wire);
-}
-
-const GameserverMessage* lastShadowServerMessage()
-{
-    if (TProtocolMessageQueue* queue = protocolMessageQueue(); queue && queue->lastServerMessage())
-        return queue->lastServerMessage();
-    return g_lastServerMessage.get();
-}
-
-const GameserverMessage* nativeServerMessage(const int opcode)
-{
-    const GameserverMessage* message = lastShadowServerMessage();
-    return message && message->type() == opcode ? message : nullptr;
 }
 
 } // namespace tibia::protocol

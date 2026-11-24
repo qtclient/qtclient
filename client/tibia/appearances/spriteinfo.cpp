@@ -210,7 +210,7 @@ size_t TLayeredAppearanceInstanceSpriteInfo::hash() const
 {
     size_t seed = 0;
     for (const TAppearanceInstanceSpriteInfoPtr& layer : m_layers)
-        seed = hashCombine(seed, layer ? layer->hash() : 0);
+        seed = hashCombine(seed, layer ? sprites::identifierHash(*layer) : 0);
     return seed;
 }
 

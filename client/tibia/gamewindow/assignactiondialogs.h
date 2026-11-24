@@ -2,6 +2,7 @@
 
 #include "config/hotkeyoptions.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -13,6 +14,7 @@
 namespace tibia {
 namespace game {
 class IGameSession;
+class TPlayerData;
 }
 namespace gamewindow {
 
@@ -124,8 +126,14 @@ public Q_SLOTS:
     QVariant getDataWithRoleName(int RowIndex, const QByteArray& RoleName) override;
     /// Re-reads the player's known spells, vocation and level; refilters on a change.
     void onPlayerDataChanged() override;
-    /// Follows the new session's player data.
+    /// Host: the game client's current session changed (for the proxies no
+    /// connector reaches yet); follows its player data.
     void onGameSessionChanged();
+
+public:
+    /// Drops the previous session's connections, keeps the session and
+    /// follows its player data, then re-reads it.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -139,7 +147,12 @@ private:
     uint8_t m_playerVocation = 0;
     uint16_t m_playerLevel = 0;
     std::set<uint16_t> m_knownSpells;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<game::TPlayerData> m_playerData;
     int m_gameSessionListener = 0;
+
+    void followPlayerData(std::shared_ptr<game::TPlayerData> playerData);
 };
 
 /// "Action Button <bar>.<button>", the button with two digits.
@@ -200,6 +213,8 @@ public:
     void showDialog(uint ButtonId, int MultiActionIndex);
     /// CIP v33: a spell with its parameters and cast type.
     void showDialog(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, ECastType CastType);
+    /// Hands the session to the spell list.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     uint spellListIndex() const override;
     QString spellParameters() const override;

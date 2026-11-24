@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -389,13 +390,12 @@ class TStoreProtocolMessageHandler final : public cip::tibia::store::TStoreProto
 {
     Q_OBJECT
 public:
-    explicit TStoreProtocolMessageHandler(TStoreStorage* storage, QObject* parent = nullptr);
+    /// The store storage it fills and the market storage the confirmed coin
+    /// balance also goes to.
+    TStoreProtocolMessageHandler(std::shared_ptr<TStoreStorage> storage, std::shared_ptr<market::TMarketStorage> marketStorage);
     ~TStoreProtocolMessageHandler() override;
 
-    TStoreStorage* storage() const { return m_storage; }
-    /// Host: the market storage the transferable coins go to (CIP passes it
-    /// to the constructor).
-    void setMarketStorage(market::TMarketStorage* storage) { m_marketStorage = storage; }
+    TStoreStorage* storage() const { return m_storage.get(); }
     const QUrl& imageBaseUrl() const { return m_imageBaseUrl; }
     /// The login message's coin packet size: coins transfer in multiples of it.
     qint64 creditPacketSize() const;
@@ -458,11 +458,11 @@ private:
     /// After a purchase: asks for the offers shown again.
     void refreshOffersAfterPurchase();
 
-    TStoreStorage* m_storage = nullptr;
-    market::TMarketStorage* m_marketStorage = nullptr;
-    QUrl m_imageBaseUrl;
+    std::shared_ptr<TStoreStorage> m_storage;
+    std::shared_ptr<market::TMarketStorage> m_marketStorage;
     bool m_searchRefreshPending = false;
     bool m_refreshOffersAfterPurchase = false;
+    QUrl m_imageBaseUrl;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

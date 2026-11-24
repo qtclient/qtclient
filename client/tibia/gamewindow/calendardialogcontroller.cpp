@@ -2,9 +2,9 @@
 
 #include "input/gameactionhandlers.h"
 #include "news/eventqmlentry.h"
+#include "qmlcomponents/texthelper.h"
 
 #include <QJsonObject>
-#include <QTimeZone>
 
 #include <algorithm>
 
@@ -13,29 +13,6 @@ namespace tibia::gamewindow {
 namespace {
 
 using A = input::EGameAction;
-
-const QTimeZone& serverTimeZone()
-{
-    static const QTimeZone zone = [] {
-#if QT_CONFIG(timezone)
-        QTimeZone berlin(QByteArrayLiteral("Europe/Berlin"));
-        if (berlin.isValid())
-            return berlin;
-#endif
-        // qtclient: wasm Qt has no named zones; Berlin's standard time.
-        return QTimeZone::fromSecondsAheadOfUtc(3600);
-    }();
-    return zone;
-}
-
-/// The server time as the game shows it: "2024-05-01, 10:00 CEST".
-QString formatServerTime(const QDateTime& time)
-{
-    const QDateTime local = time.toTimeZone(serverTimeZone());
-    return qtTrId("%1 %2")
-        .arg(local.toString(QStringLiteral("yyyy-MM-dd, HH:mm")))
-        .arg(local.isDaylightTime() ? QStringLiteral("CEST") : QStringLiteral("CET"));
-}
 
 QList<QObject*> entriesOf(const QVariant& value) { return value.value<QList<QObject*>>(); }
 
@@ -77,14 +54,14 @@ QString TCalendarDialogController::currentTimeServer() const
 {
     if (!m_serverClock)
         return {};
-    return formatServerTime(m_serverClock());
+    return qmlcomponents::formatServerDateTime(m_serverClock());
 }
 
 QDate TCalendarDialogController::todayDateServer() const
 {
     if (!m_serverClock)
         return QDate::currentDate();
-    return m_serverClock().toTimeZone(serverTimeZone()).date();
+    return qmlcomponents::toServerTime(m_serverClock()).date();
 }
 
 QDate TCalendarDialogController::minimumDate() const

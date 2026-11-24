@@ -13,6 +13,7 @@
 #include "client/gamecore.h"
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "gamewindow/tooltiptextvisitor.h"
 #include "sprites/spritesheetdecompressor.h"
 #include "sprites/spritesystem.h"
 #include "minimap/minimapmarkerstorage.h"
@@ -606,6 +607,7 @@ void TMinimapRendererQuickItem::updateMarkerHits()
     const QRectF viewport = boundingRect();
     const qreal halfField = SubfieldsPerField * 0.5 * m_worldCamera->scaleFactor();
     m_markers.clear();
+    const gamewindow::TTooltipTextVisitor tooltipText(&cyclopedia::TCyclopediaMapStaticDataStorage::instance());
     const auto addPin = [&](const QImage& icon, const QColor&, const int x, const int y, const int layer,
                             const QString& tooltip, const int kind, const quint32 houseId) {
         const TMarkerHit hit{ kind, Position(x, y, static_cast<uint8_t>(layer)), houseId };
@@ -638,7 +640,7 @@ void TMinimapRendererQuickItem::updateMarkerHits()
             const QPointF center = m_worldCamera->pixelOf(point.coordinate.x, point.coordinate.y, z) + QPointF(halfField, halfField);
             const QRectF target(center.x() - size * 0.5, center.y() - size * 0.5, size, size);
             if (target.intersects(viewport)) {
-                m_markers.push_back({ target, qtTrId("viewpoint_tooltip"),
+                m_markers.push_back({ target, tooltipText(worldmap::TViewpointMapAreaData{}),
                                       { TMarkerHit::Viewpoint,
                                         Position(point.coordinate.x, point.coordinate.y, static_cast<uint8_t>(point.coordinate.z)), 0 } });
             }
@@ -652,22 +654,7 @@ void TMinimapRendererQuickItem::updateMarkerHits()
             const auto* house = std::get_if<worldmap::THouseMarkerWorldMapAreaData>(&element.data);
             if (!house)
                 continue;
-            QString listing;
-            switch (house->listing) {
-            case 0:
-                listing = qtTrId("house_owned_tooltip");
-                break;
-            case 1:
-                listing = qtTrId("house_auctioned_tooltip");
-                break;
-            case 2:
-                listing = qtTrId("house_not_auctionable_tooltip");
-                break;
-            default:
-                listing = qtTrId("");
-                break;
-            }
-            const QString tooltip = QStringLiteral("%1\n%2").arg(cyclopedia::staticHouse(house->houseId).name).arg(listing);
+            const QString tooltip = tooltipText(*house);
             addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), element.area.origin.x, element.area.origin.y, z, tooltip,
                    TMarkerHit::HouseMarker, house->houseId);
         }
@@ -677,7 +664,7 @@ void TMinimapRendererQuickItem::updateMarkerHits()
         for (const worldmap::TWorldMapCoordinate& raid : m_storage->activeRaids()) {
             if (raid.z != z)
                 continue;
-            addPin(m_raidIcon, QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, qtTrId("active_raid_tooltip"), TMarkerHit::ActiveRaid, 0);
+            addPin(m_raidIcon, QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, tooltipText(worldmap::TActiveRaidMapAreaData{}), TMarkerHit::ActiveRaid, 0);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
@@ -705,10 +692,10 @@ void TMinimapRendererQuickItem::updateMarkerHits()
         for (const auto& passage : m_storage->passages()) {
             if (passage.coordinate.z != z)
                 continue;
-            QStringList names;
+            worldmap::TPassageMapAreaData data;
             for (const int subAreaId : passage.subAreaIds)
-                names.append(cyclopedia::TCyclopediaMapStaticDataStorage::instance().subAreaName(static_cast<quint16>(subAreaId)));
-            const QString tooltip = qtTrId("passage_tooltip").arg(names.join(QStringLiteral(", ")));
+                data.raceIds.push_back(static_cast<quint16>(subAreaId));
+            const QString tooltip = tooltipText(data);
             // The selected passage's field is drawn with the selected icon.
             const bool selected = m_highlightedCoordinate == Position(passage.coordinate.x, passage.coordinate.y,
                                                                       static_cast<uint8_t>(passage.coordinate.z));
@@ -721,7 +708,7 @@ void TMinimapRendererQuickItem::updateMarkerHits()
         const bool drawn = position.z == z || (z <= GroundLayer && position.z > z && position.z <= GroundLayer && m_tileType != ETileType::LocalMinimap);
         if (position.isValid() && drawn)
             addPin(m_playerIcon, QColor(0x66, 0xff, 0x5e), position.x, position.y, position.z,
-                   qtTrId("player_position_tooltip"), TMarkerHit::PlayerPosition, 0);
+                   tooltipText(worldmap::TPlayerPositionMapAreaData{}), TMarkerHit::PlayerPosition, 0);
     }
 }
 

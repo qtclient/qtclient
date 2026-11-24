@@ -84,6 +84,13 @@ public:
     {
         return { width < 0 ? -width : width, height < 0 ? -height : height, depth < 0 ? -depth : depth };
     }
+    /// The number of fields of the box: width × height × depth, 0 unless all three are positive.
+    std::size_t volume() const
+    {
+        if (width <= 0 || height <= 0 || depth <= 0)
+            return 0;
+        return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * static_cast<std::size_t>(depth);
+    }
 
     bool operator==(const TWorldMapExtent& other) const
     {
@@ -419,9 +426,148 @@ public:
         return origin.x <= x && x < end.x && origin.y <= y && y < end.y && origin.z <= coordinate.z && coordinate.z < end.z;
     }
 
+    /// The `index`th field of the box in the order of a map area above ground:
+    /// column first (y fastest, then x), the floors from the last one up to the
+    /// origin's floor; the field moved diagonally by its floor's distance to the
+    /// shear floor.
+    TWorldMapCoordinate coordinateForIndexByColumnFirstAndGroundToSky(const std::size_t index) const
+    {
+        const TWorldMapCoordinate field = fieldForIndex(index, true);
+        return field.shiftedTowardsFloor(shearFloor);
+    }
+    /// The same order with the floors from the origin's floor down to the last one
+    /// (a map area underground).
+    TWorldMapCoordinate coordinateForIndexByColumnFirstAndSkyToGround(const std::size_t index) const
+    {
+        const TWorldMapCoordinate field = fieldForIndex(index, false);
+        return field.shiftedTowardsFloor(shearFloor);
+    }
+
     bool operator==(const TShearedWorldMapCuboid& other) const
     {
         return TWorldMapCuboid::operator==(other) && shearFloor == other.shearFloor;
+    }
+
+private:
+    TWorldMapCoordinate fieldForIndex(const std::size_t index, const bool lastFloorFirst) const
+    {
+        const auto height = static_cast<std::size_t>(extent.height);
+        const auto floorSize = height * static_cast<std::size_t>(extent.width);
+        const int column = static_cast<int>((index / height) % static_cast<std::size_t>(extent.width));
+        const int row = static_cast<int>(index % height);
+        const int floorIndex = static_cast<int>((index / floorSize) % static_cast<std::size_t>(extent.depth));
+        const int floor = lastFloorFirst ? extent.depth + ~floorIndex : floorIndex;
+        return origin + TWorldMapExtent(column, row, floor);
+    }
+};
+
+/// The central position of the map messages and the area the client knows
+/// around it (CIP: the central position of the server message translator and of
+/// the world map protocol handler: the centre field, the visible width and
+/// height and the centre's offset from the area's top-left field). Every map
+/// message moves it the way the server moved the player's view, and each
+/// message's fields cover the area its move added.
+class TWorldMapCentralPosition
+{
+public:
+    static constexpr int GroundFloor = 7;
+    static constexpr int LastFloor = 15;
+    /// Floors seen above and below an underground centre.
+    static constexpr int UndergroundFloorRange = 2;
+
+    TWorldMapCoordinate center;
+    TWorldMapExtent size;
+    TWorldMapExtent offset;
+
+    TWorldMapCentralPosition() = default;
+    TWorldMapCentralPosition(const TWorldMapCoordinate& center_, const TWorldMapExtent& size_, const TWorldMapExtent& offset_)
+        : center(center_)
+        , size(size_)
+        , offset(offset_)
+    {
+    }
+
+    /// The centre is below the ground floor: the floors are read sky to ground.
+    bool isUnderground() const { return center.z > GroundFloor; }
+
+    /// The area around the centre: width × height fields from the centre minus
+    /// the offset; floors 0 to 7 above ground, two floors up and down (at most
+    /// floor 15) underground; sheared at the centre's floor.
+    TShearedWorldMapCuboid visibleArea() const
+    {
+        int lastFloor = GroundFloor;
+        if (center.z > GroundFloor)
+            lastFloor = center.z + (LastFloor - center.z < UndergroundFloorRange ? LastFloor - center.z : UndergroundFloorRange);
+        const int firstFloor = center.z < GroundFloor + 1 ? 0 : center.z - UndergroundFloorRange;
+        const TWorldMapCoordinate topLeft = center - offset;
+        return TShearedWorldMapCuboid(
+            TWorldMapCuboid({ topLeft.x, topLeft.y, firstFloor }, TWorldMapExtent(size.width, size.height, lastFloor - firstFloor + 1)),
+            center.z);
+    }
+    /// The visible area's first column / last column / first row / last row.
+    TShearedWorldMapCuboid leftColumn() const { return slice(false, false); }
+    TShearedWorldMapCuboid rightColumn() const { return slice(false, true); }
+    TShearedWorldMapCuboid topRow() const { return slice(true, false); }
+    TShearedWorldMapCuboid bottomRow() const { return slice(true, true); }
+    /// The floors a move one floor up adds: floors 0 to 5 when the centre came up
+    /// to the ground floor, the first floor underground, nothing above ground.
+    TShearedWorldMapCuboid topFloorArea() const
+    {
+        const TShearedWorldMapCuboid area = visibleArea();
+        const int firstFloor = area.origin.shiftedTowardsFloor(area.shearFloor).z;
+        if (center.z < GroundFloor + 1) {
+            if (center.z != GroundFloor)
+                return TShearedWorldMapCuboid(TWorldMapCuboid(), 0);
+            return area.restrictedToFloors(firstFloor, GroundFloor - UndergroundFloorRange);
+        }
+        return area.restrictedToFloors(firstFloor, firstFloor);
+    }
+    /// The floors a move one floor down adds: floors 8 to 10 when the centre went
+    /// below the ground floor, the last floor further down (centre floors 9 to
+    /// 13), nothing otherwise.
+    TShearedWorldMapCuboid bottomFloorArea() const
+    {
+        const TShearedWorldMapCuboid area = visibleArea();
+        const int lastFloor = (area.origin + TWorldMapExtent(0, 0, area.extent.depth - 1)).shiftedTowardsFloor(area.shearFloor).z;
+        if (center.z > GroundFloor + 1 && center.z <= LastFloor - UndergroundFloorRange)
+            return area.restrictedToFloors(lastFloor, lastFloor);
+        if (center.z == GroundFloor + 1)
+            return area.restrictedToFloors(lastFloor - UndergroundFloorRange, lastFloor);
+        return TShearedWorldMapCuboid(TWorldMapCuboid(), 0);
+    }
+
+    /// The moves of the four slice messages.
+    void moveLeft() { --center.x; }
+    void moveRight() { ++center.x; }
+    void moveUp() { --center.y; }
+    void moveDown() { ++center.y; }
+    /// One floor up / down, the field moved diagonally so that it stays drawn at
+    /// the same place.
+    void moveUpFloor() { center = TWorldMapCoordinate(center.x, center.y, center.z - 1).shiftedTowardsFloor(center.z); }
+    void moveDownFloor() { center = TWorldMapCoordinate(center.x, center.y, center.z + 1).shiftedTowardsFloor(center.z); }
+
+    /// The `index`th field of a map area in `area`, in the order the server
+    /// describes it from this centre (ground to sky above ground, sky to
+    /// ground underground).
+    TWorldMapCoordinate coordinateOfAreaIndex(const TShearedWorldMapCuboid& area, const std::size_t index) const
+    {
+        return isUnderground() ? area.coordinateForIndexByColumnFirstAndSkyToGround(index)
+                               : area.coordinateForIndexByColumnFirstAndGroundToSky(index);
+    }
+
+private:
+    TShearedWorldMapCuboid slice(const bool row, const bool last) const
+    {
+        const TShearedWorldMapCuboid area = visibleArea();
+        TWorldMapCoordinate origin = area.origin;
+        if (last) {
+            if (row)
+                origin.y += area.extent.height - 1;
+            else
+                origin.x += area.extent.width - 1;
+        }
+        const TWorldMapExtent extent(row ? area.extent.width : 1, row ? 1 : area.extent.height, area.extent.depth);
+        return TShearedWorldMapCuboid(TWorldMapCuboid(origin, extent), area.shearFloor);
     }
 };
 

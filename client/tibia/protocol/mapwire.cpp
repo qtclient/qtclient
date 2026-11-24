@@ -1,11 +1,8 @@
 #include "protocol/mapwire.h"
 
-#include "protocol/inventoryitemwire.h"
+#include "worldmap/coordinates.h"
 
-#include <client/const.h>
-#include <client/position.h>
-#include <tibia/config/runtimegameconfig.h>
-#include <tibia/game/gamesession.h>
+#include <tibia/assets/things.h>
 #include <tibia/game/mapsession.h>
 
 #include <protocol.pb.h>
@@ -20,8 +17,25 @@ constexpr uint16_t NewCreature = 0x61;
 constexpr uint16_t KnownCreature = 0x62;
 constexpr uint16_t TurnedCreature = 0x63;
 
-/// The translator's view: the centre of the fields the next map message describes.
-Position g_center;
+using worldmap::TShearedWorldMapCuboid;
+using worldmap::TWorldMapCentralPosition;
+using worldmap::TWorldMapCoordinate;
+using worldmap::TWorldMapCuboid;
+using worldmap::TWorldMapExtent;
+
+/// The translator's central position (CIP: the translator's member the map
+/// messages move) and the one the message being translated moves it to; the
+/// move is committed once the message translated completely.
+TWorldMapCoordinate g_center;
+TWorldMapCoordinate g_pendingCenter;
+
+/// The central position at `center` with the aware area the session uses.
+TWorldMapCentralPosition centralPositionAt(const TWorldMapCoordinate& center)
+{
+    const tibia::game::MapAwareRange range = tibia::game::awareRange();
+    return TWorldMapCentralPosition(center, TWorldMapExtent(range.horizontal(), range.vertical(), 1),
+                                    TWorldMapExtent(range.left, range.top, 0));
+}
 
 void setCoordinate(ProtocolCoordinate* c, const int x, const int y, const int z)
 {
@@ -30,39 +44,75 @@ void setCoordinate(ProtocolCoordinate* c, const int x, const int y, const int z)
     c->set_z(static_cast<uint32_t>(z));
 }
 
-bool readPosition(ClassicReader& r, Position& out)
+void setCoordinate(ProtocolCoordinate* c, const TWorldMapCoordinate& coordinate)
+{
+    setCoordinate(c, coordinate.x, coordinate.y, coordinate.z);
+}
+
+bool readPosition(ClassicReader& r, TWorldMapCoordinate& out)
 {
     uint16_t x = 0, y = 0;
     uint8_t z = 0;
     if (!r.u16(x) || !r.u16(y) || !r.u8(z))
         return false;
-    out = Position(x, y, z);
+    out = TWorldMapCoordinate(x, y, z);
     return true;
 }
 
-/// The icons of a creature: u8 count × (u8 icon, u8 category, u16 value, bool flag).
-bool readCreatureIcons(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolCreatureIcon>* icons)
+bool readBool(ClassicReader& r, bool& out)
 {
+    uint8_t value = 0;
+    if (!r.u8(value))
+        return false;
+    out = value != 0;
+    return true;
+}
+
+/// The four outfit colours; true when any is non-zero.
+bool readOutfitColors(ClassicReader& r, OutfitColor* out, bool& any)
+{
+    uint8_t head = 0, body = 0, legs = 0, feet = 0;
+    if (!r.u8(head) || !r.u8(body) || !r.u8(legs) || !r.u8(feet))
+        return false;
+    out->set_head(head);
+    out->set_body(body);
+    out->set_legs(legs);
+    out->set_feet(feet);
+    any = head != 0 || body != 0 || legs != 0 || feet != 0;
+    return true;
+}
+
+/// The icons of a creature: u8 count × (u8 icon, u8 category, u16 value, bool
+/// flag); category 0 and 1 name the icon's field, others leave it out.
+bool readCreatureIcons(ClassicReader& r, CreatureData* out)
+{
+    out->set_update_icons(true);
     uint8_t count = 0;
     if (!r.u8(count))
         return false;
     for (uint8_t i = 0; i < count; ++i) {
-        uint8_t icon = 0, category = 0, flag = 0;
+        CreatureOtherIcons* entry = out->add_icons();
+        uint8_t icon = 0, category = 0;
         uint16_t value = 0;
-        if (!r.u8(icon) || !r.u8(category) || !r.u16(value) || !r.u8(flag))
+        bool flag = false;
+        if (!r.u8(icon) || !r.u8(category))
             return false;
-        ProtocolCreatureIcon* entry = icons->Add();
-        entry->set_icon(icon);
-        entry->set_category(category);
+        if (category == 1)
+            entry->set_special_icon(icon);
+        else if (category == 0)
+            entry->set_icon(icon);
+        if (!r.u16(value) || !readBool(r, flag))
+            return false;
         entry->set_value(value);
-        entry->set_flag(flag != 0);
+        entry->set_flag(flag);
     }
     return true;
 }
 
 /// The second icon list: u8 count × u8.
-bool readExtraIcons(ClassicReader& r, google::protobuf::RepeatedField<uint32_t>* icons)
+bool readExtraIcons(ClassicReader& r, CreatureData* out)
 {
+    out->set_update_extra_icons(true);
     uint8_t count = 0;
     if (!r.u8(count))
         return false;
@@ -70,59 +120,126 @@ bool readExtraIcons(ClassicReader& r, google::protobuf::RepeatedField<uint32_t>*
         uint8_t icon = 0;
         if (!r.u8(icon))
             return false;
-        icons->Add(icon);
+        out->add_extra_icons(icon);
     }
     return true;
 }
 
-/// The fields of one floor, column by column, carrying the skip count over.
-/// Only described fields are added: a skipped field is left as it is.
-bool readFloor(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapField>* fields, const int x, const int y,
-               const int z, const int width, const int height, const int offset, int& skip)
+/// The extra data of an object, by the first appearance kind it belongs to.
+bool readObjectExtraData(ClassicReader& r, AppearanceInstance* out)
 {
-    for (int nx = 0; nx < width; ++nx) {
-        for (int ny = 0; ny < height; ++ny) {
-            if (skip > 0) {
-                --skip;
-                continue;
-            }
-            ProtocolMapField* field = fields->Add();
-            setCoordinate(field->mutable_coordinate(), x + nx + offset, y + ny + offset, z);
-            if (!readMapField(r, field, skip))
+    const uint16_t id = static_cast<uint16_t>(out->id());
+    const auto& special = tibia::appearances::TAppearancesManager::instance().specialAppearancesForProtocolParsing();
+    uint8_t value = 0;
+    if (special.isCumulative(id)) {
+        if (!r.u8(value))
+            return false;
+        out->MutableExtension(CumulativeObject::cumulative_object)->set_count(value);
+        return true;
+    }
+    if (special.isLiquid(id)) {
+        if (!r.u8(value))
+            return false;
+        out->MutableExtension(LiquidObject::liquid_object)->set_liquid(value);
+        return true;
+    }
+    if (special.isContainer(id)) {
+        uint8_t flags = 0;
+        if (!r.u8(flags))
+            return false;
+        if (flags == 0)
+            return true;
+        ContainerObject* container = out->MutableExtension(ContainerObject::container_object);
+        container->set_flags(flags);
+        uint32_t data = 0;
+        if (flags & 1) {
+            if (!r.u32(data))
                 return false;
+            container->set_loot_flags(data);
         }
+        if (flags & 2) {
+            if (!r.u32(data))
+                return false;
+            container->set_ammo_total(data);
+        }
+        if (flags & 8) {
+            if (!r.u32(data))
+                return false;
+            container->set_obtain_flags(data);
+        }
+        return true;
+    }
+    if (special.isShowOffSocket(id)) {
+        ShowOffSocketObject* socket = out->MutableExtension(ShowOffSocketObject::show_off_socket_object);
+        if (!readOutfit(r, socket->mutable_outfit(), true, true, true))
+            return false;
+        // A socket without a look type keeps no look type.
+        if (socket->outfit().look_type() == 0)
+            socket->mutable_outfit()->clear_look_type();
+        bool visible = false;
+        if (!readOutfit(r, socket->mutable_mount(), true, false, false) || !r.u8(value) || !readBool(r, visible))
+            return false;
+        socket->set_direction(value);
+        socket->set_visible(visible);
+        return true;
+    }
+    if (special.isUpgradeable(id)) {
+        if (!r.u8(value))
+            return false;
+        out->MutableExtension(UpgradeableObject::upgradeable_object)->set_tier(value);
+        return true;
+    }
+    uint32_t number = 0;
+    bool brandNew = false;
+    if (special.isWearOut(id)) {
+        if (!r.u32(number) || !readBool(r, brandNew))
+            return false;
+        WearoutObject* wearout = out->MutableExtension(WearoutObject::wearout_object);
+        wearout->set_charges(number);
+        wearout->set_brand_new(brandNew);
+        return true;
+    }
+    const bool expireStop = special.isExpireStop(id);
+    if (expireStop || special.isExpire(id)) {
+        if (!r.u32(number) || !readBool(r, brandNew))
+            return false;
+        ExpireObject* expire = out->MutableExtension(ExpireObject::expire_object);
+        expire->set_duration(number);
+        expire->set_brand_new(brandNew);
+        expire->set_expire_stop(expireStop);
+        return true;
+    }
+    if (special.isDecoKit(id)) {
+        uint16_t deco = 0;
+        if (!r.u16(deco))
+            return false;
+        out->MutableExtension(DecoItemKitObject::deco_item_kit_object)->set_deco_item_id(deco);
     }
     return true;
 }
 
-/// An area through every floor the view shows from `z`.
-bool readArea(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapField>* fields, const int x, const int y,
-              const int z, const int width, const int height)
+/// The fields of `area`'s volume in the server's order: each described field
+/// with its coordinate, the skipped ones left out (CIP's area reader).
+bool readArea(ClassicReader& r, MapArea* area, const TWorldMapCentralPosition& central, const TShearedWorldMapCuboid& volume)
 {
-    int startZ = 0;
-    int endZ = 0;
-    int step = 0;
-    if (z > tibia::config::mapSeaFloor()) {
-        startZ = z - tibia::config::mapAwareUndergroundFloorRange();
-        endZ = std::min<int>(z + tibia::config::mapAwareUndergroundFloorRange(), tibia::config::mapMaxZ());
-        step = 1;
-    } else {
-        startZ = tibia::config::mapSeaFloor();
-        endZ = 0;
-        step = -1;
-    }
-    int skip = 0;
-    for (int nz = startZ; nz != endZ + step; nz += step) {
-        if (!readFloor(r, fields, x, y, nz, width, height, z - nz, skip))
+    const std::size_t count = volume.getExtent().volume();
+    MapFields* fields = area->mutable_field_data()->mutable_fields();
+    for (std::size_t index = 0; index < count; ++index) {
+        MapField* field = fields->add_fields();
+        setCoordinate(field->MutableExtension(MapFieldExtraData::map_field_extra_data)->mutable_coordinate(),
+                      central.coordinateOfAreaIndex(volume, index));
+        if (!readMapField(r, field))
+            return false;
+        index += field->skip();
+        // The skip counts must stay inside the area.
+        if (index > count)
             return false;
     }
-    // The skip counts must cover the area exactly.
-    return skip == 0;
+    return true;
 }
 
-/// A mapped thing: a field and stack position, or 0xffff and a creature id.
-template<typename Message>
-bool readMappedThing(ClassicReader& r, Message* m)
+/// A mapped thing of a delete: a field and stack position, or 0xffff and a creature id.
+bool readObjectPosition(ClassicReader& r, GameserverMessageDeleteOnMap* m)
 {
     uint16_t x = 0;
     if (!r.u16(x))
@@ -136,10 +253,13 @@ bool readMappedThing(ClassicReader& r, Message* m)
     }
     uint16_t y = 0;
     uint8_t z = 0, stack = 0;
-    if (!r.u16(y) || !r.u8(z) || !r.u8(stack))
+    if (!r.u16(y) || !r.u8(z))
         return false;
-    setCoordinate(m->mutable_coordinate(), x, y, z);
-    m->set_stackpos(stack);
+    WorldmapObjectPosition* position = m->mutable_object_position();
+    setCoordinate(position->mutable_coordinate(), x, y, z);
+    if (!r.u8(stack))
+        return false;
+    position->set_stack_position(stack);
     return true;
 }
 
@@ -179,109 +299,142 @@ bool readOutfit(ClassicReader& r, ProtocolOutfit* out, const bool outfit)
     return true;
 }
 
-bool readCreature(ClassicReader& r, ProtocolCreature* out, const uint16_t kind)
+bool readOutfit(ClassicReader& r, Outfit* out, const bool colors, const bool addons, const bool object)
 {
-    out->set_kind(kind);
-    uint32_t id = 0;
-    if (kind == NewCreature) {
-        uint32_t removeId = 0;
-        if (!r.u32(removeId))
-            return false;
-        out->set_remove_id(removeId);
-    }
-    if (!r.u32(id))
+    uint16_t lookType = 0;
+    if (!r.u16(lookType))
         return false;
-    out->set_id(id);
-    if (kind == TurnedCreature) {
-        uint8_t direction = 0, unpassable = 0;
-        if (!r.u8(direction) || !r.u8(unpassable))
+    if (lookType == 0) {
+        if (!object)
+            return true;
+        uint16_t objectType = 0;
+        if (!r.u16(objectType))
             return false;
-        out->set_direction(direction);
-        out->set_unpassable(unpassable != 0);
+        if (objectType == 0)
+            out->set_look_type(0);
+        else
+            out->set_object_type(objectType);
         return true;
     }
-    if (kind == NewCreature) {
-        uint8_t type = 0;
-        if (!r.u8(type))
+    out->set_look_type(lookType);
+    if (colors) {
+        bool any = false;
+        if (!readOutfitColors(r, out->mutable_colors(), any))
             return false;
-        out->set_type(type);
-        if (type == 3) {
-            uint32_t master = 0;
-            if (!r.u32(master))
-                return false;
-            out->set_master_id(master);
-        }
-        std::string name;
-        if (!r.string(name))
-            return false;
-        out->set_name(name);
+        // Four zero colours: the outfit has none.
+        if (!any)
+            out->clear_colors();
     }
-    uint8_t health = 0, direction = 0;
-    if (!r.u8(health) || !r.u8(direction))
-        return false;
-    out->set_health_percent(health);
-    out->set_direction(direction);
-    if (!readOutfit(r, out->mutable_outfit(), true) || !readOutfit(r, out->mutable_mount(), false))
-        return false;
-    uint8_t intensity = 0, color = 0;
-    uint16_t speed = 0;
-    if (!r.u8(intensity) || !r.u8(color) || !r.u16(speed))
-        return false;
-    out->set_light_intensity(intensity);
-    out->set_light_color(color);
-    out->set_speed(speed);
-    out->set_update_icons(true);
-    if (!readCreatureIcons(r, out->mutable_icons()))
-        return false;
-    out->set_update_extra_icons(true);
-    if (!readExtraIcons(r, out->mutable_extra_icons()))
-        return false;
-    uint8_t skull = 0, shield = 0;
-    if (!r.u8(skull) || !r.u8(shield))
-        return false;
-    out->set_skull(skull);
-    out->set_shield(shield);
-    if (kind == NewCreature) {
-        uint8_t emblem = 0;
-        if (!r.u8(emblem))
+    if (addons) {
+        uint8_t value = 0;
+        if (!r.u8(value))
             return false;
-        out->set_emblem(emblem);
+        if (value != 0)
+            out->set_addons(value);
     }
-    uint8_t type = 0;
-    if (!r.u8(type))
-        return false;
-    out->set_type(type);
-    if (type == 0) {
-        uint8_t vocation = 0;
-        if (!r.u8(vocation))
-            return false;
-        out->set_vocation(vocation % 10);
-    } else if (type == 3) {
-        uint32_t master = 0;
-        if (!r.u32(master))
-            return false;
-        out->set_master_id(master);
-    }
-    uint8_t icon = 0, mark = 0, inspection = 0, unpassable = 0;
-    if (!r.u8(icon) || !r.u8(mark) || !r.u8(inspection) || !r.u8(unpassable))
-        return false;
-    out->set_icon(icon);
-    out->set_mark(mark);
-    out->set_inspection_type(inspection);
-    out->set_unpassable(unpassable != 0);
     return true;
 }
 
-bool readMapObject(ClassicReader& r, ProtocolMapObject* out, uint16_t id)
+bool readCreature(ClassicReader& r, CreatureData* out, const uint16_t kind)
 {
-    if (id == 0 && (!r.u16(id) || id == 0))
+    uint32_t value = 0;
+    if (kind == NewCreature) {
+        // The creature a new one replaces (none: 0).
+        if (!r.u32(value))
+            return false;
+        if (value != 0)
+            out->set_remove_id(value);
+    }
+    uint32_t id = 0;
+    if (!r.u32(id))
         return false;
-    if (id == NewCreature || id == KnownCreature || id == TurnedCreature)
-        return readCreature(r, out->mutable_creature(), id);
-    return readInventoryItem(r, out->mutable_item(), id);
+    out->set_id(id);
+    uint8_t byte = 0;
+    if (kind == KnownCreature || kind == TurnedCreature) {
+        out->set_remove_id(id);
+    } else if (kind == NewCreature) {
+        if (!r.u8(byte))
+            return false;
+        out->set_type(byte);
+        if (byte == 3) {
+            if (!r.u32(value))
+                return false;
+            out->set_master_id(value);
+        }
+        if (!r.string(*out->mutable_name()))
+            return false;
+    }
+    if (kind != NewCreature && kind != KnownCreature) {
+        // A creature that turned: its direction.
+        if (!r.u8(byte))
+            return false;
+        out->set_direction(byte);
+    } else {
+        if (!r.u8(byte))
+            return false;
+        out->set_health_percent(byte);
+        if (!r.u8(byte))
+            return false;
+        out->set_direction(byte);
+        if (!readOutfit(r, out->mutable_outfit(), true, true, true) || !readOutfit(r, out->mutable_mount(), true, false, false))
+            return false;
+        uint8_t intensity = 0, color = 0;
+        uint16_t speed = 0;
+        if (!r.u8(intensity) || !r.u8(color) || !r.u16(speed))
+            return false;
+        out->set_light_intensity(intensity);
+        out->set_light_color(color);
+        out->set_speed(speed);
+        if (!readCreatureIcons(r, out) || !readExtraIcons(r, out))
+            return false;
+        uint8_t skull = 0, shield = 0;
+        if (!r.u8(skull) || !r.u8(shield))
+            return false;
+        out->set_skull(skull);
+        out->set_shield(shield);
+        if (kind == NewCreature) {
+            if (!r.u8(byte))
+                return false;
+            out->set_emblem(byte);
+        }
+        if (!r.u8(byte))
+            return false;
+        out->set_type(byte);
+        if (byte == 0) {
+            uint8_t vocation = 0;
+            if (!r.u8(vocation))
+                return false;
+            out->set_vocation(vocation % 10);
+        } else if (byte == 3) {
+            if (!r.u32(value))
+                return false;
+            out->set_master_id(value);
+        }
+        uint8_t icon = 0, mark = 0, inspection = 0;
+        if (!r.u8(icon) || !r.u8(mark) || !r.u8(inspection))
+            return false;
+        out->set_icon(icon);
+        out->set_mark(mark);
+        out->set_inspection_type(inspection);
+    }
+    bool unpassable = false;
+    if (!readBool(r, unpassable))
+        return false;
+    out->set_unpassable(unpassable);
+    return true;
 }
 
-bool readMapField(ClassicReader& r, ProtocolMapField* out, int& skip)
+bool readMapObject(ClassicReader& r, AppearanceInstance* out, uint16_t id)
+{
+    if (id == 0 && !r.u16(id))
+        return false;
+    out->set_id(id);
+    if (id >= NewCreature && id <= TurnedCreature)
+        return readCreature(r, out->MutableExtension(CreatureData::creature_data), id);
+    return readObjectExtraData(r, out);
+}
+
+bool readMapField(ClassicReader& r, MapField* out)
 {
     // Objects until a value of 0xff00 or more; its low byte is the number of
     // fields to skip after this one.
@@ -294,7 +447,8 @@ bool readMapField(ClassicReader& r, ProtocolMapField* out, int& skip)
         if (!readMapObject(r, out->add_objects(), id) || !r.u16(id))
             return false;
     }
-    skip = id & 0xff;
+    if ((id & 0xff) != 0)
+        out->set_skip(id & 0xff);
     return true;
 }
 
@@ -312,105 +466,95 @@ bool isMapMessage(const int opcode)
 
 size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r)
 {
-    const tibia::game::MapAwareRange range = tibia::game::awareRange();
-    const auto fillArea = [&](auto* m, const Position& center, const int x, const int y, const int width, const int height) -> size_t {
-        setCoordinate(m->mutable_coordinate(), center.x, center.y, center.z);
-        return readArea(r, m->mutable_fields(), x, y, center.z, width, height) ? r.i : 0;
+    // The slices and floor changes move the central position first; their
+    // fields cover the area the move added.
+    TWorldMapCentralPosition central = centralPositionAt(g_center);
+    const auto fillArea = [&](MapArea* area, const TShearedWorldMapCuboid& volume) -> size_t {
+        g_pendingCenter = central.center;
+        return readArea(r, area, central, volume) ? r.i : 0;
     };
     switch (opcode) {
     case 100: {
-        Position center;
+        auto* m = msg.MutableExtension(GameserverMessageFullMap::gameserver_message_full_map);
+        TWorldMapCoordinate center;
         if (!readPosition(r, center))
             return 0;
-        return fillArea(msg.MutableExtension(GameserverMessageFullMap::gameserver_message_full_map), center,
-                        center.x - range.left, center.y - range.top, range.horizontal(), range.vertical());
+        central = centralPositionAt(center);
+        setCoordinate(m->mutable_coordinate(), center);
+        return fillArea(m->mutable_area(), central.visibleArea());
     }
-    case 101: {
-        const Position center(g_center.x, g_center.y - 1, g_center.z);
-        return fillArea(msg.MutableExtension(GameserverMessageTopRow::gameserver_message_top_row), center,
-                        center.x - range.left, center.y - range.top, range.horizontal(), 1);
-    }
-    case 102: {
-        const Position center(g_center.x + 1, g_center.y, g_center.z);
-        return fillArea(msg.MutableExtension(GameserverMessageRightColumn::gameserver_message_right_column), center,
-                        center.x + range.right, center.y - range.top, 1, range.vertical());
-    }
-    case 103: {
-        const Position center(g_center.x, g_center.y + 1, g_center.z);
-        return fillArea(msg.MutableExtension(GameserverMessageBottomRow::gameserver_message_bottom_row), center,
-                        center.x - range.left, center.y + range.bottom, range.horizontal(), 1);
-    }
-    case 104: {
-        const Position center(g_center.x - 1, g_center.y, g_center.z);
-        return fillArea(msg.MutableExtension(GameserverMessageLeftColumn::gameserver_message_left_column), center,
-                        center.x - range.left, center.y - range.top, 1, range.vertical());
-    }
+    case 101:
+        central.moveUp();
+        return fillArea(msg.MutableExtension(GameserverMessageTopRow::gameserver_message_top_row)->mutable_area(),
+                        central.topRow());
+    case 102:
+        central.moveRight();
+        return fillArea(msg.MutableExtension(GameserverMessageRightColumn::gameserver_message_right_column)->mutable_area(),
+                        central.rightColumn());
+    case 103:
+        central.moveDown();
+        return fillArea(msg.MutableExtension(GameserverMessageBottomRow::gameserver_message_bottom_row)->mutable_area(),
+                        central.bottomRow());
+    case 104:
+        central.moveLeft();
+        return fillArea(msg.MutableExtension(GameserverMessageLeftColumn::gameserver_message_left_column)->mutable_area(),
+                        central.leftColumn());
     case 105: {
+        // One field: an area of one field at the coordinate.
         auto* m = msg.MutableExtension(GameserverMessageFieldData::gameserver_message_field_data);
-        Position at;
+        TWorldMapCoordinate at;
         if (!readPosition(r, at))
             return 0;
-        ProtocolMapField* field = m->mutable_field();
-        setCoordinate(field->mutable_coordinate(), at.x, at.y, at.z);
-        int skip = 0;
-        return readMapField(r, field, skip) ? r.i : 0;
+        setCoordinate(m->mutable_coordinate(), at);
+        const TShearedWorldMapCuboid field(TWorldMapCuboid::ofField(at), at.z);
+        return fillArea(m->mutable_area(), field);
     }
     case 106: {
         auto* m = msg.MutableExtension(GameserverMessageCreateOnMap::gameserver_message_create_on_map);
-        Position at;
+        TWorldMapCoordinate at;
         uint8_t stack = 0;
         if (!readPosition(r, at) || !r.u8(stack))
             return 0;
-        setCoordinate(m->mutable_coordinate(), at.x, at.y, at.z);
-        m->set_stackpos(stack);
+        setCoordinate(m->mutable_coordinate(), at);
+        m->set_stack_position(stack);
+        g_pendingCenter = g_center;
         return readMapObject(r, m->mutable_object()) ? r.i : 0;
     }
     case 107: {
         auto* m = msg.MutableExtension(GameserverMessageChangeOnMap::gameserver_message_change_on_map);
-        return readMappedThing(r, m) && readMapObject(r, m->mutable_object()) ? r.i : 0;
-    }
-    case 108: {
-        auto* m = msg.MutableExtension(GameserverMessageDeleteOnMap::gameserver_message_delete_on_map);
-        return readMappedThing(r, m) ? r.i : 0;
-    }
-    case 190: {
-        // One floor up: the newly visible floors above, then the view moves +1,+1.
-        auto* m = msg.MutableExtension(GameserverMessageTopFloor::gameserver_message_top_floor);
-        const Position pos(g_center.x, g_center.y, g_center.z - 1);
-        setCoordinate(m->mutable_coordinate(), pos.x + 1, pos.y + 1, pos.z);
-        int skip = 0;
-        if (pos.z == tibia::config::mapSeaFloor()) {
-            for (int z = tibia::config::mapSeaFloor() - tibia::config::mapAwareUndergroundFloorRange(); z >= 0; --z) {
-                if (!readFloor(r, m->mutable_fields(), pos.x - range.left, pos.y - range.top, z, range.horizontal(),
-                               range.vertical(), 8 - z, skip))
-                    return 0;
-            }
-        } else if (pos.z > tibia::config::mapSeaFloor()) {
-            if (!readFloor(r, m->mutable_fields(), pos.x - range.left, pos.y - range.top,
-                           pos.z - tibia::config::mapAwareUndergroundFloorRange(), range.horizontal(), range.vertical(), 3, skip))
+        g_pendingCenter = g_center;
+        uint16_t x = 0;
+        if (!r.u16(x))
+            return 0;
+        if (x == 0xffff) {
+            // The creature-id form: the object's creature data names the creature.
+            uint32_t id = 0;
+            if (!r.u32(id) || !readMapObject(r, m->mutable_object()))
                 return 0;
+            m->mutable_object()->MutableExtension(CreatureData::creature_data)->set_id(id);
+            return r.i;
         }
-        return skip == 0 ? r.i : 0;
+        uint16_t y = 0;
+        uint8_t z = 0, stack = 0;
+        if (!r.u16(y) || !r.u8(z) || !r.u8(stack))
+            return 0;
+        setCoordinate(m->mutable_coordinate(), x, y, z);
+        m->set_stack_position(stack);
+        return readMapObject(r, m->mutable_object()) ? r.i : 0;
     }
-    case 191: {
-        // One floor down: the newly visible floors below, then the view moves -1,-1.
-        auto* m = msg.MutableExtension(GameserverMessageBottomFloor::gameserver_message_bottom_floor);
-        const Position pos(g_center.x, g_center.y, g_center.z + 1);
-        setCoordinate(m->mutable_coordinate(), pos.x - 1, pos.y - 1, pos.z);
-        int skip = 0;
-        if (pos.z == tibia::config::mapUndergroundFloorRange()) {
-            for (int z = pos.z, offset = -1; z <= pos.z + tibia::config::mapAwareUndergroundFloorRange(); ++z, --offset) {
-                if (!readFloor(r, m->mutable_fields(), pos.x - range.left, pos.y - range.top, z, range.horizontal(),
-                               range.vertical(), offset, skip))
-                    return 0;
-            }
-        } else if (pos.z > tibia::config::mapUndergroundFloorRange() && pos.z < tibia::config::mapMaxZ() - 1) {
-            if (!readFloor(r, m->mutable_fields(), pos.x - range.left, pos.y - range.top,
-                           pos.z + tibia::config::mapAwareUndergroundFloorRange(), range.horizontal(), range.vertical(), -3, skip))
-                return 0;
-        }
-        return skip == 0 ? r.i : 0;
-    }
+    case 108:
+        g_pendingCenter = g_center;
+        return readObjectPosition(r, msg.MutableExtension(GameserverMessageDeleteOnMap::gameserver_message_delete_on_map))
+                   ? r.i
+                   : 0;
+    case 190:
+        central.moveUpFloor();
+        return fillArea(msg.MutableExtension(GameserverMessageTopFloor::gameserver_message_top_floor)->mutable_area(),
+                        central.topFloorArea());
+    case 191:
+        central.moveDownFloor();
+        return fillArea(msg.MutableExtension(GameserverMessageBottomFloor::gameserver_message_bottom_floor)->mutable_area(),
+                        central.bottomFloorArea());
     default:
         return 0;
     }
@@ -418,29 +562,13 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
 
 void setMapViewport(const int x, const int y, const int z)
 {
-    g_center = Position(x, y, static_cast<uint8_t>(z));
+    g_center = TWorldMapCoordinate(x, y, z);
+    g_pendingCenter = g_center;
 }
 
-void advanceMapViewport(const GameserverMessage& msg)
+void advanceMapViewport(const GameserverMessage&)
 {
-    const auto move = [](const auto& m) {
-        g_center = Position(static_cast<int32_t>(m.coordinate().x()), static_cast<int32_t>(m.coordinate().y()),
-                            static_cast<uint8_t>(m.coordinate().z()));
-    };
-    if (msg.HasExtension(GameserverMessageFullMap::gameserver_message_full_map))
-        move(msg.GetExtension(GameserverMessageFullMap::gameserver_message_full_map));
-    else if (msg.HasExtension(GameserverMessageTopRow::gameserver_message_top_row))
-        move(msg.GetExtension(GameserverMessageTopRow::gameserver_message_top_row));
-    else if (msg.HasExtension(GameserverMessageRightColumn::gameserver_message_right_column))
-        move(msg.GetExtension(GameserverMessageRightColumn::gameserver_message_right_column));
-    else if (msg.HasExtension(GameserverMessageBottomRow::gameserver_message_bottom_row))
-        move(msg.GetExtension(GameserverMessageBottomRow::gameserver_message_bottom_row));
-    else if (msg.HasExtension(GameserverMessageLeftColumn::gameserver_message_left_column))
-        move(msg.GetExtension(GameserverMessageLeftColumn::gameserver_message_left_column));
-    else if (msg.HasExtension(GameserverMessageTopFloor::gameserver_message_top_floor))
-        move(msg.GetExtension(GameserverMessageTopFloor::gameserver_message_top_floor));
-    else if (msg.HasExtension(GameserverMessageBottomFloor::gameserver_message_bottom_floor))
-        move(msg.GetExtension(GameserverMessageBottomFloor::gameserver_message_bottom_floor));
+    g_center = g_pendingCenter;
 }
 
 bool isCreatureMessage(const int opcode)
@@ -467,61 +595,51 @@ size_t fillCreatureMessage(GameserverMessage& msg, const int opcode, ClassicRead
         uint8_t type = 0;
         if (!r.u32(id) || !r.u8(type))
             return 0;
-        m->set_creature_id(id);
+        // The update names a known creature: its id and the id it is stored under.
+        CreatureData* creature = m->mutable_creature();
+        creature->set_id(id);
+        creature->set_remove_id(id);
         m->set_type(type);
         switch (type) {
         case 0: {
+            creature->clear_remove_id();
             uint16_t kind = 0;
             if (!r.u16(kind))
                 return 0;
-            if (kind >= NewCreature && kind <= TurnedCreature && !readCreature(r, m->mutable_creature(), kind))
+            if (kind >= NewCreature && kind <= TurnedCreature && !readCreature(r, creature, kind))
                 return 0;
             break;
         }
-        // One field of the known creature the update names.
+        // One field of the known creature.
         case 11: {
             uint8_t mana = 0;
             if (!r.u8(mana))
                 return 0;
-            ProtocolCreature* creature = m->mutable_creature();
-            creature->set_id(id);
             creature->set_mana_percent(mana);
             break;
         }
         case 12: {
-            uint8_t show = 0;
-            if (!r.u8(show))
+            bool show = false;
+            if (!readBool(r, show))
                 return 0;
-            ProtocolCreature* creature = m->mutable_creature();
-            creature->set_id(id);
-            creature->set_show_status(show != 0);
+            creature->set_show_status(show);
             break;
         }
         case 13: {
             uint8_t vocation = 0;
             if (!r.u8(vocation))
                 return 0;
-            ProtocolCreature* creature = m->mutable_creature();
-            creature->set_id(id);
             creature->set_vocation(vocation % 10);
             break;
         }
-        case 14: {
-            ProtocolCreature* creature = m->mutable_creature();
-            creature->set_id(id);
-            creature->set_update_icons(true);
-            if (!readCreatureIcons(r, creature->mutable_icons()))
+        case 14:
+            if (!readCreatureIcons(r, creature))
                 return 0;
             break;
-        }
-        case 15: {
-            ProtocolCreature* creature = m->mutable_creature();
-            creature->set_id(id);
-            creature->set_update_extra_icons(true);
-            if (!readExtraIcons(r, creature->mutable_extra_icons()))
+        case 15:
+            if (!readExtraIcons(r, creature))
                 return 0;
             break;
-        }
         // Product server party extensions.
         case 16:
         case 17: {

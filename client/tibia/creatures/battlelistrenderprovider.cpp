@@ -32,11 +32,7 @@ bool hasKind(const TCreatureIcon& icon)
     return (kind >> 31) != kind;
 }
 
-QColor outfitColor(const int index)
-{
-    const QColor c = tibia::shared::outfitColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
+using tibia::shared::outfitColor;
 
 }
 

@@ -1,18 +1,13 @@
 #include "sprites/spritesystem.h"
 
 #include "assets/assetasyncloader.h"
-#include "assets/assetfilesystemhelper.h"
-#include "assets/assethandler.h"
-#include "assets/contentcatalog.h"
 #include "sprites/sprite.h"
 #include "sprites/spriteinspritesheet.h"
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
-#include "shared/tibiafilesystemhelper.h"
 
 #include <QDebug>
-#include <QDir>
 #include <QMutex>
 #include <QMutexLocker>
 
@@ -50,7 +45,8 @@ TSpriteSystem::TSpriteSystem()
     const uint32_t capacity = defaultCacheCapacity();
     qDebug() << "Using spritesheet cache size of" << capacity;
     m_spritesheets = std::make_shared<TSpritesheetManager>(m_decompressor, std::make_shared<TSpritesheetCache>(capacity));
-    m_resolver = std::make_unique<TSpriteResolver>(m_spritesheets);
+    m_ownResolver = std::make_shared<TSpriteResolver>(m_spritesheets);
+    m_resolver = m_ownResolver;
 }
 
 void TSpriteSystem::clear()
@@ -63,43 +59,20 @@ void TSpriteSystem::clear()
     m_spritesheets->clear();
 }
 
-void TSpriteSystem::setAssetHandler(tibia::assets::TAssetHandler* assetHandler)
+void TSpriteSystem::setMetadata(std::shared_ptr<TSpritesheetsMetadataManager> metadata)
 {
-    m_assetHandler = assetHandler;
+    const QMutexLocker lock(&metadataMutex());
+    m_metadata = std::move(metadata);
 }
 
-void TSpriteSystem::start(const tibia::assets::TContentCatalog& catalog, const QString& assetsDirectory)
+void TSpriteSystem::setResolver(std::shared_ptr<TSpriteResolver> resolver)
 {
-    clear();
-    const QDir directory(assetsDirectory);
-    {
-        const QMutexLocker lock(&metadataMutex());
-        m_metadata = catalog.getSpritesheetsMetadataManager();
-    }
-    // The sound bank's files live in the sounds directory next to the assets
-    // (CIP: the file system helper's assets and sounds directories).
-    const std::string soundsPath = tibia::files::data().getRealPath("sounds");
-    const QDir soundsDirectory = soundsPath.empty() ? directory : QDir(QString::fromStdString(soundsPath));
-    m_assetLoader = std::make_unique<tibia::assets::TAssetAsyncLoader>(
-        std::make_shared<tibia::assets::TAssetFileSystemHelper>(directory, soundsDirectory));
-    // Host: the sprite system's loader stands in for CIP's asset manager, which
-    // hands the metadata and the loaded assets to the asset handler and loads
-    // the assets the handler asks for.
-    if (m_assetHandler) {
-        m_assetHandler->handleSpritesheetMetadata(m_metadata);
-        QObject::connect(m_assetLoader.get(), &tibia::assets::TAssetAsyncLoader::assetLoaded, m_assetHandler.data(),
-                         &tibia::assets::TAssetHandler::handleAssetData);
-        QObject::connect(m_assetHandler.data(), &tibia::assets::TAssetHandler::newAssetDataToLoad, m_assetLoader.get(),
-                         [loader = m_assetLoader.get()](const tibia::assets::TAsset& asset, const bool prioritized) {
-                             loader->load(asset, prioritized);
-                         });
-    }
-    QObject::connect(m_spritesheets.get(), &TSpritesheetManager::spritesheetMissing, m_assetLoader.get(),
-                     &tibia::assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::QueuedConnection);
-    for (const auto& asset : catalog.assets()) {
-        if (asset.type() == tibia::assets::TAsset::Sprite)
-            m_assetLoader->load(asset, false);
-    }
+    m_resolver = resolver ? std::move(resolver) : m_ownResolver;
+}
+
+void TSpriteSystem::setAssetLoader(std::shared_ptr<tibia::assets::TAssetAsyncLoader> assetLoader)
+{
+    m_assetLoader = std::move(assetLoader);
 }
 
 TSpriteFromSpritesheetInfo TSpriteSystem::spriteInfo(const uint32_t spriteId, const bool opaque)
