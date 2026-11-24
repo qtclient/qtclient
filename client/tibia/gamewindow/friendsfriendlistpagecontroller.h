@@ -13,6 +13,9 @@
 #include <QMetaObject>
 #include <QObject>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace game {
 class IGameSession;
@@ -28,7 +31,8 @@ class TFriendsFriendListPageController final : public cip::tibia::gamewindow::TF
 {
     Q_OBJECT
 public:
-    explicit TFriendsFriendListPageController(QObject* parent = nullptr);
+    /// CIP: the confirmation dialog is made in `engine` under `dialogParentItem`.
+    TFriendsFriendListPageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     /// CIP v12: the page reads the session's friends storages while shown.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 

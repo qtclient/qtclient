@@ -20,15 +20,19 @@
  * THE SOFTWARE.
  */
 
-#include <tibia/config/runtimegameconfig.h>
 #include "position.h"
 
-bool Position::isMapPosition() const { return ((x >= 0) && (y >= 0) && (x < UINT16_MAX) && (y < UINT16_MAX) && (z <= tibia::config::mapMaxZ())); }
+namespace {
+/// The last floor of the world map.
+constexpr int MapMaxZ = 15;
+}
+
+bool Position::isMapPosition() const { return ((x >= 0) && (y >= 0) && (x < UINT16_MAX) && (y < UINT16_MAX) && (z <= MapMaxZ)); }
 
 bool Position::up(const int8_t n)
 {
     const int8_t nz = z - n;
-    if (nz >= 0 && nz <= tibia::config::mapMaxZ()) {
+    if (nz >= 0 && nz <= MapMaxZ) {
         z = nz;
         return true;
     }
@@ -38,7 +42,7 @@ bool Position::up(const int8_t n)
 bool Position::down(const int8_t n)
 {
     const int8_t nz = z + n;
-    if (nz >= 0 && nz <= tibia::config::mapMaxZ()) {
+    if (nz >= 0 && nz <= MapMaxZ) {
         z = nz;
         return true;
     }
@@ -50,7 +54,7 @@ bool Position::coveredUp(const int8_t n)
 {
     const int32_t nx = x + n, ny = y + n;
     const int8_t nz = z - n;
-    if (nx >= 0 && nx <= UINT16_MAX && ny >= 0 && ny <= UINT16_MAX && nz >= 0 && nz <= tibia::config::mapMaxZ()) {
+    if (nx >= 0 && nx <= UINT16_MAX && ny >= 0 && ny <= UINT16_MAX && nz >= 0 && nz <= MapMaxZ) {
         x = nx; y = ny; z = nz;
         return true;
     }
@@ -62,7 +66,7 @@ bool Position::coveredDown(const int8_t n)
 {
     const int32_t nx = x - n, ny = y - n;
     const int8_t nz = z + n;
-    if (nx >= 0 && nx <= UINT16_MAX && ny >= 0 && ny <= UINT16_MAX && nz >= 0 && nz <= tibia::config::mapMaxZ()) {
+    if (nx >= 0 && nx <= UINT16_MAX && ny >= 0 && ny <= UINT16_MAX && nz >= 0 && nz <= MapMaxZ) {
         x = nx; y = ny; z = nz;
         return true;
     }

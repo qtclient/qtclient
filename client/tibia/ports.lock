@@ -10261,7 +10261,7 @@ sub_0f94a62d4fda	0f94a62d4fda91b3	tested	shared/sortedvectorlistmodel.h:TSortedV
 sub_0f9551f6ce47	0f9551f6ce471739	ported	client/gameclient.cpp:TGameClient::startNetworkTimerAndShowGameWindow
 sub_0f9bf5d55e85	0f9bf5d55e85a686	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
 sub_0f9cb01d2e84	0f9cb01d2e84d90e	skip	generated: compiler-generated destructor of a value struct (vectors)
-sub_0f9ebba7c362	0f9ebba7c362f89e	ported	protocol/clientmessages.cpp:sendAnswerModalDialog
+sub_0f9ebba7c362	0f9ebba7c362f89e	inlined	gamewindow/servermodaldialogcontroller.cpp:TServerModalDialogController::answerButtonClicked
 sub_0fa38299a72e	0fa38299a72e2664	skip	library: QList<int> destructor (QArrayDataPointer template, read); same code (fingerprint) as sub_0fa38299a72e#2, read
 sub_0fa38299a72e#2	0fa38299a72e2664	skip	library: QList<int> destructor (QArrayDataPointer template, read)
 sub_0fa38299a72e#4	0fa38299a72e2664	skip	library: QList<int> destructor (QArrayDataPointer template, read); same code and data as sub_0fa38299a72e#2 (skip library), read

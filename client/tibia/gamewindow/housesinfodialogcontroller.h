@@ -223,8 +223,6 @@ private:
     void onHouseViewportChanged();
     /// The town filter's houses from the server.
     void onRequestDynamicDataForTownTimerTimeout();
-    /// Pick a town (if none) and the first house row so the 3D preview is not blank.
-    void ensureTownAndHouseSelection();
     /// CIP: the preview's world map draws the house volume (none without one).
     void setPreviewRenderSources();
 

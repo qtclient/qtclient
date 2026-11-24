@@ -136,8 +136,6 @@ public:
     void setSubType(uint8_t subType) { m_subType = subType; }
     void setTier(uint8_t tier) { m_tier = tier; }
 
-    bool drawable() const { return m_canDraw; }
-    void setDrawable(const bool draw) { m_canDraw = draw; }
     void setItemColor(const QColor& color) { m_itemColor = color; }
     const QColor& itemColor() const { return m_itemColor; }
     uint8_t patternX() const { return m_patternX; }
@@ -165,7 +163,6 @@ protected:
     uint8_t m_phase{ 0 };
     int64_t m_lastPhase{ 0 };
     bool m_async{ true };
-    bool m_canDraw{ true };
 };
 
 class TFieldEffectInstance;

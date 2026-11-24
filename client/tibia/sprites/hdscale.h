@@ -19,7 +19,7 @@ void setHdScaler(int factor, HdScaleFn fn);
 int hdFactor();
 /// Apply the registered scaler; null when none is registered or it fails.
 QImage scaleHd(const QImage& src);
-/// Hard nearest-neighbor upscale by `factor` (no GPL). Used as a public fallback helper.
+/// Hard nearest-neighbor upscale by `factor` (no GPL); pack scalers fall back to it.
 QImage scaleNearest(const QImage& src, int factor);
 
 }

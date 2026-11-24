@@ -12,7 +12,6 @@
 #include <client/staticdata.h>
 #include "container/containerciptypes.h"
 #include <optional>
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "clockservice.h"
@@ -545,14 +544,9 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
             xPattern = patterns >= 3 ? 2 : 0;
     }
     int phase = 0;
-    if (m_animated && type->getAnimationPhases() > 1) {
-        if (type->idleAnimation()) {
-            phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
-        } else {
-            const int ticks = tibia::config::itemTicksPerFrame();
-            phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);
-        }
-    }
+    // Without animation info the object does not animate.
+    if (m_animated && type->getAnimationPhases() > 1 && type->idleAnimation())
+        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
     addSprites(type, instance.position(), xPattern, yPattern, zPattern, phase);
 }
 

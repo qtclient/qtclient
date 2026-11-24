@@ -30,10 +30,10 @@ namespace gamewindow {
 class TMessageDialogController;
 
 /// The Cyclopedia's character page (CIP: TCharacterInfoDialogController,
-/// metacall , vtable). Always the own character: the
-/// pages Crystal answers for (base information, general / offence / defence /
-/// misc stats, badges, recent deaths and kills, store summary, inspection,
-/// item summary, appearances, titles, achievements) are filled.
+/// metacall , vtable). Always the own character: its pages (base
+/// information, general / offence / defence / misc stats, badges, recent
+/// deaths and kills, store summary, inspection, item summary, appearances,
+/// titles, achievements) come from the session's character info storage.
 class TCharacterInfoDialogController final : public cip::tibia::gamewindow::TCharacterInfoDialogController
 {
     Q_OBJECT

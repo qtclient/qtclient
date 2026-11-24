@@ -126,8 +126,6 @@ bool isUnlocked(const std::array<int, SlotCount>& points, int slot);
 /// Points can be taken from the slice without breaking a path.
 bool canDecrease(const std::array<int, SlotCount>& points, int slot);
 
-/// Legacy vessel-resonance count (always 0 after CipSoft Winter 2026).
-int resonance(const std::array<int, SlotCount>& points, int domain);
 /// Revelation points: domain slices + MasteryIncrease (+125) + supreme revelation mastery gems.
 int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, int domain, int vocationIndex);
 /// Fragment workshop totals from all mod grades.
@@ -186,7 +184,6 @@ QString largePerkShortInformation(int perk);
 QString largePerkDetailedInformation(int perk, int stage);
 /// CIP .
 QString perkLevelName(int stage);
-QString domainName(int domain);
 
 /// CIP : the text of every effect of a basic mod ("+1% Physical Resistance").
 QString basicModEffect(int mod, int vocationIndex, int grade);
@@ -297,19 +294,6 @@ bool supremeModForVocation(int mod, int vocationIndex);
 int totalModGradePoints(int vocationIndex);
 /// CIP : the mods at the highest grade, one promotion point each.
 int modGradePoints(const TGrades& basicGrades, const TGrades& supremeGrades);
-
-/// Gem-quality label helper (Winter External dropped Vessel Resonance activation ids).
-QString vesselActivation(int resonance, bool plural);
-/// Lesser/regular/greater gem quality ↔ vessel slot capacity (1/2/3 mods).
-bool vesselMatchesGem(int quality, int resonance);
-/// Gem Vessel perk description + gem quality info (replaces removed resonance tooltip).
-QString vesselBonusInformation();
-/// CipSoft `skill_wheel_dialog_gem_information`.
-QString gemInformation();
-
-/// The unrevealed gem object of a vocation index and quality (Crystal vocations.xml).
-int unrevealedGemTypeId(int vocationIndex, int quality);
-
 
 /// CIP: `<K|P|S|D|M>1` and the url base64 (no padding) of the raw deflated 36 slice points
 /// and the mods of the 8 vessels' gems.

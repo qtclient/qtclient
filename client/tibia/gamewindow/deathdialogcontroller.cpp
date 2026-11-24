@@ -14,13 +14,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-/// Host: the connected session's scene stops (or runs again) under the death message.
-void setSessionSceneFrozen(const std::shared_ptr<game::IGameSession>& gameSession, const bool frozen)
-{
-    if (auto* session = dynamic_cast<game::TGameSessionBase*>(gameSession.get()))
-        session->setSceneFrozen(frozen);
-}
-
 using Button = TDeathMessageDialog::Button;
 
 }
@@ -71,7 +64,6 @@ void TDeathDialogController::showDeadMessage(const int deathType, const int fair
                                             const bool applicableForSubsequentBlessing)
 {
     closeBox();
-    setSessionSceneFrozen(m_gameSession, true);
     m_box->setButtons({
         new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
         new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Escape"))),
@@ -129,8 +121,6 @@ void TDeathDialogController::onLogoutRequested()
         return;
     m_finishing = true;
     closeBox();
-    // Host: the scene stays frozen while the death message shows.
-    setSessionSceneFrozen(m_gameSession, false);
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(true));
     m_finishing = false;
 }
@@ -148,8 +138,6 @@ void TDeathDialogController::onButtonClicked(
 
 void TDeathDialogController::onWorldEntered()
 {
-    // Host: the scene the death message froze runs again.
-    setSessionSceneFrozen(m_gameSession, false);
     if (!m_openStoreOnWorldEntered)
         return;
     m_openStoreOnWorldEntered = false;

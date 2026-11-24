@@ -7,7 +7,14 @@
 #include "config/characterconfigurationmanager.h"
 #include "game/sessiondumpdmpd.h"
 #include "input/gameaction.h"
+#include "network/gameservernetworkpacket.h"
+#include "network/unencryptedrawmessagestream.h"
+#include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
+#include "protocol/protocolreader.h"
+#include "protocol/protocolserverpacketprocessor.h"
+#include "protocol/protocolservermessageprocessor.h"
+#include "shared/iodevicereader.h"
 #include "renderer/nextframeupdater.h"
 #include "sessiondump/sessiondumpasyncloader.h"
 #include "sessiondump/sessiondumpplayer.h"
@@ -104,6 +111,10 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     // (the game server session links it in its own message links).
     m_connectionManager.add(connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedWorldEnteredMessage,
                                     playerProtocolMessageHandler().get(), &TPlayerProtocolMessageHandler::handleWorldEnteredMessage));
+    // Host: a replay has no connection for the client messages; quitting the
+    // game ends it.
+    m_connectionManager.add(connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::clientMessageReadyToProcess,
+                                    this, &TSessiondumpGameSession::onClientMessage));
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
@@ -311,6 +322,15 @@ void TSessiondumpGameSession::startReplay()
         Q_EMIT connectionError(QString::fromUtf8(e.what()));
         return;
     }
+    // A recorded packet log may hold anything: an unknown message ends its
+    // packet instead of the session.
+    auto messageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
+    auto serverMessageProcessor = std::make_shared<protocol::TProtocolServerMessageProcessor>(
+        std::make_shared<protocol::TProtobufServerMessageTranslator>(std::make_shared<protocol::TProtocolReader>(
+            std::make_shared<shared::TIODeviceReader>(messageStream, QDataStream::LittleEndian))),
+        protocolMessageQueue(), false);
+    m_replayPacketProcessor =
+        std::make_shared<protocol::TProtocolServerPacketProcessor>(std::move(messageStream), std::move(serverMessageProcessor));
     m_replayIndex = 0;
     m_replaying = true;
     m_replayClock.start();
@@ -325,7 +345,7 @@ void TSessiondumpGameSession::pumpReplay()
     while (m_replaying && m_replayIndex < int(m_replayPackets.size()) && m_replayPackets[size_t(m_replayIndex)].atMs <= now) {
         const QByteArray body = m_replayPackets[size_t(m_replayIndex)].bytes;
         ++m_replayIndex;
-        deliverReplayPacket(reinterpret_cast<const uint8_t*>(body.constData()), size_t(body.size()));
+        processReplayPacket(body);
     }
     if (!m_replaying)
         return;
@@ -338,6 +358,22 @@ void TSessiondumpGameSession::pumpReplay()
     m_replayTimer.start(qMax(1, wait));
 }
 
+void TSessiondumpGameSession::processReplayPacket(const QByteArray& packet)
+{
+    // Held: the replay may be left from inside the packet's messages.
+    const std::shared_ptr<protocol::TProtocolServerPacketProcessor> processor = m_replayPacketProcessor;
+    if (!hasGameConnection() || !processor || packet.isEmpty() || packet.size() > 0xffff)
+        return;
+    processor->processPacket(network::TGameserverNetworkPacket(network::TGameserverNetworkPacket::Gameserver, packet));
+}
+
+void TSessiondumpGameSession::onClientMessage(const std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage>& message)
+{
+    constexpr int QuitGameType = 20;
+    if (message && message->type() == QuitGameType && hasGameConnection())
+        finishDecodedReplay();
+}
+
 void TSessiondumpGameSession::stopReplay()
 {
     stopDmpd();
@@ -348,6 +384,7 @@ void TSessiondumpGameSession::stopReplay()
     m_replayTimer.stop();
     m_replayPackets.clear();
     m_replayIndex = 0;
+    m_replayPacketProcessor.reset();
 }
 
 void TSessiondumpGameSession::requestLogout()

@@ -50,8 +50,8 @@ public:
     Q_INVOKABLE QJSValue findSpellInfoForSpell(const QString& SpellName) override;
 };
 
-/// Registers itself with TTutorialMarkerRegistry for its lifetime.
-/// qtclient paints a CIP-style highlight plate until the full arrow material lands.
+/// Registers itself with TTutorialMarkerRegistry for its lifetime. It paints
+/// nothing: the tutorial animations find it and draw at its place.
 /// Not `final`: QML registration subclasses via QQmlElement.
 class TTutorialMarkerQuickItem : public cip::tibia::qmlcomponents::TTutorialMarkerQuickItem
 {

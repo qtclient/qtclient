@@ -1,7 +1,6 @@
 #include "creatures/creaturestorage.h"
 
 #include "appearances/appearanceinstance.h"
-#include <tibia/config/runtimegameconfig.h>
 #include "protocol/protocolcodes.h"
 #include "clockservice.h"
 #include "tibia/creatures/attachedeffect.h"
@@ -797,22 +796,6 @@ void TCreatureStorage::remove(const TCreatureID id)
     if (!m_creatures.remove(id))
         return;
     Q_EMIT creatureRemoved(id);
-}
-
-void TCreatureStorage::leaveMap(const TCreatureID id)
-{
-    if (id == 0)
-        return;
-    if (m_playerID != 0 && m_playerID == id) {
-        // Own character stays in storage for the whole session (name/HUD).
-        return;
-    }
-    const auto row = creatureAt(id);
-    if (!row)
-        return;
-    // Drop map presence without forgetting KnownCreature identity.
-    row->setPosition({});
-    publishCreatureUpdated(row);
 }
 
 QList<TCreatureID> TCreatureStorage::creatureIds() const

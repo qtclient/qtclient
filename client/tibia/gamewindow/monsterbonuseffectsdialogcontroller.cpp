@@ -294,7 +294,7 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
 {
     if (!m_bonusEffectStorage)
         return;
-    // Crystal answers the bestiary request with the charm data too.
+    // CIP: the charm page asks for the bestiary overview.
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
         session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();

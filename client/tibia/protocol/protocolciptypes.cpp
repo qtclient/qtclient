@@ -26,7 +26,6 @@
 #include "game/objectreference.h"
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
-#include "network/gameserverconnection.h"
 #include "rsahelper.h"
 #include "shared/sharedciptypes.h"
 
@@ -2019,12 +2018,6 @@ uint8_t TProtobufClientMessageTranslator::stackPosition(const ::tibia::protobuf:
     }
 }
 
-QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message)
-{
-    static const TProtobufObjectPositionHelper objectPositionHelper{};
-    return translateToClassic(message, &tibia::network::loginRsaHelper(), &objectPositionHelper);
-}
-
 QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message,
                                                                 shared::TRsaHelper* rsaHelper,
                                                                 const TProtobufObjectPositionHelper* objectPositionHelper)
@@ -2128,14 +2121,10 @@ void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
 {
     if (!message || !message->has_type())
         return;
-    if (auto* queue = protocolMessageQueue()) {
+    // The session's queue hands it to the session's client message processor;
+    // without a session there is no connection to send it on.
+    if (auto* queue = protocolMessageQueue())
         queue->enqueueClient(std::move(message));
-        return;
-    }
-    // Before the queue exists: straight to the wire.
-    const QByteArray wire = TProtobufClientMessageTranslator::translateToClassic(*message);
-    if (auto* processor = network::TGameserverSessionNetwork::live(); processor && !wire.isEmpty())
-        processor->writeClientFrame(wire);
 }
 
 } // namespace tibia::protocol

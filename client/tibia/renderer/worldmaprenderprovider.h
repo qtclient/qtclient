@@ -174,8 +174,6 @@ public:
     {
         m_renderVolumeProvider = std::move(renderVolumeProvider);
     }
-    /// The field at the top-left of the walked area of floor `z`.
-    Position firstField(int z) const;
 
     /// Light at a map pixel, 0 (dark) to 1, bilinear between field centres
     /// (CIP: TLightMap::v7).
@@ -246,8 +244,6 @@ public:
     /// The last frame's objects around the player, per type and distance ring
     /// (CIP: v4); the object sound controller reads it after the frame.
     const worldmap::TWorldMapObjectCounter& objectCounter() const { return m_objectCounter; }
-    /// The appearance types the last frame drew.
-    const std::set<const TAppearanceType*>& frameAppearanceTypes() const { return m_frameTypes; }
 
 public Q_SLOTS:
     /// Builds the next frame from the game model; emits frameAdvanced.
@@ -472,6 +468,7 @@ private:
     /// Lying-object slots by the field they are lent to.
     std::map<worldmap::TWorldMapCoordinate, LyingSlot> m_lyingSlots;
     worldmap::TWorldMapObjectCounter m_objectCounter;
+    /// The appearance types this frame draws: their spritesheets stay loaded.
     std::set<const TAppearanceType*> m_frameTypes;
     std::vector<light::PointLight> m_lights;
     light::LightOptions m_lightOptions;

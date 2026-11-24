@@ -13,6 +13,9 @@
 
 #include <memory>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace cyclopedia {
 class TCyclopediaMapStaticDataStorage;
@@ -34,7 +37,8 @@ class TTeamAssemblePageController final : public cip::tibia::gamewindow::TTeamAs
 {
     Q_OBJECT
 public:
-    explicit TTeamAssemblePageController(QObject* parent = nullptr);
+    /// CIP: the error dialog is made in `engine` under `dialogParentItem`.
+    TTeamAssemblePageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     /// CIP v12: the page talks to the session's team finder while shown.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 

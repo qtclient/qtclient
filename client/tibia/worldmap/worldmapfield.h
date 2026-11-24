@@ -211,12 +211,8 @@ public:
     bool hasCreatures() const { return (m_thingTypeFlag & HAS_CREATURE) != 0; }
     bool hasTopItem() const { return m_thingTypeFlag & HAS_TOP_ITEM; }
     bool hasCommonItem() const { return m_thingTypeFlag & HAS_COMMON_ITEM; }
-    bool hasBottomItem() const { return m_thingTypeFlag & HAS_BOTTOM_ITEM; }
     bool hasDisplacement() const { return m_thingTypeFlag & HAS_DISPLACEMENT; }
     bool hasLight() const { return m_thingTypeFlag & HAS_LIGHT; }
-    bool hasTallThings() const { return m_thingTypeFlag & HAS_TALL_THINGS; }
-    bool hasWideThings() const { return m_thingTypeFlag & HAS_WIDE_THINGS; }
-    bool limitsFloorsView(bool isFreeView = false);
 
     bool canShade() const { return isFullyOpaque() || hasGround() || hasTopGround() || isFullGround(); }
     bool canErase()
@@ -257,7 +253,6 @@ private:
 
     void recalculateThingFlag();
 
-    bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
     std::vector<uint32_t> m_walkingCreatureIds;
     /// The field's objects in stack order; a creature is its placeholder.
     std::vector<appearances::TAppearanceInstancePtr> m_stack;

@@ -39,7 +39,8 @@ CreatureSnapshot peelCreature(const tibia::creatures::TCreature& creature)
     snap.creatureType = creature.creatureType();
     snap.isPlayer = creature.isPlayer();
     snap.isNpc = creature.isNpc();
-    snap.canBeSeen = creature.canBeSeen();
+    // Every stored creature is seen (the field is kept for the pack ABI).
+    snap.canBeSeen = true;
     snap.isDead = creature.isDead();
     snap.isLocalPlayer = creature.isLocalPlayer();
     snap.outfit = peelOutfit(creature.outfit());

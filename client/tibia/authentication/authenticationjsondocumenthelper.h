@@ -55,11 +55,16 @@ struct TWorld
     int pvpType = -1;
     /// The product's WebSocket game port (browser builds connect there).
     int webSocketPort = 0;
+    /// The product's WebSocket port of the secondary connection (0: none).
+    int webSocketPortUnprotected = 0;
 
     /// The address the game connects to.
     const QString& host() const { return externalAddressProtected; }
     /// The game port: TCP on desktop, the WebSocket port in the browser.
     int port() const;
+    /// The unprotected game port (the secondary connection's): TCP on
+    /// desktop, the unprotected WebSocket port in the browser.
+    int portUnprotected() const;
 };
 
 /// One "playdata.characters" entry.

@@ -20,7 +20,6 @@
 #include "game/sessionhooks.h"
 #include "container/containerciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
-#include "config/runtimegameconfig.h"
 #include "input/playermovementintent.h"
 #include "input/playermovementintenthandler.h"
 #include "protocol/clientmessages.h"
@@ -828,7 +827,7 @@ void sessTurn(int direction)
 }
 
 uint64_t sessMillis() { return static_cast<uint64_t>(tibia::shared::TClockService::frameMillis()); }
-uint8_t sessSeaFloor() { return tibia::config::mapSeaFloor(); }
+uint8_t sessSeaFloor() { return tibia::worldmap::TWorldMapCentralPosition::GroundFloor; }
 uint8_t sessWorldLight()
 {
     if (const std::optional<uint8_t> pinned = debugWorldLightIntensity())

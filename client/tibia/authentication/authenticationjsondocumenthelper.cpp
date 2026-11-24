@@ -88,6 +88,7 @@ struct TJsonKeys
     // Product keys, not in the CipSoft format.
     QString isOnline = QStringLiteral("isonline");
     QString webSocketPort = QStringLiteral("websocketport");
+    QString webSocketPortUnprotected = QStringLiteral("websocketportunprotected");
 };
 
 const TJsonKeys& jsonKeys()
@@ -136,6 +137,16 @@ int TWorld::port() const
     if (!tibia::platform::kHasTcpSockets && webSocketPort > 0)
         return webSocketPort;
     return externalPortProtected;
+}
+
+int TWorld::portUnprotected() const
+{
+    // Without TCP (the browser) the product's unprotected WebSocket port. A
+    // world without one keeps its TCP port: the URL stays the secondary's own,
+    // and the server never allows a secondary connection there.
+    if (!tibia::platform::kHasTcpSockets && webSocketPortUnprotected > 0)
+        return webSocketPortUnprotected;
+    return externalPortUnprotected;
 }
 
 QJsonDocument TAuthenticationJsonDocumentHelper::createLoginRequest(const TLoginRequestData& data) const
@@ -187,6 +198,7 @@ bool TAuthenticationJsonDocumentHelper::parseWorld(const QJsonObject& object, TW
     world.antiCheatProtection = object.value(keys.antiCheatProtection).toBool();
     world.pvpType = object.value(keys.pvpType).toInt();
     world.webSocketPort = object.value(keys.webSocketPort).toInt();
+    world.webSocketPortUnprotected = object.value(keys.webSocketPortUnprotected).toInt();
     return true;
 }
 

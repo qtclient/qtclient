@@ -1408,12 +1408,41 @@ bool TGemAtelierPageController::showUnusedVesselsNotification() const
     return hasEmptyVessel(*wheel, active) && canBeChanged();
 }
 
-QString TGemAtelierPageController::unrevealedLesserGemName() const { return itemName(unrevealedGemTypeId(m_storage->vocationIndex(), 0)); }
-QString TGemAtelierPageController::unrevealedRegularGemName() const { return itemName(unrevealedGemTypeId(m_storage->vocationIndex(), 1)); }
-QString TGemAtelierPageController::unrevealedGreaterGemName() const { return itemName(unrevealedGemTypeId(m_storage->vocationIndex(), 2)); }
-int TGemAtelierPageController::unrevealedLesserGemAppearanceType() const { return unrevealedGemTypeId(m_storage->vocationIndex(), 0); }
-int TGemAtelierPageController::unrevealedRegularGemAppearanceType() const { return unrevealedGemTypeId(m_storage->vocationIndex(), 1); }
-int TGemAtelierPageController::unrevealedGreaterGemAppearanceType() const { return unrevealedGemTypeId(m_storage->vocationIndex(), 2); }
+namespace {
+
+/// CIP: the vocation of the storage's current wheel; none without a storage or a wheel.
+std::optional<int> currentWheelVocation(const TSkillWheelStorage* storage)
+{
+    if (!storage)
+        return std::nullopt;
+    const std::optional<TWheel> wheel = storage->currentSkillWheel();
+    if (!wheel)
+        return std::nullopt;
+    return wheel->vocation;
+}
+
+/// CIP: the gem object of `quality` for the current wheel's vocation; "dummy_unknown" without a wheel.
+QString unrevealedGemName(const TSkillWheelStorage* storage, const int quality)
+{
+    const std::optional<int> vocation = currentWheelVocation(storage);
+    return vocation ? gemObjectName(quality, *vocation) : qtTrId("dummy_unknown");
+}
+
+/// CIP: the gem object of `quality` for the current wheel's vocation; 0 without a wheel.
+int unrevealedGemType(const TSkillWheelStorage* storage, const int quality)
+{
+    const std::optional<int> vocation = currentWheelVocation(storage);
+    return vocation ? gemObjectTypeId(quality, *vocation) : 0;
+}
+
+}
+
+QString TGemAtelierPageController::unrevealedLesserGemName() const { return unrevealedGemName(m_storage, 0); }
+QString TGemAtelierPageController::unrevealedRegularGemName() const { return unrevealedGemName(m_storage, 1); }
+QString TGemAtelierPageController::unrevealedGreaterGemName() const { return unrevealedGemName(m_storage, 2); }
+int TGemAtelierPageController::unrevealedLesserGemAppearanceType() const { return unrevealedGemType(m_storage, 0); }
+int TGemAtelierPageController::unrevealedRegularGemAppearanceType() const { return unrevealedGemType(m_storage, 1); }
+int TGemAtelierPageController::unrevealedGreaterGemAppearanceType() const { return unrevealedGemType(m_storage, 2); }
 
 /// Vessels are part of the edited wheel: socketing changes the current wheel,
 /// Apply sends it.
@@ -1554,7 +1583,7 @@ int TGemAtelierPageController::reshapeGemCost(const cip::tibia::qmlcomponents::e
 
 int TGemAtelierPageController::unrevealedGemAppearanceType(const cip::tibia::qmlcomponents::enums::EGemQuality Quality)
 {
-    return unrevealedGemTypeId(m_storage->vocationIndex(), static_cast<int>(Quality));
+    return unrevealedGemType(m_storage, static_cast<int>(Quality));
 }
 
 QVariantMap TGemAtelierPageController::gemDataForId(const int GemId)

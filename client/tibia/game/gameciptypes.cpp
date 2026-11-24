@@ -32,7 +32,6 @@
 #include <client/const.h>
 #include <client/staticdata.h>
 #include "protocol/protocolcodes.h"
-#include "network/gameserverconnection.h"
 #include "protocol/clientmessages.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>

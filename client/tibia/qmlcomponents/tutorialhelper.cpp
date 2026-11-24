@@ -4,12 +4,10 @@
 
 #include <algorithm>
 
-#include <QColor>
 #include <QJSEngine>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QQmlEngine>
-#include <QSGSimpleRectNode>
 
 namespace tibia::qmlcomponents {
 
@@ -99,9 +97,6 @@ QJSValue TTutorialHelperQmlService::findSpellInfoForSpell(const QString& SpellNa
 TTutorialMarkerQuickItem::TTutorialMarkerQuickItem(QQuickItem* parent)
     : cip::tibia::qmlcomponents::TTutorialMarkerQuickItem(parent)
 {
-    // Host: the plate below is painted always (CipSoft shows contents only with the debug overlay).
-    setFlag(ItemHasContents, true);
-    setAcceptedMouseButtons(Qt::NoButton);
     TTutorialMarkerRegistry::instance().registerMarker(this);
 }
 
@@ -110,13 +105,15 @@ TTutorialMarkerQuickItem::~TTutorialMarkerQuickItem() { TTutorialMarkerRegistry:
 void TTutorialMarkerQuickItem::setMarkerID(const int v)
 {
     cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setMarkerID(v);
-    update();
 }
 
 void TTutorialMarkerQuickItem::setDebugOverlayVisible(const bool v)
 {
+    if (debugOverlayVisible() == v)
+        return;
+    // The item has contents only while the debug overlay shows (it paints none).
+    setFlag(ItemHasContents, v);
     cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setDebugOverlayVisible(v);
-    update();
 }
 
 void TTutorialMarkerQuickItem::componentComplete()
@@ -126,14 +123,7 @@ void TTutorialMarkerQuickItem::componentComplete()
 
 QSGNode* TTutorialMarkerQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
-    auto* node = static_cast<QSGSimpleRectNode*>(oldNode);
-    if (!node)
-        node = new QSGSimpleRectNode;
-    // qtclient stand-in for CIP's tutorial arrow material — amber plate over the target.
-    const QColor fill = debugOverlayVisible() ? QColor(255, 200, 0, 160) : QColor(255, 180, 0, 110);
-    node->setColor(fill);
-    node->setRect(boundingRect());
-    return node;
+    return oldNode;
 }
 
 }

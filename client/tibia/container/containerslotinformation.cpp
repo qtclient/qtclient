@@ -1,5 +1,6 @@
 #include "containerslotinformation.h"
 #include "config/clientoptions.h"
+#include "gamewindow/marketcontroller.h"
 
 #include "qmlcomponents/appearanceinstancerenderer.h"
 #include "qmlcomponents/texthelper.h"
@@ -7,7 +8,6 @@
 #include <QLocale>
 #include <QStringList>
 
-#include <iterator>
 
 namespace tibia::container {
 
@@ -36,32 +36,13 @@ QString minutesLongText(const qint64 minutes)
     return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
 }
 
-/// CIP : an object category's market name.
-const char* categoryNameId(const int category)
-{
-    static constexpr const char* Names[] = {
-        "market_category_unknown",        "market_category_armors",       "market_category_amulets",
-        "market_category_boots",          "market_category_containers",   "market_category_decoration",
-        "market_category_food",           "market_category_helmets",      "market_category_legs",
-        "market_category_others",         "market_category_potions",      "market_category_rings",
-        "market_category_runes",          "market_category_shields",      "market_category_tools",
-        "market_category_valuables",      "market_category_ammo",         "market_category_axes",
-        "market_category_clubs",          "market_category_distanceweapons", "market_category_swords",
-        "market_category_wands",          "market_category_premiumscrolls", "market_category_tibiacoins",
-        "market_category_creature_products", "market_category_quiver",    "market_category_soul_cores",
-        "market_category_fist_weapons",   "market_category_unsorted",     "market_category_all_weapons",
-        "market_category_gold",           "market_category_default",
-    };
-    return category >= 0 && category < static_cast<int>(std::size(Names)) ? Names[category] : "market_category_unknown";
-}
-
-/// Crystal sends a managed container's categories as bits (1 << category).
+/// The protocol carries a managed container's categories as bits (1 << category).
 QString categoriesText(const char* captionId, const uint32_t flags)
 {
     QStringList names;
     for (int category = 0; category < 32; ++category) {
         if (flags & (1u << category))
-            names.append(qtTrId(categoryNameId(category)));
+            names.append(gamewindow::TQmlObjectCategory::translate(category));
     }
     names.sort(Qt::CaseInsensitive);
     return qtTrId(captionId) + names.join(QStringLiteral("<br>"));

@@ -120,9 +120,7 @@
 #include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
 #include <tibia/game/gamenotify.h>
-#include "config/runtimegameconfig.h"
 #include "assets/things.h"
-#include "renderer/texturedeletionqueue.h"
 #include "input/playermovementintenthandler.h"
 #include "input/playermovementintent.h"
 #include "protocol/clientmessages.h"
@@ -181,7 +179,6 @@
 #include "worldmap/worldmapviewport.h"
 
 #include <client/outfit.h>
-#include "network/gameserverconnection.h"
 #include "protocol/clientmessages.h"
 #include "shared/tibiafilesystemhelper.h"
 
@@ -317,11 +314,9 @@ bool startEngineHost(const QString& argv0, const QString& workDir)
 
     std::signal(SIGTERM, onExitSignal);
     std::signal(SIGINT, onExitSignal);
-    tibia::config::initRuntimeGameConfig();
     tibia::appearances::TAppearancesManager::instance().init();
 
     tibia::files::data().setupUserWriteDir("tibia/");
-    tibia::network::installGameServerConnection();
     g_engineRunning = true;
     return true;
 }
@@ -334,15 +329,13 @@ void stopEngineHost()
     if (game::TGameSessionBase* session = liveSession(); session && session->isOnline())
         session->disconnectGame();
     tibia::appearances::TAppearancesManager::instance().terminate();
-    tibia::config::terminateRuntimeGameConfig();
 }
 
-/// The engine's GUI thread work: deferred texture deletes and a signalled exit.
+/// The engine's GUI thread work: a signalled exit.
 void pollEngineHost()
 {
     if (!g_engineRunning)
         return;
-    tibia::renderer::flushTextureDeletions();
     if (g_exitSignaled) {
         g_exitSignaled = 0;
         // Queued: this poll often runs from afterAnimating, still inside the
@@ -1226,9 +1219,9 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
     if (m_pGameSessionDisconnectReactionController)
         m_pGameSessionDisconnectReactionController->resetShowCharacterSelectionOnDisconnect();
     // CIP: the session gets the account's login data and the character's.
-    // Host: the world's game port (the WebSocket port in the browser), its PvP
-    // type and the session key (when the login request has none) are the login
-    // service's answer.
+    // Host: the world's game ports (the WebSocket ports in the browser), its
+    // PvP type and the session key (when the login request has none) are the
+    // login service's answer.
     gameserver->loginRequestData = LoginData;
     gameserver->characterLoginData = CharacterLoginData;
     authentication::TLoginRequestData& loginRequestData = gameserver->loginRequestData;
@@ -1239,6 +1232,7 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
     for (const auto& [worldId, world] : m_account.worlds) {
         if (world.name == characterLoginData.worldName) {
             characterLoginData.worldPortProtected = world.port();
+            characterLoginData.worldPortUnprotected = world.portUnprotected();
             m_worldType = world.pvpType;
             break;
         }
@@ -1297,7 +1291,6 @@ void TGameClient::autoconnectNextGameSessionInQueue()
             dump = createGameSession<game::TTutorialSessiondumpGameSession>();
         else
             dump = createGameSession<game::TSessiondumpGameSession>(m_pDialogStackController);
-        dump->setCharacterConfigurationStorages(m_characterConfigurationStorages);
         dump->initialize(metaInfo);
         setCurrentGameSession(dump);
         dump->startSession();
@@ -1313,7 +1306,6 @@ void TGameClient::autoconnectNextGameSessionInQueue()
         m_pItemPriceStorage->setWorldName(gameserver->characterLoginData.worldName);
     }
     const auto live = createGameSession<game::TGameserverGameSession>();
-    live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
     live->initialize(metaInfo);
     setCurrentGameSession(live);
     // CIP: the session's target selection, character selection, login advice
@@ -1430,8 +1422,8 @@ void TGameClient::onWorldEntered()
     Q_EMIT characterSelectionClosed();
     // The map handler keeps the minimap's floor and fields current.
     setMinimapWorldmapProtocolHandler(worldmapProtocol());
-    // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
-    // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
+    // Host: the pack's travel path probe (game/mapsession) reads the minimap's
+    // waypoint costs (TWaypointCosts) of the session's world.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
         return minimap::snapshotWaypointCosts(minimapTileStorage().get());
     });
@@ -1510,18 +1502,6 @@ config::TSidebarOptions* TGameClient::sidebarOptions() const
 {
     config::TCharacterConfigurationManager* manager = characterConfigurationManager();
     return manager ? manager->sidebarOptions() : nullptr;
-}
-
-game::TStatusbarStorage* TGameClient::statusbarStorage() const
-{
-    config::TCharacterConfigurationManager* manager = characterConfigurationManager();
-    return manager ? manager->statusbarStorage() : nullptr;
-}
-
-config::TActionBarOptions* TGameClient::actionBarOptions() const
-{
-    config::TCharacterConfigurationManager* manager = characterConfigurationManager();
-    return manager ? manager->actionBarOptions() : nullptr;
 }
 
 void TGameClient::onWorldLeft()

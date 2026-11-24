@@ -49,7 +49,7 @@ constexpr int GoldCategory = 0x1e;
 /// CIP : at most one inspect request per 500 ms, 100 ms at the soonest.
 constexpr qint64 InspectInterval = 500;
 constexpr qint64 InspectMinimumDelay = 100;
-/// Crystal's sendItemInspection: 1 for the Cyclopedia.
+/// CIP's inspection list window of an answer: 1 for the Cyclopedia.
 constexpr uint8_t CyclopediaInspection = 1;
 
 QString englishNumber(const qint64 value) { return QLocale(QLocale::English).toString(value); }

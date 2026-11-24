@@ -32,7 +32,6 @@
 #include "input/playermovementintenthandler.h"
 #include "market/marketciptypes.h"
 #include "network/dualconnectioninfo.h"
-#include "network/gameserverconnection.h"
 #include "network/gameserverdualconnection.h"
 #include "network/gameservernetworkpacket.h"
 #include "network/gameservernetworkpacketconnection.h"
@@ -40,6 +39,7 @@
 #include "network/gameservernetworkpacketsequenceflowprocessor.h"
 #include "network/gameservertcpconnection.h"
 #include "network/networkqualityprotocolmessagehandler.h"
+#include "network/producttransport.h"
 #include "protocol/protobufclientmessagetranslator.h"
 #include "protocol/protobufobjectpositionhelper.h"
 #include "protocol/protocolclientmessageprocessor.h"
@@ -87,10 +87,13 @@
 #include <algorithm>
 #include <chrono>
 #include <stdexcept>
+#include <utility>
 
+#include <QFile>
 #include <QUrl>
 #include <QtGlobal>
 #include <format>
+#include <limits>
 
 #include <tibia/game/gamenotify.h>
 #include <tibia/runtime/host.h>
@@ -103,9 +106,20 @@ namespace {
 /// CIP's TClientSessiondumpRecorder keep time (a constant in initialize).
 constexpr int64_t SessiondumpKeepSeconds = 10;
 
-constexpr uint8_t LoginOpcode = 10;
-constexpr uint8_t SecondaryLoginOpcode = 11;
-constexpr uint8_t ConnectionPingBackOpcode = 28;
+/// Host: --record keeps the whole session (its recorder starts no new segment).
+constexpr int64_t RecordKeepSeconds = std::numeric_limits<int64_t>::max() / 4000;
+
+/// Host: the game server's login RSA modulus (CrystalServer's, big-endian; the
+/// exponent is 65537) instead of CipSoft's.
+QByteArray loginRsaPublicKey()
+{
+    static const QByteArray LoginModulus = QByteArray::fromHex(
+        "9b646903b45b07ac956568d87353bd7165139dd7940703b03e6dd079399661b4"
+        "a837aa60561d7ccb9452fa0080594909882ab5bca58a1a1b35f8b1059b72b121"
+        "2611c6152ad3dbb3cfbee7adc142a75d3d75971509c321c5c24a5bd51fd460f0"
+        "1b4e15beb0de1930528a5d3f15c1e3cbf5c401d6777e10acaab33dbe8d5b7ff5");
+    return LoginModulus;
+}
 
 std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetworkPacketConnection()
 {
@@ -114,9 +128,7 @@ std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetwor
     return std::make_shared<network::TGameserverNetworkPacketConnection>(tcpConnection);
 }
 
-/// The game server login from the meta info's login and character data. Host:
-/// CrystalServer serves both game connections of a world on one address and
-/// port (the world's game port).
+/// The game server login from the meta info's login and character data.
 authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGameserverGameSessionMetaInfo& MetaInfo)
 {
     const authentication::TLoginRequestData& login = MetaInfo.loginRequestData;
@@ -126,9 +138,9 @@ authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGa
     data.password = login.password;
     data.sessionKey = login.sessionKey;
     data.characterName = character.characterName;
-    data.worldAddressUnprotected = character.worldAddressProtected;
+    data.worldAddressUnprotected = character.worldAddressUnprotected;
     data.worldAddressProtected = character.worldAddressProtected;
-    data.worldPortUnprotected = character.worldPortProtected;
+    data.worldPortUnprotected = character.worldPortUnprotected;
     data.worldPortProtected = character.worldPortProtected;
     data.worldName = character.worldName;
     data.assetsIdentifier = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getAssetIdentifier());
@@ -193,10 +205,10 @@ TGameserverGameSession::~TGameserverGameSession()
 {
     m_connectionManager.disconnectAll();
     m_clientMessageConnections.disconnectAll();
-    if (const auto sessionNetwork = m_sessionNetwork.lock()) {
-        sessionNetwork->setFrameWriter({});
-        sessionNetwork->setDisconnector({});
-    }
+    writeRecording();
+    // The pack's sender holds the transport weakly: it sends nothing any more.
+    if (m_productTransport)
+        m_productTransport->setOpen(false);
     if (m_dualConnection) {
         m_dualConnection->disconnect(this);
         m_dualConnection->disconnectFromGameserver();
@@ -232,6 +244,12 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     m_loginData = gameserverLoginRequestData(*gameserverMetaInfo);
     m_recordTo = gameserverMetaInfo->recordTo;
     createSessionControllers();
+    // Host: --record keeps every server message of the session in CipSoft's
+    // dump format (played back by --replay through the dump player).
+    if (!m_recordTo.isEmpty()) {
+        m_sessionRecorder = std::make_shared<sessiondump::TClientSessiondumpRecorder>(RecordKeepSeconds);
+        m_sessionRecorder->start(m_loginData.characterName, m_loginData.worldName, m_loginData.sessionKey);
+    }
     m_playerMovementGameActionHandler =
         std::make_shared<input::TPlayerMovementGameActionHandler>(m_playerMovementIntentHandler);
     // The action bar's handler. Host: qtclient's handler reads the hotkey
@@ -289,7 +307,7 @@ void TGameserverGameSession::createNetworkStack()
     // (host: the game server's key instead of CipSoft's).
     auto clientMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
     auto rsaHelper = std::make_shared<shared::TRsaHelper>();
-    rsaHelper->setPublicKey(network::loginRsaPublicKey());
+    rsaHelper->setPublicKey(loginRsaPublicKey());
     m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>(
         std::make_shared<protocol::TProtobufClientMessageTranslator>(
             std::make_shared<protocol::TProtocolWriter>(
@@ -323,7 +341,7 @@ void TGameserverGameSession::createNetworkStack()
                                     &TGameserverGameSession::onPacketReady));
     // The queue's client messages become packets for the connections.
     m_connectionManager.add(connect(queue, &protocol::TProtocolMessageQueue::clientMessageReadyToProcess, this,
-                                    &TGameserverGameSession::onClientMessageReadyToProcess));
+                                    &TGameserverGameSession::sendClientFrame));
     connect(dualConnection, &TGameserverDualConnection::error, this, [this](const QString& ErrorDescription) {
         Q_EMIT connectionError(ErrorDescription);
         onConnectionLost(ErrorDescription, false);
@@ -335,10 +353,10 @@ void TGameserverGameSession::createNetworkStack()
     // Host: the session's game state ends the game when the server closes the
     // connection (its game end is the session's disconnected).
     connect(dualConnection, &TGameserverDualConnection::disconnected, this, [this] { onConnectionLost({}, true); });
+    // Host: the session's game connection is up while a connection is in use.
     connect(dualConnection, &TGameserverDualConnection::connectionsUsedChanged, this,
             [this](const network::EConnectionsUsed ConnectionsUsed) {
-                if (const auto sessionNetwork = m_sessionNetwork.lock())
-                    sessionNetwork->setConnected(ConnectionsUsed != network::EConnectionsUsed::None);
+                setGameConnected(ConnectionsUsed != network::EConnectionsUsed::None);
             });
 }
 
@@ -387,6 +405,9 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
 
     link(connect(queue, &Queue::receivedMessage, m_sessiondumpRecorder.get(),
                  &sessiondump::TClientSessiondumpRecorder::handleAnyMessage));
+    if (m_sessionRecorder)
+        link(connect(queue, &Queue::receivedMessage, m_sessionRecorder.get(),
+                     &sessiondump::TClientSessiondumpRecorder::handleAnyMessage));
     TGameSessionBase::connectProtocolMessageHandlers();
 
     using authentication::TLoginProtocolMessageHandler;
@@ -721,23 +742,25 @@ void TGameserverGameSession::startSession()
 
 void TGameserverGameSession::connectToGameserver()
 {
-    // Host: the session logs in with the classic packet path's view of its
-    // connection (it records the frames and drops them in a replay).
-    const auto sessionNetwork = network::TGameserverSessionNetwork::create();
-    sessionNetwork->setFrameWriter([this](const QByteArray& frame) { sendClientFrame(frame); });
-    sessionNetwork->setDisconnector([this] { closeConnection(); });
+    // Host: the session's game state logs in (see isOnline).
     try {
-        loginWorld(m_loginData.worldName.toStdString(), m_loginData.characterName.toStdString(), sessionNetwork);
+        loginWorld(m_loginData.worldName.toStdString(), m_loginData.characterName.toStdString());
     } catch (const std::exception& e) {
-        sessionNetwork->setFrameWriter({});
-        sessionNetwork->setDisconnector({});
         Q_EMIT connectionError(QString::fromUtf8(e.what()));
         return;
     }
-    m_sessionNetwork = sessionNetwork;
-    sessionNetwork->startRecording(m_recordTo.toStdString());
-    // A pack that listens for extended opcodes asks for the product transport
-    // in the login's RSA padding; the CIP client leaves the padding zero.
+    // Host (pack surface): a pack that listens for extended opcodes asks for the
+    // product transport in the login's RSA padding (the CIP client leaves the
+    // padding zero); the server opens it, and the pack's frames go out on this
+    // login's connection.
+    m_productTransport = std::make_shared<network::TProductTransport>(
+        [this](const QByteArray& frame) { writeProductFrame(frame); });
+    tibia::protocol::ExtendedOpcodeReader::instance().setSender(
+        [transport = std::weak_ptr<network::TProductTransport>(m_productTransport)](const uint8_t opcode,
+                                                                                    const std::string& buffer) {
+            const std::shared_ptr<network::TProductTransport> live = transport.lock();
+            return live && live->send(opcode, buffer);
+        });
     if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
         m_loginProtocolMessageHandler->setProductTransport("ExtendedOpcodes");
 
@@ -747,7 +770,7 @@ void TGameserverGameSession::connectToGameserver()
 void TGameserverGameSession::requestLogout()
 {
     if (isOnline())
-        protocol::gameclient::sendLogout();
+        sendQuitGame();
 }
 
 void TGameserverGameSession::disconnectNow()
@@ -812,62 +835,42 @@ void TGameserverGameSession::onGameReadyForSecondaryConnection()
 
 void TGameserverGameSession::onPacketReady(network::TGameserverNetworkPacket packet)
 {
-    const auto sessionNetwork = m_sessionNetwork.lock();
-    if (!sessionNetwork || !m_rawDataProcessor)
+    // Host: the session's game ended; what still arrives is not processed.
+    if (!hasGameConnection() || !m_rawDataProcessor)
         return;
     m_rawDataProcessor->decodePacket(packet);
-    sessionNetwork->notePacketRead();
-    // Host: the classic packet path's view records the packet and counts it.
-    if (!sessionNetwork->noteServerData(packet.data()))
-        return;
+    // Host: the connection check (connectionFailing) counts the packet.
+    noteGamePacketRead();
     m_serverPacketProcessor->processPacket(packet);
 }
 
-void TGameserverGameSession::sendClientFrame(const QByteArray& frame)
+void TGameserverGameSession::sendClientFrame(std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage)
+{
+    // CipSoft's: nothing goes out while the dual connection uses no connection.
+    // A message made before the login is out (XTEA, its connection not logged
+    // in yet) takes its sequence number and goes to no connection.
+    if (!pGameclientMessage || !m_dualConnection || m_dualConnection->connectionsUsed() == network::EConnectionsUsed::None)
+        return;
+    network::TGameserverNetworkPacket packet = m_clientMessageProcessor->processClientMessage(*pGameclientMessage);
+    sendNetworkPacket(packet);
+}
+
+void TGameserverGameSession::writeProductFrame(const QByteArray& frame)
 {
     if (frame.isEmpty() || !m_dualConnection || m_dualConnection->connectionsUsed() == network::EConnectionsUsed::None)
         return;
     using network::TGameserverNetworkPacket;
-    // The client message processor's packet of the queue's message (login: RSA;
-    // a connection ping back: XTEA to the connection it answers; else XTEA to
-    // all connections).
     TGameserverNetworkPacket packet(TGameserverNetworkPacket::Gameclient, frame);
-    if (m_clientPacketBeingSent && m_clientPacketBeingSent->data() == frame) {
-        packet = *m_clientPacketBeingSent;
-    } else {
-        // Host: frames without a queue message (the product transport, frames
-        // sent before the queue exists) keep the rule by opcode.
-        const auto opcode = static_cast<uint8_t>(frame.at(0));
-        packet.setEncryptionType(opcode == LoginOpcode || opcode == SecondaryLoginOpcode ? TGameserverNetworkPacket::LoginRsa
-                                                                                         : TGameserverNetworkPacket::Xtea);
-        packet.setConnectionsUsed(opcode == ConnectionPingBackOpcode ? network::EConnectionsUsed::Primary
-                                                                     : network::EConnectionsUsed::PrimaryAndSecondary);
-    }
+    packet.setEncryptionType(TGameserverNetworkPacket::Xtea);
+    packet.setConnectionsUsed(network::EConnectionsUsed::PrimaryAndSecondary);
+    sendNetworkPacket(packet);
+}
+
+void TGameserverGameSession::sendNetworkPacket(network::TGameserverNetworkPacket& packet)
+{
     m_rawDataProcessor->encodePacket(packet);
     m_dualConnection->preparePacket(packet);
     m_dualConnection->sendPacket(packet);
-}
-
-void TGameserverGameSession::onClientMessageReadyToProcess(
-    std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage)
-{
-    const auto sessionNetwork = m_sessionNetwork.lock();
-    if (!sessionNetwork || !pGameclientMessage || !m_clientMessageProcessor)
-        return;
-    const network::TGameserverNetworkPacket packet = m_clientMessageProcessor->processClientMessage(*pGameclientMessage);
-    if (packet.data().isEmpty())
-        return;
-    // Host: an XTEA frame ahead of the login packet would reach the server as
-    // the connection's first packet and break its decryption of everything
-    // after; until the login is out, such messages go nowhere (as when the
-    // connection is not up yet).
-    if (packet.encryptionType() == network::TGameserverNetworkPacket::LoginRsa)
-        m_loginPacketSent = true;
-    else if (!m_loginPacketSent)
-        return;
-    m_clientPacketBeingSent = &packet;
-    sessionNetwork->writeClientFrame(packet.data());
-    m_clientPacketBeingSent = nullptr;
 }
 
 void TGameserverGameSession::closeConnection()
@@ -878,12 +881,32 @@ void TGameserverGameSession::closeConnection()
 
 void TGameserverGameSession::onConnectionLost(const QString& message, const bool clean)
 {
-    // The classic session state's view fails (it closes the connection through
-    // its disconnector); without it the connection just closes.
-    if (const auto sessionNetwork = m_sessionNetwork.lock())
-        sessionNetwork->fail(message, clean);
+    // The session reports the error itself (IGameSession::connectionError); its
+    // game ends here, once, and the connections close.
+    (void)message;
+    (void)clean;
+    if (hasGameConnection())
+        processDisconnect();
     else
         closeConnection();
+}
+
+void TGameserverGameSession::closeGameConnection()
+{
+    if (m_productTransport)
+        m_productTransport->setOpen(false);
+    closeConnection();
+    writeRecording();
+}
+
+void TGameserverGameSession::writeRecording()
+{
+    const std::shared_ptr<sessiondump::TClientSessiondumpRecorder> recorder = std::exchange(m_sessionRecorder, nullptr);
+    if (!recorder || m_recordTo.isEmpty())
+        return;
+    QFile file(m_recordTo);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        file.write(recorder->sessiondump());
 }
 
 void TGameserverGameSession::updatePlayerMovementIntentHandler()

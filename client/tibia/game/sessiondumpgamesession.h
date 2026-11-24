@@ -32,7 +32,11 @@ class TSessiondumpPlayer;
 class TSessiondumpProgressClockService;
 }
 namespace protobuf::protocol {
+class GameclientMessage;
 class GameserverMessage;
+}
+namespace protocol {
+class TProtocolServerPacketProcessor;
 }
 }
 
@@ -42,15 +46,14 @@ namespace game {
 /// CIP-shaped session that replays a recorded game world (CIP: TSessiondumpGameSession).
 ///
 /// Supports:
-/// - qtclient text hex dumps (`--replay`: `< millis hex>` / `> millis hex`), parsed
-/// by the same classic packet parser the live connection's data goes through
 /// - CIP `dmp` dumps, played by a sessiondump::TSessiondumpPlayer over a
 /// TSessiondumpAsyncLoader; each published GameserverMessage goes straight into
-/// the session's protocol queue
+/// the session's protocol queue (live `--record` writes such a dump)
+/// - qtclient's older text hex dumps (`--replay`: `< millis hex>` lines): each
+/// decoded packet is read into server messages on the session's queue, as a
+/// live packet's are
 ///
 /// The tutorial's hints belong to TTutorialSessiondumpGameSession.
-///
-/// Live `--record` writes the decoded stream from the primary game connection.
 class TSessiondumpGameSession : public TGameSessionBase
 {
     Q_OBJECT
@@ -151,6 +154,10 @@ private:
     void startReplay();
     void pumpReplay();
     void stopReplay();
+    /// Host: a text dump's decoded packet: its server messages to the session's queue.
+    void processReplayPacket(const QByteArray& packet);
+    /// Host: the player quits the game (QuitGame): the replay ends.
+    void onClientMessage(const std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage>& message);
 
     std::shared_ptr<const TSessiondumpGameSessionMetaInfo> m_sessiondumpMetaInfo;
     QTimer m_replayTimer;
@@ -160,6 +167,9 @@ private:
     bool m_replaying = false;
     /// Host: why the text dump did not load (reported when the session starts).
     QString m_replayLoadError;
+    /// Host: reads a text dump's packets onto the queue (an unknown message ends
+    /// its packet instead of the session).
+    std::shared_ptr<protocol::TProtocolServerPacketProcessor> m_replayPacketProcessor;
 
     std::shared_ptr<sessiondump::TSessiondumpAsyncLoader> m_sessiondumpLoader;
     std::shared_ptr<sessiondump::TSessiondumpProgressClockService> m_sessiondumpProgressClock;

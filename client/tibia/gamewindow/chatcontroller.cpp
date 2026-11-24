@@ -1282,8 +1282,9 @@ void TChatController::storeOpenChannels() const
             continue;
         if (identifier.type == TChatChannelIdentifier::Loot)
             loot = true;
-        else if (identifier.type == TChatChannelIdentifier::ChannelId && !channel->isOwnPrivateChannel() && !identifier.isGuildChannel()
-                 && !identifier.isPartyChannel())
+        // CIP: only the server's public channels (ids below 10); private, guild,
+        // Team Finder and party channels are not kept.
+        else if (identifier.type == TChatChannelIdentifier::ChannelId && identifier.id < 10)
             ids.append(identifier.id);
     }
     chatOptions.insert(QLatin1String("openChannels"), ids);

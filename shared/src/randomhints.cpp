@@ -1,12 +1,10 @@
 #include "randomhints.h"
 
 #include <QDebug>
-#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
-#include <QRandomGenerator>
 
 namespace tibia::shared {
 
@@ -83,24 +81,6 @@ std::optional<Hint> selectHint(const QVector<Hint>& hints, const QDateTime& now)
     return candidates.at(static_cast<qsizetype>(msecs % static_cast<quint64>(candidates.size())));
 }
 
-bool hasRichHints(const QVector<Hint>& hints)
-{
-    for (const Hint& hint : hints) {
-        if (hint.richText.contains(QLatin1String("<img"), Qt::CaseInsensitive)
-            || hint.richText.contains(QLatin1String("<table"), Qt::CaseInsensitive)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-Hint randomHint(const QVector<Hint>& hints)
-{
-    if (hints.isEmpty())
-        return {};
-    return hints.at(QRandomGenerator::global()->bounded(hints.size()));
-}
-
 QString hintHtml(const Hint& hint, const QString& cdnBase)
 {
     QString base = cdnBase;
@@ -114,14 +94,6 @@ QString hintHtml(const Hint& hint, const QString& cdnBase)
     html.replace(QStringLiteral("https://static.tibia.com"), base);
     html.replace(QStringLiteral("http://static.tibia.com"), base);
     return html;
-}
-
-QVector<Hint> loadBundledHints()
-{
-    QFile file(QStringLiteral(":/hints.json"));
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    return parseHints(file.readAll());
 }
 
 }

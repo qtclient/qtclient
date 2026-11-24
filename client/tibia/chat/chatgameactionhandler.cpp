@@ -545,7 +545,7 @@ TGameActionList TChatGameActionProvider::gameActions(const TChatChannelIdentifie
     }
     if (identifier->type == TChatChannelIdentifier::ChannelId && identifier->isGuildChannel())
         result.push_back(std::make_shared<::tibia::input::TGameActionGetGuildMessage>());
-    if (identifier->type == TChatChannelIdentifier::ChannelId && (identifier->isGuildChannel() || identifier->isPartyChannel())) {
+    if (identifier->type == TChatChannelIdentifier::ChannelId && (identifier->isGuildChannel() || identifier->isTeamFinderChannel())) {
         const bool shown = m_showJoinLeaveMessages && m_showJoinLeaveMessages();
         result.push_back(::tibia::input::makeGameAction(shown ? A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES : A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES));
     }

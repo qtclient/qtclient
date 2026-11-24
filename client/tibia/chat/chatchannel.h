@@ -78,16 +78,10 @@ struct TChatChannelIdentifier
     bool isPrivateChannelId() const { return isChannelIdInRange(10, 9999); }
     /// Ids 20000-29999 are Team Finder channels.
     bool isTeamFinderChannel() const { return isChannelIdInRange(20000, 29999); }
-    /// Guild channels: ids 10000-19999 (Crystal's CHANNEL_GUILD is 0).
-    bool isGuildChannel() const
-    {
-        return type == ChannelId && (id == 0 || (id >= 10000 && id < 20000));
-    }
-    /// Party channels: Crystal's CHANNEL_PARTY 1 and the Team Finder ids.
-    bool isPartyChannel() const
-    {
-        return type == ChannelId && (id == 1 || (id >= 20000 && id < 30000));
-    }
+    /// Ids 10000-19999 are guild channels.
+    bool isGuildChannel() const { return isChannelIdInRange(10000, 19999); }
+    /// Ids 30000-65533 are party channels.
+    bool isPartyChannel() const { return isChannelIdInRange(30000, 65533); }
 };
 
 /// One line of a channel (CIP's chat entry, 0x60 bytes).

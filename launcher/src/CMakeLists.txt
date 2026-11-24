@@ -62,12 +62,6 @@ foreach(_file IN LISTS _chrome_files)
   set_source_files_properties("${_src}" PROPERTIES QT_RESOURCE_ALIAS "${_rel}")
   list(APPEND _launcher_resources "${_src}")
 endforeach()
-# CIP-shaped hints.json (title + richText with /images/news/*).
-set(_hints_json "${TIBIA_ROOT}/data/hints.json")
-if(EXISTS "${_hints_json}")
-  set_source_files_properties("${_hints_json}" PROPERTIES QT_RESOURCE_ALIAS "hints.json")
-  list(APPEND _launcher_resources "${_hints_json}")
-endif()
 
 # In-tree default mod: lowest-priority launcher settings (no CipSoft urls by default).
 set(_default_mod_json "${TIBIA_ROOT}/client/mods/qtc-aac/mod.json")

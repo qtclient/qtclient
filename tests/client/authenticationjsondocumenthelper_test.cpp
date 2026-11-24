@@ -61,6 +61,8 @@ TEST(AuthenticationJsonDocumentHelper, WorldNeedsEveryKey)
     EXPECT_EQ(world.id, 4);
     EXPECT_EQ(world.externalPortProtected, 7172);
     EXPECT_EQ(world.externalPortUnprotected, 7171);
+    // Desktop: the secondary connection's port is the unprotected TCP port.
+    EXPECT_EQ(world.portUnprotected(), 7171);
     EXPECT_EQ(world.host(), "p.example");
     EXPECT_TRUE(world.antiCheatProtection);
     EXPECT_EQ(world.pvpType, 2);

@@ -31,17 +31,8 @@ QVector<Hint> parseHints(const QByteArray& body);
 /// scheduled hint in its window, else one picked by the clock.
 std::optional<Hint> selectHint(const QVector<Hint>& hints, const QDateTime& now);
 
-/// True when at least one hint carries CIP table/img richText (not a string stub).
-bool hasRichHints(const QVector<Hint>& hints);
-
-/// One entry from the list.
-Hint randomHint(const QVector<Hint>& hints);
-
 /// Point hint <img> sources at our CDN. Files live under /images/news/.
 QString hintHtml(const Hint& hint, const QString& cdnBase);
-
-/// Bundled :/hints.json fallback when the CDN still ships the string stub.
-QVector<Hint> loadBundledHints();
 
 }
 }

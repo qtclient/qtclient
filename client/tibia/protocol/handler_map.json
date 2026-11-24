@@ -9,13 +9,13 @@
   "dir": "client",
   "opcode": 11,
   "name": "SecondaryLogin",
-  "func": "sendSecondaryLogin"
+  "call": "// Queued by TProtocolMessageQueue::sendSecondaryLogin (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 15,
   "name": "EnterWorld",
-  "func": "sendEnterGame"
+  "call": "// Queued by TProtocolMessageQueue::sendEnterWorld (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -27,31 +27,31 @@
   "dir": "client",
   "opcode": 28,
   "name": "ConnectionPingBack",
-  "func": "sendConnectionPingBack"
+  "call": "// Queued by TProtocolMessageQueue::sendConnectionPingBack (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 29,
   "name": "Ping",
-  "func": "sendPing"
+  "call": "// Queued by TProtocolMessageQueue::sendPing (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 30,
   "name": "PingBack",
-  "func": "sendPingBack"
+  "call": "// Queued by TProtocolMessageQueue::sendPingBack (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 40,
   "name": "StashAction",
-  "func": "sendStashWithdraw"
+  "call": "// Queued by TProtocolMessageQueue::sendStashAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 41,
   "name": "DepotSearchRetrieve",
-  "func": "sendRetrieveDepotSearch"
+  "call": "// Queued by TProtocolMessageQueue::sendDepotSearchRetrieve (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -63,7 +63,7 @@
   "dir": "client",
   "opcode": 43,
   "name": "PartyHuntAnalyser",
-  "func": "sendPartyAnalyzerAction"
+  "call": "// Queued by TProtocolMessageQueue::sendPartyHuntAnalyser (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -81,13 +81,13 @@
   "dir": "client",
   "opcode": 46,
   "name": "SetClientOptions",
-  "func": "sendSetClientOptions"
+  "call": "// Queued by TProtocolMessageQueue::sendSetClientOptions (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 95,
   "name": "Taskboard",
-  "func": "sendTaskBoardAction"
+  "call": "// Queued by TProtocolMessageQueue::sendTaskboardCommandMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -99,13 +99,13 @@
   "dir": "client",
   "opcode": 97,
   "name": "RequestSkillWheel",
-  "func": "sendOpenWheel"
+  "call": "// Queued by TProtocolMessageQueue::sendRequestSkillWheel (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 98,
   "name": "ApplySkillWheel",
-  "func": "sendApplyWheelPoints"
+  "call": "// Queued by TProtocolMessageQueue::sendApplySkillWheel (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -117,67 +117,67 @@
   "dir": "client",
   "opcode": 100,
   "name": "GoPath",
-  "func": "sendAutoWalk"
+  "call": "// Queued by TProtocolMessageQueue::sendGoPath (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 101,
   "name": "GoNorth",
-  "func": "sendWalkNorth"
+  "call": "// Queued by TProtocolMessageQueue::sendGoNorth (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 102,
   "name": "GoEast",
-  "func": "sendWalkEast"
+  "call": "// Queued by TProtocolMessageQueue::sendGoEast (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 103,
   "name": "GoSouth",
-  "func": "sendWalkSouth"
+  "call": "// Queued by TProtocolMessageQueue::sendGoSouth (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 104,
   "name": "GoWest",
-  "func": "sendWalkWest"
+  "call": "// Queued by TProtocolMessageQueue::sendGoWest (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 105,
   "name": "Stop",
-  "func": "sendStop"
+  "call": "// Queued by TProtocolMessageQueue::sendStop (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 106,
   "name": "GoNorthEast",
-  "func": "sendWalkNorthEast"
+  "call": "// Queued by TProtocolMessageQueue::sendGoNorthEast (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 107,
   "name": "GoSouthEast",
-  "func": "sendWalkSouthEast"
+  "call": "// Queued by TProtocolMessageQueue::sendGoSouthEast (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 108,
   "name": "GoSouthWest",
-  "func": "sendWalkSouthWest"
+  "call": "// Queued by TProtocolMessageQueue::sendGoSouthWest (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 109,
   "name": "GoNorthWest",
-  "func": "sendWalkNorthWest"
+  "call": "// Queued by TProtocolMessageQueue::sendGoNorthWest (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 110,
   "name": "SetVocation",
-  "func": "sendTutorialChangeVocation"
+  "call": "// Queued by TProtocolMessageQueue::sendSetVocationMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -207,19 +207,19 @@
   "dir": "client",
   "opcode": 115,
   "name": "Teleport",
-  "func": "sendTeleport"
+  "call": "// Queued by TProtocolMessageQueue::sendTeleport (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 116,
   "name": "StartOfflineTraining",
-  "func": "sendStartOfflineTraining"
+  "call": "// Queued by TProtocolMessageQueue::sendStartOfflineTrainingMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 117,
   "name": "ContainerAction",
-  "func": "sendContainerAction"
+  "call": "// Queued by TProtocolMessageQueue::sendContainerActionMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -231,61 +231,61 @@
   "dir": "client",
   "opcode": 119,
   "name": "EquipObject",
-  "func": "sendEquipItemWithTier"
+  "call": "// Queued by TProtocolMessageQueue::sendEquipObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 120,
   "name": "MoveObject",
-  "func": "sendMove"
+  "call": "// Queued by TProtocolMessageQueue::sendMoveObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 121,
   "name": "LookNPCTrade",
-  "func": "sendInspectNpcTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendLookNPCTrade (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 122,
   "name": "BuyObject",
-  "func": "sendBuyItem"
+  "call": "// Queued by TProtocolMessageQueue::sendBuyObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 123,
   "name": "SellObject",
-  "func": "sendSellItem"
+  "call": "// Queued by TProtocolMessageQueue::sendSellObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 124,
   "name": "CloseNPCTrade",
-  "func": "sendCloseNpcTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendCloseNPCTrade (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 125,
   "name": "TradeObject",
-  "func": "sendRequestTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendTradeObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 126,
   "name": "LookTrade",
-  "func": "sendInspectTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendLookTrade (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 127,
   "name": "AcceptTrade",
-  "func": "sendAcceptTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendAcceptTrade (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 128,
   "name": "RejectTrade",
-  "func": "sendRejectTrade"
+  "call": "// Queued by TProtocolMessageQueue::sendRejectTrade (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -315,67 +315,67 @@
   "dir": "client",
   "opcode": 133,
   "name": "TurnObject",
-  "func": "sendRotateItem"
+  "call": "// Queued by TProtocolMessageQueue::sendTurnObject (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 134,
   "name": "ConfigureShowOffSocket",
-  "func": "sendConfigureShowOffSocket"
+  "call": "// Queued by TProtocolMessageQueue::sendConfigureShowOffSocket (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 135,
   "name": "CloseContainer",
-  "func": "sendCloseContainer"
+  "call": "// Queued by TProtocolMessageQueue::sendCloseContainer (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 136,
   "name": "UpContainer",
-  "func": "sendUpContainer"
+  "call": "// Queued by TProtocolMessageQueue::sendUpContainer (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 137,
   "name": "EditText",
-  "func": "sendEditText"
+  "call": "// Queued by TProtocolMessageQueue::sendEditText (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 138,
   "name": "EditList",
-  "func": "sendEditList"
+  "call": "// Queued by TProtocolMessageQueue::sendEditList (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 139,
   "name": "ToggleWrapState",
-  "func": "sendOnWrapItem"
+  "call": "// Queued by TProtocolMessageQueue::sendToggleWrapState (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 140,
   "name": "Look",
-  "func": "sendLook"
+  "call": "// Queued by TProtocolMessageQueue::sendLook (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 141,
   "name": "LookAtCreature",
-  "func": "sendLookCreature"
+  "call": "// Queued by TProtocolMessageQueue::sendLookAtCreature (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 142,
   "name": "JoinAggression",
-  "func": "sendJoinAggression"
+  "call": "// Queued by TProtocolMessageQueue::sendJoinAggression (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 143,
   "name": "QuickLoot",
-  "func": "sendQuickLoot"
+  "call": "// Queued by TProtocolMessageQueue::sendQuickLoot (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -393,25 +393,25 @@
   "dir": "client",
   "opcode": 146,
   "name": "OpenDepotSearch",
-  "func": "sendOpenDepotSearch"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenDepotSearch (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 147,
   "name": "CloseDepotSearch",
-  "func": "sendCloseDepotSearch"
+  "call": "// Queued by TProtocolMessageQueue::sendCloseDepotSearch (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 148,
   "name": "DepotSearchType",
-  "func": "sendDepotSearchType"
+  "call": "// Queued by TProtocolMessageQueue::sendDepotSearchType (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 149,
   "name": "OpenParentContainer",
-  "func": "sendOpenParentContainer"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenParentContainer (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -423,19 +423,19 @@
   "dir": "client",
   "opcode": 151,
   "name": "GetChannels",
-  "func": "sendRequestChannels"
+  "call": "// Queued by TProtocolMessageQueue::sendGetChanneList (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 152,
   "name": "JoinChannel",
-  "func": "sendJoinChannel"
+  "call": "// Queued by TProtocolMessageQueue::sendJoinChannel (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 153,
   "name": "LeaveChannel",
-  "func": "sendLeaveChannel"
+  "call": "// Queued by TProtocolMessageQueue::sendLeaveChannel (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -447,55 +447,55 @@
   "dir": "client",
   "opcode": 155,
   "name": "GuildMessage",
-  "func": "sendGetGuildMessage"
+  "call": "// Queued by TProtocolMessageQueue::sendGuildMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 156,
   "name": "EditGuildMessage",
-  "func": "sendEditGuildMessage"
+  "call": "// Queued by TProtocolMessageQueue::sendEditGuildMessage (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 157,
   "name": "GetTextForReport",
-  "func": "sendGetTextForReport"
+  "call": "// Queued by TProtocolMessageQueue::sendGetTextForReport (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 158,
   "name": "CloseNPCChannel",
-  "func": "sendCloseNpcChannel"
+  "call": "// Queued by TProtocolMessageQueue::sendCloseNPCChannel (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 159,
   "name": "SetCreaturePodiumConfiguration",
-  "func": "sendSetCreaturePodiumConfiguration"
+  "call": "// Queued by TProtocolMessageQueue::sendSetCreaturePodiumConfiguration (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 160,
   "name": "SetTactics",
-  "func": "sendChangeFightModes"
+  "call": "// Queued by TProtocolMessageQueue::sendSetTactics (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 161,
   "name": "Attack",
-  "func": "sendAttack"
+  "call": "// Queued by TProtocolMessageQueue::sendAttack (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 162,
   "name": "Follow",
-  "func": "sendFollow"
+  "call": "// Queued by TProtocolMessageQueue::sendFollow (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 163,
   "name": "InviteToParty",
-  "func": "sendInviteToParty"
+  "call": "// Queued by TProtocolMessageQueue::sendInviteToParty (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -507,25 +507,25 @@
   "dir": "client",
   "opcode": 165,
   "name": "RevokeInvitation",
-  "func": "sendRevokeInvitation"
+  "call": "// Queued by TProtocolMessageQueue::sendRevokeInvitation (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 166,
   "name": "PassLeadership",
-  "func": "sendPassLeadership"
+  "call": "// Queued by TProtocolMessageQueue::sendPassLeadership (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 167,
   "name": "LeaveParty",
-  "func": "sendLeaveParty"
+  "call": "// Queued by TProtocolMessageQueue::sendLeaveParty (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 168,
   "name": "ShareExperience",
-  "func": "sendShareExperience"
+  "call": "// Queued by TProtocolMessageQueue::sendShareExperience (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -537,7 +537,7 @@
   "dir": "client",
   "opcode": 170,
   "name": "OpenChannel",
-  "func": "sendOpenOwnChannel"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenChannel (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -555,7 +555,7 @@
   "dir": "client",
   "opcode": 173,
   "name": "CyclopediaHouseAction",
-  "func": "sendCyclopediaHouseAuction"
+  "call": "// Queued by TProtocolMessageQueue::sendCyclopediaHouseAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -603,25 +603,25 @@
   "dir": "client",
   "opcode": 190,
   "name": "Cancel",
-  "func": "sendCancelAttackAndFollow"
+  "call": "// Queued by TProtocolMessageQueue::sendCancel (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 191,
   "name": "ExaltationAction",
-  "func": "sendForgeRequest"
+  "call": "// Queued by TProtocolMessageQueue::sendExaltationAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 192,
   "name": "OpenExaltationHistory",
-  "func": "sendForgeBrowseHistoryRequest"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenExaltationHistory (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 193,
   "name": "ClientDetails",
-  "func": "sendClientDetails"
+  "call": "// Queued by TProtocolMessageQueue::sendClientDetails (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -633,25 +633,25 @@
   "dir": "client",
   "opcode": 201,
   "name": "GetTransactionDetails",
-  "func": "sendGetTransactionDetails"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenTransactionDetails (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 202,
   "name": "UpdateExivaOptions",
-  "func": "sendExivaRestrictions"
+  "call": "// Queued by TProtocolMessageQueue::sendSetExivaOptions (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 203,
   "name": "BrowseField",
-  "func": "sendBrowseField"
+  "call": "// Queued by TProtocolMessageQueue::sendBrowseField (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 204,
   "name": "SeekInContainer",
-  "func": "sendSeekInContainer"
+  "call": "// Queued by TProtocolMessageQueue::sendSeekInContainer (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -663,7 +663,7 @@
   "dir": "client",
   "opcode": 206,
   "name": "InspectPlayer",
-  "func": "sendInspectCharacter"
+  "call": "// Queued by TProtocolMessageQueue::sendInspectPlayer (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -675,31 +675,31 @@
   "dir": "client",
   "opcode": 208,
   "name": "TrackQuestFlags",
-  "func": "sendRequestTrackerQuestLog"
+  "call": "// Queued by TProtocolMessageQueue::sendTrackQuestFlags (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 209,
   "name": "MarketStatistics",
-  "func": "sendMarketStatistics"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketStatistics (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 210,
   "name": "GetOutfit",
-  "func": "sendRequestOutfit"
+  "call": "// Queued by TProtocolMessageQueue::sendGetOutfit (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 211,
   "name": "SetOutfit",
-  "func": "sendChangeOutfit"
+  "call": "// Queued by TProtocolMessageQueue::sendSetOutfit (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 212,
   "name": "Mount",
-  "func": "sendMountStatus"
+  "call": "// Queued by TProtocolMessageQueue::sendMount (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -723,79 +723,79 @@
   "dir": "client",
   "opcode": 216,
   "name": "OpenRewardWall",
-  "func": "sendOpenRewardWall"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenRewardWall (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 217,
   "name": "DailyRewardHistory",
-  "func": "sendOpenRewardHistory"
+  "call": "// Queued by TProtocolMessageQueue::sendDailyRewardHistory (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 218,
   "name": "CollectDailyReward",
-  "func": "sendGetRewardDaily"
+  "call": "// Queued by TProtocolMessageQueue::sendCollectDailyReward (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 219,
   "name": "CyclopediaMapAction",
-  "func": "sendCyclopediaMapDonate"
+  "call": "// Queued by TProtocolMessageQueue::sendCyclopediaMapAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 220,
   "name": "AddBuddy",
-  "func": "sendAddVip"
+  "call": "// Queued by TProtocolMessageQueue::sendAddBuddy (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 221,
   "name": "RemoveBuddy",
-  "func": "sendRemoveVip"
+  "call": "// Queued by TProtocolMessageQueue::sendRemoveBuddy (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 222,
   "name": "EditBuddy",
-  "func": "sendEditVip"
+  "call": "// Queued by TProtocolMessageQueue::sendEditBuddy (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 223,
   "name": "BuddyGroup",
-  "func": "sendEditVipGroups"
+  "call": "// Queued by TProtocolMessageQueue::sendBuddyGroup (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 225,
   "name": "OpenMonsterCyclopedia",
-  "func": "sendRequestBestiary"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenMonsterCyclopedia (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 226,
   "name": "OpenMonsterCyclopediaMonsters",
-  "func": "sendRequestBestiaryOverview"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 227,
   "name": "OpenMonsterCyclopediaRace",
-  "func": "sendRequestBestiarySearch"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenMonsterCyclopediaRace (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 228,
   "name": "MonsterBonusEffectAction",
-  "func": "sendBuyCharmRune"
+  "call": "// Queued by TProtocolMessageQueue::sendMonsterBonusEffectAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 229,
   "name": "OpenCyclopediaCharacterInfo",
-  "func": "sendCyclopediaRequestCharacterInfo"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenCyclopediaCharacterInfo (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -807,49 +807,49 @@
   "dir": "client",
   "opcode": 231,
   "name": "GemAtelier",
-  "func": "sendWheelGemAction"
+  "call": "// Queued by TProtocolMessageQueue::sendGemAtelier (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 232,
   "name": "GetOfferDescription",
-  "func": "sendGetOfferDescription"
+  "call": "// Queued by TProtocolMessageQueue::sendGetOfferDescription (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 233,
   "name": "StoreEvent",
-  "func": "sendStoreEvent"
+  "call": "// Queued by TProtocolMessageQueue::sendStoreEvent (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 235,
   "name": "PreyAction",
-  "func": "sendPreyAction"
+  "call": "// Queued by TProtocolMessageQueue::sendPreyAction (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 236,
   "name": "SetHirelingName",
-  "func": "sendSetHirelingName"
+  "call": "// Queued by TProtocolMessageQueue::sendSetHirelingName (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 237,
   "name": "RequestResourceBalance",
-  "func": "sendRequestResourceBalance"
+  "call": "// Queued by TProtocolMessageQueue::sendRequestResourceBalance (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 238,
   "name": "Greet",
-  "func": "sendGreet"
+  "call": "// Queued by TProtocolMessageQueue::sendGreet (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 239,
   "name": "TransferCurrency",
-  "func": "sendTransferCoins"
+  "call": "// Queued by TProtocolMessageQueue::sendTransferCurrency (a CIP handler's signal)."
  },
  {
   "dir": "client",
@@ -867,85 +867,85 @@
   "dir": "client",
   "opcode": 242,
   "name": "RuleViolationReport",
-  "func": "sendRuleViolationReport"
+  "call": "// Queued by TProtocolMessageQueue::sendRuleViolationReport (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 243,
   "name": "GetObjectInfo",
-  "func": "sendRequestItemInfo"
+  "call": "// Queued by TProtocolMessageQueue::sendGetObjectInfo (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 244,
   "name": "MarketLeave",
-  "func": "sendMarketLeave"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketLeave (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 245,
   "name": "MarketBrowse",
-  "func": "sendMarketBrowse"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketBrowse (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 246,
   "name": "MarketCreate",
-  "func": "sendMarketCreateOffer"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketCreate (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 247,
   "name": "MarketCancel",
-  "func": "sendMarketCancelOffer"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketCancel (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 248,
   "name": "MarketAccept",
-  "func": "sendMarketAcceptOffer"
+  "call": "// Queued by TProtocolMessageQueue::sendMarketAccept (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 249,
   "name": "AnswerModalDialog",
-  "func": "sendAnswerModalDialog"
+  "call": "// Queued by TProtocolMessageQueue::sendAnswerModalDialog (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 250,
   "name": "RequestStoreCategories",
-  "func": "sendOpenStore"
+  "call": "// Queued by TProtocolMessageQueue::sendRequestStoreCategories (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 251,
   "name": "RequestStoreOffers",
-  "func": "sendRequestStoreOffers"
+  "call": "// Queued by TProtocolMessageQueue::sendRequestStoreOffers (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 252,
   "name": "BuyStoreOffer",
-  "func": "sendBuyStoreOffer"
+  "call": "// Queued by TProtocolMessageQueue::sendBuyStoreOffer (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 253,
   "name": "OpenTransactionHistory",
-  "func": "sendOpenTransactionHistory"
+  "call": "// Queued by TProtocolMessageQueue::sendOpenTransactionHistory (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 254,
   "name": "GetTransactionHistory",
-  "func": "sendRequestTransactionHistory"
+  "call": "// Queued by TProtocolMessageQueue::sendGetTransactionHistory (a CIP handler's signal)."
  },
  {
   "dir": "client",
   "opcode": 255,
   "name": "GatherAll",
-  "func": "sendGatherAll"
+  "call": "// Queued by TProtocolMessageQueue::sendGatherAll (a CIP handler's signal)."
  },
  {
   "dir": "server",

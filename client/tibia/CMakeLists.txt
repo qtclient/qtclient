@@ -322,7 +322,6 @@ if(TIBIA_WITH_GAMECORE)
     config/tibiaconfig.cpp config/tibiaconfig.h
     app/smokeactions.cpp app/smokeactions.h
     config/configciptypes.h
-    config/runtimegameconfig.cpp config/runtimegameconfig.h
     sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
     sessiondump/sessiondumpasyncloaderprotocol.cpp
     sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
@@ -763,7 +762,7 @@ if(TIBIA_WITH_GAMECORE)
     protocol/clientwire.cpp
     protocol/protocolwriter.cpp protocol/protocolwriter.h
     protocol/protobufclientmessagetranslator.cpp protocol/protobufclientmessagetranslator.h
-    network/gameserverconnection.cpp network/gameserverconnection.h
+    network/producttransport.cpp network/producttransport.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
     network/gameservernetworkpacket.cpp network/gameservernetworkpacket.h
@@ -851,7 +850,6 @@ if(TIBIA_WITH_GAMECORE)
     renderer/scenegraphnodeprovider.cpp renderer/scenegraphnodeprovider.h
     renderer/spritetexturecache.cpp renderer/spritetexturecache.h
     renderer/spritetextureprovider.cpp renderer/spritetextureprovider.h
-    renderer/texturedeletionqueue.cpp renderer/texturedeletionqueue.h
     renderer/worldmapquickitem.cpp renderer/worldmapquickitem.h
     renderer/worldmaprenderprovider.cpp renderer/worldmaprenderprovider.h
     renderer/worldmapcameraviewport.cpp renderer/worldmapcameraviewport.h

@@ -12,6 +12,12 @@
 namespace tibia {
 namespace skillwheel {
 
+/// The type id of the gem object of `quality` for the vocation (1 knight .. 5 monk), from the
+/// appearances' skill wheel gem types; 0 for none.
+uint16_t gemObjectTypeId(int quality, int vocation);
+/// The name of that gem object; empty for none.
+QString gemObjectName(int quality, int vocation);
+
 /// The skill wheel's pages: CIP's shared::TPaginationProxyModel with a
 /// helper that turns to a source row's page.
 class TPaginationProxyModel final : public shared::TPaginationProxyModel

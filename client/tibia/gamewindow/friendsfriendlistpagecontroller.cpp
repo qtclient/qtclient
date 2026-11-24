@@ -21,10 +21,11 @@ constexpr uint8_t kChangeFriendGroup = 10;
 
 }
 
-TFriendsFriendListPageController::TFriendsFriendListPageController(QObject* parent)
+TFriendsFriendListPageController::TFriendsFriendListPageController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                   QObject* parent)
     : cip::tibia::gamewindow::TFriendsFriendListPageController(parent)
     , m_model(new TFriendListSortProxyModel(this))
-    , m_confirmDialog(new TMessageDialogController(this))
+    , m_confirmDialog(new TMessageDialogController(engine, dialogParentItem, this))
 {
     m_friendList = m_model;
     m_confirmDialog->setCloseOnButtonClicked(true);

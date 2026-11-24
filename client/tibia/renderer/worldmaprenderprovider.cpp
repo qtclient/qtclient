@@ -30,7 +30,6 @@
 
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/creatures/movementtweens.h>
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "creatures/creaturestorage.h"
@@ -638,7 +637,7 @@ WeatherFrame TWorldMapRenderProvider::weatherFrame() const
         return out;
     if (!m_frame.geometry.valid())
         return out;
-    if (m_camera.z > tibia::config::mapSeaFloor())
+    if (m_camera.z > worldmap::TWorldMapCentralPosition::GroundFloor)
         return out;
     out.active = true;
     out.kind = state.kind;
@@ -679,7 +678,7 @@ void TWorldMapRenderProvider::updateWorldGeometry()
     } else {
         const worldmap::TWorldMapStorage* storage = worldMapStorage();
         const uint32_t revision = storage ? storage->itemRevision() : 0;
-        const int sea = tibia::config::mapSeaFloor();
+        const int sea = worldmap::TWorldMapCentralPosition::GroundFloor;
         const int origin = m_camera.z > sea ? m_camera.z : static_cast<int>(m_lastFloor);
         const bool geoFresh = m_frame.geometry.valid() && m_geometryCamera == m_camera
             && m_geometryRevision == revision && m_geometryWidth == drawWidth()
@@ -710,7 +709,7 @@ void TWorldMapRenderProvider::updateWorldGeometry()
         const auto state = weather->display();
         const bool rainingOnPlayer =
             !m_frame.geometry.valid() || m_frame.geometry.outdoorAt(centerX(), centerY());
-        const bool aboveSea = m_camera.z <= tibia::config::mapSeaFloor();
+        const bool aboveSea = m_camera.z <= worldmap::TWorldMapCentralPosition::GroundFloor;
         weather->updateSound(state, weather->lightningFlash(), weather->enabled(), rainingOnPlayer, aboveSea);
     }
 }
@@ -760,7 +759,7 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
         m_lightCacheStorage = storage;
     }
 
-    const int sea = tibia::config::mapSeaFloor();
+    const int sea = worldmap::TWorldMapCentralPosition::GroundFloor;
     const tibia::worldmap::TAmbientLightStorage* ambient = ambientLightStorage();
     const DebugWorldLight& pinned = debugWorldLight();
     const worldmap::TWorldMapStorage* worldStorage = worldMapStorage();
@@ -960,13 +959,6 @@ Position TWorldMapRenderProvider::lightField(const int x, const int y, const int
     return light::lightField(m_camera, centerX(), centerY(), x, y, z);
 }
 
-Position TWorldMapRenderProvider::firstField(const int z) const
-{
-    Position field = m_camera.translated(-centerX(), -centerY());
-    field.coveredUp(m_camera.z - z);
-    return field;
-}
-
 Position TWorldMapRenderProvider::fieldAt(const QPoint& mapPixel, const int z) const
 {
     if (!m_camera.isValid())
@@ -975,7 +967,7 @@ Position TWorldMapRenderProvider::fieldAt(const QPoint& mapPixel, const int z) c
     const int floorShift = m_camera.z - z;
     const int x = (mapPixel.x() >> 5) - centerX() + m_camera.x + floorShift;
     const int y = (mapPixel.y() >> 5) - centerY() + m_camera.y + floorShift;
-    if (x < 0 || y < 0 || z < 0 || z > tibia::config::mapMaxZ())
+    if (x < 0 || y < 0 || z < 0 || z > worldmap::TWorldMapCentralPosition::LastFloor)
         return {};
     return { static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint8_t>(z) };
 }
@@ -1521,9 +1513,6 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
     if (!type)
         return;
     const auto* object = dynamic_cast<const appearances::TObjectAppearanceInstance*>(&instance);
-    // Host: an object the server marked undrawable draws nothing.
-    if (object && !object->drawable())
-        return;
     const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(&instance);
     const std::shared_ptr<tibia::creatures::TCreature> creature = placeholder ? placeholder->creature() : nullptr;
     if (placeholder && !creature)
@@ -1659,7 +1648,7 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
     // are not drawn.
     if (stored.isLocalPlayer() && stored.isSoftDead())
         return;
-    if (!stored.canBeSeen() || !stored.canDraw() || (stored.isDead() && !stored.isHidden()) || stored.isHided())
+    if (stored.isDead() && !stored.isHidden())
         return;
     const std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance>& placeholder = stored.placeholderAppearance();
     if (!placeholder)
@@ -1670,12 +1659,8 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
               creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()), castHeight)))
         : std::nullopt;
 
-    // Host: a jumping creature is drawn lifted by its jump.
-    QPoint jumped = dest;
-    if (const QPointF jump = stored.jumpOffset(); !jump.isNull())
-        jumped -= QPoint(static_cast<int>(std::round(jump.x())), static_cast<int>(std::round(jump.y())));
     const QPoint walked = dest + stored.walkOffset();
-    const QPoint at = jumped + stored.walkOffset();
+    const QPoint at = walked;
 
     // Host: the creature's HUD is drawn over its head.
     if (m_floor == m_camera.z && !stored.isDead() && !stored.isHidden()) {
@@ -1683,8 +1668,7 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
         const bool listed = std::any_of(m_frame.creatures.begin(), m_frame.creatures.end(),
                                         [id](const CreatureHud& hud) { return hud.creatureId == id; });
         if (!listed) {
-            const QPoint head = at - stored.displacement();
-            m_frame.creatures.push_back({ id, QPoint(head.x(), head.y()) });
+            m_frame.creatures.push_back({ id, at });
         }
     }
 
@@ -1696,7 +1680,7 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
         // The creature draws what its placeholder hands the map.
         // Host: the mouse target is an object of a field (field, stack position,
         // type), never a creature's placeholder.
-        addRenderInfos(*placeholder, coordinate, jumped, SpriteRecord::NoHighlight, lift, nullptr, castHeight, grid);
+        addRenderInfos(*placeholder, coordinate, dest, SpriteRecord::NoHighlight, lift, nullptr, castHeight, grid);
     } else {
         // Host: an effect worn as an outfit has no outfit sequences; it cycles
         // its phases past the first and last by the clock.
@@ -1711,12 +1695,13 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
         if (type->hasLight())
             addCreatureLight(type->getLight());
         const int phases = std::max(1, type->getAnimationPhases() - 2);
-        const int ticks = tibia::config::invisibleTicksPerFrame();
+        // The invisible creature's shimmer: 75 ms per phase.
+        constexpr int ticks = 75;
         int phase = 0;
         if (phases > 1)
             phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
         phase = std::min(phase + 1, phases);
-        addSprites(type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlightOf(stored.creatureId()));
+        addSprites(type, at, 0, 0, 0, phase, false, 0, highlightOf(stored.creatureId()));
         m_objectCounter.addObject(coordinate, type->getId());
         m_frameTypes.insert(type);
     }

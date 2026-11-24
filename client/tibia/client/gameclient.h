@@ -120,7 +120,6 @@ class TOutfitDialogStorage;
 class TPremiumTimeStorage;
 class TGameserverGameSession;
 class TSessiondumpGameSession;
-class TStatusbarStorage;
 }
 }
 namespace tibia {
@@ -157,7 +156,6 @@ class TWorldMapRenderProvider;
 }
 namespace tibia {
 namespace config {
-class TActionBarOptions;
 class TClientOptions;
 class TTibiaConfig;
 class TClientOptionsUploader;
@@ -339,12 +337,10 @@ public:
     const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_pNewsStorage; }
     const std::shared_ptr<news::TNewsDiskIO>& newsDiskIO() const { return m_pNewsDiskIO; }
         effects::TEffectStorage* effectStorage() const;
-    /// Host shim until the game window's widgets connect to the session: the
-    /// current session's sidebars.json, statusBarData.json and actionbars.json
-    /// (its character configuration manager holds them); null without one.
+    /// The current session's sidebars.json (its character configuration
+    /// manager holds it), for the option mode switcher and the analyser
+    /// widgets that read it per call; null without a session.
     config::TSidebarOptions* sidebarOptions() const;
-    game::TStatusbarStorage* statusbarStorage() const;
-    config::TActionBarOptions* actionBarOptions() const;
     /// The current session's; null without one.
     config::TCharacterConfigurationManager* characterConfigurationManager() const;
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
@@ -770,9 +766,6 @@ private:
     /// is set from here).
     std::shared_ptr<gamewindow::TDialogStackController> m_pDialogStackController;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
-    /// Host shim: the character configuration storages the game window still
-    /// owns; each new session's manager takes them.
-    config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     /// The chat pane's ignore list, applied to each session's message handler.
     std::shared_ptr<chat::TWhiteBlacklist> m_pWhiteBlacklist;
     /// CIP: the account's premium state, handed to the current session.

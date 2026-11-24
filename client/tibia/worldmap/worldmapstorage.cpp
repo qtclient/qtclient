@@ -19,7 +19,6 @@
 #include "iclockservice.h"
 
 #include "client/const.h"
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/gamenotify.h>
 #include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
@@ -106,14 +105,6 @@ constexpr uint8_t ProbeOpaque = 4;
 constexpr uint8_t ProbeTopGround = 8;
 constexpr uint8_t ProbeLoading = 16;
 
-}
-
-TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
-    : cip::tibia::worldmap::TWorldMapStorage(parent)
-    , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
-{
-    // Host: the aware range is reset by the owner once the storage is installed
-    // (TGameSessionBase::initializeWorldMapSessionState, ensureStorage).
 }
 
 TWorldMapStorage::TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
@@ -516,7 +507,7 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
     }
     const TWorldMapExtent step(target.x - origin.x, target.y - origin.y, target.z - origin.z);
     const qint64 duration = m_speedCalculator->stepDuration(creature.speed(), step, groundSpeedAt(to));
-    const qint64 now = m_clock ? m_clock->nowMillis() : tibia::shared::TClockService::frameMillis();
+    const qint64 now = m_clock->nowMillis();
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }
 
@@ -1122,25 +1113,28 @@ void TWorldMapStorage::setAwareRange(const AwareRange& range)
 
 void TWorldMapStorage::resetAwareRange()
 {
-    setAwareRange({ .left = static_cast<uint8_t>(tibia::config::mapViewPortWidth()),
-                    .top = static_cast<uint8_t>(tibia::config::mapViewPortHeight()),
-                    .right = static_cast<uint8_t>(tibia::config::mapViewPortWidth() + 1),
-                    .bottom = static_cast<uint8_t>(tibia::config::mapViewPortHeight() + 1) });
+    // The default central position's area: 8 columns and 6 rows before the
+    // centre, 9 and 7 after it (18 x 14 fields).
+    const TWorldMapCentralPosition area;
+    setAwareRange({ .left = static_cast<uint8_t>(area.offset.width),
+                    .top = static_cast<uint8_t>(area.offset.height),
+                    .right = static_cast<uint8_t>(area.size.width - area.offset.width - 1),
+                    .bottom = static_cast<uint8_t>(area.size.height - area.offset.height - 1) });
 }
 
 uint8_t TWorldMapStorage::firstAwareFloor() const
 {
-    if (m_centralPosition.z <= tibia::config::mapSeaFloor())
+    if (m_centralPosition.z <= TWorldMapCentralPosition::GroundFloor)
         return 0;
-    return m_centralPosition.z - tibia::config::mapAwareUndergroundFloorRange();
+    return m_centralPosition.z - TWorldMapCentralPosition::UndergroundFloorRange;
 }
 
 uint8_t TWorldMapStorage::lastAwareFloor() const
 {
-    if (m_centralPosition.z <= tibia::config::mapSeaFloor())
-        return tibia::config::mapSeaFloor();
-    return std::min<uint8_t>(m_centralPosition.z + tibia::config::mapAwareUndergroundFloorRange(),
-                             tibia::config::mapMaxZ());
+    if (m_centralPosition.z <= TWorldMapCentralPosition::GroundFloor)
+        return TWorldMapCentralPosition::GroundFloor;
+    return std::min<uint8_t>(m_centralPosition.z + TWorldMapCentralPosition::UndergroundFloorRange,
+                             TWorldMapCentralPosition::LastFloor);
 }
 
 void TWorldMapStorage::setPathAvoid(const Position& position, const bool avoid)

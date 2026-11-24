@@ -17,19 +17,8 @@ namespace tibia::gamewindow {
 namespace {
 
 
-/// The spell groups on the bar, in order (conjure, group 5, is left out).
+/// The spell groups on the idle bar, in order (conjure, group 5, is left out).
 constexpr int BarGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
-
-/// Crystal's SpellGroup_t numbers great beams and bursts of nature the other
-/// way round than the client's spell groups.
-int serverGroup(const int group)
-{
-    if (group == 9)
-        return 10;
-    if (group == 10)
-        return 9;
-    return group;
-}
 
 /// image://spellgroup-icons-20x20/<group - 1>; no icon for group 0.
 QString spellGroupIconUrl(const int group)
@@ -149,23 +138,19 @@ void TCooldownBarController::update(const qint64 now)
         return;
 
     QVariantList groups;
-    for (const int group : BarGroups) {
-        const game::TCooldown cooldown = storage->spellGroupCooldown(uint8_t(serverGroup(group)), now);
-        const qint64 remaining = std::max<qint64>(0, cooldown.end - now);
-        const qint64 total = std::max<qint64>(1, cooldown.duration);
-        groups.append(QVariant::fromValue(
-            qmlOwned(new TCooldownProgressDataForQML(spellGroupIconUrl(group), int(remaining), int(total), spellGroupName(group)))));
+    for (const game::TSpellGroupCooldownEntry& entry : storage->spellGroupCooldownList(now)) {
+        groups.append(QVariant::fromValue(qmlOwned(new TCooldownProgressDataForQML(
+            spellGroupIconUrl(entry.groupId), int(entry.remaining), int(entry.duration), spellGroupName(entry.groupId)))));
     }
     m_bar->setProperty("spellGroupCooldowns", groups);
 
     QVariantList spellCooldowns;
-    for (const auto& [spellId, cooldown] : storage->spellCooldowns(now)) {
-        const qint64 remaining = cooldown.end - now;
-        const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
-        if (remaining <= 0 || !spell || !isValidSpellIcon(spell->iconIndex))
+    for (const game::TSpellCooldownEntry& entry : storage->spellCooldownList(now)) {
+        const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(entry.spellId) : nullptr;
+        if (!spell || !isValidSpellIcon(spell->iconIndex))
             continue;
         spellCooldowns.append(QVariant::fromValue(qmlOwned(new TCooldownProgressDataForQML(
-            spellIconUrl(spell->iconIndex), int(remaining), spellCooldownMs(*spell), spellTooltip(spellId)))));
+            spellIconUrl(spell->iconIndex), int(entry.remaining), int(entry.duration), spellTooltip(entry.spellId)))));
     }
     m_bar->setProperty("spellCooldowns", spellCooldowns);
     m_dirty = false;

@@ -8,6 +8,7 @@
 
 #include <client/position.h>
 
+#include <QElapsedTimer>
 #include <QString>
 
 #include <cstdint>
@@ -22,7 +23,7 @@ class TBattleListGameActionHandler;
 }
 namespace network {
 struct TNetworkLatency;
-class TGameserverSessionNetwork;
+class TProductTransport;
 }
 namespace client {
 class TAntiCheatController;
@@ -308,8 +309,6 @@ class TGameSessionBase : public IGameSession
 {
     Q_OBJECT
 public:
-    /// Host: a session without a game client, over the process-wide objects.
-    explicit TGameSessionBase(QObject* parent = nullptr);
     /// The objects the game client shares with every session it builds; the
     /// session's storages, handlers and providers are built over them.
     TGameSessionBase(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
@@ -763,14 +762,6 @@ public:
         return m_gatherAllProtocolMessageHandler;
     }
 
-    /// Host shim until the analysers, quick loot, Cyclopedia map and skill
-    /// wheel storages are the session's: the game client hands in its own
-    /// before initialize(), and the character configuration manager takes them.
-    void setCharacterConfigurationStorages(const config::TCharacterConfigurationManager::TStorages& storages)
-    {
-        m_characterConfigurationStorages = storages;
-    }
-
     /// The world's type the server sent at login (open, optional or hardcore
     /// PvP); -1 before.
     cip::tibia::qmlcomponents::enums::EWorldType worldType() const { return m_worldType; }
@@ -834,10 +825,6 @@ public:
     void setAttackingCreatureId(uint32_t creatureId);
     uint32_t followingCreatureId() const { return m_followingCreatureId; }
     void setFollowingCreatureId(uint32_t creatureId);
-    /// Attacks (or, on the current target, stops attacking) `creatureId`.
-    void attack(uint32_t creatureId);
-    /// Follows (or, on the current target, stops following) `creatureId`.
-    void follow(uint32_t creatureId);
 
     /// The server's BugReportsAllowed state: 0 allowed, else the refusal
     /// reason; -1 before the server sent it.
@@ -871,9 +858,12 @@ public:
     /// The player movement intent handler (a live game server session's); null in the base.
     virtual input::TPlayerMovementIntentHandler* movementIntent() const { return nullptr; }
 
-    /// The classic packet path's view of the session's connection; null while
-    /// the session has none.
-    const std::shared_ptr<network::TGameserverSessionNetwork>& gameConnection() const { return m_gameConnection; }
+    /// Host: the session logged in (or started a replay) and its game has not
+    /// ended: its connection is the one the game runs on.
+    bool hasGameConnection() const { return m_gameConnectionOpen; }
+    /// Host (pack surface): the product's extended-opcode transport of a live
+    /// game server session; null for every other session.
+    virtual network::TProductTransport* productTransport() const { return nullptr; }
 
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
@@ -918,16 +908,24 @@ protected:
     /// in its initialize (CIP +0xc60); other sessions have none.
     std::shared_ptr<input::TActionButtonGameActionHandler> m_actionButtonGameActionHandler;
 
-    // Host lifecycle (see isOnline): the live session logs in with `connection`
-    // (the classic packet path's view of its network), a replay starts its own.
+    // Host lifecycle (see isOnline): the live session logs in on its own
+    // connection, a replay plays on none (it is connected while it plays).
     /// Throws std::runtime_error while the session is already online or logging in.
-    void loginWorld(std::string_view worldName, std::string_view characterName,
-                    std::shared_ptr<network::TGameserverSessionNetwork> connection);
+    void loginWorld(std::string_view worldName, std::string_view characterName);
     void startDecodedReplay();
-    void deliverReplayPacket(const uint8_t* data, size_t size);
+    /// The replay ended: as a connection the server closed.
     void finishDecodedReplay();
-    /// The connection was lost: the game ends and the connection goes.
+    /// The live session's connections are in use (true) or none is (false).
+    void setGameConnected(bool connected);
+    /// A packet arrived: the connection check (connectionFailing) starts over.
+    void noteGamePacketRead();
+    /// The connection was lost: the game ends and the connection goes (once).
     void processDisconnect();
+    /// Closes the session's connection when its game connection goes; nothing
+    /// for the base. It may run inside one of the connection's own signals.
+    virtual void closeGameConnection() {}
+    /// CIP's QuitGame message (the generic game action handler's) to the session's queue.
+    void sendQuitGame();
 
 private:
     void releaseStorages();
@@ -940,8 +938,9 @@ private:
     void forceLogout();
     bool isAttacking() const;
     bool isConnectionOk() const;
-    /// The game connection's failure (it reports it once).
-    void bindGameConnection(std::shared_ptr<network::TGameserverSessionNetwork> connection);
+    /// The game runs on a connection again: not connected yet, no packet read,
+    /// the game not started.
+    void openGameConnection();
 
     bool m_online = false;
     bool m_playerPresent = false;
@@ -954,13 +953,17 @@ private:
     int m_bugReportState = -1;
     uint32_t m_attackingCreatureId = 0;
     uint32_t m_followingCreatureId = 0;
-    /// The Attack / Follow message's sequence (the creature id, 0 to stop).
-    uint32_t m_attackSequence = 0;
     Position m_nextTalkAim{ static_cast<int32_t>(UINT16_MAX), static_cast<int32_t>(UINT16_MAX), UINT8_MAX };
     uint8_t m_nextTalkAimMode = 0;
     std::string m_characterName;
     std::string m_worldName;
-    std::shared_ptr<network::TGameserverSessionNetwork> m_gameConnection;
+    /// Host: the game connection (see hasGameConnection) and its state.
+    bool m_gameConnectionOpen = false;
+    bool m_gameConnected = false;
+    /// WorldEntered starts the game once per login (and once per character switch).
+    bool m_gameInitialized = false;
+    /// Since the last packet; invalid until the live connection is up.
+    QElapsedTimer m_lastPacketRead;
     /// The game start's once-a-second connection check (connectionFailing).
     schedule::TScheduledTaskPtr m_checkConnectionEvent;
 
@@ -1144,7 +1147,6 @@ private:
     std::shared_ptr<TBlessingsProtocolMessageHandler> m_blessingsProtocolMessageHandler;
     std::shared_ptr<TGameEventProtocolMessageHandler> m_gameEventProtocolMessageHandler;
     std::shared_ptr<TSpellBookProtocolMessageHandler> m_spellBookProtocolMessageHandler;
-    config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
 };
 
 

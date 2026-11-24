@@ -212,12 +212,9 @@ QString perkDamageTypeName(const int element)
     }
 }
 
-/// CIP : a spell group's name. CIP's ids (spells.json parse
-/// ) are 9 great beams and 10 bursts of nature; TSpellInfo keeps
-/// Crystal's protocol ids (SpellGroup_t), which swap the two.
-QString spellGroupName(const int protocolGroup)
+/// CIP : a spell group's name (9 great beams, 10 bursts of nature).
+QString spellGroupName(const int group)
 {
-    const int group = protocolGroup == 9 ? 10 : protocolGroup == 10 ? 9 : protocolGroup;
     switch (group) {
         case 1: return qtTrId("spell_attack");
         case 2: return qtTrId("spell_healing");
@@ -501,11 +498,6 @@ bool canDecrease(const std::array<int, SlotCount>& points, const int slot)
     return isValid(cleared);
 }
 
-int resonance(const std::array<int, SlotCount>& /*points*/, const int /*domain*/)
-{
-    // Vessel Resonance removed in CipSoft Winter 2026.
-    return 0;
-}
 
 int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, const int domain, const int vocationIndex)
 {
@@ -933,15 +925,6 @@ QString perkLevelName(const int stage)
         case 3: return qtTrId("skill_wheel_dialog_perk_level_3");
         default: return qtTrId("dummy_unknown");
     }
-}
-
-QString domainName(const int domain)
-{
-    // Domain affinity labels removed; keep stable corner ids for legacy QML.
-    static constexpr const char* DomainNames[] = {
-        "skill_wheel_domain_green", "skill_wheel_domain_red", "skill_wheel_domain_blue", "skill_wheel_domain_purple",
-    };
-    return qtTrId(DomainNames[std::clamp(domain, 0, DomainCount - 1)]);
 }
 
 QString basicStatName(const int stat, const bool multiString)
@@ -1412,45 +1395,6 @@ int modGradePoints(const TGrades& basicGrades, const TGrades& supremeGrades)
         for (const auto& [mod, grade] : *grades)
             points += grade == 3 ? 1 : 0;
     return points;
-}
-
-/// Pre-Winter Vessel Resonance activation labels were removed from CipSoft qm.
-/// Keep a tiny helper for any qtclient call sites that still key off gem quality tiers.
-QString vesselActivation(const int resonance, const bool plural)
-{
-    Q_UNUSED(plural);
-    switch (resonance) {
-        case 1: return qtTrId("skill_wheel_atelier_gem_quality_filter_lesser");
-        case 2: return qtTrId("skill_wheel_atelier_gem_quality_filter_regular");
-        case 3: return qtTrId("skill_wheel_atelier_gem_quality_filter_greater");
-        default: return qtTrId("dummy_unknown");
-    }
-}
-
-bool vesselMatchesGem(const int quality, const int resonance)
-{
-    return (quality == 0 && resonance == 1) || (quality == 1 && resonance == 2) || (quality == 2 && resonance == 3);
-}
-
-QString vesselBonusInformation()
-{
-    // Winter 2026: Vessel Resonance tooltips are gone; Gem Vessel perk + gem quality text.
-    return qtTrId("perk_description_VesselNode").arg(1) + QStringLiteral("<br><br>") + gemInformation();
-}
-
-QString gemInformation()
-{
-    return qtTrId("skill_wheel_dialog_gem_information")
-        .arg(qtTrId("skill_wheel_atelier_gem_quality_filter_lesser"), qtTrId("skill_wheel_atelier_gem_quality_filter_regular"),
-             qtTrId("skill_wheel_atelier_gem_quality_filter_greater"));
-}
-
-int unrevealedGemTypeId(const int vocationIndex, const int quality)
-{
-    constexpr int Lesser[VocationCount] = { 44602, 44605, 44608, 44611, 49371 };
-    if (vocationIndex < 0 || vocationIndex >= VocationCount || quality < 0 || quality > 2)
-        return 0;
-    return Lesser[vocationIndex] + quality;
 }
 
 namespace {

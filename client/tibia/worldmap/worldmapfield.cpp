@@ -14,7 +14,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "sprites/spritesystem.h"
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/appearances/appearancetype.h>
 #include "clockservice.h"
@@ -173,20 +172,9 @@ namespace
         return appearance ? appearance->thingType() : nullptr;
     }
 
-    const appearances::TObjectAppearanceInstance* entryObject(const appearances::TAppearanceInstancePtr& appearance)
-    {
-        return dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get());
-    }
-
     bool typeIsCommon(const TAppearanceType* type)
     {
         return type && !type->isGround() && !type->isGroundBorder() && !type->isOnTop() && !type->isOnBottom();
-    }
-
-    bool entryDrawable(const appearances::TAppearanceInstancePtr& appearance)
-    {
-        const auto* object = entryObject(appearance);
-        return !object || object->drawable();
     }
 
     // Things drawn in scope stand on the floor: they stamp the height maps (shadows, light rays).
@@ -830,7 +818,7 @@ bool TWorldMapField::isWalkable(const bool ignoreCreatures) const
                 continue;
             const std::shared_ptr<tibia::creatures::TCreature> row =
                 storage ? storage->creatureAt(entry->creatureId()) : nullptr;
-            if (!row || row->isPassable() || !row->canBeSeen())
+            if (!row || row->isPassable())
                 continue;
             return false;
         }
@@ -878,7 +866,7 @@ bool TWorldMapField::isCompletelyCovered(const uint8_t firstFloor, const bool re
         return false;
 
     const uint32_t idChecked = 1 << firstFloor;
-    const uint32_t idState = 1 << (firstFloor + tibia::config::mapMaxZ());
+    const uint32_t idState = 1 << (firstFloor + TWorldMapCentralPosition::LastFloor);
     if ((m_isCompletelyCovered & idChecked) == 0) {
         m_isCompletelyCovered |= idChecked;
         bool isLoading = false;
@@ -906,7 +894,7 @@ bool TWorldMapField::isCovered(const int8_t firstFloor)
     if (getPosition().z == 0 || getPosition().z == firstFloor) return false;
 
     const uint32_t idChecked = 1 << firstFloor;
-    const uint32_t idState = 1 << (firstFloor + tibia::config::mapMaxZ());
+    const uint32_t idState = 1 << (firstFloor + TWorldMapCentralPosition::LastFloor);
 
     if ((m_isCovered & idChecked) == 0) {
         m_isCovered |= idChecked;
@@ -944,28 +932,6 @@ bool TWorldMapField::hasBlockingBottomItem() const
         if (type && !type->isGround() && type->isOnBottom() && type->isNotWalkable())
             return true;
     }
-    return false;
-}
-
-bool TWorldMapField::limitsFloorsView(const bool isFreeView)
-{
-    // ground and walls limits the view
-    for (const auto& entry : m_stack) {
-        if (entry->creatureId() != 0)
-            break;
-        const TAppearanceType* type = entryThingType(entry);
-        if (!type)
-            continue;
-        // iterate until common item is encountered
-        if (typeIsCommon(type))
-            break;
-
-        if (!type->isDontHide()
-            && (type->isGround()
-                || (isFreeView ? type->isOnBottom() : type->isOnBottom() && type->blockProjectile())))
-            return true;
-    }
-
     return false;
 }
 
@@ -1035,7 +1001,7 @@ void TWorldMapField::applyCreatureStackFlags(const tibia::creatures::TCreature& 
 {
     if (stored.light().intensity > 0 || (outfitType && outfitType->hasLight()))
         m_thingTypeFlag |= HAS_LIGHT;
-    if (!stored.displacement().isNull() || (outfitType && outfitType->hasDisplacement()))
+    if (outfitType && outfitType->hasDisplacement())
         m_thingTypeFlag |= HAS_DISPLACEMENT;
 
     m_thingTypeFlag |= HAS_CREATURE;

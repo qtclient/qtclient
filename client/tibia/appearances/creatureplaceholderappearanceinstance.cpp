@@ -55,13 +55,12 @@ worldmap::TWorldMapSubfieldExtent TCreaturePlaceholderAppearanceInstance::creatu
     const std::shared_ptr<creatures::TCreature> creature = this->creature();
     if (!creature)
         return { 0, 0, 0 };
-    // Host: qtclient keeps no mount instance; the mount's displacement is its
-    // appearance type's (the instance adds only its elevation as depth).
+    // A mounted creature is displaced like its mount, else like its outfit;
+    // the depth is its elevation.
     worldmap::TWorldMapSubfieldExtent mount{ 0, 0, 0 };
     if (creature->isMounted()) {
-        const TAppearanceType* type =
-            TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, creature->outfit().getMount());
-        mount = { type->getDisplacementX(), type->getDisplacementY(), 0 };
+        if (const std::shared_ptr<TOutfitAppearanceInstance> instance = creature->mountAppearance(); instance && instance->thingType())
+            mount = instance->displacement();
     }
     worldmap::TWorldMapSubfieldExtent outfit{ 0, 0, 0 };
     // Host: a creature without a known outfit has no outfit instance (or one

@@ -80,10 +80,8 @@ appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject
     }
     // Any other object is made by the instance factory at the current time.
     // Host: animations start on the frame clock the renderer advances them by.
-    appearances::TAppearanceInstanceFactory* factory =
-        m_appearanceInstanceFactory ? m_appearanceInstanceFactory.get() : appearances::TAppearanceInstanceFactory::installed().get();
     appearances::TAppearanceInstancePtr appearance =
-        factory->createFromProtobuf(object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+        m_appearanceInstanceFactory->createFromProtobuf(object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     // Host: qtclient's factory takes no coordinate; an object drawn by its
     // field's pattern takes it from the coordinate here.
     if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))

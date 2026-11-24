@@ -22,7 +22,6 @@
 
 #include "attachedeffect.h"
 
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "clockservice.h"
@@ -130,7 +129,8 @@ int AttachedEffect::getCurrentAnimationPhase()
 
         // Absolute elapsed wrap (CipSoft animator siblings) — do not restart
         // the timer at the last phase or lag skips intermediate frames.
-        const int effectTicksPerFrame = tibia::config::effectTicksPerFrame();
+        // Pack attached effects: 75 ms per phase at speed 1.
+        constexpr int effectTicksPerFrame = 75;
         const int ticksPerFrame = std::max<int>(1, static_cast<int>(effectTicksPerFrame / speed));
         const long long period = static_cast<long long>(ticksPerFrame) * animationPhases;
         if (period <= 0)
@@ -156,7 +156,7 @@ int AttachedEffect::getCurrentAnimationPhase()
 void AttachedEffect::setShader(const std::string_view name) { m_shader = std::string{ name }; }
 
 void AttachedEffect::move(const Position& fromPosition, const Position& toPosition) {
-    m_toPoint = QPoint(toPosition.x - fromPosition.x, toPosition.y - fromPosition.y) * tibia::config::spriteSize();
+    m_toPoint = QPoint(toPosition.x - fromPosition.x, toPosition.y - fromPosition.y) * 32; // pixels per field
     m_animationTimer.restart();
 }
 

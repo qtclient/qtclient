@@ -601,9 +601,8 @@ void TVipWidgetGameActionProvider::setPremiumTimeStorage(std::shared_ptr<::tibia
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::groupGameActions(const QString& groupName) const
 {
     ::tibia::input::TGameActionList result;
-    // Host: until the session hands its storage over, the live session's.
-    const ::tibia::game::TPremiumTimeStorage* premium =
-        m_premiumTimeStorage ? m_premiumTimeStorage.get() : ::tibia::game::TPremiumTimeStorage::liveInstance();
+    // The group actions are premium; without the session's premium storage, none.
+    const ::tibia::game::TPremiumTimeStorage* premium = m_premiumTimeStorage.get();
     if (!premium || !premium->isPremium())
         return result;
     result.push_back(::tibia::input::makeGameAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));

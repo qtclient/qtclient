@@ -120,7 +120,7 @@ private:
     /// CIP +0xe4 / +0xe5.
     std::optional<int> m_pendingCharm;
 
-    /// The confirmation's charm action (Crystal: 0 unlock, 1 assign, 2 remove, 3 reset all).
+    /// The confirmation's charm action (CIP: 0 unlock, 1 assign, 2 remove, 3 reset all).
     int m_confirmAction = 0;
     int m_confirmCharm = 0;
     int m_confirmRace = 0;

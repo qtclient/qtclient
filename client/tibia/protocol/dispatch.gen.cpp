@@ -2066,34 +2066,34 @@ bool bindClientMessage(const uint8_t opcode)
         // Built by authentication::TLoginProtocolMessageHandler::handleLoginChallenge.
         return true;
     case 11: // SecondaryLogin
-        gameclient::sendSecondaryLogin(std::string_view{});
+        // Queued by TProtocolMessageQueue::sendSecondaryLogin (a CIP handler's signal).
         return true;
     case 15: // EnterWorld
-        gameclient::sendEnterGame();
+        // Queued by TProtocolMessageQueue::sendEnterWorld (a CIP handler's signal).
         return true;
     case 20: // QuitGame
         gameclient::sendLogout();
         return true;
     case 28: // ConnectionPingBack
-        gameclient::sendConnectionPingBack();
+        // Queued by TProtocolMessageQueue::sendConnectionPingBack (a CIP handler's signal).
         return true;
     case 29: // Ping
-        gameclient::sendPing();
+        // Queued by TProtocolMessageQueue::sendPing (a CIP handler's signal).
         return true;
     case 30: // PingBack
-        gameclient::sendPingBack();
+        // Queued by TProtocolMessageQueue::sendPingBack (a CIP handler's signal).
         return true;
     case 40: // StashAction
-        gameclient::sendStashWithdraw(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendStashAction (a CIP handler's signal).
         return true;
     case 41: // DepotSearchRetrieve
-        gameclient::sendRetrieveDepotSearch(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendDepotSearchRetrieve (a CIP handler's signal).
         return true;
     case 42: // TrackBestiaryRace
         gameclient::sendStatusTrackerBestiary(0, false);
         return true;
     case 43: // PartyHuntAnalyser
-        gameclient::sendPartyAnalyzerAction(0, {});
+        // Queued by TProtocolMessageQueue::sendPartyHuntAnalyser (a CIP handler's signal).
         return true;
     case 44: // TeamFinderAssembleTeam
         gameclient::sendTeamFinderLeaderAction(0, 0, 0, TeamFinderAssemble{});
@@ -2102,55 +2102,55 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendTeamFinderMemberAction(0, 0);
         return true;
     case 46: // SetClientOptions
-        gameclient::sendSetClientOptions(0, false);
+        // Queued by TProtocolMessageQueue::sendSetClientOptions (a CIP handler's signal).
         return true;
     case 95: // Taskboard
-        gameclient::sendTaskBoardAction(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendTaskboardCommandMessage (a CIP handler's signal).
         return true;
     case 96: // TrackImbuements
         gameclient::sendImbuementDurations(false);
         return true;
     case 97: // RequestSkillWheel
-        gameclient::sendOpenWheel(0);
+        // Queued by TProtocolMessageQueue::sendRequestSkillWheel (a CIP handler's signal).
         return true;
     case 98: // ApplySkillWheel
-        gameclient::sendApplyWheelPoints({}, {});
+        // Queued by TProtocolMessageQueue::sendApplySkillWheel (a CIP handler's signal).
         return true;
     case 99: // ClientCheck
         gameclient::sendClientCheck({});
         return true;
     case 100: // GoPath
-        gameclient::sendAutoWalk({});
+        // Queued by TProtocolMessageQueue::sendGoPath (a CIP handler's signal).
         return true;
     case 101: // GoNorth
-        gameclient::sendWalkNorth();
+        // Queued by TProtocolMessageQueue::sendGoNorth (a CIP handler's signal).
         return true;
     case 102: // GoEast
-        gameclient::sendWalkEast();
+        // Queued by TProtocolMessageQueue::sendGoEast (a CIP handler's signal).
         return true;
     case 103: // GoSouth
-        gameclient::sendWalkSouth();
+        // Queued by TProtocolMessageQueue::sendGoSouth (a CIP handler's signal).
         return true;
     case 104: // GoWest
-        gameclient::sendWalkWest();
+        // Queued by TProtocolMessageQueue::sendGoWest (a CIP handler's signal).
         return true;
     case 105: // Stop
-        gameclient::sendStop();
+        // Queued by TProtocolMessageQueue::sendStop (a CIP handler's signal).
         return true;
     case 106: // GoNorthEast
-        gameclient::sendWalkNorthEast();
+        // Queued by TProtocolMessageQueue::sendGoNorthEast (a CIP handler's signal).
         return true;
     case 107: // GoSouthEast
-        gameclient::sendWalkSouthEast();
+        // Queued by TProtocolMessageQueue::sendGoSouthEast (a CIP handler's signal).
         return true;
     case 108: // GoSouthWest
-        gameclient::sendWalkSouthWest();
+        // Queued by TProtocolMessageQueue::sendGoSouthWest (a CIP handler's signal).
         return true;
     case 109: // GoNorthWest
-        gameclient::sendWalkNorthWest();
+        // Queued by TProtocolMessageQueue::sendGoNorthWest (a CIP handler's signal).
         return true;
     case 110: // SetVocation
-        gameclient::sendTutorialChangeVocation(0);
+        // Queued by TProtocolMessageQueue::sendSetVocationMessage (a CIP handler's signal).
         return true;
     case 111: // RotateNorth
         gameclient::sendTurnNorth();
@@ -2165,46 +2165,46 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendTurnWest();
         return true;
     case 115: // Teleport
-        gameclient::sendTeleport(Position{});
+        // Queued by TProtocolMessageQueue::sendTeleport (a CIP handler's signal).
         return true;
     case 116: // StartOfflineTraining
-        gameclient::sendStartOfflineTraining(0);
+        // Queued by TProtocolMessageQueue::sendStartOfflineTrainingMessage (a CIP handler's signal).
         return true;
     case 117: // ContainerAction
-        gameclient::sendContainerAction(0, 0);
+        // Queued by TProtocolMessageQueue::sendContainerActionMessage (a CIP handler's signal).
         return true;
     case 118: // CharacterTradeConfigurationAction
         gameclient::sendCharacterTradeConfigurationAction(0, 0, 0, {}, {}, {});
         return true;
     case 119: // EquipObject
-        gameclient::sendEquipItemWithTier(0, 0);
+        // Queued by TProtocolMessageQueue::sendEquipObject (a CIP handler's signal).
         return true;
     case 120: // MoveObject
-        gameclient::sendMove(Position{}, 0, 0, Position{}, 0);
+        // Queued by TProtocolMessageQueue::sendMoveObject (a CIP handler's signal).
         return true;
     case 121: // LookNPCTrade
-        gameclient::sendInspectNpcTrade(0, 0);
+        // Queued by TProtocolMessageQueue::sendLookNPCTrade (a CIP handler's signal).
         return true;
     case 122: // BuyObject
-        gameclient::sendBuyItem(0, 0, 0, false, false);
+        // Queued by TProtocolMessageQueue::sendBuyObject (a CIP handler's signal).
         return true;
     case 123: // SellObject
-        gameclient::sendSellItem(0, 0, 0, false);
+        // Queued by TProtocolMessageQueue::sendSellObject (a CIP handler's signal).
         return true;
     case 124: // CloseNPCTrade
-        gameclient::sendCloseNpcTrade();
+        // Queued by TProtocolMessageQueue::sendCloseNPCTrade (a CIP handler's signal).
         return true;
     case 125: // TradeObject
-        gameclient::sendRequestTrade(Position{}, 0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendTradeObject (a CIP handler's signal).
         return true;
     case 126: // LookTrade
-        gameclient::sendInspectTrade(false, 0);
+        // Queued by TProtocolMessageQueue::sendLookTrade (a CIP handler's signal).
         return true;
     case 127: // AcceptTrade
-        gameclient::sendAcceptTrade();
+        // Queued by TProtocolMessageQueue::sendAcceptTrade (a CIP handler's signal).
         return true;
     case 128: // RejectTrade
-        gameclient::sendRejectTrade();
+        // Queued by TProtocolMessageQueue::sendRejectTrade (a CIP handler's signal).
         return true;
     case 129: // FriendSystemAction
         gameclient::sendFriendSystemAction(0, 0);
@@ -2219,37 +2219,37 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendUseOnCreature(Position{}, 0, 0, 0);
         return true;
     case 133: // TurnObject
-        gameclient::sendRotateItem(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendTurnObject (a CIP handler's signal).
         return true;
     case 134: // ConfigureShowOffSocket
-        gameclient::sendConfigureShowOffSocket(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendConfigureShowOffSocket (a CIP handler's signal).
         return true;
     case 135: // CloseContainer
-        gameclient::sendCloseContainer(0);
+        // Queued by TProtocolMessageQueue::sendCloseContainer (a CIP handler's signal).
         return true;
     case 136: // UpContainer
-        gameclient::sendUpContainer(0);
+        // Queued by TProtocolMessageQueue::sendUpContainer (a CIP handler's signal).
         return true;
     case 137: // EditText
-        gameclient::sendEditText(0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendEditText (a CIP handler's signal).
         return true;
     case 138: // EditList
-        gameclient::sendEditList(0, 0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendEditList (a CIP handler's signal).
         return true;
     case 139: // ToggleWrapState
-        gameclient::sendOnWrapItem(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendToggleWrapState (a CIP handler's signal).
         return true;
     case 140: // Look
-        gameclient::sendLook(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendLook (a CIP handler's signal).
         return true;
     case 141: // LookAtCreature
-        gameclient::sendLookCreature(0);
+        // Queued by TProtocolMessageQueue::sendLookAtCreature (a CIP handler's signal).
         return true;
     case 142: // JoinAggression
-        gameclient::sendJoinAggression(0);
+        // Queued by TProtocolMessageQueue::sendJoinAggression (a CIP handler's signal).
         return true;
     case 143: // QuickLoot
-        gameclient::sendQuickLoot(0, Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendQuickLoot (a CIP handler's signal).
         return true;
     case 144: // ManagedContainer
         gameclient::openContainerQuickLoot(0, 0, Position{}, 0, 0, false);
@@ -2258,79 +2258,79 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::requestQuickLootBlackWhiteList(0, 0, {});
         return true;
     case 146: // OpenDepotSearch
-        gameclient::sendOpenDepotSearch();
+        // Queued by TProtocolMessageQueue::sendOpenDepotSearch (a CIP handler's signal).
         return true;
     case 147: // CloseDepotSearch
-        gameclient::sendCloseDepotSearch();
+        // Queued by TProtocolMessageQueue::sendCloseDepotSearch (a CIP handler's signal).
         return true;
     case 148: // DepotSearchType
-        gameclient::sendDepotSearchType(0, 0);
+        // Queued by TProtocolMessageQueue::sendDepotSearchType (a CIP handler's signal).
         return true;
     case 149: // OpenParentContainer
-        gameclient::sendOpenParentContainer(Position{});
+        // Queued by TProtocolMessageQueue::sendOpenParentContainer (a CIP handler's signal).
         return true;
     case 150: // Talk
         gameclient::sendTalk(0, 0, std::string_view{}, std::string_view{});
         return true;
     case 151: // GetChannels
-        gameclient::sendRequestChannels();
+        // Queued by TProtocolMessageQueue::sendGetChanneList (a CIP handler's signal).
         return true;
     case 152: // JoinChannel
-        gameclient::sendJoinChannel(0);
+        // Queued by TProtocolMessageQueue::sendJoinChannel (a CIP handler's signal).
         return true;
     case 153: // LeaveChannel
-        gameclient::sendLeaveChannel(0);
+        // Queued by TProtocolMessageQueue::sendLeaveChannel (a CIP handler's signal).
         return true;
     case 154: // PrivateChannel
         gameclient::sendOpenPrivateChannel(std::string_view{});
         return true;
     case 155: // GuildMessage
-        gameclient::sendGetGuildMessage();
+        // Queued by TProtocolMessageQueue::sendGuildMessage (a CIP handler's signal).
         return true;
     case 156: // EditGuildMessage
-        gameclient::sendEditGuildMessage(std::string_view{});
+        // Queued by TProtocolMessageQueue::sendEditGuildMessage (a CIP handler's signal).
         return true;
     case 157: // GetTextForReport
-        gameclient::sendGetTextForReport(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendGetTextForReport (a CIP handler's signal).
         return true;
     case 158: // CloseNPCChannel
-        gameclient::sendCloseNpcChannel();
+        // Queued by TProtocolMessageQueue::sendCloseNPCChannel (a CIP handler's signal).
         return true;
     case 159: // SetCreaturePodiumConfiguration
-        gameclient::sendSetCreaturePodiumConfiguration(0, Position{}, 0, 0, 0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendSetCreaturePodiumConfiguration (a CIP handler's signal).
         return true;
     case 160: // SetTactics
-        gameclient::sendChangeFightModes(static_cast<tibia::client::FightModes>(0), static_cast<tibia::client::ChaseModes>(0), false, static_cast<tibia::client::PVPModes>(0));
+        // Queued by TProtocolMessageQueue::sendSetTactics (a CIP handler's signal).
         return true;
     case 161: // Attack
-        gameclient::sendAttack(0, 0);
+        // Queued by TProtocolMessageQueue::sendAttack (a CIP handler's signal).
         return true;
     case 162: // Follow
-        gameclient::sendFollow(0, 0);
+        // Queued by TProtocolMessageQueue::sendFollow (a CIP handler's signal).
         return true;
     case 163: // InviteToParty
-        gameclient::sendInviteToParty(0);
+        // Queued by TProtocolMessageQueue::sendInviteToParty (a CIP handler's signal).
         return true;
     case 164: // JoinParty
         gameclient::sendJoinParty(0);
         return true;
     case 165: // RevokeInvitation
-        gameclient::sendRevokeInvitation(0);
+        // Queued by TProtocolMessageQueue::sendRevokeInvitation (a CIP handler's signal).
         return true;
     case 166: // PassLeadership
-        gameclient::sendPassLeadership(0);
+        // Queued by TProtocolMessageQueue::sendPassLeadership (a CIP handler's signal).
         return true;
     case 167: // LeaveParty
-        gameclient::sendLeaveParty();
+        // Queued by TProtocolMessageQueue::sendLeaveParty (a CIP handler's signal).
         return true;
     case 168: // ShareExperience
-        gameclient::sendShareExperience(false);
+        // Queued by TProtocolMessageQueue::sendShareExperience (a CIP handler's signal).
         return true;
     case 169: // DisbandParty
         gameclient::sendDisbandParty();
         return true;
     case 170: // OpenChannel
-        gameclient::sendOpenOwnChannel();
+        // Queued by TProtocolMessageQueue::sendOpenChannel (a CIP handler's signal).
         return true;
     case 171: // InviteToChannel
         gameclient::sendInviteToOwnChannel(std::string_view{});
@@ -2339,7 +2339,7 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendExcludeFromOwnChannel(std::string_view{});
         return true;
     case 173: // CyclopediaHouseAction
-        gameclient::sendCyclopediaHouseAuction(static_cast<tibia::client::CyclopediaHouseAuctionType_t>(0), 0, 0, 0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendCyclopediaHouseAction (a CIP handler's signal).
         return true;
     case 174: // OpenBosstiary
         gameclient::sendRequestBosstiaryInfo();
@@ -2363,55 +2363,55 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendSoulSealsAction(0);
         return true;
     case 190: // Cancel
-        gameclient::sendCancelAttackAndFollow();
+        // Queued by TProtocolMessageQueue::sendCancel (a CIP handler's signal).
         return true;
     case 191: // ExaltationAction
-        gameclient::sendForgeRequest(static_cast<tibia::client::ForgeAction_t>(0), false, 0, 0, 0, false, false);
+        // Queued by TProtocolMessageQueue::sendExaltationAction (a CIP handler's signal).
         return true;
     case 192: // OpenExaltationHistory
-        gameclient::sendForgeBrowseHistoryRequest(0);
+        // Queued by TProtocolMessageQueue::sendOpenExaltationHistory (a CIP handler's signal).
         return true;
     case 193: // ClientDetails
-        gameclient::sendClientDetails(std::string_view{});
+        // Queued by TProtocolMessageQueue::sendClientDetails (a CIP handler's signal).
         return true;
     case 194: // BossDifficultySelection
         // Built by gamewindow::TBossDifficultySelectionDialogController::sendSelection.
         return true;
     case 201: // GetTransactionDetails
-        gameclient::sendGetTransactionDetails(0);
+        // Queued by TProtocolMessageQueue::sendOpenTransactionDetails (a CIP handler's signal).
         return true;
     case 202: // UpdateExivaOptions
-        gameclient::sendExivaRestrictions(false, false, false, false, false, false, {}, {}, {}, {});
+        // Queued by TProtocolMessageQueue::sendSetExivaOptions (a CIP handler's signal).
         return true;
     case 203: // BrowseField
-        gameclient::sendBrowseField(Position{});
+        // Queued by TProtocolMessageQueue::sendBrowseField (a CIP handler's signal).
         return true;
     case 204: // SeekInContainer
-        gameclient::sendSeekInContainer(0, 0);
+        // Queued by TProtocolMessageQueue::sendSeekInContainer (a CIP handler's signal).
         return true;
     case 205: // InspectObject
         gameclient::sendInspectionObject(static_cast<tibia::client::InspectObjectTypes>(0), 0, 0);
         return true;
     case 206: // InspectPlayer
-        gameclient::sendInspectCharacter(0, 0);
+        // Queued by TProtocolMessageQueue::sendInspectPlayer (a CIP handler's signal).
         return true;
     case 207: // BlessingsDialog
         gameclient::sendRequestBless();
         return true;
     case 208: // TrackQuestFlags
-        gameclient::sendRequestTrackerQuestLog({}, false, false, 0);
+        // Queued by TProtocolMessageQueue::sendTrackQuestFlags (a CIP handler's signal).
         return true;
     case 209: // MarketStatistics
-        gameclient::sendMarketStatistics(0, 0);
+        // Queued by TProtocolMessageQueue::sendMarketStatistics (a CIP handler's signal).
         return true;
     case 210: // GetOutfit
-        gameclient::sendRequestOutfit();
+        // Queued by TProtocolMessageQueue::sendGetOutfit (a CIP handler's signal).
         return true;
     case 211: // SetOutfit
-        gameclient::sendChangeOutfit(::Outfit{}, false, false);
+        // Queued by TProtocolMessageQueue::sendSetOutfit (a CIP handler's signal).
         return true;
     case 212: // Mount
-        gameclient::sendMountStatus(false);
+        // Queued by TProtocolMessageQueue::sendMount (a CIP handler's signal).
         return true;
     case 213: // ApplyImbuement
         gameclient::sendApplyImbuement(0, 0, false);
@@ -2423,70 +2423,70 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendCloseImbuingWindow();
         return true;
     case 216: // OpenRewardWall
-        gameclient::sendOpenRewardWall();
+        // Queued by TProtocolMessageQueue::sendOpenRewardWall (a CIP handler's signal).
         return true;
     case 217: // DailyRewardHistory
-        gameclient::sendOpenRewardHistory();
+        // Queued by TProtocolMessageQueue::sendDailyRewardHistory (a CIP handler's signal).
         return true;
     case 218: // CollectDailyReward
-        gameclient::sendGetRewardDaily(0, {});
+        // Queued by TProtocolMessageQueue::sendCollectDailyReward (a CIP handler's signal).
         return true;
     case 219: // CyclopediaMapAction
-        gameclient::sendCyclopediaMapDonate(0, 0);
+        // Queued by TProtocolMessageQueue::sendCyclopediaMapAction (a CIP handler's signal).
         return true;
     case 220: // AddBuddy
-        gameclient::sendAddVip(std::string_view{});
+        // Queued by TProtocolMessageQueue::sendAddBuddy (a CIP handler's signal).
         return true;
     case 221: // RemoveBuddy
-        gameclient::sendRemoveVip(0);
+        // Queued by TProtocolMessageQueue::sendRemoveBuddy (a CIP handler's signal).
         return true;
     case 222: // EditBuddy
-        gameclient::sendEditVip(0, std::string_view{}, 0, false, {});
+        // Queued by TProtocolMessageQueue::sendEditBuddy (a CIP handler's signal).
         return true;
     case 223: // BuddyGroup
-        gameclient::sendEditVipGroups(static_cast<tibia::client::GroupsEditInfoType_t>(0), 0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendBuddyGroup (a CIP handler's signal).
         return true;
     case 225: // OpenMonsterCyclopedia
-        gameclient::sendRequestBestiary();
+        // Queued by TProtocolMessageQueue::sendOpenMonsterCyclopedia (a CIP handler's signal).
         return true;
     case 226: // OpenMonsterCyclopediaMonsters
-        gameclient::sendRequestBestiaryOverview(std::string_view{}, false, {});
+        // Queued by TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters (a CIP handler's signal).
         return true;
     case 227: // OpenMonsterCyclopediaRace
-        gameclient::sendRequestBestiarySearch(0);
+        // Queued by TProtocolMessageQueue::sendOpenMonsterCyclopediaRace (a CIP handler's signal).
         return true;
     case 228: // MonsterBonusEffectAction
-        gameclient::sendBuyCharmRune(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendMonsterBonusEffectAction (a CIP handler's signal).
         return true;
     case 229: // OpenCyclopediaCharacterInfo
-        gameclient::sendCyclopediaRequestCharacterInfo(0, static_cast<tibia::client::CyclopediaCharacterInfoType_t>(0), 0, 0);
+        // Queued by TProtocolMessageQueue::sendOpenCyclopediaCharacterInfo (a CIP handler's signal).
         return true;
     case 230: // BugReport
         gameclient::sendBugReport(0, std::string_view{}, std::string_view{}, std::string_view{}, Position{});
         return true;
     case 231: // GemAtelier
-        gameclient::sendWheelGemAction(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendGemAtelier (a CIP handler's signal).
         return true;
     case 232: // GetOfferDescription
-        gameclient::sendGetOfferDescription(0);
+        // Queued by TProtocolMessageQueue::sendGetOfferDescription (a CIP handler's signal).
         return true;
     case 233: // StoreEvent
-        gameclient::sendStoreEvent(0);
+        // Queued by TProtocolMessageQueue::sendStoreEvent (a CIP handler's signal).
         return true;
     case 235: // PreyAction
-        gameclient::sendPreyAction(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendPreyAction (a CIP handler's signal).
         return true;
     case 236: // SetHirelingName
-        gameclient::sendSetHirelingName(std::string_view{});
+        // Queued by TProtocolMessageQueue::sendSetHirelingName (a CIP handler's signal).
         return true;
     case 237: // RequestResourceBalance
-        gameclient::sendRequestResourceBalance(0);
+        // Queued by TProtocolMessageQueue::sendRequestResourceBalance (a CIP handler's signal).
         return true;
     case 238: // Greet
-        gameclient::sendGreet(0);
+        // Queued by TProtocolMessageQueue::sendGreet (a CIP handler's signal).
         return true;
     case 239: // TransferCurrency
-        gameclient::sendTransferCoins(std::string_view{}, 0);
+        // Queued by TProtocolMessageQueue::sendTransferCurrency (a CIP handler's signal).
         return true;
     case 240: // GetQuestLog
         gameclient::sendRequestQuestLog();
@@ -2495,46 +2495,46 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendRequestQuestLine(0);
         return true;
     case 242: // RuleViolationReport
-        gameclient::sendRuleViolationReport(0, 0, std::string_view{}, std::string_view{}, std::string_view{}, 0);
+        // Queued by TProtocolMessageQueue::sendRuleViolationReport (a CIP handler's signal).
         return true;
     case 243: // GetObjectInfo
-        gameclient::sendRequestItemInfo(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendGetObjectInfo (a CIP handler's signal).
         return true;
     case 244: // MarketLeave
-        gameclient::sendMarketLeave();
+        // Queued by TProtocolMessageQueue::sendMarketLeave (a CIP handler's signal).
         return true;
     case 245: // MarketBrowse
-        gameclient::sendMarketBrowse(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendMarketBrowse (a CIP handler's signal).
         return true;
     case 246: // MarketCreate
-        gameclient::sendMarketCreateOffer(0, 0, 0, 0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendMarketCreate (a CIP handler's signal).
         return true;
     case 247: // MarketCancel
-        gameclient::sendMarketCancelOffer(0, 0);
+        // Queued by TProtocolMessageQueue::sendMarketCancel (a CIP handler's signal).
         return true;
     case 248: // MarketAccept
-        gameclient::sendMarketAcceptOffer(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendMarketAccept (a CIP handler's signal).
         return true;
     case 249: // AnswerModalDialog
-        gameclient::sendAnswerModalDialog(0, 0, 0);
+        // Queued by TProtocolMessageQueue::sendAnswerModalDialog (a CIP handler's signal).
         return true;
     case 250: // RequestStoreCategories
-        gameclient::sendOpenStore(0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendRequestStoreCategories (a CIP handler's signal).
         return true;
     case 251: // RequestStoreOffers
-        gameclient::sendRequestStoreOffers(std::string_view{}, std::string_view{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendRequestStoreOffers (a CIP handler's signal).
         return true;
     case 252: // BuyStoreOffer
-        gameclient::sendBuyStoreOffer(0, 0, std::string_view{}, 0, std::string_view{});
+        // Queued by TProtocolMessageQueue::sendBuyStoreOffer (a CIP handler's signal).
         return true;
     case 253: // OpenTransactionHistory
-        gameclient::sendOpenTransactionHistory(0);
+        // Queued by TProtocolMessageQueue::sendOpenTransactionHistory (a CIP handler's signal).
         return true;
     case 254: // GetTransactionHistory
-        gameclient::sendRequestTransactionHistory(0, 0);
+        // Queued by TProtocolMessageQueue::sendGetTransactionHistory (a CIP handler's signal).
         return true;
     case 255: // GatherAll
-        gameclient::sendGatherAll(Position{}, 0, 0);
+        // Queued by TProtocolMessageQueue::sendGatherAll (a CIP handler's signal).
         return true;
     default:
         return false;

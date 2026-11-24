@@ -43,43 +43,18 @@ const QHash<QString, EClientOption>& optionsByName()
     return byName;
 }
 
-/// The int read: a number takes the stored value, then [low, high].
-int readInt(const QJsonObject& json, const QString& key, const int low, const int high, const int fallback)
-{
-    const QJsonValue value = json.value(key);
-    return std::clamp(value.isDouble() ? value.toInt() : fallback, low, high);
-}
-
-double readDouble(const QJsonObject& json, const QString& key, const double low, const double high, const double fallback)
-{
-    const QJsonValue value = json.value(key);
-    return std::clamp(value.isDouble() ? value.toDouble() : fallback, low, high);
-}
-
-bool readBool(const QJsonObject& json, const QString& key, const bool fallback)
-{
-    const QJsonValue value = json.value(key);
-    return value.isBool() ? value.toBool() : fallback;
-}
-
-QString readString(const QJsonObject& json, const QString& key)
-{
-    const QJsonValue value = json.value(key);
-    return value.isString() ? value.toString() : QString();
-}
-
 /// clientWindowOptions over the current values: positions any int, sizes
 /// not negative; the flags keep their value when not stored as bools.
 TClientWindowOptions clientWindowOptionsFromJson(const QJsonObject& json, TClientWindowOptions options)
 {
-    options.screenName = readString(json, QStringLiteral("clientWindowScreenName"));
-    const int x = readInt(json, QStringLiteral("clientWindowPositionX"), std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0);
-    const int y = readInt(json, QStringLiteral("clientWindowPositionY"), std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0);
-    const int width = readInt(json, QStringLiteral("clientWindowWidth"), 0, std::numeric_limits<int>::max(), 0);
-    const int height = readInt(json, QStringLiteral("clientWindowHeight"), 0, std::numeric_limits<int>::max(), 0);
+    options.screenName = tibia::shared::jsonString(json, QStringLiteral("clientWindowScreenName"));
+    const int x = tibia::shared::jsonInt(json, QStringLiteral("clientWindowPositionX"), std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0);
+    const int y = tibia::shared::jsonInt(json, QStringLiteral("clientWindowPositionY"), std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0);
+    const int width = tibia::shared::jsonInt(json, QStringLiteral("clientWindowWidth"), 0, std::numeric_limits<int>::max(), 0);
+    const int height = tibia::shared::jsonInt(json, QStringLiteral("clientWindowHeight"), 0, std::numeric_limits<int>::max(), 0);
     options.geometry = QRect(x, y, width, height);
-    options.maximized = readBool(json, QStringLiteral("clientWindowIsMaximized"), options.maximized);
-    options.borderless = readBool(json, QStringLiteral("clientWindowIsBorderless"), options.borderless);
+    options.maximized = tibia::shared::jsonBool(json, QStringLiteral("clientWindowIsMaximized"), options.maximized);
+    options.borderless = tibia::shared::jsonBool(json, QStringLiteral("clientWindowIsBorderless"), options.borderless);
     return options;
 }
 
@@ -99,8 +74,8 @@ QJsonObject clientWindowOptionsToJson(const TClientWindowOptions& options)
 QRect npcDialogOptionsFromJson(const QJsonObject& json)
 {
     constexpr int max = std::numeric_limits<int>::max();
-    return { readInt(json, QStringLiteral("x"), 0, max, 0), readInt(json, QStringLiteral("y"), 0, max, 0),
-             readInt(json, QStringLiteral("width"), 0, max, 0), readInt(json, QStringLiteral("height"), 0, max, 0) };
+    return { tibia::shared::jsonInt(json, QStringLiteral("x"), 0, max, 0), tibia::shared::jsonInt(json, QStringLiteral("y"), 0, max, 0),
+             tibia::shared::jsonInt(json, QStringLiteral("width"), 0, max, 0), tibia::shared::jsonInt(json, QStringLiteral("height"), 0, max, 0) };
 }
 
 QJsonObject npcDialogOptionsToJson(const QRect& geometry)
@@ -194,8 +169,8 @@ TSurveyInvitationOptions surveyInvitationOptionsFromJson(const QJsonObject& json
 {
     TSurveyInvitationOptions options;
     options.status = 0;
-    options.id = quint32(readDouble(json, QStringLiteral("id"), 0.0, double(std::numeric_limits<quint32>::max()), 0.0));
-    options.status = readInt(json, QStringLiteral("status"), 0, 2, 0);
+    options.id = quint32(tibia::shared::jsonDouble(json, QStringLiteral("id"), 0.0, double(std::numeric_limits<quint32>::max()), 0.0));
+    options.status = tibia::shared::jsonInt(json, QStringLiteral("status"), 0, 2, 0);
     return options;
 }
 
@@ -206,7 +181,7 @@ QJsonObject surveyInvitationOptionsToJson(const TSurveyInvitationOptions& option
 
 quint16 newsOptionsFromJson(const QJsonObject& json)
 {
-    return quint16(int(readDouble(json, QStringLiteral("maxunlocklevel"), 0.0, 65535.0, 0.0)));
+    return quint16(int(tibia::shared::jsonDouble(json, QStringLiteral("maxunlocklevel"), 0.0, 65535.0, 0.0)));
 }
 
 QJsonObject newsOptionsToJson(const quint16 maxUnlockLevel)
@@ -765,13 +740,13 @@ void TClientOptions::setDefaults(const int mode)
 void TClientOptions::readBoolOptions(const QJsonObject& options)
 {
     for (auto& [id, value] : m_bools)
-        value = readBool(options, optionName(id), value);
+        value = tibia::shared::jsonBool(options, optionName(id), value);
 }
 
 void TClientOptions::readIntOptions(const QJsonObject& options)
 {
     for (auto& [id, value] : m_ints)
-        value = readInt(options, optionName(id), 0, std::numeric_limits<int>::max(), value);
+        value = tibia::shared::jsonInt(options, optionName(id), 0, std::numeric_limits<int>::max(), value);
     int& frameRateLimit = m_ints.at(EClientOption::frameRateLimit);
     frameRateLimit = std::clamp(frameRateLimit, 10, 200);
 }
@@ -779,7 +754,7 @@ void TClientOptions::readIntOptions(const QJsonObject& options)
 void TClientOptions::readFloatOptions(const QJsonObject& options)
 {
     for (auto& [id, value] : m_floats)
-        value = float(readDouble(options, optionName(id), 0.0, double(std::numeric_limits<float>::max()), double(value)));
+        value = float(tibia::shared::jsonDouble(options, optionName(id), 0.0, double(std::numeric_limits<float>::max()), double(value)));
     for (const EClientOption id : { EClientOption::lightAmbientLevel, EClientOption::lightLevelSeparatorLevel,
                                     EClientOption::lightAttenuationCloudsIndoor, EClientOption::ownEffectsOpacity,
                                     EClientOption::otherPlayersEffectsOpacity, EClientOption::monsterEffectsOpacity,
@@ -792,7 +767,7 @@ void TClientOptions::readFloatOptions(const QJsonObject& options)
 void TClientOptions::readStringOptions(const QJsonObject& options)
 {
     for (auto& [id, value] : m_strings)
-        value = readString(options, optionName(id));
+        value = tibia::shared::jsonString(options, optionName(id));
 }
 
 void TClientOptions::readDateOptions(const QJsonObject& options)

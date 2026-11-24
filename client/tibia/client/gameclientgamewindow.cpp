@@ -839,14 +839,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // Host: the analyser widgets (on the sidebar widgets).
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
-    {
-        // Host shim: the session's character configuration manager takes the
-        // storages the game window still owns.
-        config::TCharacterConfigurationManager::TStorages& storages = m_characterConfigurationStorages;
-        storages.itemPrice = m_pItemPriceStorage.get();
-        // The analysers and the Cyclopedia map configuration are the session's
-        // (CipSoft hands them to the session's configuration manager).
-    }
     // CIP: the stash follows the market and the loot container dialogs closing.
     connect(m_pMarketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed,
             m_pStashDialogController.get(), &gamewindow::TStashDialogController::onMarketDialogDialogClosed);

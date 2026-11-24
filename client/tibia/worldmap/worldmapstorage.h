@@ -51,12 +51,10 @@ class TWorldMapStorage final : public cip::tibia::worldmap::TWorldMapStorage
 {
     Q_OBJECT
 public:
-    /// `speedCalculator`: the session's (CIP passes it in); the storage keeps
-    /// one of its own when none is given (the fallback storage).
-    explicit TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator = nullptr,
-                              QObject* parent = nullptr);
     /// The session's storage: steps take their duration from `speedCalculator`
-    /// and start at `clock`'s time; no fields and an empty stored volume yet.
+    /// (one of its own when none is given) and start at `clock`'s time; no
+    /// fields and an empty stored volume yet. The owning session resets the
+    /// aware range (TGameSessionBase::initializeWorldMapSessionState).
     TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
                      std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
     ~TWorldMapStorage() override;
@@ -302,7 +300,6 @@ private:
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
     std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_sharedSpeedCalculator;
-    /// Host: without a clock (the raw-pointer constructor) steps start at the frame clock.
     std::shared_ptr<shared::IClockService> m_clock;
     int m_storedVolumeMarginLeft = 0;
     int m_storedVolumeMarginRight = 0;

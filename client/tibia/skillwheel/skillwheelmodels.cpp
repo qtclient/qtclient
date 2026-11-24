@@ -60,20 +60,18 @@ TAppearanceTypePtr gemObjectType(const int quality, const int vocation)
     return nullptr;
 }
 
-/// The type id of the revealed gem object of `quality` for the vocation; 0 for none.
+}
+
 uint16_t gemObjectTypeId(const int quality, const int vocation)
 {
     const TAppearanceTypePtr type = gemObjectType(quality, vocation);
     return type ? static_cast<uint16_t>(type->getId()) : 0;
 }
 
-/// The name of the revealed gem object of `quality` for the vocation; empty for none.
 QString gemObjectName(const int quality, const int vocation)
 {
     const TAppearanceTypePtr type = gemObjectType(quality, vocation);
     return type ? QString::fromStdString(type->getName()) : QString();
-}
-
 }
 
 TPaginationProxyModel::TPaginationProxyModel(const int entriesPerPage, QObject* parent)

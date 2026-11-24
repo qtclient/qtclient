@@ -8,6 +8,8 @@
 #include <span>
 #include <stdexcept>
 
+#include "jsonhelper.h"
+
 namespace tibia::config {
 
 namespace {
@@ -116,26 +118,6 @@ bool valueOf(const NameMap& map, const QString& name, int* value)
     return false;
 }
 
-// CIP's checked readers: the default when the key is missing or of another type.
-bool readBool(const QJsonObject& json, const QString& key, bool fallback)
-{
-    const QJsonValue value = json.value(key);
-    return value.isBool() ? value.toBool() : fallback;
-}
-
-int readInt(const QJsonObject& json, const QString& key, int min, int max, int fallback)
-{
-    const QJsonValue value = json.value(key);
-    const int read = value.isDouble() ? value.toInt() : fallback;
-    return std::min(std::max(min, read), max);
-}
-
-QString readString(const QJsonObject& json, const QString& key)
-{
-    const QJsonValue value = json.value(key);
-    return value.isString() ? value.toString() : QString();
-}
-
 QJsonArray readArray(const QJsonObject& json, const QString& key)
 {
     const QJsonValue value = json.value(key);
@@ -144,7 +126,7 @@ QJsonArray readArray(const QJsonObject& json, const QString& key)
 
 void parseBase(TWidgetOptionsBase& options, const QJsonObject& json)
 {
-    options.setContentHeightAndMaximized(readInt(json, ContentHeightKey, 0, INT_MAX, 0), readBool(json, ContentMaximizedKey, true));
+    options.setContentHeightAndMaximized(tibia::shared::jsonInt(json, ContentHeightKey, 0, INT_MAX, 0), tibia::shared::jsonBool(json, ContentMaximizedKey, true));
 }
 
 void serializeBase(const TWidgetOptionsBase& options, QJsonObject& json)
@@ -219,10 +201,10 @@ QJsonObject serializePanels(const SidebarPanelsOptions& o)
 SidebarPanelsOptions parsePanels(const QJsonObject& json)
 {
     SidebarPanelsOptions o;
-    o.minimapZoomLevel = static_cast<float>(readInt(json, QStringLiteral("minimapZoomLevel"), -100, 200, 0)) / 100.0f;
-    o.controlButtonsVisible = readBool(json, QStringLiteral("controlButtonsVisible"), false);
-    o.minimizeInventory = readBool(json, QStringLiteral("minimizeInventory"), false);
-    o.chaseModeEnabled = readBool(json, QStringLiteral("chaseModeEnabled"), true);
+    o.minimapZoomLevel = static_cast<float>(tibia::shared::jsonInt(json, QStringLiteral("minimapZoomLevel"), -100, 200, 0)) / 100.0f;
+    o.controlButtonsVisible = tibia::shared::jsonBool(json, QStringLiteral("controlButtonsVisible"), false);
+    o.minimizeInventory = tibia::shared::jsonBool(json, QStringLiteral("minimizeInventory"), false);
+    o.chaseModeEnabled = tibia::shared::jsonBool(json, QStringLiteral("chaseModeEnabled"), true);
     return o;
 }
 
@@ -269,7 +251,7 @@ TSidebarWidgetsManagerOptions parseWidgetsManager(const QJsonObject& json)
         }
         o.openWidgetsOrderPerSidebar.push_back(std::move(widgets));
     }
-    o.leftSidebarCount = static_cast<quint8>(readInt(json, QStringLiteral("leftSidebarCount"), 0, 0xfd, 0));
+    o.leftSidebarCount = static_cast<quint8>(tibia::shared::jsonInt(json, QStringLiteral("leftSidebarCount"), 0, 0xfd, 0));
     return o;
 }
 
@@ -296,10 +278,10 @@ TBattleListOptions parseBattleList(const QJsonObject& json)
         sortOrder.push_back(0);
     o.setSortOrder(sortOrder.front());
     o.filters = valuesOf(BattleListFilterNames, readArray(json, QStringLiteral("battleListFilters")));
-    o.showFilters = readBool(json, QStringLiteral("showFilters"), true);
-    o.isPartyView = readBool(json, QStringLiteral("isPartyView"), false);
-    o.isPrimary = readBool(json, QStringLiteral("isPrimary"), false);
-    o.name = readString(json, QStringLiteral("name"));
+    o.showFilters = tibia::shared::jsonBool(json, QStringLiteral("showFilters"), true);
+    o.isPartyView = tibia::shared::jsonBool(json, QStringLiteral("isPartyView"), false);
+    o.isPrimary = tibia::shared::jsonBool(json, QStringLiteral("isPrimary"), false);
+    o.name = tibia::shared::jsonString(json, QStringLiteral("name"));
     parseBase(o, json);
     return o;
 }
@@ -348,9 +330,9 @@ TSkillsWidgetOptions parseSkills(const QJsonObject& json)
     TSkillsWidgetOptions o;
     for (const int skill : valuesOf(SkillNames, readArray(json, QStringLiteral("invisibleProgressBars"))))
         o.invisibleProgressBars.insert(skill);
-    o.offenceStatsVisible = readBool(json, QStringLiteral("offenceStatsVisible"), true);
-    o.defenceStatsVisible = readBool(json, QStringLiteral("defenceStatsVisible"), true);
-    o.miscStatsVisible = readBool(json, QStringLiteral("miscStatsVisible"), true);
+    o.offenceStatsVisible = tibia::shared::jsonBool(json, QStringLiteral("offenceStatsVisible"), true);
+    o.defenceStatsVisible = tibia::shared::jsonBool(json, QStringLiteral("defenceStatsVisible"), true);
+    o.miscStatsVisible = tibia::shared::jsonBool(json, QStringLiteral("miscStatsVisible"), true);
     parseBase(o, json);
     return o;
 }
@@ -380,19 +362,19 @@ QJsonObject serializeSpellList(const TSpellListWidgetOptions& o)
 TSpellListWidgetOptions parseSpellList(const QJsonObject& json)
 {
     TSpellListWidgetOptions o;
-    o.showOnlyCurrentVocation = readBool(json, QStringLiteral("showOnlyCurrentVocation"), false);
-    o.showOnlyCurrentLevel = readBool(json, QStringLiteral("showOnlyCurrentLevel"), false);
-    o.showUnknownSpells = readBool(json, QStringLiteral("showUnkownSpells"), false);
-    o.showDruidSpells = readBool(json, QStringLiteral("showDruidSpells"), true);
-    o.showKnightSpells = readBool(json, QStringLiteral("showKnightSpells"), true);
-    o.showPaladinSpells = readBool(json, QStringLiteral("showPaladinSpells"), true);
-    o.showSorcererSpells = readBool(json, QStringLiteral("showSorcererSpells"), true);
-    o.showMonkSpells = readBool(json, QStringLiteral("showMonkSpells"), true);
-    o.showAttackSpellGroup = readBool(json, QStringLiteral("showAttackSpellGroup"), true);
-    o.showHealingSpellGroup = readBool(json, QStringLiteral("showHealingSpellGroup"), true);
-    o.showSupportSpellGroup = readBool(json, QStringLiteral("showSupportSpellGroup"), true);
-    o.showPremiumOnlySpells = readBool(json, QStringLiteral("showPremiumOnlySpells"), true);
-    o.showFreeSpells = readBool(json, QStringLiteral("showFreeSpells"), true);
+    o.showOnlyCurrentVocation = tibia::shared::jsonBool(json, QStringLiteral("showOnlyCurrentVocation"), false);
+    o.showOnlyCurrentLevel = tibia::shared::jsonBool(json, QStringLiteral("showOnlyCurrentLevel"), false);
+    o.showUnknownSpells = tibia::shared::jsonBool(json, QStringLiteral("showUnkownSpells"), false);
+    o.showDruidSpells = tibia::shared::jsonBool(json, QStringLiteral("showDruidSpells"), true);
+    o.showKnightSpells = tibia::shared::jsonBool(json, QStringLiteral("showKnightSpells"), true);
+    o.showPaladinSpells = tibia::shared::jsonBool(json, QStringLiteral("showPaladinSpells"), true);
+    o.showSorcererSpells = tibia::shared::jsonBool(json, QStringLiteral("showSorcererSpells"), true);
+    o.showMonkSpells = tibia::shared::jsonBool(json, QStringLiteral("showMonkSpells"), true);
+    o.showAttackSpellGroup = tibia::shared::jsonBool(json, QStringLiteral("showAttackSpellGroup"), true);
+    o.showHealingSpellGroup = tibia::shared::jsonBool(json, QStringLiteral("showHealingSpellGroup"), true);
+    o.showSupportSpellGroup = tibia::shared::jsonBool(json, QStringLiteral("showSupportSpellGroup"), true);
+    o.showPremiumOnlySpells = tibia::shared::jsonBool(json, QStringLiteral("showPremiumOnlySpells"), true);
+    o.showFreeSpells = tibia::shared::jsonBool(json, QStringLiteral("showFreeSpells"), true);
     parseBase(o, json);
     return o;
 }
@@ -413,8 +395,8 @@ TVipWidgetOptions parseVip(const QJsonObject& json)
 {
     TVipWidgetOptions o;
     o.vipSortOrder = valuesOf(VipSortNames, readArray(json, QStringLiteral("vipSortOrder")));
-    o.hideOfflineVips = readBool(json, QStringLiteral("hideOfflineVips"), false);
-    o.showGrouped = readBool(json, QStringLiteral("showGrouped"), false);
+    o.hideOfflineVips = tibia::shared::jsonBool(json, QStringLiteral("hideOfflineVips"), false);
+    o.showGrouped = tibia::shared::jsonBool(json, QStringLiteral("showGrouped"), false);
     parseBase(o, json);
     return o;
 }
@@ -486,15 +468,15 @@ QJsonObject serializeNpcTrade(const TNpcTradeOptions& o)
 TNpcTradeOptions parseNpcTrade(const QJsonObject& json)
 {
     TNpcTradeOptions o;
-    o.allowSellingEquippedItems = readBool(json, QStringLiteral("allowSellingEquippedItems"), false);
-    o.ignoreCapacityWhenBuying = readBool(json, QStringLiteral("ignoreCapacityWhenBuying"), false);
-    o.purchaseShoppingBagWhenBuying = readBool(json, QStringLiteral("purchaseShoppingBagWhenBuying"), false);
-    o.showNameFilter = readBool(json, QStringLiteral("showNameFilter"), true);
-    o.allowLargeTradesWithoutWarning = readBool(json, QStringLiteral("allowLargeTradesWithoutWarning"), false);
+    o.allowSellingEquippedItems = tibia::shared::jsonBool(json, QStringLiteral("allowSellingEquippedItems"), false);
+    o.ignoreCapacityWhenBuying = tibia::shared::jsonBool(json, QStringLiteral("ignoreCapacityWhenBuying"), false);
+    o.purchaseShoppingBagWhenBuying = tibia::shared::jsonBool(json, QStringLiteral("purchaseShoppingBagWhenBuying"), false);
+    o.showNameFilter = tibia::shared::jsonBool(json, QStringLiteral("showNameFilter"), true);
+    o.allowLargeTradesWithoutWarning = tibia::shared::jsonBool(json, QStringLiteral("allowLargeTradesWithoutWarning"), false);
     int value = 0;
-    if (valueOf(NpcTradeSortNames, readString(json, QStringLiteral("sortFieldWhenBuying")), &value))
+    if (valueOf(NpcTradeSortNames, tibia::shared::jsonString(json, QStringLiteral("sortFieldWhenBuying")), &value))
         o.sortFieldWhenBuying = value;
-    if (valueOf(NpcTradeSortNames, readString(json, QStringLiteral("sortFieldWhenSelling")), &value))
+    if (valueOf(NpcTradeSortNames, tibia::shared::jsonString(json, QStringLiteral("sortFieldWhenSelling")), &value))
         o.sortFieldWhenSelling = value;
     parseBase(o, json);
     return o;
@@ -528,7 +510,7 @@ QJsonObject serializeDepotSearch(const TDepotSearchWidgetOptions& o)
 TDepotSearchWidgetOptions parseDepotSearch(const QJsonObject& json)
 {
     TDepotSearchWidgetOptions o;
-    o.showLockerOnly = readBool(json, QStringLiteral("showLockerOnly"), false);
+    o.showLockerOnly = tibia::shared::jsonBool(json, QStringLiteral("showLockerOnly"), false);
     parseBase(o, json);
     return o;
 }
@@ -549,10 +531,10 @@ QJsonObject serializeImbuementTracker(const TImbuementTrackerWidgetOptions& o)
 TImbuementTrackerWidgetOptions parseImbuementTracker(const QJsonObject& json)
 {
     TImbuementTrackerWidgetOptions o;
-    o.showAlmostGone = readBool(json, QStringLiteral("showAlmostGone"), true);
-    o.showUsed = readBool(json, QStringLiteral("showUsed"), true);
-    o.showAlmostNew = readBool(json, QStringLiteral("showAlmostNew"), true);
-    o.showEmptySlots = readBool(json, QStringLiteral("showEmptySlots"), true);
+    o.showAlmostGone = tibia::shared::jsonBool(json, QStringLiteral("showAlmostGone"), true);
+    o.showUsed = tibia::shared::jsonBool(json, QStringLiteral("showUsed"), true);
+    o.showAlmostNew = tibia::shared::jsonBool(json, QStringLiteral("showAlmostNew"), true);
+    o.showEmptySlots = tibia::shared::jsonBool(json, QStringLiteral("showEmptySlots"), true);
     parseBase(o, json);
     return o;
 }

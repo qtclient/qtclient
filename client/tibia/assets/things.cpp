@@ -18,7 +18,6 @@
 #include <functional>
 #include <string_view>
 #include <map>
-#include <tibia/config/runtimegameconfig.h>
 
 #include <QtGlobal>
 #include <format>

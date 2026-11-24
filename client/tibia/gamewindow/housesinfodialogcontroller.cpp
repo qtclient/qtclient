@@ -638,14 +638,8 @@ QDateTime THousesInfoDialogController::lastServerSave() const { return game::las
 
 QDateTime THousesInfoDialogController::in30DaysServerSave() const { return game::lastServerSave().addDays(30); }
 
-/// CIP is empty; product selects a town/house so the 3D preview has a row.
-void THousesInfoDialogController::showDialogTab()
-{
-    ensureTownAndHouseSelection();
-    // One refresh when the tab opens. The house-list reply must not start another.
-    if (!m_proxy->townFilter().isEmpty())
-        m_townRequestTimer.start();
-}
+/// CIP: nothing; the dialog's town box and house list pick the town and house.
+void THousesInfoDialogController::showDialogTab() {}
 
 void THousesInfoDialogController::hideDialogTab()
 {
@@ -661,7 +655,6 @@ void THousesInfoDialogController::onHouseInformationChanged()
     if (!m_storage)
         return;
     m_proxy->changeFilter([this] { m_model->setHouses(m_storage->houses()); });
-    ensureTownAndHouseSelection();
     Q_EMIT currentHouseIdChanged();
 }
 
@@ -766,35 +759,6 @@ void THousesInfoDialogController::showOnCyclopediaMap()
     action->setCoordinate(Position(house->x, house->y, static_cast<uint8_t>(house->z)));
     action->setZoom(0.5f);
     Q_EMIT publishGameAction(action);
-}
-
-void THousesInfoDialogController::ensureTownAndHouseSelection()
-{
-    if (m_proxy->townFilter().isEmpty() && !m_townFilterModel.isEmpty()) {
-        // Prefer the first real town over "Own Houses" so the preview has map data.
-        const QString own = qtTrId("houses_my_houses_town_name");
-        QString town = m_townFilterModel.value(0);
-        for (const QString& candidate : m_townFilterModel) {
-            if (candidate != own) {
-                town = candidate;
-                break;
-            }
-        }
-        if (!town.isEmpty())
-            setTownFilter(town);
-    }
-
-    if (m_proxy->rowCount() <= 0)
-        return;
-    const QModelIndex first = m_proxy->index(0, 0);
-    const uint firstId = first.data(THousesModel::HouseId).toUInt();
-    if (firstId == 0)
-        return;
-    const bool currentMissing = m_currentHouseId == 0 || !m_storage || !m_storage->house(m_currentHouseId);
-    if (currentMissing)
-        selectHouse(firstId);
-    else
-        onHouseViewportChanged();
 }
 
 void THousesInfoDialogController::centerHouse() { onHouseViewportChanged(); }

@@ -61,7 +61,7 @@ class TGameserverDualConnection;
 class TGameserverNetworkPacket;
 class TGameserverNetworkPacketRawDataProcessor;
 class TGameserverNetworkPacketSequenceFlowProcessor;
-class TGameserverSessionNetwork;
+class TProductTransport;
 class TUnencryptedRawMessageStream;
 }
 
@@ -142,6 +142,8 @@ public:
     void setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
                             std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
                             std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage) override;
+    /// Host (pack surface): the product's extended-opcode transport of this login.
+    network::TProductTransport* productTransport() const override { return m_productTransport.get(); }
 
 protected:
     /// The base's handlers, then the login protocol message handler, whose
@@ -156,6 +158,9 @@ protected:
     /// The player's movement intent handler sends through the session's player
     /// protocol message handler, which hands it its snap backs and stops.
     void connectPlayerMovementIntentHandler();
+    /// Host: the game connection went (its game ended): the connections close,
+    /// the product transport closes and --record writes its dump.
+    void closeGameConnection() override;
 
 protected Q_SLOTS:
     /// The base's, then a character that got the default sidebar configuration
@@ -179,14 +184,17 @@ private:
     /// A packet in order from the sequence flow processor: decoded and handed
     /// to the protocol layer.
     void onPacketReady(network::TGameserverNetworkPacket packet);
-    /// A client message from the protocol queue: the client message processor
-    /// makes its packet. Host: the packet's data passes the classic session
-    /// state's view of the connection (it records it and drops it in a replay),
-    /// which hands it to sendClientFrame.
-    void onClientMessageReadyToProcess(std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage);
-    /// A client packet's data: a packet for the dual connection while it uses a
-    /// connection (the processor's packet when the data is that packet's).
-    void sendClientFrame(const QByteArray& frame);
+    /// A client message from the protocol queue: while the dual connection uses
+    /// a connection, the client message processor makes its packet, which is
+    /// encoded, prepared and sent (a connection that is not logged in yet takes
+    /// no XTEA packet).
+    void sendClientFrame(std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> pGameclientMessage);
+    /// Host: a product transport frame, as an XTEA packet for every connection.
+    void writeProductFrame(const QByteArray& frame);
+    /// Encodes, prepares and sends `packet` on the dual connection.
+    void sendNetworkPacket(network::TGameserverNetworkPacket& packet);
+    /// Host: --record writes the session's recorded dump (once).
+    void writeRecording();
     /// Closes the connections and stops the network tick.
     void closeConnection();
     /// The connection ended (`clean`: the server closed it).
@@ -195,11 +203,6 @@ private:
     std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
     std::shared_ptr<network::TNetworkQualityProtocolMessageHandler> m_networkQualityProtocolMessageHandler;
     std::shared_ptr<protocol::TProtocolClientMessageProcessor> m_clientMessageProcessor;
-    /// Host: the packet onClientMessageReadyToProcess is handing on; null outside it.
-    const network::TGameserverNetworkPacket* m_clientPacketBeingSent = nullptr;
-    /// Host: the login packet went out on this connection; XTEA frames written
-    /// before it (a controller's request queued while connecting) are dropped.
-    bool m_loginPacketSent = false;
     /// The decoded bytes of the server packets, read by the server packet processor.
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_serverMessageStream;
     std::shared_ptr<protocol::TProtocolServerPacketProcessor> m_serverPacketProcessor;
@@ -217,13 +220,15 @@ private:
     std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
     /// The player movement intent handler's timed callbacks (createPlayerMovementTimer).
     QTimer m_playerMovementTimer;
-    /// Host: the classic packet path's view of this session's connection (its gameConnection()).
-    std::weak_ptr<network::TGameserverSessionNetwork> m_sessionNetwork;
+    /// Host (pack surface): the product transport of the current login; null before it.
+    std::shared_ptr<network::TProductTransport> m_productTransport;
     /// Host: the client message links, made again when the game window relinks
     /// the protocol queue.
     shared::TQtConnectionManager m_clientMessageConnections;
-    /// Host: the file the session's packets are recorded to (--record).
+    /// Host: the file the session is recorded to (--record), as a CipSoft dump
+    /// (CipSoft's session dump recorder, keeping the whole session).
     QString m_recordTo;
+    std::shared_ptr<sessiondump::TClientSessiondumpRecorder> m_sessionRecorder;
 };
 
 }

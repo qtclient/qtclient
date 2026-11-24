@@ -19,7 +19,6 @@
 #include <client/const.h>
 
 #include <client/const.h>
-#include <tibia/config/runtimegameconfig.h>
 #include "clockservice.h"
 
 #include "client/magiceffectopacity.h"
@@ -462,10 +461,8 @@ int TObjectAppearanceInstance::calculateAnimationPhase() const
         return m_animator->phase();
     }
 
-    // CipSoft absolute elapsed — sync (!m_async) used to +1/frame under lag.
-    const int phases = std::max(1, m_type->getAnimationPhases());
-    const int ticks = std::max(1, static_cast<int>(tibia::config::itemTicksPerFrame()));
-    return static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
+    // Without animation info the object does not animate.
+    return 0;
 }
 
 namespace {
@@ -666,9 +663,8 @@ QPoint TMissileEffectInstance::flightOffset() const
     const auto from =
         tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(m_pathFrom), 0);
     const auto& position = m_tween->position();
-    // 32 sub-fields per field; the host draws a field `spriteSize()` pixels wide.
-    const int spriteSize = tibia::config::spriteSize();
-    return { (position.subfieldX - from.subfieldX) * spriteSize / 32, (position.subfieldY - from.subfieldY) * spriteSize / 32 };
+    // 32 sub-fields per 32-pixel field: a sub-field is a pixel.
+    return { position.subfieldX - from.subfieldX, position.subfieldY - from.subfieldY };
 }
 
 int fieldDirection(const int dx, const int dy)

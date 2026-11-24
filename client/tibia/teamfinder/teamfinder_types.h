@@ -26,8 +26,9 @@
 #include <string>
 #include <vector>
 
-// Team Finder (S 0x2C leader / S 0x2D member list) — Crystal sendLeaderTeamFinder / sendTeamFinderList.
-// Leaf wire PODs only (no Outfit / staticdata hub). Tip + packs share these global names.
+// Pack surface: the Team Finder leader and team list messages as plain data
+// ("onTeamFinderLeader" / "onTeamFinderList") and the assemble request the pack
+// ABI sends. Tip + packs share these global names.
 
 struct TeamFinderMember
 {

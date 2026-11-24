@@ -34,7 +34,7 @@ using Args = std::vector<std::any>;
 using A = input::EGameAction;
 
 constexpr int MaxProficiencyLevels = 7;
-/// CIP's inspection reply type for INSPECT_PROFICIENCY (Crystal sends 0x02).
+/// CIP's inspection reply type for INSPECT_PROFICIENCY.
 constexpr uint8_t ProficiencyInspection = 2;
 constexpr int MaxShapedPerks = 2;
 constexpr int MaxRefineRank = 10;

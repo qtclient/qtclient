@@ -22,9 +22,9 @@ namespace tibia::gamewindow {
 
 using teamfinder::TTeamFinderProtocolMessageHandler;
 
-TTeamAssemblePageController::TTeamAssemblePageController(QObject* parent)
+TTeamAssemblePageController::TTeamAssemblePageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TTeamAssemblePageController(parent)
-    , m_errorMessage(new TMessageDialogController(this))
+    , m_errorMessage(new TMessageDialogController(engine, dialogParentItem, this))
     , m_settings(new teamfinder::TTeamSettings(this))
     , m_activities(new TActivitiesSortProxyModel(this))
     , m_members(new TTeamMembersSortProxyModel(this))

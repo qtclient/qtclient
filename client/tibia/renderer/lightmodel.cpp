@@ -4,7 +4,6 @@
 #include "app/clientoptions.h"
 
 #include "appearances/appearanceinstance.h"
-#include <tibia/config/runtimegameconfig.h>
 #include <client/staticdata.h>
 #include "container/containerciptypes.h"
 #include <tibia/appearances/appearancetype.h>

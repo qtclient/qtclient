@@ -1,7 +1,6 @@
 #include "appearances/appearanceinstance.h"
 #include "singleobjectrenderer.h"
 
-#include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "clockservice.h"
@@ -168,11 +167,8 @@ int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
         m_animator->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         return m_animator->phase();
     }
-    const int phases = appearanceType->getAnimationPhases();
-    if (phases <= 1)
-        return 0;
-    const int ticks = tibia::config::itemTicksPerFrame();
-    return static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
+    // Without animation info the object does not animate.
+    return 0;
 }
 
 void TSingleObjectAppearanceInstanceRenderer::updateDrawCommands()

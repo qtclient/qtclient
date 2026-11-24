@@ -93,11 +93,6 @@ TProtocolMessageQueue* protocolMessageQueue();
 /// Empty structured server bodies (measure consumes 0 payload bytes on success).
 bool emptyStructuredServerOpcode(int opcode);
 
-/// Host: a decoded server packet that has no network stack behind it (a replay
-/// of a classic packet log, or a session that hands its packets to the
-/// classic session state): its messages are read like a live packet's and put
-/// on the current session's queue.
-void processServerPacket(const uint8_t* data, size_t size);
 /// Host: the product messages outside the CIP protocol (the extended-opcode
 /// transport and the same-socket character switch).
 enum class EProductMessage

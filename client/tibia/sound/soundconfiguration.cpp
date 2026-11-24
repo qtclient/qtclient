@@ -228,8 +228,7 @@ bool TSoundConfiguration::chatMessageSoundEnabled(const std::optional<TChatSound
             return globalMessageSoundsEnabled();
         if (identifier.isGuildChannel())
             return guildMessageSoundsEnabled();
-        // Party channels: ids 30000 to 65533.
-        if (identifier.isChannelIdInRange(30000, 65533))
+        if (identifier.isPartyChannel())
             return partyMessageSoundsEnabled();
         if (identifier.isPrivateChannelId())
             return privateMessageSoundsEnabled();

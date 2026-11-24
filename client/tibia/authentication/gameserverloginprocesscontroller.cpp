@@ -51,12 +51,7 @@ void TGameserverLoginProcessController::login(const TGameserverLoginRequestData&
     m_pAuthenticationAndEncryptionInfo->setSecondaryLoginFirstString(QString::fromUtf8(sessionKeyHash));
     m_pAuthenticationAndEncryptionInfo->setAssetsIdentifier(m_pLoginData->assetsIdentifier);
 
-    QUrl secondaryUrl(unprotectedUrl);
-    // Host: CrystalServer serves both game connections of a world on one
-    // address and port; the fragment keeps the two URLs apart.
-    if (secondaryUrl == QUrl(protectedUrl))
-        secondaryUrl.setFragment(QStringLiteral("secondary"));
-    auto urlInfo = std::make_shared<network::TDualConnectionUrlInfo>(QUrl(protectedUrl), secondaryUrl);
+    auto urlInfo = std::make_shared<network::TDualConnectionUrlInfo>(QUrl(protectedUrl), QUrl(unprotectedUrl));
     m_pDualConnection->connectToGameserver(urlInfo, LoginData.worldName);
 }
 

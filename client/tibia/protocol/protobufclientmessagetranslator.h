@@ -49,9 +49,6 @@ public:
     static QByteArray translateToClassic(const ::tibia::protobuf::protocol::GameclientMessage& message,
                                          shared::TRsaHelper* rsaHelper,
                                          const TProtobufObjectPositionHelper* objectPositionHelper);
-    /// Host: translateToClassic for a message sent before the session's
-    /// protocol queue exists (the login RSA helper, a plain position helper).
-    static QByteArray translateToClassic(const ::tibia::protobuf::protocol::GameclientMessage& message);
 
     /// The classic stack position byte of an object: the stack position on a map
     /// field, the inventory slot, the plain container slot, the liquid or tier of

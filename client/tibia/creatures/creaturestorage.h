@@ -203,7 +203,6 @@ public:
     QPoint walkOffset() const;
     /// Field the creature is drawn on while moving (draw order).
     Position coveredField() const;
-    QPointF jumpOffset() const { return m_jumpOffset; }
     bool isWalking() const { return isMoving(); }
     bool isUnpassable() const { return m_unpassable; }
     void setUnpassable(bool unpassable) { m_unpassable = unpassable; }
@@ -211,12 +210,8 @@ public:
     bool isPlayer() const;
     bool isLocalPlayer() const { return m_isLocalPlayer; }
     bool isSoftDead() const { return m_softDead; }
-    bool canDraw() const { return m_canDraw; }
-    bool canBeSeen() const { return m_canBeSeen; }
     bool isDead() const { return m_healthPercent == 0; }
     bool isHidden() const;
-    bool isHided() const { return m_hided; }
-    bool drawOutfitColor() const { return m_drawOutfitColor; }
     /// Some frame shows: one of the colours is set and its option is on.
     bool hasMarks() const;
     /// The colours of the frames that show, target frame first.
@@ -258,7 +253,6 @@ public:
     bool isMounted() const { return m_mounted; }
     /// The outfit shows its mounted sprites; the mount keeps its own.
     void setMounted(bool mounted);
-    QPoint displacement() const { return m_displacement; }
 
     uint8_t creatureType() const { return m_creatureType; }
     /// The NPC category shown over the creature.
@@ -281,8 +275,6 @@ public:
     uint8_t harmony() const { return m_harmony; }
     bool isSerene() const { return m_serene; }
     uint8_t vocation() const { return m_vocation; }
-    /// The health bar's colour for the creature's health.
-    QColor informationColor() const { return informationColorForHealthPercent(m_healthPercent); }
     const std::vector<TCreatureIcon>& hudIcons() const { return m_hudIcons; }
     void clearIcons() { m_hudIcons.clear(); }
     void addIcon(const TCreatureIcon& icon) { m_hudIcons.push_back(icon); }
@@ -374,22 +366,16 @@ private:
     uint16_t m_speed{ 0 };
     Light m_light{ 0, 2 };
 
-    QPointF m_jumpOffset;
     Position m_walkingTilePos;
     bool m_hasWalkingTile{ false };
     bool m_unpassable{ false };
     bool m_isLocalPlayer{ false };
     bool m_softDead{ false };
-    bool m_canDraw{ true };
-    bool m_canBeSeen{ true };
-    bool m_hided{ false };
-    bool m_drawOutfitColor{ true };
     TCreatureMarks m_marks;
     bool m_placedOnField{ false };
     uint8_t m_patternX{ 2 };
     uint8_t m_movementLook{ 0 };
     bool m_mounted{ false };
-    QPoint m_displacement;
 
     uint8_t m_creatureType{ 0 };
     uint8_t m_icon{ 0 };
@@ -449,11 +435,6 @@ public:
     /// No stored creature stands on a field (the map is rebuilt).
     void clearPlacedOnFieldFlags();
 
-    /// CIP DeleteOnMap: leave the field, keep the known-creature row (name/outfit).
-    /// Non-local rows clear position so battle list / spectators drop them; the
-    /// local player's creature is never destroyed — KnownCreature reappear does
-    /// not resend the name.
-    void leaveMap(TCreatureID id);
 
     /// Creatures whose position is in the rectangle around `center` (inclusive;
     /// `multiFloor`: the floors the player sees from there).
