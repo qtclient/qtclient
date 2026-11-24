@@ -19,13 +19,6 @@ function(qtclient_add_port_test TARGET_NAME)
     gtest_discover_tests(${TARGET_NAME})
 endfunction()
 
-# Height stamps live in tip idleot/ (geometry-only; no pack required).
-qtclient_add_port_test(client_heightstamp_tests
-    heightstamp_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/idleot/heightstamp.cpp
-)
-target_link_libraries(client_heightstamp_tests PRIVATE Qt6::Gui)
-
 # Weather state/sounds live in the product pack — build when the pack is linked or QTCLIENT_PACK is set.
 set(_pack_client "")
 if(QTCLIENT_LINKED_PACK AND EXISTS "${QTCLIENT_LINKED_PACK}/idleot/weather/weatherstate.h")
@@ -44,8 +37,15 @@ if(_pack_client)
     qtclient_add_port_test(client_weather_tests weather_test.cpp)
     target_include_directories(client_weather_tests PRIVATE "${_pack_client}")
     target_link_libraries(client_weather_tests PRIVATE Qt6::Gui)
+    # Height stamps live in the pack (idleot/geometry/, geometry-only).
+    qtclient_add_port_test(client_heightstamp_tests
+        heightstamp_test.cpp
+        "${_pack_client}/idleot/geometry/heightstamp.cpp"
+    )
+    target_include_directories(client_heightstamp_tests PRIVATE "${_pack_client}")
+    target_link_libraries(client_heightstamp_tests PRIVATE Qt6::Gui)
 else()
-    message(STATUS "qtclient tests: skip client_weather_tests (no IdleOT pack weather headers)")
+    message(STATUS "qtclient tests: skip client_weather_tests / client_heightstamp_tests (no pack weather headers)")
 endif()
 
 qtclient_add_port_test(client_durationtween_tests durationtween_test.cpp)

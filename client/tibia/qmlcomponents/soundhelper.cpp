@@ -3,7 +3,7 @@
 #include "config/clientoptions.h"
 #include "input/gameaction.h"
 #include "sound/soundcontroller.h"
-#include "sound/weatheraudio.h"
+#include "sound/ambiencehold.h"
 
 #include <QObject>
 
@@ -34,9 +34,9 @@ void TSoundHelperService::playSound(const ESound Sound)
 
 void applyOptionVolumes()
 {
-    // The sound controllers follow TClientOptions themselves; the pack's
-    // weather bed follows here.
-    sound::TWeatherAudio::instance().updateVolume();
+    // The sound controllers follow TClientOptions themselves; an extension's
+    // ambience bed follows here.
+    sound::TAmbienceHold::instance().updateVolume();
 }
 
 void followSoundOptions(config::TClientOptions* options)

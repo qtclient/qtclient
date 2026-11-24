@@ -7,7 +7,6 @@ Writes under --out:
   <os>-package.json.version
   <os>-package/          CIP package tree (localfile.lzma + optional unpacked)
   mods/qtc-aac           default client pack (staged into the client tree)
-  mods/clientmods+minimap default launcher channel gates
   release_env.lua        revision only (login URLs from mods/qtc-aac)
 
 Usage:
@@ -125,7 +124,7 @@ def _tip_mods_root(tree: Path, platform: str) -> Path:
 
 
 def stage_default_mods(tree: Path, platform: str) -> None:
-    """Install default client + launcher packs next to the Play binary."""
+    """Install the default client pack next to the Play binary."""
     mods_root = _tip_mods_root(tree, platform)
     mods_root.mkdir(parents=True, exist_ok=True)
 
@@ -138,21 +137,8 @@ def stage_default_mods(tree: Path, platform: str) -> None:
         dest = mods_root / pack_id
         if dest.exists():
             shutil.rmtree(dest)
-        # FS chrome only (C++ is absorbed at tip link time).
         dest.mkdir(parents=True)
         shutil.copy2(src / "mod.json", dest / "mod.json")
-        print(f"[demo] staged {dest}")
-
-    for pack_id in ("clientmods", "minimap"):
-        src = OTC / "launcher" / "mods" / pack_id / "launcher.json"
-        if not src.is_file():
-            print(f"[demo] warning: missing {src}")
-            continue
-        dest = mods_root / pack_id
-        if dest.exists():
-            shutil.rmtree(dest)
-        dest.mkdir(parents=True)
-        shutil.copy2(src, dest / "launcher.json")
         print(f"[demo] staged {dest}")
 
 

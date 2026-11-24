@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Stage a launcher brand pack next to qtclient launcher tip (mods/<id>/).
-# qtclient binary stays CipSoft; product identity + art load at runtime unless --no-mods.
+# Stage a pack's launcher tree (brand.json, launcher.json, images/launcher)
+# next to the qtclient tip (mods/<id>/). The binary stays CipSoft; the pack's
+# identity, art and download channels load at runtime unless --no-mods.
 #
 # --tip is applicationDirPath (desktop binary dir / Contents/MacOS, or wasm dir
 # with tibia.wasm). When TIP is an engine root that contains *.app/Contents/MacOS,
 # resolve to that MacOS dir so ModLoader finds mods next to the Play binary.
 #
 # Usage:
-#   merge-launcher-brand.sh --pack <launcher/mods tree> --tip <applicationDirPath>
+#   merge-launcher-brand.sh --pack <pack launcher/ dir> --tip <applicationDirPath>
 set -euo pipefail
 
 PACK=""
@@ -41,7 +42,7 @@ dest="$TIP/mods/$id"
 mkdir -p "$dest"
 cp -a "$PACK/brand.json" "$dest/"
 # Never clobber a pack mod.json that ModLoader can load (needs non-empty id).
-# Launcher chrome is brand.json + images; product pack owns mod.json.
+# Launcher chrome is brand.json + images; the client pack owns mod.json.
 if [[ -f "$PACK/mod.json" ]]; then
   if [[ -f "$dest/mod.json" ]] && python3 -c '
 import json,sys
@@ -52,6 +53,10 @@ sys.exit(0 if (d.get("id") or "").strip() else 1)
   else
     cp -a "$PACK/mod.json" "$dest/"
   fi
+fi
+# Launcher config: download channels + launcher settings (launcher.json).
+if [[ -f "$PACK/launcher.json" ]]; then
+  cp -a "$PACK/launcher.json" "$dest/"
 fi
 if [[ -d "$PACK/images" ]]; then
   mkdir -p "$dest/images"

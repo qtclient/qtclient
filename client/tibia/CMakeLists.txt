@@ -219,12 +219,12 @@ target_sources(tibia PRIVATE
   sprites/hdscale.cpp sprites/hdscale.h
   sprites/spritesession.cpp sprites/spritesession.h
   mods/registry.cpp mods/registry.h
-  mods/mod_api_v1.cpp
   mods/host_api_v1.cpp mods/host_api.h
   mods/pack_host_abi.cpp mods/pack_host_abi.h
-  mods/mission_backend.h mods/attention_backend.h mods/instance_backend.h mods/weather_driver.h
+  mods/mission_backend.h mods/attention_backend.h mods/instance_backend.h
   mods/lighting_types.h
   mods/worldview.cpp mods/worldview.h
+  mods/textureatlashint.cpp mods/textureatlashint.h
   mods/modloader.cpp mods/modloader.h
   mods/mod_entry.h)
 target_include_directories(tibia PRIVATE "${TIBIA_ROOT}/include")
@@ -243,7 +243,7 @@ else()
     target_sources(tibia PRIVATE platform/platform_linux.cpp)
   endif()
 endif()
-# Host build id for ModLoader / mod_api_v1 — full SHA for artifact pinning.
+# Host build id for ModLoader / the host ABI — full SHA for artifact pinning.
 # Prefer CI/env (SOURCE_COMMIT / GITHUB_SHA / QTCLIENT_HOST_BUILD_ID), else git HEAD.
 set(_qtclient_host_sha "$ENV{QTCLIENT_HOST_BUILD_ID}")
 if(NOT _qtclient_host_sha)
@@ -420,8 +420,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/chatchanneltabrenderinfo.cpp gamewindow/chatchanneltabrenderinfo.h
     gamewindow/chatchannelfiltercontroller.cpp gamewindow/chatchannelfiltercontroller.h
     gamewindow/capslockstate.cpp gamewindow/capslockstate.h
-    creatures/attachedeffect.cpp creatures/attachedeffect.h
-    creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
+    creatures/creaturedecoration.cpp creatures/creaturedecoration.h
     creatures/movementtweens.cpp creatures/movementtweens.h
     creatures/creaturemovementspeedcalculator.cpp creatures/creaturemovementspeedcalculator.h
     creatures/creaturemovementtween.cpp creatures/creaturemovementtween.h
@@ -560,7 +559,7 @@ if(TIBIA_WITH_GAMECORE)
     sound/soundcontroller.cpp sound/soundcontroller.h
     sound/gamesessionsoundprovider.cpp sound/gamesessionsoundprovider.h
     sound/objectsoundcontroller.cpp sound/objectsoundcontroller.h
-    sound/weatheraudio.cpp sound/weatheraudio.h
+    sound/ambiencehold.cpp sound/ambiencehold.h
     sound/miniaudio_impl.cpp
     game/playerstates.cpp game/playerstates.h
     game/playerstatestracker.cpp game/playerstatestracker.h
@@ -796,6 +795,7 @@ if(TIBIA_WITH_GAMECORE)
     creatures/battlelistrenderprovider.cpp creatures/battlelistrenderprovider.h
     creatures/battlelistgameactionprovider.cpp creatures/battlelistgameactionprovider.h
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
+    effects/effectremap.cpp effects/effectremap.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
     effects/effectgameactionhandler.cpp effects/effectgameactionhandler.h
@@ -842,8 +842,7 @@ if(TIBIA_WITH_GAMECORE)
     renderer/childrenscenegraphnode.h
     renderer/highlightedspritenode.cpp renderer/highlightedspritenode.h
     renderer/lightmodel.cpp renderer/lightmodel.h
-    renderer/worldgeometry.cpp renderer/worldgeometry.h
-    renderer/weatherframe.h
+    renderer/worldframeview.cpp renderer/worldframeview.h
     renderer/lightmappainteditem.cpp renderer/lightmappainteditem.h
     renderer/nextframeupdater.cpp renderer/nextframeupdater.h
     renderer/rendervolumeprovider.cpp renderer/rendervolumeprovider.h
@@ -1060,7 +1059,7 @@ if(EMSCRIPTEN)
   # Fixed heap (ALLOW_MEMORY_GROWTH=0 — resizable SAB breaks WebGL). Tip-fs
   # one-shot appearances (~5MB) + RCC (~7MB) + protobuf ThingTypes + QML
   # exceeded 512MB shortly after login mask → OOB; 1024MB still OOB'd under
-  # IdleOT pack + login-mask sprite/QML traffic. 1536MB leaves headroom.
+  # a linked pack + login-mask sprite/QML traffic. 1536MB leaves headroom.
   set_target_properties(tibia PROPERTIES
     QT_WASM_INITIAL_MEMORY "1536MB")
 endif()
@@ -1111,7 +1110,7 @@ if(EMSCRIPTEN)
       endif()
     endforeach()
     list(APPEND _qt_fixed_opts "SHELL:-sPTHREAD_POOL_SIZE_STRICT=0")
-    # QtWasmHelpers ships STACK_SIZE=5MB; first-frame IdleOT login QML under
+    # QtWasmHelpers ships STACK_SIZE=5MB; first-frame pack login QML under
     # JSPI OOB'd there — bump on the same INTERFACE rewrite pass (last wins).
     set(_qt_stack_fixed "")
     foreach(_opt IN LISTS _qt_fixed_opts)

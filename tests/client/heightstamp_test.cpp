@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "idleot/heightstamp.h"
+#include "idleot/geometry/heightstamp.h"
 
 #include <optional>
 #include <vector>

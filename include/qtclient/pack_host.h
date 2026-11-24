@@ -16,15 +16,13 @@ class QQuickItem;
 
 namespace qtclient {
 
-using BrowseOpenerFn = std::function<void(const QString&)>;
-
 struct PackHostWire {
-    std::function<void(tibia::mods::MissionBackend* backend, BrowseOpenerFn browse)> bindQuestTracker;
-    std::function<void(tibia::mods::MissionBackend* backend, BrowseOpenerFn browse)> bindQuestLog;
+    std::function<void(tibia::mods::MissionBackend* backend)> bindQuestTracker;
+    std::function<void(tibia::mods::MissionBackend* backend)> bindQuestLog;
     std::function<void(tibia::mods::InstanceBackend* instance)> bindInstanceToInfoDialogs;
     std::function<void(tibia::mods::AttentionBackend* attention)> bindAttentionToButtonBar;
     /// `page` must be a `config::TOptionsPage*` (void* avoids pulling tip config into SDK).
-    std::function<void(int category, void* optionsPage)> addProductOptionsPage;
+    std::function<void(int category, void* optionsPage)> addOptionsPage;
     std::function<void(int page)> openOptionsPage;
     std::function<void()> openStore;
     std::function<void()> requestLogoutViaButtonBar;
@@ -55,6 +53,11 @@ struct PackHostWire {
     std::function<QQuickItem*()> minimapPanelItem;
     std::function<QQuickItem*()> inventoryPanelItem;
     std::function<QQuickItem*()> buttonBarPanelItem;
+
+    /// Chrome over the map window reports the mouse (map window pixels).
+    std::function<void(bool hovering, double x, double y)> mapOverlayHover;
+    std::function<void(int x, int y, int button, int modifiers)> mapOverlayClick;
+    std::function<void(int x, int y)> mapOverlayStartDrag;
 
     bool valid() const { return static_cast<bool>(bindQuestTracker); }
 };

@@ -153,7 +153,7 @@ QImage TSpriteTextureProvider::resolvedImage(const SpriteIdentifier& identifier,
     cacheable = sprite->isCacheable() && !sprite->isHighlighted();
     if (image.isNull())
         return image;
-    // Host: the pack's effect tint, then its HD scaler (the texture then holds
+    // Host: an extension's tint (image tint hook), then its HD scaler (the texture then holds
     // hdFactor texels per sprite pixel; creature marks and the baseplate stay native).
     if (identifier.tint) {
         if (const auto apply = tibia::mods::applyImageTintHook()) {

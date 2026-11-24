@@ -151,7 +151,7 @@ public:
                                      std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
                                      std::shared_ptr<authentication::TAuthenticationProcessController> Authentication,
                                      const QUrl& ServiceUrl, QObject* parent = nullptr);
-    /// Host (pack ABI): a product dialog with its own `qmlFile` (see TDialog); it
+    /// Host (dialog replacement): a pack's dialog with its own `qmlFile` (see TDialog); it
     /// gets the service url and the session key through the setters.
     explicit TCreateCharacterDialogController(const QString& qmlFile, QObject* parent = nullptr);
     ~TCreateCharacterDialogController() override;
@@ -189,7 +189,7 @@ Q_SIGNALS:
     void characterCreated(const QString& name, const QJsonObject& reply);
 
 protected:
-    /// Extra createCharacter fields of a product dialog.
+    /// Host (dialog replacement): extra createCharacter fields of a pack's dialog.
     virtual void addCreateCharacterFields(QJsonObject& request) const { Q_UNUSED(request); }
 
 private:

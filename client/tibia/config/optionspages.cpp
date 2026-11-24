@@ -170,8 +170,8 @@ QString buttonLabel(const QString& id)
     for (const auto& button : ButtonBarButtons)
         if (id == QLatin1String(button.id))
             return qtTrId(button.label);
-    const QString product = gamewindow::TButtonBarController::productShortcutLabel(id);
-    return product.isEmpty() ? id : product;
+    const QString extension = gamewindow::TButtonBarController::extensionShortcutLabel(id);
+    return extension.isEmpty() ? id : extension;
 }
 
 /// : the button a label names.
@@ -180,8 +180,8 @@ QString buttonId(const QString& label)
     for (const auto& button : ButtonBarButtons)
         if (label == qtTrId(button.label))
             return QString::fromLatin1(button.id);
-    const QString product = gamewindow::TButtonBarController::productShortcutIdFromLabel(label);
-    return product.isEmpty() ? label : product;
+    const QString extension = gamewindow::TButtonBarController::extensionShortcutIdFromLabel(label);
+    return extension.isEmpty() ? label : extension;
 }
 
 QStringList stringList(const QJsonValue& value)
@@ -615,8 +615,6 @@ void THudOptionsPage::rebuildSpecialConditionsModel()
 TGraphicsOptionsPage::TGraphicsOptionsPage(QObject* parent)
     : TGraphicsQMLOptionsPage(parent)
 {
-    // product: allow toggling the CIP "no FPS limit" checkbox (was hard-disabled).
-    m_canChangeFpsLimitCheckbox = !config::rendererLimitationsActive();
 }
 
 void TGraphicsOptionsPage::load(const TClientOptions& options)
@@ -995,14 +993,14 @@ void TButtonBarOptionsPage::load(const TClientOptions& options)
     QSet<QString> seen(m_enabled.begin(), m_enabled.end());
     for (const QString& id : m_disabled)
         seen.insert(id);
-    for (const QString& id : gamewindow::TButtonBarController::defaultEnabledProductShortcutIds()) {
+    for (const QString& id : gamewindow::TButtonBarController::defaultEnabledExtensionShortcutIds()) {
         if (!seen.contains(id))
             m_enabled << id;
     }
-    for (const QString& id : gamewindow::TButtonBarController::productShortcutIds()) {
+    for (const QString& id : gamewindow::TButtonBarController::extensionShortcutIds()) {
         if (seen.contains(id))
             continue;
-        if (!gamewindow::TButtonBarController::defaultEnabledProductShortcutIds().contains(id))
+        if (!gamewindow::TButtonBarController::defaultEnabledExtensionShortcutIds().contains(id))
             m_disabled << id;
     }
     sortDisabledButtons();
@@ -1428,14 +1426,14 @@ void THotkeysOptionsPage::rebuildModel()
         return row;
     };
 
-    // qtclient: the pack's product actions are static actions too.
+    // Host: hotkey actions a pack registered (addExtensionAction) are static actions too.
     QStringList names = input::TKeyboardShortcutHandler::staticActionNames();
     for (int bar = 1; bar <= 9; ++bar)
         for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button)
             names << THotkeyOptions::triggerActionButtonName(bar, button);
-    for (const auto& product : input::TKeyboardShortcutHandler::productActions())
-        if (!names.contains(product.name))
-            names << product.name;
+    for (const auto& extension : input::TKeyboardShortcutHandler::extensionActions())
+        if (!names.contains(extension.name))
+            names << extension.name;
     for (const QString& name : std::as_const(names)) {
         TActionSetting setting;
         setting.kind = TActionSetting::ACTION;
@@ -1453,9 +1451,9 @@ void THotkeysOptionsPage::rebuildModel()
         }
         // qtclient: an unbound pack action shows its default keys.
         if (row->firstKeySequence().isEmpty()) {
-            for (const auto& product : input::TKeyboardShortcutHandler::productActions())
-                if (product.name == name && !product.defaultKeys.isEmpty())
-                    row->setFirstKeySequence(product.defaultKeys);
+            for (const auto& extension : input::TKeyboardShortcutHandler::extensionActions())
+                if (extension.name == name && !extension.defaultKeys.isEmpty())
+                    row->setFirstKeySequence(extension.defaultKeys);
         }
     }
     const size_t staticRows = rows.size();

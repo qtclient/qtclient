@@ -13,14 +13,13 @@
 namespace tibia {
 namespace mods {
 
-/// Optional product lighting that replaces/augments CIP classic light for a frame.
+/// Optional extension lighting that replaces/augments CIP classic light for a frame.
 /// Cached once at mod bootstrap — hot path is a null check then virtual calls only when set.
-/// Packs (e.g. product raycast) implement this; stock never links product lighting code.
+/// A pack implements it over the host ABI (`QtClientLightingDriver`); stock has none.
 ///
 /// POD-only surface (like HD scaler): no TAppearanceType / Thing / TCreature / TWorldMapField /
-/// Position / Point / WorldGeometry in the driver API. Tip peels those into Lighting* PODs
-/// (or opaque void*) before calling. Keep qtclient nested types out of this header so
-/// packs stay on the POD / façade surface (`include/qtclient/…`).
+/// Position / Point in the driver API. The frame build peels CipSoft data into Lighting* PODs
+/// before calling; what casts a shadow, and how, is the driver's.
 class WorldLightingDriver
 {
 public:
@@ -28,6 +27,8 @@ public:
 
     virtual bool enabled() const = 0;
     virtual bool frameActive() const = 0;
+    /// The driver draws the frame's light itself: CipSoft's light map is not drawn over it.
+    virtual bool replacesClassicLight() const { return false; }
     /// False until setFieldAmbient filled the pack's classic ambient grid (first raycast frame).
     virtual bool hasFieldAmbient() const { return true; }
     virtual qint64 gatherNs() const { return 0; }
@@ -43,8 +44,9 @@ public:
                             int lastFloor) = 0;
     virtual void beginFloor(int z) = 0;
     virtual void resetShade(int ix, int iy, bool canShade) = 0;
-    /// Tip passes `tibia::qmlcomponents::WorldGeometry*` (or null). Packs cast.
-    virtual void endFrame(const void* worldGeometry) = 0;
+    /// The field whose things the build draws next (its stack, CipSoft order).
+    virtual void beginField(const LightingField& field) {}
+    virtual void endFrame() = 0;
 
     virtual void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) = 0;
     virtual void addFrame(const LightingFrameDesc& frame) = 0;
@@ -101,12 +103,18 @@ public:
     virtual void dropNode() {}
 };
 
+/// An extension's per-frame hooks on the world build (QtClientWorldFrameHooks): after the
+/// sprite build, and on the frame's light map before it is drawn. Unset without a pack.
 struct WorldFrameHooks {
-    bool requestOutdoorGather = false;
+    void* user = nullptr;
+    QtClientWorldFrameFn afterBuild = nullptr;
+    QtClientLightMapFilterFn filterLightMap = nullptr;
 };
 
 void setWorldLightingDriver(WorldLightingDriver* driver);
 WorldLightingDriver* worldLightingDriver();
+/// The host ABI's lighting driver (QtClientLightingDriver), wrapped; null removes it.
+void setWorldLightingDriverAbi(const QtClientLightingDriver* driver);
 
 void addWorldOverlayFactory(WorldOverlayFactory* factory);
 void clearWorldOverlayFactories();
@@ -115,6 +123,7 @@ void dropWorldOverlayNodes();
 const std::vector<WorldOverlayFactory*>& worldOverlayFactories();
 
 void setWorldFrameHooks(WorldFrameHooks hooks);
+void setWorldFrameHooksAbi(const QtClientWorldFrameHooks& hooks);
 const WorldFrameHooks& worldFrameHooks();
 
 } // namespace mods

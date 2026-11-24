@@ -23,50 +23,6 @@ namespace {
 
 using cip::tibia::qmlcomponents::enums::ESortOrder;
 
-QJsonObject missionPayload(const mods::MissionBackend* storage, const int questLineId, const int questFlagId,
-                           const QString& partName = {})
-{
-    if (!storage)
-        return {};
-    if (questFlagId > 0) {
-        const QJsonObject byFlag = storage->missionTrackersByFlag().value(questFlagId);
-        if (!byFlag.isEmpty() && !byFlag.value(QLatin1String("cta")).toString().isEmpty())
-            return byFlag;
-    }
-    if (!partName.isEmpty()) {
-        for (auto it = storage->missionTrackersByFlag().cbegin(); it != storage->missionTrackersByFlag().cend(); ++it) {
-            const QString cta = it.value().value(QLatin1String("cta")).toString();
-            if (cta.isEmpty())
-                continue;
-            if (questLineId > 0 && it.value().value(QLatin1String("questLineId")).toInt() != questLineId)
-                continue;
-            const QString match = it.value().value(QLatin1String("matchName")).toString();
-            const QString name = match.isEmpty() ? it.value().value(QLatin1String("name")).toString() : match;
-            if (!name.isEmpty() && partName.contains(name, Qt::CaseInsensitive))
-                return it.value();
-        }
-    }
-    if (questLineId <= 0)
-        return {};
-    const QJsonObject tracked = storage->missionTrackers().value(questLineId);
-    if (!tracked.isEmpty() && !tracked.value(QLatin1String("cta")).toString().isEmpty())
-        return tracked;
-    return storage->missionOffers().value(questLineId);
-}
-
-QString missionProgressText(const QJsonObject& payload)
-{
-    const QJsonValue progress = payload.value(QLatin1String("progress"));
-    const QJsonValue required = payload.value(QLatin1String("required"));
-    if (!progress.isDouble() || !required.isDouble() || required.toInt() <= 0)
-        return {};
-    const QString detail = payload.value(QLatin1String("detail")).toString();
-    if (!detail.isEmpty())
-        return detail;
-    return QStringLiteral("%1 / %2").arg(progress.toInt()).arg(required.toInt());
-}
-
-
 }
 
 void TQuestLinesModel::setLines(QList<Line> lines)
@@ -518,7 +474,7 @@ void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
     }
     onQuestLinePartsChanged(m_selectedQuestLineId);
     if (m_missionBackend && QuestLineID > 0)
-        m_missionBackend->missionLookup(QuestLineID);
+        m_missionBackend->questLineSelected(QuestLineID);
 }
 
 void TQuestLogController::requestQuestLineDetailsFirstInList()
@@ -593,17 +549,15 @@ void TQuestLogController::setTrackingOfQuestFlag(const int QuestFlagId, const bo
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::vector<int>{ QuestFlagId }, IsTracked));
 }
 
-void TQuestLogController::setMissionBackend(mods::MissionBackend* storage)
+void TQuestLogController::setMissionBackend(mods::MissionBackend* backend)
 {
-    if (m_missionBackend == storage)
+    if (m_missionBackend == backend)
         return;
     if (m_missionBackend)
         disconnect(m_missionBackend, nullptr, this, nullptr);
-    m_missionBackend = storage;
-    if (m_missionBackend) {
-        connect(m_missionBackend, &mods::MissionBackend::missionTrackerChanged, this, [this] { Q_EMIT missionChanged(); });
-        connect(m_missionBackend, &mods::MissionBackend::missionOfferChanged, this, [this] { Q_EMIT missionChanged(); });
-    }
+    m_missionBackend = backend;
+    if (m_missionBackend)
+        connect(m_missionBackend, &mods::MissionBackend::changed, this, &TQuestLogController::missionChanged);
     Q_EMIT missionChanged();
 }
 
@@ -616,52 +570,17 @@ QString TQuestLogController::selectedPartName() const
     return {};
 }
 
-QString TQuestLogController::missionCta() const
+QVariantMap TQuestLogController::missionExtension() const
 {
-    return missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName())
-        .value(QLatin1String("cta"))
-        .toString();
+    if (!m_missionBackend)
+        return {};
+    return m_missionBackend->questLogExtension(m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
 }
 
-QString TQuestLogController::missionProgress() const
+void TQuestLogController::activateMissionExtension(const QString& choice)
 {
-    return missionProgressText(missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName()));
+    if (m_missionBackend)
+        m_missionBackend->activate(m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName(), choice);
 }
-
-QVariantList TQuestLogController::missionChoices() const
-{
-    QVariantList choices;
-    const QJsonObject payload = missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
-    for (const QJsonValue& value : payload.value(QLatin1String("choices")).toArray()) {
-        const QJsonObject choice = value.toObject();
-        choices.append(QVariantMap{
-            { QStringLiteral("id"), choice.value(QLatin1String("id")).toString() },
-            { QStringLiteral("name"), choice.value(QLatin1String("name")).toString() },
-        });
-    }
-    return choices;
-}
-
-void TQuestLogController::setBrowseOpener(std::function<void(const QString&)> opener)
-{
-    m_browseOpener = std::move(opener);
-}
-
-void TQuestLogController::startMission(const QString& taskEntryId)
-{
-    const QJsonObject payload = missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
-    const QString browseFilter = payload.value(QLatin1String("browseFilter")).toString();
-    if (!browseFilter.isEmpty()) {
-        if (m_browseOpener)
-            m_browseOpener(browseFilter);
-        return;
-    }
-    const QString key = payload.value(QLatin1String("missionKey")).toString();
-    if (key.isEmpty() || !m_missionBackend)
-        return;
-    const QString entryId = !taskEntryId.isEmpty() ? taskEntryId : payload.value(QLatin1String("taskEntryId")).toString();
-    m_missionBackend->missionAdvance(key, entryId, m_selectedQuestFlagId);
-}
-
 
 }

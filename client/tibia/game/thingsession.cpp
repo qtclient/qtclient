@@ -3,8 +3,6 @@
 #include "cyclopedia/staticcontentinformation.h"
 
 #include <tibia/assets/things.h>
-#include <tibia/creatures/attachedeffect.h>
-#include <tibia/creatures/attachedeffectmanager.h>
 #include <tibia/creatures/creaturestorage.h>
 
 #include <algorithm>
@@ -23,11 +21,6 @@ std::string itemName(const uint16_t id)
 bool isValidItemId(const uint16_t id)
 {
     return tibia::appearances::TAppearancesManager::instance().isValidDatId(id, ThingCategoryItem);
-}
-
-bool setItemThingShape(const uint16_t id, const std::string_view shapeName)
-{
-    return tibia::appearances::TAppearancesManager::instance().setThingShape(id, std::string(shapeName));
 }
 
 bool itemIsContainer(const uint16_t id)
@@ -149,55 +142,6 @@ QuestInfo questInfo(const uint16_t id)
         info.name = cyclopedia::questName(id).toStdString();
     }
     return info;
-}
-
-void clearEffectVariants()
-{
-    tibia::appearances::TAppearancesManager::instance().clearEffectVariants();
-}
-
-void registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader,
-                           const bool underCreatures)
-{
-    tibia::appearances::TAppearancesManager::instance().registerEffectVariant(virtualId, baseId, shader, underCreatures);
-}
-
-void removeAttachedEffect(const uint16_t id)
-{
-    g_attachedEffects.remove(id);
-}
-
-void registerAttachedEffectByThing(const uint16_t id, const std::string_view note, const uint16_t baseId,
-                                   const uint8_t category)
-{
-    if (const AttachedEffectPtr& effect = g_attachedEffects.registerByThing(
-            id, note, baseId, static_cast<ThingCategory>(category))) {
-        effect->setPermanent(false);
-        effect->setOnTop(false);
-    }
-}
-
-void attachCreatureEffect(const uint32_t creatureId, const uint16_t effectId)
-{
-    const AttachedEffectPtr& effect = g_attachedEffects.getById(effectId);
-    if (!effect)
-        return;
-    if (tibia::creatures::TCreatureStorage* storage = currentCreatureStorage()) {
-        if (const auto row = storage->creatureAt(creatureId)) {
-            for (const auto& attached : row->attachedEffects()) {
-                if (attached && attached->getId() == effectId)
-                    return;
-            }
-        }
-    }
-    const auto clone = effect->clone();
-    clone->setPermanent(false);
-    tibia::creatures::protocolAttachEffect(creatureId, clone);
-}
-
-void detachCreatureEffect(const uint32_t creatureId, const uint16_t effectId)
-{
-    tibia::creatures::protocolDetachEffect(creatureId, effectId);
 }
 
 } // namespace tibia::game

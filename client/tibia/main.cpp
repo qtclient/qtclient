@@ -246,7 +246,6 @@ int main(int argc, char** argv)
     // Runtime packs after QApp.
     if (!tibia::mods::ModLoader::skipLoad())
         tibia::mods::ModLoader::loadAll();
-    tibia::mods::ensureModsRegistered();
     if (const auto* id = tibia::mods::primaryIdentity())
         applyPackIdentity(*id);
     application.setApplicationDisplayName(QCoreApplication::applicationName());
@@ -312,9 +311,6 @@ int main(int argc, char** argv)
         engine.get(), std::shared_ptr<config::TClientOptions>(config::TClientOptions::instance(), [](config::TClientOptions*) {}));
     gamewindow::TTextCopyController::createInstance(engine.get());
 #endif
-    // Neutral placeholders; packs replace via ModContext / suite wire.
-    engine->rootContext()->setContextProperty(QStringLiteral("modOptions"), QVariant::fromValue<QObject*>(nullptr));
-    engine->rootContext()->setContextProperty(QStringLiteral("modHudLayout"), QVariant::fromValue<QObject*>(nullptr));
     if (parser.isSet(QStringLiteral("check-qml")))
         return checkQml(*engine) == 0 ? 0 : 1;
 #ifdef TIBIA_WITH_GAMECORE

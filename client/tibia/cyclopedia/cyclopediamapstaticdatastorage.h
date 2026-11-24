@@ -185,6 +185,9 @@ private:
     /// The minimap flag pieces from the marker storage.
     void updateMinimapMarkers();
     void requestAsset(const QString& fileName, bool loadErrorReported);
+    /// RESOLVE_SPRITE for every subarea's mask file (the body of
+    /// onGameClientMainWindowInitialized).
+    void requestSubAreaMasks();
 
     QPointer<minimap::TMinimapMarkerStorage> m_minimapMarkerStorage;
     worldmap::TWorldMapAreaIndex m_npcMarkers;
@@ -199,6 +202,9 @@ private:
     worldmap::TWorldMapCuboid m_mapExtent;
     QString m_fullMapFileName;
     QMetaObject::Connection m_minimapMarkersConnection;
+    /// Host: the main window was initialized. The assets load asynchronously,
+    /// so map.dat can arrive after it; initialize() asks for the masks then.
+    bool m_mainWindowInitialized = false;
 };
 
 }

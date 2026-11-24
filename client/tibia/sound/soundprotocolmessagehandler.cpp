@@ -1,7 +1,7 @@
 #include "soundprotocolmessagehandler.h"
 
 #include "sound/soundcontroller.h"
-#include "sound/weatheraudio.h"
+#include "sound/ambiencehold.h"
 
 #include <protocol.pb.h>
 
@@ -32,8 +32,8 @@ void TSoundProtocolMessageHandler::handleSoundTriggerMessage(const ::tibia::prot
         controller->setMusicTemplate(soundId);
         break;
     case 0:
-        // Host: a pack weather bed may hold the ambience channel.
-        if (!TWeatherAudio::instance().deferAmbienceStream(soundId))
+        // Host: an extension may hold the ambience channel (no hold without a pack).
+        if (!TAmbienceHold::instance().deferAmbienceStream(soundId))
             controller->setAmbienceStream(soundId);
         break;
     default:

@@ -123,8 +123,8 @@ private:
 /// commands its TMinimapRendererScenegraphDrawCommandProvider builds from a
 /// TMinimapRenderInfoStorage (map images, floor separators, highlighted
 /// subareas, markers), plus the area captions (AreaCaptionTemplate.qml).
-/// Host: the pack's mission zone overlays are drawn above the tree, and the
-/// marker rectangles under the mouse are kept for tooltips and clicks.
+/// Host: the extra zone masks are drawn above the tree, and the marker
+/// rectangles under the mouse are kept for tooltips and clicks.
 class TMinimapRendererQuickItem : public cip::tibia::qmlcomponents::TMinimapRendererQuickItem
 {
     Q_OBJECT
@@ -143,28 +143,18 @@ public:
     /// The sprite caches were cleared: the next polish drops the images made
     /// from map files and builds them again.
     void requestRebuild();
-    /// Catalog hunt masks (overviewFile + boundary), including underground floors.
-    struct TMissionZoneOverlay
+    /// Host: a zone mask that is none of map.dat's subareas (a pack's extension
+    /// point): a mask file under the assets root (CipSoft's bitmap format) over
+    /// `fields` on floor `z`, drawn in the zone colour while `id` is one of the
+    /// highlighted subareas, as map.dat's subarea masks are.
+    struct TExtraZoneMask
     {
         int id = 0;
-        QString name;
         QString file;
-        QRect fields; // map fields the mask covers
+        QRect fields;
         int z = 7;
     };
-    /// Caption pin for a hunt that has no CIP AreaData label (generated floors).
-    struct TMissionCaption
-    {
-        int id = 0;
-        QString name;
-        int x = 0;
-        int y = 0;
-        int z = 7;
-    };
-    void setMissionZones(std::vector<TMissionZoneOverlay> zones);
-    void setMissionCaptions(std::vector<TMissionCaption> captions);
-    /// When false, CIP subarea captions are hidden (packs use catalog mission pins per floor).
-    void setShowCyclopediaSubareaCaptions(bool show);
+    void setExtraZoneMasks(std::vector<TExtraZoneMask> masks);
     /// The local minimap tiles LocalMinimap draws (process-wide).
     static void setMinimapTileStorage(minimap::TMinimapTileStorage* storage);
     /// Rebuild flag pins after TMinimapMarkerStorage CRUD.
@@ -208,7 +198,7 @@ public Q_SLOTS:
     void onRescalingTimerTimeout();
 
 private:
-    /// A pack mission zone image drawn over the tree.
+    /// An extra zone mask image drawn over the tree.
     struct TImageDraw
     {
         QImage image;
@@ -225,13 +215,13 @@ private:
     void updateRenderInfoSettings();
     /// Rebuilds the draw commands for the item's size, then the captions.
     void updateDrawCommands();
-    void addMissionZones(std::vector<TImageDraw>& draws);
+    void addExtraZoneMasks(std::vector<TImageDraw>& draws);
     /// The marker rectangles under the mouse (host: tooltips and clicks).
     void updateMarkerHits();
     void ensureMarkerIcons();
     void updateCaptions();
     QImage zoneImage(int subareaId, const QImage& mask);
-    QImage missionZoneImage(const TMissionZoneOverlay& zone);
+    QImage extraZoneMaskImage(const TExtraZoneMask& mask);
 
     struct TMarker
     {
@@ -254,15 +244,13 @@ private:
     std::shared_ptr<minimap::TMinimapRenderInfoStorage> m_renderInfoStorage;
     std::shared_ptr<sprites::TResourceSpritesManager> m_resourceSpritesManager;
     QPointer<cyclopedia::TCyclopediaMapStorage> m_storage;
-    bool m_showCyclopediaSubareaCaptions = true;
     std::set<int> m_highlighted;
     Position m_highlightedCoordinate{ 0, 0, 0 };
     bool m_rebuildRequested = false;
-    std::unordered_map<int, TMissionZoneOverlay> m_missionZones;
-    std::vector<TMissionCaption> m_missionCaptions;
-    std::vector<TImageDraw> m_missionZoneDraws;
+    std::unordered_map<int, TExtraZoneMask> m_extraZoneMasks;
+    std::vector<TImageDraw> m_extraZoneDraws;
     std::map<int, QImage> m_zoneImages;
-    std::map<int, QImage> m_missionZoneImages;
+    std::map<int, QImage> m_extraZoneMaskImages;
     QImage m_npcIcon;
     QImage m_playerIcon;
     QImage m_houseIcon;

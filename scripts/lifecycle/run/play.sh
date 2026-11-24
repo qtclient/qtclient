@@ -37,9 +37,9 @@ unset QTCLIENT_CLIENT_ARGS || true
 unset QTCLIENT_MODS_DIR || true
 
 export QTCLIENT_URL="${QTCLIENT_URL:-file://$TIP_DIR/tibiametadata.json}"
-# Login revision must match the portal's tip (QTCAAC_ASSET_BASE). Brand
-# defaultCdn is production static.idleot.com — without this, Play stamps the
-# client with the live release revision and portal returns errorCode 7.
+# Client revision must match the portal's tip (QTCAAC_ASSET_BASE). A pack
+# brand's defaultCdn is its production CDN — without this, Play stamps the
+# client with the live release revision and the portal refuses the login.
 export QTCLIENT_CDN_URL="${QTCLIENT_CDN_URL:-http://127.0.0.1:9080}"
 export QTCLIENT_ASSET_BASE="${QTCLIENT_ASSET_BASE:-$QTCLIENT_CDN_URL}"
 echo "[play] tip $QTCLIENT_URL"

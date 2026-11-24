@@ -1,25 +1,29 @@
 #include "mapsession.h"
 
 #include <client/position.h>
-#include <QThreadPool>
-#include <tibia/schedule/schedule.h>
 #include <tibia/worldmap/worldmapstorage.h>
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/currentgamesession.h"
 #include "minimap/waypointcosts.h"
 #include "worldmap/worldmapfield.h"
 
-#include <algorithm>
 #include <cstdlib>
-#include <list>
-#include <queue>
-#include <unordered_map>
-#include <unordered_set>
+#include <set>
 
 namespace tibia::game {
 namespace {
 
 using tibia::worldmap::TWorldMapField;
 using tibia::worldmap::TWorldMapStorage;
+using TStaticData = tibia::cyclopedia::TCyclopediaMapStaticDataStorage;
+
+/// Where waypointCostsSnapshot takes the live minimap's costs from.
+WaypointCostFactory g_waypointCostFactory;
+
+MapPos toMapPos(const tibia::worldmap::TWorldMapCoordinate& coordinate)
+{
+    return { coordinate.x, coordinate.y, coordinate.z };
+}
 
 Position toPosition(const MapPos& p)
 {
@@ -45,364 +49,7 @@ TWorldMapField* mapFieldAt(TWorldMapStorage& map, const Position& pos)
     return pos.isMapPosition() ? map.fieldAt(pos) : nullptr;
 }
 
-// --- Travel path finder (the IdleOT travel router's path probe) ---
-
-struct PathFindResult
-{
-    tibia::client::PathFindResult status = tibia::client::PathFindResultNoWay;
-    std::vector<tibia::client::Direction> path;
-    int complexity = 0;
-    Position start;
-    Position destination;
-};
-using PathFindResultPtr = std::shared_ptr<PathFindResult>;
-
-struct Node
-{
-    float cost;      // Indexed8 / ground tile cost (CIP TNavigationNode[4])
-    float totalCost; // f = g + h (CIP [6]; heap key)
-    float pathCost;  // g from start (CIP [3])
-    Position pos;
-    Node* prev;
-    int distance;
-    int unseen;
-};
-
-/// Everything the travel path finder reads from the session's world map,
-/// taken on the GUI thread. The path finder runs on a worker (canTravelPathAsync)
-/// and must not touch the live storage: the GUI thread mutates its fields, and
-/// the storage dies with its session (cleanup C3) while a probe may still run.
-struct TravelMapSnapshot
-{
-    /// Aware fields that differ from the Indexed8 costs (cost < 0: impassable).
-    std::list<Node*> visibleNodes;
-    /// Indexed8 waypoint costs; null → disk-only (AppData/minimap), taken on the worker.
-    std::shared_ptr<tibia::minimap::TWaypointCosts> softCosts;
-    /// The pack's path avoid set.
-    std::unordered_set<Position, Position::Hasher> pathAvoids;
-    /// The goal field is in the aware range; `goalWalkable` is its live walkability.
-    bool goalAware = false;
-    bool goalWalkable = false;
-
-    TravelMapSnapshot() = default;
-    TravelMapSnapshot(const TravelMapSnapshot&) = delete;
-    TravelMapSnapshot& operator=(const TravelMapSnapshot&) = delete;
-    /// The path finder hands the nodes it took to its own map; the rest go here.
-    ~TravelMapSnapshot()
-    {
-        for (Node* node : visibleNodes)
-            delete node;
-    }
-};
-
-/// `pathMode`: Minimap (strict), Cyclopedia/Travel (CIP 0xfe fog; Travel also 0xff goals).
-/// Reads only `snapshot` (never the live map): safe on a worker thread.
-PathFindResultPtr findTravelPath(TravelMapSnapshot& snapshot, const Position& start, const Position& goal,
-                                 const tibia::client::AutoWalkPathMode pathMode, const int maxComplexity = 50000)
-{
-    auto ret = std::make_shared<PathFindResult>();
-    ret->start = start;
-    ret->destination = goal;
-
-    if (start == goal) {
-        ret->status = tibia::client::PathFindResultSamePosition;
-        return ret;
-    }
-
-    if (goal.z != start.z) {
-        return ret;
-    }
-
-    // CIP : |dx|/|dy| ≤ 0x6e (110) or fail.
-    constexpr int kCipPathWindow = 0x6e;
-    if (std::abs(goal.x - start.x) > kCipPathWindow || std::abs(goal.y - start.y) > kCipPathWindow) {
-        return ret;
-    }
-
-    const bool allowUnknownSoft = pathMode != tibia::client::AutoWalkPathMinimap;
-    // CIP / : 0xff neighbors impassable; 0xfe fog walkable when
-    // allowUnknownSoft (raw cost 254). Travel may still *goal* on Indexed8 0xff hub/climb stands.
-    // Disk-only Indexed8 (AppData/minimap) when the CIP session factory is cleared.
-    const auto costs = snapshot.softCosts ? snapshot.softCosts : tibia::minimap::snapshotWaypointCosts(nullptr);
-
-    // Goal walkability: live aware tile first, else Indexed8 costs (CIP client minimap).
-    // Cyclopedia/Travel: path-unknown (0xfe) goals OK; Travel also CipSoft-blocked (0xff) goals.
-    // Live fire / splash / parcels: hard-block when aware (no soft-blocker bypass).
-    if (snapshot.goalAware) {
-        if (!snapshot.goalWalkable)
-            return ret;
-    } else {
-        const uint8_t goalCost = costs->costAt(goal.x, goal.y, goal.z);
-        if (goalCost <= tibia::minimap::TWaypointCosts::MaxCost) {
-            // walkable Indexed8
-        } else if (goalCost == tibia::minimap::TWaypointCosts::UnknownCost && allowUnknownSoft) {
-            // Cyclopedia/Travel fog goal (CIP treats 0xfe as cost 254)
-        } else if (goalCost == tibia::minimap::TWaypointCosts::BlockedCost
-            && pathMode == tibia::client::AutoWalkPathTravel) {
-            // Travel CipSoft-blocked hub/climb stand
-        } else {
-            return ret;
-        }
-    }
-
-    // CIP : min tile cost over ±0x6e window (admissible heuristic scale).
-    uint32_t minCost = 0xffffffffu;
-    for (int dy = -kCipPathWindow; dy <= kCipPathWindow; ++dy) {
-        for (int dx = -kCipPathWindow; dx <= kCipPathWindow; ++dx) {
-            const int wx = start.x + dx;
-            const int wy = start.y + dy;
-            if (wx < 0 || wy < 0)
-                continue;
-            const uint8_t wc = costs->costAt(wx, wy, start.z);
-            if (wc < minCost)
-                minCost = wc;
-        }
-    }
-    if (minCost == 0xffffffffu || minCost == 0)
-        minCost = 1;
-
-    // CIP h = (manhattan − 1) × minCost + tileCost (0 at goal).
-    const auto cipHeuristic = [minCost](const Position& pos, const Position& dest, const float tileCost) -> float {
-        const int manh = std::abs(pos.x - dest.x) + std::abs(pos.y - dest.y);
-        if (manh <= 0)
-            return 0.f;
-        return static_cast<float>((manh - 1) * static_cast<int>(minCost)) + tileCost;
-    };
-
-    const auto tileCostAt = [&](const Position& pos) -> float {
-        const uint8_t wc = costs->costAt(pos.x, pos.y, pos.z);
-        if (wc <= tibia::minimap::TWaypointCosts::MaxCost)
-            return static_cast<float>(std::max<uint8_t>(1, wc));
-        // CIP Indexed8 0xfe stays 254 (stores the raw byte).
-        if (wc == tibia::minimap::TWaypointCosts::UnknownCost)
-            return static_cast<float>(tibia::minimap::TWaypointCosts::UnknownCost);
-        return 1.f;
-    };
-
-    struct LessNode
-    {
-        bool operator()(const Node* a, const Node* b) const
-        {
-            return b->totalCost < a->totalCost;
-        }
-    };
-
-    std::unordered_map<Position, Node*, Position::Hasher> nodes;
-    std::priority_queue<Node*, std::vector<Node*>, LessNode> searchList;
-
-    for (Node* node : snapshot.visibleNodes) {
-        // cost < 0: impassable aware-tile sentinel from snapshotTravelMap.
-        // Emplacing a real Node here let A* expand through blocked live tiles and
-        // the server answered "Sorry, not possible."
-        if (node->cost < 0.f) {
-            nodes.emplace(node->pos, nullptr);
-            delete node;
-        } else {
-            node->pathCost = 1e9f;
-            node->totalCost = 1e9f;
-            nodes.emplace(node->pos, node);
-        }
-    }
-    snapshot.visibleNodes.clear();
-
-    const float startTileCost = tileCostAt(start);
-    auto* initNode = new Node{ .cost = startTileCost,
-                               .totalCost = cipHeuristic(start, goal, startTileCost),
-                               .pathCost = 0.f,
-                               .pos = start,
-                               .prev = nullptr,
-                               .distance = 0,
-                               .unseen = 0 };
-    nodes[start] = initNode;
-    searchList.push(initNode);
-
-    int limit = maxComplexity > 0 ? maxComplexity : 1;
-    const int complexityBudget = limit;
-
-    const Node* dstNode = nullptr;
-    while (!searchList.empty() && --limit) {
-        Node* node = searchList.top();
-        searchList.pop();
-        if (node->pos == goal) {
-            dstNode = node;
-            break;
-        }
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0)
-                    continue;
-                Position neighbor = node->pos.translated(i, j);
-                if (neighbor.x < 0 || neighbor.y < 0)
-                    continue;
-                // Stay inside CIP ±0x6e window relative to start.
-                if (std::abs(neighbor.x - start.x) > kCipPathWindow
-                    || std::abs(neighbor.y - start.y) > kCipPathWindow)
-                    continue;
-                auto it = nodes.find(neighbor);
-                if (it == nodes.end()) {
-                    // pathfinder avoid set: treat as impassable (CIP minimap path avoid).
-                    if (snapshot.pathAvoids.contains(neighbor) && neighbor != goal) {
-                        it = nodes.emplace(neighbor, nullptr).first;
-                    } else {
-                        // CIP TWaypointCostMap: 0..250 walkable, 0xfe unknown, 0xff blocked.
-                        // Cyclopedia/Travel: 0xfe expensive (CIP cost 254). 0xff impassable.
-                        // Live aware tiles still win via visibleNodes.
-                        const uint8_t wc = costs->costAt(neighbor.x, neighbor.y, neighbor.z);
-                        const bool softFog = wc == tibia::minimap::TWaypointCosts::UnknownCost;
-                        const bool passFog = (softFog && allowUnknownSoft) || neighbor == goal;
-                        if (wc > tibia::minimap::TWaypointCosts::MaxCost && !passFog) {
-                            it = nodes.emplace(neighbor, nullptr).first;
-                        } else {
-                            const float speed = tileCostAt(neighbor);
-                            it = nodes.emplace(neighbor,
-                                               new Node{ .cost = speed,
-                                                         .totalCost = 1e9f,
-                                                         .pathCost = 1e9f,
-                                                         .pos = neighbor,
-                                                         .prev = node,
-                                                         .distance = node->distance + 1,
-                                                         .unseen = 0 })
-                                     .first;
-                        }
-                    }
-                }
-                if (!it->second) // no way
-                    continue;
-
-                if (it->second->unseen > 50)
-                    continue;
-
-                // CIP : leave current tile —
-                // ortho g' = g + tileCost[current]
-                // diag g' = g + tileCost[current] + 2×tileCost[current] = g + 3×tileCost
-                const bool ortho = (i == 0 || j == 0);
-                const float stepCost = ortho ? node->cost : (node->cost * 3.f);
-                const float g = node->pathCost + stepCost;
-                if (g >= it->second->pathCost)
-                    continue;
-
-                it->second->pathCost = g;
-                it->second->totalCost = g + cipHeuristic(neighbor, goal, it->second->cost);
-                it->second->prev = node;
-                if (it->second->unseen)
-                    it->second->unseen = node->unseen + 1;
-                it->second->distance = node->distance + 1;
-                searchList.push(it->second);
-            }
-        }
-    }
-
-    if (dstNode) {
-        while (dstNode && dstNode->prev) {
-            // Legacy fog unseen-prefix truncate (Indexed8 soft paths keep unseen=0).
-            if (dstNode->unseen) {
-                ret->path.clear();
-            } else {
-                ret->path.push_back(dstNode->prev->pos.getDirectionFromPosition(dstNode->pos));
-            }
-            dstNode = dstNode->prev;
-        }
-        std::reverse(ret->path.begin(), ret->path.end());
-        ret->status = tibia::client::PathFindResultOk;
-    }
-    ret->complexity = complexityBudget - limit;
-
-    for (const auto& node : nodes) {
-        delete node.second;
-    }
-
-    return ret;
-}
-
-/// Takes the travel path finder's view of the live map (GUI thread only).
-std::unique_ptr<TravelMapSnapshot> snapshotTravelMap(TWorldMapStorage& map, const Position& start, const Position& goal)
-{
-    auto snapshot = std::make_unique<TravelMapSnapshot>();
-    // CIP auto-path: aware tiles use live walkable/pathable (fire, splash, parcels
-    // block when in view). No soft-blocker bypass — path fails → SnapBack avoid /
-    // TravelRouter replan or stop.
-    for (const auto& tile : map.fieldList(static_cast<int8_t>(start.z))) {
-        if (tile->getPosition() == start)
-            continue;
-        const bool isNotWalkable = !tile->isWalkable(false);
-        const bool isNotPathable = !tile->isPathable();
-        const float baseSpeed = static_cast<float>(tile->getGroundSpeed());
-        if ((isNotWalkable || isNotPathable) && tile->getPosition() != goal) {
-            // cost < 0 → findTravelPath stores nullptr (must not expand).
-            snapshot->visibleNodes.push_back(new Node{ .cost = -1.f, .totalCost = 0, .pathCost = 0,
-                                                       .pos = tile->getPosition(), .prev = nullptr, .distance = 0,
-                                                       .unseen = 0 });
-        } else {
-            snapshot->visibleNodes.push_back(new Node{ .cost = baseSpeed, .totalCost = 1e9f, .pathCost = 1e9f,
-                                                       .pos = tile->getPosition(), .prev = nullptr, .distance = 0,
-                                                       .unseen = 0 });
-        }
-    }
-    // CIP costs: snapshot on the GUI thread (tile images).
-    if (const TWorldMapStorage::WaypointCostFactory& factory = map.waypointCostFactory())
-        snapshot->softCosts = factory();
-    snapshot->pathAvoids = map.pathAvoids();
-    snapshot->goalAware = map.isAwareOfPosition(goal);
-    if (snapshot->goalAware) {
-        const TWorldMapField* goalTile = mapFieldAt(map, goal);
-        snapshot->goalWalkable = goalTile && goalTile->isWalkable();
-    }
-    return snapshot;
-}
-
-bool isTravelPathFound(const PathFindResultPtr& ret)
-{
-    return ret
-        && (ret->status == tibia::client::PathFindResultOk || ret->status == tibia::client::PathFindResultSamePosition);
-}
-
 } // namespace
-
-bool canTravelPath(const MapPos from, const MapPos to, const int maxComplexity)
-{
-    const Position start = toPosition(from);
-    const Position goal = toPosition(to);
-    if (!start.isValid() || !goal.isValid())
-        return false;
-    if (start == goal)
-        return true;
-    if (start.z != goal.z)
-        return false;
-    TWorldMapStorage* mapStorage = storage();
-    if (!mapStorage)
-        return false;
-    const std::unique_ptr<TravelMapSnapshot> snapshot = snapshotTravelMap(*mapStorage, start, goal);
-    return isTravelPathFound(findTravelPath(*snapshot, start, goal, tibia::client::AutoWalkPathTravel, maxComplexity));
-}
-
-void canTravelPathAsync(const MapPos from, const MapPos to, const std::function<void(bool ok)>& callback)
-{
-    if (!callback) {
-        return;
-    }
-    if (from == to) {
-        callback(true);
-        return;
-    }
-    if (from.z != to.z) {
-        callback(false);
-        return;
-    }
-    const Position start = toPosition(from);
-    const Position goal = toPosition(to);
-    TWorldMapStorage* map = storage();
-    if (!map) {
-        callback(false);
-        return;
-    }
-    // The map is read here, on the GUI thread; the worker owns the snapshot and
-    // never sees the session's storage (which a world leave destroys).
-    std::shared_ptr<TravelMapSnapshot> snapshot = snapshotTravelMap(*map, start, goal);
-    QThreadPool::globalInstance()->start([snapshot = std::move(snapshot), start, goal, callback] {
-        const bool ok = isTravelPathFound(findTravelPath(*snapshot, start, goal, tibia::client::AutoWalkPathTravel));
-        tibia::schedule::post([callback, ok] { callback(ok); });
-    });
-}
 
 bool isWalkable(const MapPos pos, const bool ignoreCreatures)
 {
@@ -493,28 +140,98 @@ bool isSightClear(const MapPos from, const MapPos to)
     return true;
 }
 
-void setPathAvoid(const MapPos pos, const bool avoid)
+std::vector<MapFieldInfo> storedFieldsOnFloor(const int z)
 {
-    if (TWorldMapStorage* map = storage())
-        map->setPathAvoid(toPosition(pos), avoid);
+    TWorldMapStorage* map = storage();
+    if (!map || z < 0 || z > 15)
+        return {};
+    std::vector<MapFieldInfo> out;
+    for (const auto& field : map->fieldList(static_cast<int8_t>(z))) {
+        const Position& pos = field->getPosition();
+        out.push_back({ { pos.x, pos.y, pos.z }, field->getGroundSpeed(), field->isWalkable(false), field->isPathable() });
+    }
+    return out;
 }
 
-void clearPathAvoids()
+bool isAwareOfPosition(const MapPos pos)
 {
-    if (TWorldMapStorage* map = storage())
-        map->clearPathAvoids();
+    const TWorldMapStorage* map = storage();
+    return map && map->isAwareOfPosition(toPosition(pos));
 }
 
 void setWaypointCostFactory(WaypointCostFactory factory)
 {
-    if (TWorldMapStorage* map = storage())
-        map->setWaypointCostFactory(std::move(factory));
+    g_waypointCostFactory = std::move(factory);
 }
 
 void clearWaypointCostFactory()
 {
-    if (TWorldMapStorage* map = storage())
-        map->clearWaypointCostFactory();
+    g_waypointCostFactory = {};
+}
+
+std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCostsSnapshot()
+{
+    if (g_waypointCostFactory) {
+        if (auto costs = g_waypointCostFactory())
+            return costs;
+    }
+    return tibia::minimap::snapshotWaypointCosts(nullptr);
+}
+
+uint16_t staticMapSubAreaAt(const MapPos pos)
+{
+    return TStaticData::instance().subAreaAt(worldmap::TWorldMapCoordinate(pos.x, pos.y, pos.z));
+}
+
+bool staticMapArea(const uint16_t id, const bool subArea, StaticMapArea& out)
+{
+    const TStaticData& data = TStaticData::instance();
+    out = {};
+    out.id = id;
+    out.isSubArea = subArea;
+    if (subArea) {
+        const TStaticData::TSubArea* found = data.subArea(id);
+        if (!found)
+            return false;
+        out.areaId = found->areaId;
+        out.name = found->name.toStdString();
+        out.alias = found->alias.toStdString();
+        out.label = toMapPos(found->labelCoordinate);
+        out.hasMaskFile = !found->fileName.isEmpty();
+        if (out.hasMaskFile) {
+            out.maskOrigin = toMapPos(found->extent.origin);
+            out.maskWidth = found->extent.extent.width;
+            out.maskHeight = found->extent.extent.height;
+        }
+        return true;
+    }
+    const TStaticData::TArea* found = data.area(id);
+    if (!found)
+        return false;
+    out.name = found->name.toStdString();
+    out.alias = found->alias.toStdString();
+    out.label = toMapPos(found->labelCoordinate);
+    return true;
+}
+
+std::vector<uint16_t> staticMapAreaIds(const bool subAreas)
+{
+    const TStaticData& data = TStaticData::instance();
+    std::vector<uint16_t> ids;
+    if (subAreas) {
+        for (const auto& [id, subArea] : data.subAreas())
+            ids.push_back(id);
+    } else {
+        for (const auto& [id, area] : data.areas())
+            ids.push_back(id);
+    }
+    return ids;
+}
+
+std::vector<uint16_t> staticMapSubAreasOfArea(const uint16_t areaId)
+{
+    const std::set<quint16> ids = TStaticData::instance().subAreaIdsOfArea(areaId);
+    return { ids.begin(), ids.end() };
 }
 
 } // namespace tibia::game

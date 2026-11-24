@@ -11,13 +11,10 @@
 #include <QPointer>
 #include <QSet>
 #include <QSortFilterProxyModel>
-#include <QVariantList>
+#include <QVariantMap>
 
-#include <functional>
 #include <memory>
 #include <vector>
-
-class QJsonObject;
 
 namespace tibia {
 namespace config {
@@ -52,32 +49,15 @@ public:
         IsPinnedRole,
         TooltipRole,
         LastUpdateTimestampRole,
-        MissionCtaRole,
-        MissionProgressRole,
-        MissionActionRole,
-        MissionChoicesRole,
-        MissionBrowseFilterRole
+        /// Host extension: the mission backend's data for the row (empty without one).
+        ExtensionRole
     };
 
     using QAbstractListModel::QAbstractListModel;
 
-    /// One tracked mission's action. Prefer matching by quest flag id; otherwise by line
-    /// and optional mission-name fragment (so membership lines never take a hunt CTA).
-    struct MissionAction
-    {
-        QString cta;
-        QString progress;
-        QString missionKey;
-        QString taskEntryId;
-        QString browseFilter;
-        int questFlagId = 0;
-        int questLineId = 0;
-        QString matchName;
-        QVariantList choices;
-    };
-
-    /// The storage's tracked quest flags as rows; keeps the rows that stay.
-    void setEntries(std::vector<questlog::TQuestFlag> flags, const QList<MissionAction>& actions);
+    /// The storage's tracked quest flags as rows, each with its extension data
+    /// (by quest flag id); keeps the rows that stay.
+    void setEntries(std::vector<questlog::TQuestFlag> flags, const QHash<int, QVariantMap>& extensions);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -87,11 +67,7 @@ private:
     struct Row
     {
         questlog::TQuestFlag flag;
-        QString missionCta;
-        QString missionProgress;
-        QString missionBrowseFilter;
-        bool missionAction = false;
-        QVariantList missionChoices;
+        QVariantMap extension;
     };
 
     QList<Row> m_rows;
@@ -137,12 +113,10 @@ public:
     /// Context menu: remove all, remove completed, auto add, auto remove.
     void requestConfigurationContextMenu() override;
 
-    /// product: run the mission action on the tracked quest flag.
-    /// Optional `taskEntryId` picks a specific Paw and Fur task when choices exist.
-    Q_INVOKABLE void missionAction(int questFlagId, const QString& taskEntryId = {});
-    void setMissionActions(QList<TQuestTrackerListModel::MissionAction> actions);
-    void setMissionInvoker(std::function<void(const QString& missionKey, const QString& taskEntryId, int questFlagId)> invoker);
-    void setBrowseOpener(std::function<void(const QString& filter)> opener);
+    /// Host extension: the mission backend's data for the rows; null unsets it.
+    void setMissionBackend(mods::MissionBackend* backend);
+    /// Host extension: a row's extension data was activated (`choice` from it).
+    Q_INVOKABLE void activateExtension(int questFlagId, const QString& choice = {});
 
 public Q_SLOTS:
     void saveWidgetOptions() override;
@@ -186,9 +160,7 @@ private:
     TQuestTrackerListModel m_list;
     TQuestTrackerSortFilterProxyModel m_proxy;
     shared::TQtConnectionManager m_gameSessionConnections;
-    QList<TQuestTrackerListModel::MissionAction> m_actions;
-    std::function<void(const QString&, const QString&, int)> m_missionInvoker;
-    std::function<void(const QString&)> m_browseOpener;
+    QPointer<mods::MissionBackend> m_missionBackend;
 };
 
 /// Owns the quest tracker widget while it is open. The sidebar widgets
@@ -205,22 +177,19 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
-    void setMissionBackend(mods::MissionBackend* storage);
-    void setBrowseOpener(std::function<void(const QString& filter)> opener);
-
+    /// Host extension: the open widget's rows (and the next one's) take the
+    /// backend's data.
+    void setMissionBackend(mods::MissionBackend* backend);
 
 Q_SIGNALS:
     /// The controller's publishGameAction, forwarded.
     void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
-    void applyMissions();
-
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TQuestTrackerWidgetController> m_controller;
     QPointer<mods::MissionBackend> m_missionBackend;
-    std::function<void(const QString&)> m_browseOpener;
 };
 
 }

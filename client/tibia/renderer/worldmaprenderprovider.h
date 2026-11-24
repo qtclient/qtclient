@@ -1,10 +1,9 @@
 #pragma once
 
-#include "renderer/weatherframe.h"
 #include "renderer/lightmodel.h"
 #include "mods/worldview.h"
 #include "renderer/spritetexturecache.h"
-#include "renderer/worldgeometry.h"
+#include "creatures/creaturedecoration.h"
 #include "worldmap/coordinates.h"
 #include "worldmap/worldmapobjectcounter.h"
 
@@ -137,8 +136,6 @@ public:
         int visibleHeight = 11;
         /// CIP map scale (snapped height / 352). Overlays place with this, centered.
         double viewScale = 1;
-        /// Shared roof / outdoor gather (weather + lighting). Empty when unused.
-        WorldGeometry geometry;
     };
 
     /// Fallback FOV before the map pane reports a size (CIP 15×11).
@@ -221,10 +218,6 @@ public:
     qint64 raycastGatherNs() const { return m_raycastGatherNs; }
     /// updateRoofs inside endFrame.
     qint64 raycastRoofsNs() const { return m_raycastRoofsNs; }
-    /// Shared roof / outdoor geometry for the last frame (weather + lighting).
-    const WorldGeometry& geometry() const { return m_frame.geometry; }
-    /// Weather overlay inputs for the WorldMap node (empty when weather is off).
-    WeatherFrame weatherFrame() const;
 
     /// Host: the session's provider, reading the session's storages, options
     /// and instance tracker.
@@ -312,10 +305,8 @@ private:
     /// live one), centred on the local player.
     bool drawsLiveWorld() const;
     void buildLight();
-    /// Shared outdoor / roof gather when weather or raycast needs it.
-    void updateWorldGeometry();
-    /// Cool outdoor cells from active weather (D).
-    void applyWeatherAmbientTint();
+    /// Host: what the frame hooks read about this frame.
+    QtClientWorldFrameView frameView() const;
     void loadLightOptions();
     /// gameWindowShowLootHighlighting: containers draw their field effect.
     void loadLootHighlightOption();
@@ -332,6 +323,8 @@ private:
     void addFields(const std::vector<FieldEntry>& fields, uint8_t first, uint8_t last, TOcclusionGrid& grid);
     /// One field's draw commands.
     void addField(const FieldEntry& field, TOcclusionGrid& grid);
+    /// Host (pack lighting): hands the driver the field's stack.
+    void beginLightingField(const FieldEntry& field);
     void addTileBelow(const FieldEntry& field, const QPoint& dest, uint8_t& elevation, TOcclusionGrid& grid);
     void addTileCreatures(const FieldEntry& field, const QPoint& dest, uint8_t elevation, TOcclusionGrid& grid);
     void addTileEffects(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
@@ -339,8 +332,7 @@ private:
     void addLootHighlight(const FieldEntry& field, const QPoint& dest);
     /// One object of a field: its draw commands with their key, its light,
     /// the fields it hides, its count near the player and its type.
-    void addObject(const FieldEntry& field, int stackIndex, const QPoint& dest, uint8_t& elevation, bool castHeight,
-                   TOcclusionGrid& grid);
+    void addObject(const FieldEntry& field, int stackIndex, const QPoint& dest, uint8_t& elevation, TOcclusionGrid& grid);
     /// The missiles of the drawn floors (after every field).
     void addMissiles(uint8_t first, uint8_t last);
     /// The pack lighting's stamps and lights of floor `z`'s missiles.
@@ -376,21 +368,23 @@ private:
     /// follow state), lights the map when its type shines, a creature's also
     /// with its own, its outfit's and its mount's light, hides the lower floors
     /// under the fields an opaque sprite at its field's corner covers, and
-    /// keeps its type (a creature's outfit and mount types).
+    /// keeps its type (a creature's outfit and mount types). `stackIndex` is
+    /// the instance's place in its field's stack (-1 none), for the pack lighting.
     void addRenderInfos(const appearances::TAppearanceInstance& instance, const worldmap::TWorldMapCoordinate& coordinate,
-                        const QPoint& dest, SpriteRecord::Highlight highlight, uint8_t lift,
-                        tibia::worldmap::TWorldMapField* tile, bool castHeight, TOcclusionGrid& grid);
+                        const QPoint& dest, SpriteRecord::Highlight highlight, uint8_t lift, int stackIndex,
+                        TOcclusionGrid& grid);
     /// CIP v10: mouse-target tint when stack entry matches hover object id (not creature).
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
     void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                  uint8_t& elevation);
     /// A creature standing on `coordinate` (its corner at `dest`, lifted by
     /// `lift`): its placeholder's render infos, with the host's HUD entry,
-    /// jump, attached effects and pack lighting context.
+    /// jump, decorations and pack lighting context (`stackIndex` its place in
+    /// the stack of the field drawn, -1 when it steps over that field).
     void addCreature(const tibia::creatures::TCreature& creature, const worldmap::TWorldMapCoordinate& coordinate,
-                     const QPoint& dest, uint8_t lift, bool castHeight, TOcclusionGrid& grid);
+                     const QPoint& dest, uint8_t lift, int stackIndex, TOcclusionGrid& grid);
     void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t elevation,
-                               bool castHeight, TOcclusionGrid& grid);
+                               TOcclusionGrid& grid);
     void addMissile(const appearances::TAppearanceInstancePtr& appearance);
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).
@@ -412,11 +406,9 @@ private:
     void addSprites(TAppearanceType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0);
-    /// The creature's attached effects on one side of its outfit (product
-    /// Creature::internalDraw): at its walked field, or where it is drawn
-    /// (`jumped`) for those following it.
-    void addAttachedEffects(const tibia::creatures::TCreature& stored, const QPoint& walked, const QPoint& jumped,
-                            bool onTop);
+    /// Host: an extension's decorations of the creature on one side of its
+    /// outfit, at the field it is drawn on (creature decoration hook).
+    void addCreatureDecorations(const tibia::creatures::TCreature& stored, const QPoint& at, bool overOutfit);
     SpriteRecord::Highlight highlightOf(uint32_t creatureId) const;
     void addLight(const QPoint& center, uint8_t intensity, uint8_t color);
     /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
@@ -487,8 +479,6 @@ private:
     uint8_t m_cachedFirstFloor = 0;
     uint8_t m_cachedLastFloor = 0;
     bool m_floorsCached = false;
-    /// Classic light before weather tint (D); tint reapplies each frame from this.
-    QImage m_lightUntinted;
     /// The light of the last frame (CIP: the provider's TLightMap).
     std::shared_ptr<worldmap::TLightMap> m_lightMap;
     qint64 m_frameTimestamp = 0;
@@ -498,16 +488,12 @@ private:
     std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_bankCache;
     std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_translucentCache;
     std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_openSkyCache;
-    /// Cache key for shared world geometry.
-    Position m_geometryCamera;
-    uint32_t m_geometryRevision = 0;
-    int m_geometryWidth = 0;
-    int m_geometryHeight = 0;
-    uint8_t m_geometryFirst = 0;
-    uint8_t m_geometryLast = 0;
-    int m_geometryOrigin = -1;
     /// Cached at advance start — null when no pack registered a driver.
     tibia::mods::WorldLightingDriver* m_lighting = nullptr;
+    /// The stack of the field the driver gathers (kept to reuse its storage).
+    std::vector<QtClientFieldStackEntry> m_lightingStack;
+    /// One creature's decorations while the frame is built (kept to reuse its storage).
+    std::vector<tibia::creatures::TCreatureDecorationSprite> m_decorations;
 };
 
 }

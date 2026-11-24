@@ -1,7 +1,6 @@
 #include "mapwindowcontroller.h"
 #include "game/gamesessionbase.h"
 
-#include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -145,7 +144,6 @@ TMapWindowController::TMapWindowController(QQmlEngine* engine, QQuickItem* pane,
             m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
     }
 
-    refreshClassicView();
     onMapWindowControllerOptionsChanged();
     if (m_pClientOptions)
         connect(m_pClientOptions, &config::TClientOptions::mapWindowControllerOptionsChanged, this,
@@ -154,12 +152,6 @@ TMapWindowController::TMapWindowController(QQmlEngine* engine, QQuickItem* pane,
         connect(m_pClientOptions, &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
             if (id == config::EClientOption::gameWindowShowAttackAnimation || id == config::EClientOption::gameWindowShowTargetHighlight)
                 applyTargetHighlightOption();
-        });
-    // Host: the pack's classic / immersive view (pack options no CIP option names).
-    if (m_pClientOptions)
-        connect(m_pClientOptions, &config::TClientOptions::extraOptionChanged, this, [this](const QString& name) {
-            if (name == QLatin1String("modImmersiveGameView") || name == QLatin1String("modClassicGameView"))
-                refreshClassicView();
         });
 
     if (m_mapWindow) {
@@ -179,10 +171,6 @@ TMapWindowController::TMapWindowController(QQmlEngine* engine, QQuickItem* pane,
         }
         if (m_mapMouseArea)
             m_mapMouseArea->installEventFilter(this);
-        // HUD chrome is a sibling of the FOV frame (above mouseAreaDrag). Bridge
-        // press/drag/click from the window so tiles under the action bar still work.
-        connect(m_mapWindow, &QQuickItem::windowChanged, this, [this](QQuickWindow*) { ensureWindowPointerFilter(); });
-        ensureWindowPointerFilter();
         // mapWindow is the inner clip item whose size is the live game FOV pane.
         connect(m_mapWindow, &QQuickItem::widthChanged, this, &TMapWindowController::syncFov);
         connect(m_mapWindow, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
@@ -232,27 +220,6 @@ void TMapWindowController::clearTrackedUseAtMouseCursorGameAction()
 {
     m_trackedUseAtMouseCursor.reset();
     m_trackedUseAtMouseCursorFrames = 0;
-}
-
-bool TMapWindowController::classicView() const
-{
-    return m_classicView;
-}
-
-void TMapWindowController::refreshClassicView()
-{
-    const QJsonObject options = app::ClientOptions::load().options();
-    bool immersive = true;
-    if (options.contains(QLatin1String("modImmersiveGameView")))
-        immersive = options.value(QLatin1String("modImmersiveGameView")).toBool(true);
-    else if (options.contains(QLatin1String("modClassicGameView")))
-        immersive = !options.value(QLatin1String("modClassicGameView")).toBool(false);
-    const bool classic = !immersive;
-    if (classic == m_classicView)
-        return;
-    m_classicView = classic;
-    Q_EMIT classicViewChanged();
-    syncFov();
 }
 
 void TMapWindowController::onFullscreenModeEntered()
@@ -339,214 +306,19 @@ void TMapWindowController::onUnusedWidthChanged()
 
 void TMapWindowController::unbind()
 {
-    if (m_pointerWindow) {
-        m_pointerWindow->removeEventFilter(this);
-        m_pointerWindow.clear();
-    }
-    m_mapPressActive = false;
-    m_mapDragStarted = false;
     connectToGameSession(nullptr);
 }
 
-void TMapWindowController::ensureWindowPointerFilter()
+void TMapWindowController::setOverlayHover(const bool hovering, const qreal mouseX, const qreal mouseY)
 {
-    QQuickWindow* window = m_mapWindow ? m_mapWindow->window() : nullptr;
-    if (m_pointerWindow == window)
-        return;
-    if (m_pointerWindow)
-        m_pointerWindow->removeEventFilter(this);
-    m_pointerWindow = window;
-    if (m_pointerWindow)
-        m_pointerWindow->installEventFilter(this);
-}
-
-QQuickItem* TMapWindowController::leafItemAtScenePos(const QPointF& scenePos) const
-{
-    if (!m_pointerWindow || !m_pointerWindow->contentItem())
-        return nullptr;
-    const auto walk = [&](auto&& self, QQuickItem* root) -> QQuickItem* {
-        if (!root || !root->isVisible() || !root->isEnabled())
-            return nullptr;
-        const QPointF local = root->mapFromScene(scenePos);
-        if (!root->contains(local))
-            return nullptr;
-        const QList<QQuickItem*> kids = root->childItems();
-        for (auto it = kids.crbegin(); it != kids.crend(); ++it) {
-            if (QQuickItem* hit = self(self, *it))
-                return hit;
-        }
-        // Full-bleed pack roots (IdleotHud) set passMapPointer so empty space
-        // falls through to the FOV MouseArea instead of owning the leaf.
-        if (root->property("passMapPointer").toBool()
-            && root->acceptedMouseButtons() == Qt::NoButton
-            && !root->inherits("QQuickMouseArea")
-            && !root->inherits("QQuickAbstractButton"))
-            return nullptr;
-        return root;
-    };
-    return walk(walk, m_pointerWindow->contentItem());
-}
-
-bool TMapWindowController::isInteractiveOverlay(const QQuickItem* leaf) const
-{
-    if (!leaf)
-        return false;
-    // FOV MouseArea subtree is real map input — never treat as overlay chrome.
-    for (const QQuickItem* p = leaf; p; p = p->parentItem()) {
-        if (p == m_mapMouseArea)
-            return false;
-    }
-    // Pack HUD (TeamHud, AutomationBar, TopBar, …) is a sibling of the FOV
-    // frame under mapWindow. Treating every mapWindow child as non-interactive
-    // used to synthesize a walk on HUD button release. Walk ancestors for a
-    // real control; absorbMapClicks marks opaque chrome (HudClickSink hosts).
-    bool underMapWindow = false;
-    for (const QQuickItem* p = leaf; p; p = p->parentItem()) {
-        if (p == m_mapWindow) {
-            underMapWindow = true;
-            break;
-        }
-        if (p->property("absorbMapClicks").toBool() || p->property("absorbClicks").toBool())
-            return true;
-        if (p->acceptedMouseButtons() != Qt::NoButton)
-            return true;
-        if (p->inherits("QQuickMouseArea") || p->inherits("QQuickAbstractButton"))
-            return true;
-    }
-    if (underMapWindow)
-        return false;
-    // Outside the FOV frame: any hit that survived passMapPointer is chrome
-    // (or pane chrome) — never synthesize a walk through it.
-    return true;
-}
-
-void TMapWindowController::ungrabOverlayPointer(QQuickItem* from) const
-{
-    for (QQuickItem* p = from; p; p = p->parentItem()) {
-        if (p == m_mapWindow)
-            break;
-        p->ungrabMouse();
-    }
-}
-
-bool TMapWindowController::filterWindowPointer(QEvent* event)
-{
-    if (!m_mapWindow || !m_provider || !m_actions)
-        return false;
-    switch (event->type()) {
-    case QEvent::MouseButtonPress: {
-        const auto* mouse = static_cast<QMouseEvent*>(event);
-        if (mouse->button() != Qt::LeftButton && mouse->button() != Qt::RightButton)
-            return false;
-        const QPointF local = m_mapWindow->mapFromScene(mouse->scenePosition());
-        if (local.x() < 0 || local.y() < 0 || local.x() >= m_mapWindow->width()
-            || local.y() >= m_mapWindow->height()) {
-            m_mapPressActive = false;
-            return false;
-        }
-        m_mapPressActive = true;
-        m_mapDragStarted = false;
-        m_mapOwnedPress = false;
-        m_mapPressButton = mouse->button();
-        m_mapPressModifiers = mouse->modifiers();
-        m_mapPressPos = local;
-        m_hovering = true;
-        m_hoverPosition = local;
-        // After delivery: did the FOV MouseArea get the grab, or did HUD chrome?
-        QMetaObject::invokeMethod(
-            this,
-            [this] {
-                if (!m_mapPressActive)
-                    return;
-                m_mapOwnedPress = m_mapMouseArea && m_mapMouseArea->property("pressed").toBool();
-            },
-            Qt::QueuedConnection);
-        return false;
-    }
-    case QEvent::MouseMove: {
-        const auto* mouse = static_cast<QMouseEvent*>(event);
-        const QPointF local = m_mapWindow->mapFromScene(mouse->scenePosition());
-        if (local.x() >= 0 && local.y() >= 0 && local.x() < m_mapWindow->width()
-            && local.y() < m_mapWindow->height()) {
-            m_hovering = true;
-            m_hoverPosition = local;
-            updateMouseTarget();
-        }
-        if (!m_mapPressActive || m_mapDragStarted || !(mouse->buttons() & Qt::LeftButton))
-            return false;
-        if (const TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine); dnd && dnd->isDragging()) {
-            m_mapDragStarted = true;
-            return false;
-        }
-        const QPointF delta = local - m_mapPressPos;
-        if (std::hypot(delta.x(), delta.y()) < MapDragThresholdPx)
-            return false;
-        // Live check — queued press ownership may not have landed yet.
-        const bool mapOwns = m_mapOwnedPress
-            || (m_mapMouseArea && m_mapMouseArea->property("pressed").toBool());
-        m_mapOwnedPress = mapOwns;
-        // A press grabbed by an item outside the map window belongs to a dialog
-        // drawn over the FOV (the Cyclopedia map pans this way): that item's own
-        // drag, not a map drag. Ungrabbing it would end the dialog's drag and pick
-        // up an object on the field hidden under the dialog.
-        if (!mapOwns && !mouse->points().isEmpty()) {
-            if (const auto* grabber = qobject_cast<const QQuickItem*>(mouse->exclusiveGrabber(mouse->points().first()))) {
-                bool underMapWindow = false;
-                for (const QQuickItem* p = grabber; p && !underMapWindow; p = p->parentItem())
-                    underMapWindow = p == m_mapWindow;
-                if (!underMapWindow) {
-                    m_mapPressActive = false;
-                    return false;
-                }
-            }
-        }
-        // HUD button / empty overlay owned the press — take the drag for the map.
-        if (!mapOwns) {
-            if (QQuickItem* leaf = leafItemAtScenePos(mouse->scenePosition()))
-                ungrabOverlayPointer(leaf);
-            QObject* source = m_mapMouseArea ? static_cast<QObject*>(m_mapMouseArea.data())
-                                             : static_cast<QObject*>(m_mapWindow.data());
-            onMapWindowStartDrag(static_cast<int>(std::lround(m_mapPressPos.x())),
-                                 static_cast<int>(std::lround(m_mapPressPos.y())), source);
-        }
-        m_mapDragStarted = true;
-        return false;
-    }
-    case QEvent::MouseButtonRelease: {
-        const auto* mouse = static_cast<QMouseEvent*>(event);
-        if (!m_mapPressActive || mouse->button() != m_mapPressButton)
-            return false;
-        const TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine);
-        const bool dragged = m_mapDragStarted || (dnd && dnd->isDragging());
-        const QPointF local = m_mapWindow->mapFromScene(mouse->scenePosition());
-        const bool inMap = local.x() >= 0 && local.y() >= 0 && local.x() < m_mapWindow->width()
-            && local.y() < m_mapWindow->height();
-        m_mapPressActive = false;
-        m_mapDragStarted = false;
-        if (dragged || m_mapOwnedPress || !inMap)
-            return false;
-        // Press landed on non-interactive chrome above the FOV (or a full-bleed
-        // overlay root). MouseArea never saw it — deliver the map click here.
-        // Pass the real button/modifiers (not LeftButton): Classic Controls open
-        // / Loot: Right are right-click chords on TGameActionMapper.
-        if (isInteractiveOverlay(leafItemAtScenePos(mouse->scenePosition())))
-            return false;
-        onMapWindowClicked(static_cast<int>(std::lround(m_mapPressPos.x())),
-                           static_cast<int>(std::lround(m_mapPressPos.y())),
-                           static_cast<int>(m_mapPressButton),
-                           static_cast<int>(m_mapPressModifiers));
-        return false;
-    }
-    default:
-        return false;
-    }
+    m_hovering = hovering;
+    if (hovering)
+        m_hoverPosition = QPointF(mouseX, mouseY);
+    updateMouseTarget();
 }
 
 bool TMapWindowController::eventFilter(QObject* watched, QEvent* event)
 {
-    if (m_pointerWindow && watched == m_pointerWindow)
-        return filterWindowPointer(event);
-
     switch (event->type()) {
     case QEvent::HoverEnter:
     case QEvent::HoverMove:
@@ -575,9 +347,8 @@ bool TMapWindowController::eventFilter(QObject* watched, QEvent* event)
         m_hovering = false;
         break;
     case QEvent::HoverLeave:
-        // Do not clear here: IdleOT HUD over the FOV steals MouseArea hover while
-        // the cursor is still on map tiles. updateMouseTarget / overlaysAdvanced
-        // re-sync from QCursor; only then clear when outside mapWindow.
+        m_hovering = false;
+        updateMouseTarget();
         break;
     default:
         break;
@@ -602,28 +373,8 @@ QPoint TMapWindowController::toMapPixel(const QPointF& mapWindowPoint) const
     return QPoint(int(std::lround(view.x())), int(std::lround(view.y()))) + frame.camera;
 }
 
-bool TMapWindowController::syncHoverFromCursor()
-{
-    if (!m_mapWindow || !m_mapWindow->window()) {
-        m_hovering = false;
-        return false;
-    }
-    const QPointF local = m_mapWindow->mapFromGlobal(QCursor::pos(m_mapWindow->window()->screen()));
-    if (local.x() >= 0 && local.y() >= 0 && local.x() < m_mapWindow->width()
-        && local.y() < m_mapWindow->height()) {
-        m_hovering = true;
-        m_hoverPosition = local;
-        return true;
-    }
-    m_hovering = false;
-    return false;
-}
-
 void TMapWindowController::updateMouseTarget()
 {
-    // Prefer live cursor over the map MouseArea: HUD chrome above the FOV
-    // (AutomationBar / ServicesBar) triggers HoverLeave while still on tiles.
-    syncHoverFromCursor();
     if (!m_provider || !m_actions || !m_hovering || !m_mapWindow || !m_worldMap) {
         if (m_provider)
             m_provider->clearMouseHighlightField();

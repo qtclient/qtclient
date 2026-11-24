@@ -7,7 +7,7 @@
 #     [RESOURCES_DIR dir]
 #     [MOD_JSON path]
 #     [QML_MODULE name]
-#     [ABSORB_INTO_QTCLIENT]   # deprecated: compile into tibia (IdleOT peel WIP)
+#     [ABSORB_INTO_QTCLIENT]   # deprecated: compile into tibia (packs still on tip C++)
 #   )
 #
 # Default (runtime MODULE):

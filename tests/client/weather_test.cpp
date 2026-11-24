@@ -2,7 +2,7 @@
 
 #include "idleot/weather/weathersounds.h"
 #include "idleot/weather/weatherstate.h"
-#include "renderer/worldgeometry.h"
+#include "idleot/geometry/worldgeometry.h"
 
 #include <QJsonObject>
 

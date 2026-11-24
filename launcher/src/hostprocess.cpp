@@ -78,7 +78,7 @@ bool startDetached(const QString& program, const QStringList& arguments, const Q
     // Launcher may carry QTCLIENT_MODS_DIR for brand.json only (e.g. pack/launcher/).
     // The game client must load tip mods/<id> next to the binary (loginBase /
     // identity); an exclusive brand-only env would skip that and fall back to
-    // CipSoft login hosts while still showing linked IdleOT chrome.
+    // CipSoft login hosts while still showing the pack's chrome.
     const QString name = QFileInfo(program).fileName();
     if (name == QStringLiteral("client") || name == QStringLiteral("tibia")
         || name == QStringLiteral("tibia.js") || name.startsWith(QStringLiteral("client."))) {

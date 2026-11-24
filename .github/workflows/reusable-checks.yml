@@ -45,9 +45,7 @@ jobs:
           test -f include/qtclient/abi/types.h
           grep -q 'QTCLIENT_PACK_SDK_ONLY\|QTCLIENT_PACK_ABI\|ABSORB_INTO_QTCLIENT' cmake/QtClientMod.cmake
           test -f client/mods/qtc-aac/mod.json
-          test -f launcher/mods/clientmods/launcher.json
-          test -f launcher/mods/minimap/launcher.json
-          bash -n scripts/lifecycle/lib/stage-default-launcher-mods.sh
+          bash -n scripts/lifecycle/lib/merge-launcher-brand.sh
           # MAIN_MODULE only via TibiaMods when runtime packs exist (host-pushed API; no export list).
           if grep -q 'SHELL:-sMAIN_MODULE=2' client/tibia/CMakeLists.txt; then
             echo "::error::MAIN_MODULE must not be hard-coded in tibia CMakeLists (use TibiaMods)" >&2

@@ -92,8 +92,8 @@ public:
     /// CIP: how the pages publish game actions. START_TARGET_SELECTION hides
     /// the dialog until TARGET_SELECTION_FINISHED.
     void processAndPublishGameActions(const input::IGameActionPtr& action);
-    /// product: a product page (category past CIP's) loaded, applied and reset like CIP's own.
-    void addProductPage(int category, config::TOptionsPage* page);
+    /// Host extension: a pack's page (category past CIP's), loaded, applied and reset like CIP's own.
+    void addExtensionPage(int category, config::TOptionsPage* page);
     /// The client whose minimap the minimap export saves first (CIP +0xc0).
     void setGameClient(client::TGameClient* client);
     /// Portal origin for About / Website (LauncherEnv::loginBase).

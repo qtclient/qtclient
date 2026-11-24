@@ -11,8 +11,6 @@
 
 
 #include <QDateTime>
-#include <QJsonArray>
-#include <QJsonObject>
 
 #include <algorithm>
 
@@ -33,78 +31,13 @@ int questLineOf(const questlog::TQuestFlag& flag) { return std::max(flag.data.qu
 
 }
 
-void TQuestTrackerListModel::setEntries(std::vector<questlog::TQuestFlag> flags, const QList<MissionAction>& actions)
+void TQuestTrackerListModel::setEntries(std::vector<questlog::TQuestFlag> flags, const QHash<int, QVariantMap>& extensions)
 {
-    auto partMatchesName = [](const QString& part, const QString& matchName) {
-        if (matchName.isEmpty())
-            return false;
-        return stripCompletedMarker(part).contains(matchName, Qt::CaseInsensitive);
-    };
-
-    // Prefer exact quest-flag id, then mission-name fragment (Hydras / Hunting Elite),
-    // then a single line-level fallback for quests that only have one action.
-    QHash<int, int> ownerAction; // questFlagId -> action index
-    QSet<int> claimedActions;
-    auto claim = [&](const int flagId, const int actionIndex) {
-        if (flagId <= 0 || actionIndex < 0 || claimedActions.contains(actionIndex) || ownerAction.contains(flagId))
-            return;
-        ownerAction.insert(flagId, actionIndex);
-        claimedActions.insert(actionIndex);
-    };
-
-    QSet<int> knownFlags;
-    for (const questlog::TQuestFlag& flag : flags)
-        knownFlags.insert(flag.id);
-    auto hasActionUi = [](const MissionAction& action) {
-        return !action.cta.isEmpty() || !action.choices.isEmpty() || !action.browseFilter.isEmpty();
-    };
-    for (int i = 0; i < actions.size(); ++i) {
-        if (!hasActionUi(actions[i]) || actions[i].questFlagId <= 0)
-            continue;
-        if (!knownFlags.contains(actions[i].questFlagId))
-            continue;
-        claim(actions[i].questFlagId, i);
-    }
-    for (int i = 0; i < actions.size(); ++i) {
-        if (!hasActionUi(actions[i]) || claimedActions.contains(i) || actions[i].matchName.isEmpty())
-            continue;
-        for (const questlog::TQuestFlag& flag : flags) {
-            if (hasCompletedMarker(flag.data.questFlagName))
-                continue;
-            if (actions[i].questLineId > 0 && questLineOf(flag) != actions[i].questLineId)
-                continue;
-            if (!partMatchesName(flag.data.questFlagName, actions[i].matchName))
-                continue;
-            claim(flag.id, i);
-            break;
-        }
-    }
-    for (int i = 0; i < actions.size(); ++i) {
-        if (!hasActionUi(actions[i]) || claimedActions.contains(i) || actions[i].questLineId <= 0)
-            continue;
-        if (actions[i].questFlagId > 0 || !actions[i].matchName.isEmpty())
-            continue;
-        for (const questlog::TQuestFlag& flag : flags) {
-            if (questLineOf(flag) != actions[i].questLineId || hasCompletedMarker(flag.data.questFlagName))
-                continue;
-            claim(flag.id, i);
-            break;
-        }
-    }
-
     QList<Row> rows;
     rows.reserve(qsizetype(flags.size()));
     for (questlog::TQuestFlag& flag : flags) {
         Row row;
-        const int matched = ownerAction.value(flag.id, -1);
-        if (matched >= 0) {
-            const MissionAction& action = actions[matched];
-            row.missionCta = action.cta;
-            row.missionProgress = action.progress;
-            row.missionBrowseFilter = action.browseFilter;
-            row.missionChoices = action.choices;
-            row.missionAction = !action.cta.isEmpty() || !action.choices.isEmpty();
-        }
+        row.extension = extensions.value(flag.id);
         row.flag = std::move(flag);
         rows.append(std::move(row));
     }
@@ -147,11 +80,7 @@ QVariant TQuestTrackerListModel::data(const QModelIndex& index, const int role) 
         case IsPinnedRole: return flag.pinned;
         case TooltipRole: return QStringLiteral("%1 / %2").arg(flag.data.questLineName, stripCompletedMarker(flag.data.questFlagName));
         case LastUpdateTimestampRole: return flag.lastUpdateTimestamp;
-        case MissionCtaRole: return row.missionCta;
-        case MissionProgressRole: return row.missionProgress;
-        case MissionActionRole: return row.missionAction;
-        case MissionChoicesRole: return row.missionChoices;
-        case MissionBrowseFilterRole: return row.missionBrowseFilter;
+        case ExtensionRole: return row.extension;
         default: return {};
     }
 }
@@ -166,11 +95,7 @@ QHash<int, QByteArray> TQuestTrackerListModel::roleNames() const
              { IsPinnedRole, "isPinned" },
              { TooltipRole, "tooltip" },
              { LastUpdateTimestampRole, "lastUpdateTimestamp" },
-             { MissionCtaRole, "missionCta" },
-             { MissionProgressRole, "missionProgress" },
-             { MissionActionRole, "missionAction" },
-             { MissionChoicesRole, "missionChoices" },
-             { MissionBrowseFilterRole, "missionBrowseFilter" } };
+             { ExtensionRole, "extension" } };
 }
 
 TQuestTrackerSortFilterProxyModel::TQuestTrackerSortFilterProxyModel(TQuestTrackerListModel* source, QObject* parent)
@@ -255,65 +180,41 @@ std::vector<questlog::TQuestFlag> TQuestTrackerWidgetController::trackedQuestFla
 
 void TQuestTrackerWidgetController::refresh()
 {
-    m_list.setEntries(trackedQuestFlags(), m_actions);
+    std::vector<questlog::TQuestFlag> flags = trackedQuestFlags();
+    QHash<int, QVariantMap> extensions;
+    if (m_missionBackend) {
+        QList<mods::MissionBackend::TrackedMission> missions;
+        missions.reserve(qsizetype(flags.size()));
+        for (const questlog::TQuestFlag& flag : flags)
+            missions.append({ int(flag.id), questLineOf(flag), stripCompletedMarker(flag.data.questFlagName),
+                              hasCompletedMarker(flag.data.questFlagName) });
+        extensions = m_missionBackend->trackerExtensions(missions);
+    }
+    m_list.setEntries(std::move(flags), extensions);
 }
 
-void TQuestTrackerWidgetController::setMissionActions(QList<TQuestTrackerListModel::MissionAction> actions)
+void TQuestTrackerWidgetController::setMissionBackend(mods::MissionBackend* backend)
 {
-    m_actions = std::move(actions);
+    if (m_missionBackend == backend)
+        return;
+    if (m_missionBackend)
+        disconnect(m_missionBackend, nullptr, this, nullptr);
+    m_missionBackend = backend;
+    if (m_missionBackend)
+        connect(m_missionBackend, &mods::MissionBackend::changed, this, &TQuestTrackerWidgetController::refresh);
     refresh();
 }
 
-void TQuestTrackerWidgetController::setMissionInvoker(std::function<void(const QString&, const QString&, int)> invoker)
+void TQuestTrackerWidgetController::activateExtension(const int questFlagId, const QString& choice)
 {
-    m_missionInvoker = std::move(invoker);
-}
-
-void TQuestTrackerWidgetController::setBrowseOpener(std::function<void(const QString&)> opener)
-{
-    m_browseOpener = std::move(opener);
-}
-
-void TQuestTrackerWidgetController::missionAction(const int questFlagId, const QString& taskEntryId)
-{
-    int questLineId = 0;
-    QString partName;
+    if (!m_missionBackend)
+        return;
     for (const questlog::TQuestFlag& flag : trackedQuestFlags()) {
-        if (flag.id == questFlagId) {
-            questLineId = questLineOf(flag);
-            partName = stripCompletedMarker(flag.data.questFlagName);
-            break;
+        if (int(flag.id) == questFlagId) {
+            m_missionBackend->activate(questLineOf(flag), questFlagId, stripCompletedMarker(flag.data.questFlagName), choice);
+            return;
         }
     }
-    const TQuestTrackerListModel::MissionAction* matched = nullptr;
-    for (const TQuestTrackerListModel::MissionAction& action : m_actions) {
-        if (action.cta.isEmpty() && action.choices.isEmpty() && action.browseFilter.isEmpty())
-            continue;
-        if (action.questFlagId > 0 && action.questFlagId == questFlagId) {
-            matched = &action;
-            break;
-        }
-        if (action.questFlagId > 0)
-            continue;
-        if (action.questLineId != questLineId)
-            continue;
-        if (!action.matchName.isEmpty() && !partName.contains(action.matchName, Qt::CaseInsensitive))
-            continue;
-        matched = &action;
-        if (!action.matchName.isEmpty())
-            break;
-    }
-    if (!matched)
-        return;
-    if (!matched->browseFilter.isEmpty()) {
-        if (m_browseOpener)
-            m_browseOpener(matched->browseFilter);
-        return;
-    }
-    if (!m_missionInvoker || matched->missionKey.isEmpty())
-        return;
-    const QString entryId = !taskEntryId.isEmpty() ? taskEntryId : matched->taskEntryId;
-    m_missionInvoker(matched->missionKey, entryId, questFlagId > 0 ? questFlagId : matched->questFlagId);
 }
 
 void TQuestTrackerWidgetController::onTrackedQuestFlagsChanged(const bool added, const bool removed)
@@ -428,80 +329,11 @@ TQuestTrackerWidgetManager::TQuestTrackerWidgetManager(QQuickItem* gameWindowIte
 
 TQuestTrackerWidgetManager::~TQuestTrackerWidgetManager() { delete m_controller; }
 
-namespace {
-
-QString missionProgressText(const QJsonObject& payload)
+void TQuestTrackerWidgetManager::setMissionBackend(mods::MissionBackend* backend)
 {
-    const QJsonValue progress = payload.value(QLatin1String("progress"));
-    const QJsonValue required = payload.value(QLatin1String("required"));
-    if (!progress.isDouble() || !required.isDouble() || required.toInt() <= 0)
-        return {};
-    const QString detail = payload.value(QLatin1String("detail")).toString();
-    if (!detail.isEmpty())
-        return detail;
-    return QStringLiteral("%1 / %2").arg(progress.toInt()).arg(required.toInt());
-}
-
-}
-
-void TQuestTrackerWidgetManager::setMissionBackend(mods::MissionBackend* storage)
-{
-    if (m_missionBackend == storage)
-        return;
-    if (m_missionBackend)
-        disconnect(m_missionBackend, nullptr, this, nullptr);
-    m_missionBackend = storage;
-    if (m_missionBackend) {
-        connect(m_missionBackend, &mods::MissionBackend::missionTrackerChanged, this, [this] { applyMissions(); });
-    }
-    applyMissions();
-}
-
-
-void TQuestTrackerWidgetManager::applyMissions()
-{
-    if (!m_controller)
-        return;
-    QList<TQuestTrackerListModel::MissionAction> actions;
-    auto appendPayload = [&](const QJsonObject& payload, const int fallbackLineId) {
-        TQuestTrackerListModel::MissionAction action;
-        action.cta = payload.value(QLatin1String("cta")).toString();
-        action.progress = missionProgressText(payload);
-        action.missionKey = payload.value(QLatin1String("missionKey")).toString();
-        action.taskEntryId = payload.value(QLatin1String("taskEntryId")).toString();
-        action.browseFilter = payload.value(QLatin1String("browseFilter")).toString();
-        action.questFlagId = payload.value(QLatin1String("questFlagId")).toInt();
-        action.questLineId = payload.value(QLatin1String("questLineId")).toInt(fallbackLineId);
-        action.matchName = payload.value(QLatin1String("matchName")).toString();
-        if (action.matchName.isEmpty())
-            action.matchName = payload.value(QLatin1String("name")).toString();
-        if (payload.value(QLatin1String("choices")).isArray()) {
-            for (const QJsonValue& value : payload.value(QLatin1String("choices")).toArray()) {
-                const QJsonObject choice = value.toObject();
-                action.choices.append(QVariantMap{
-                    { QStringLiteral("id"), choice.value(QLatin1String("id")).toString() },
-                    { QStringLiteral("name"), choice.value(QLatin1String("name")).toString() },
-                });
-            }
-        }
-        if (action.cta.isEmpty() && action.choices.isEmpty() && action.browseFilter.isEmpty())
-            return;
-        actions.append(std::move(action));
-    };
-    if (m_missionBackend) {
-        for (auto it = m_missionBackend->missionTrackersByFlag().cbegin(); it != m_missionBackend->missionTrackersByFlag().cend(); ++it)
-            appendPayload(it.value(), 0);
-        for (auto it = m_missionBackend->missionTrackers().cbegin(); it != m_missionBackend->missionTrackers().cend(); ++it)
-            appendPayload(it.value(), it.key());
-    }
-    m_controller->setMissionActions(std::move(actions));
-}
-
-void TQuestTrackerWidgetManager::setBrowseOpener(std::function<void(const QString&)> opener)
-{
-    m_browseOpener = std::move(opener);
+    m_missionBackend = backend;
     if (m_controller)
-        m_controller->setBrowseOpener(m_browseOpener);
+        m_controller->setMissionBackend(backend);
 }
 
 TSidebarWidget* TQuestTrackerWidgetManager::open(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -510,13 +342,8 @@ TSidebarWidget* TQuestTrackerWidgetManager::open(const std::shared_ptr<game::IGa
         m_controller = new TQuestTrackerWidgetController(m_gameWindowItem, m_engine);
         connect(m_controller, &TQuestTrackerWidgetController::publishGameAction, this, &TQuestTrackerWidgetManager::publishGameAction);
         m_controller->connectToGameSession(GameSession);
-        m_controller->setMissionInvoker([this](const QString& missionKey, const QString& taskEntryId, int questFlagId) {
-            if (m_missionBackend)
-                m_missionBackend->missionAdvance(missionKey, taskEntryId, questFlagId);
-        });
-        m_controller->setBrowseOpener(m_browseOpener);
+        m_controller->setMissionBackend(m_missionBackend);
     }
-    applyMissions();
     return m_controller->widget();
 }
 

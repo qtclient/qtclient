@@ -433,7 +433,7 @@ void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::pro
                 local->addEntry(TClientChatEntryFactory::systemEntry(consoleColor(mode), text));
             break;
         case NpcTo:
-            // Host (IdleOT): quest expeditions send the player's lines to an
+            // Host: pack quest dialogs send the player's lines to an
             // NPC; they belong on the NPCs tab with the NPC's replies.
             m_storage.addNpcChannelEntry(consoleColor(mode), name, text);
             break;
@@ -606,7 +606,7 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
     }
     if (log && !consoleFilters(mode))
         m_storage.addServerLogEntry(consoleColor(mode), text);
-    // IdleOT host extension: packs observe the server's text messages.
+    // Host extension: packs observe the server's text messages.
     tibia::game::notify("onServerTextMessage", static_cast<int>(MessageMessage.mode()), MessageMessage.text());
 }
 

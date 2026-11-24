@@ -385,8 +385,8 @@ void TLauncherApplication::launchPackage(const std::shared_ptr<TPackage>& packag
     const QString workingDirectory = QFileInfo(executable).absoluteDir().absolutePath();
     const TPackageConfiguration* configuration = package->configurationForCurrentPlatform();
     const QString packageRevision = configuration ? configuration->packageVersion().trimmed() : QString();
-    hostResolveLoginRevision(packageRevision, [this, executable, parameters, workingDirectory](const QString& revision) {
-        // Host: the qtclient launcher → client contract (login revision, launcher path, CDN).
+    hostResolveClientRevision(packageRevision, [this, executable, parameters, workingDirectory](const QString& revision) {
+        // Host: the qtclient launcher → client contract (client revision, launcher path, CDN).
         QHash<QString, QString> environment;
         environment.insert(QStringLiteral("QTCLIENT_LAUNCHER"), QStringLiteral("1"));
         environment.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), revision);
@@ -404,11 +404,11 @@ void TLauncherApplication::launchPackage(const std::shared_ptr<TPackage>& packag
     });
 }
 
-void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std::function<void(QString)> then)
+void TLauncherApplication::hostResolveClientRevision(const QString& fallback, std::function<void(QString)> then)
 {
-    // The portal accepts the live latest/release.json "revision" at login; a
-    // package version ("15.33.<sha>") would be refused with errorCode 7.
-    const QUrl manifest = m_filesystemHelper->releaseManifestUrl();
+    // Optional revision source (launcher settings [URLS] clientRevision); the
+    // package version otherwise.
+    const QUrl manifest = m_filesystemHelper->clientRevisionUrl();
     if (!manifest.isValid() || manifest.isEmpty()) {
         then(fallback);
         return;

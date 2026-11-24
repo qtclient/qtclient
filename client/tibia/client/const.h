@@ -184,38 +184,6 @@ namespace client {
     };
 
 
-    enum PathFindResult : uint8_t
-    {
-        PathFindResultOk = 0,
-        PathFindResultSamePosition,
-        PathFindResultImpossible,
-        PathFindResultTooFar,
-        PathFindResultNoWay
-    };
-
-    enum PathFindFlags : uint8_t
-    {
-        PathFindAllowNotSeenTiles = 1,
-        PathFindAllowCreatures = 2,
-        PathFindAllowNonPathable = 4,
-        PathFindAllowNonWalkable = 8,
-        PathFindIgnoreCreatures = 16,
-        PathFindOrthogonalOnly = 32 // N/S/E/W only (no diagonals)
-    };
-
-    /// Client autoWalk / live-tile policy (CIP / TWaypointCostMap).
-    /// Minimap: CIP sidebar click — Indexed8 strict (0xfe and 0xff blocked).
-    /// Cyclopedia: CIP cyclopedia Shift+click — 0xfe fog expensive-but-passable; 0xff blocked.
-    /// Travel: IdleOT TravelRouter — same as Cyclopedia (CIP auto-path). Live fire /
-    /// splash / parcels block when aware; SnapBack tiles join mapsession path avoids.
-    /// Indexed8 0xff *goals* stay reachable so climb/hub stands can be approached.
-    enum AutoWalkPathMode : uint8_t
-    {
-        AutoWalkPathMinimap = 0,
-        AutoWalkPathCyclopedia = 1,
-        AutoWalkPathTravel = 2,
-    };
-
     enum Blessings : uint32_t
     {
         BlessingNone = 0,

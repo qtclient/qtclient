@@ -20,10 +20,9 @@ const QString kGroupTiming = QStringLiteral("TIMING");
 const QString kGroupUser = QStringLiteral("USER");
 const QString kGroupOptions = QStringLiteral("OPTIONS");
 
-/// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else
+/// Host: origin of the tip's CDN bundle (QTCLIENT_CDN_URL, else
 /// QTCLIENT_ASSET_BASE, else the tip pack's brand `defaultCdn`); empty for
-/// stock CipSoft. Local Play sets QTCLIENT_CDN_URL=:9080 so release.json
-/// matches the portal login gate (errorCode 7 otherwise).
+/// stock CipSoft. Launcher settings urls may name it as `{cdn}`.
 QString hostCdnBase()
 {
     QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
@@ -36,22 +35,10 @@ QString hostCdnBase()
     return cdn;
 }
 
-/// Host: content-addressed store (`<cdn>/content/<aa>/<packedhash>`) for file
-/// downloads. QTCLIENT_CDN_CONTENT_STORE=1/0 forces it; otherwise only the
-/// local test origins use it, and tips keep CipSoft's per-file urls.
-bool hostUseContentStore(const QString& cdn)
-{
-    const QString force = qEnvironmentVariable("QTCLIENT_CDN_CONTENT_STORE");
-    if (force == QLatin1String("1"))
-        return !cdn.isEmpty();
-    if (force == QLatin1String("0") || cdn.isEmpty())
-        return false;
-    const QString host = QUrl(cdn).host();
-    return host.contains(QLatin1String("example.invalid")) || host.contains(QLatin1String("qtclient.local"));
-}
-
-/// Host: launcher settings defaults from the tip mods (highest priority last
-/// wins), then environment overrides used by local play and the release sidecar.
+/// Host: launcher settings defaults from the tip mods (`mod.json` and
+/// `launcher.json` "launchersettings"; highest priority last wins), then
+/// environment overrides used by local play and the release sidecar. A url
+/// value may contain `{cdn}` (hostCdnBase); without a CDN such a url is unset.
 QJsonObject hostSettingsDefaults()
 {
     QJsonObject defaults;
@@ -76,13 +63,18 @@ QJsonObject hostSettingsDefaults()
             modsRoot = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("mods"));
         QList<std::pair<int, QJsonObject>> sections;
         for (const QFileInfo& dir : QDir(modsRoot).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
-            QFile file(QDir(dir.absoluteFilePath()).filePath(QStringLiteral("mod.json")));
-            if (!file.open(QIODevice::ReadOnly))
-                continue;
-            const QJsonObject mod = QJsonDocument::fromJson(file.readAll()).object();
-            if (mod.contains(QStringLiteral("launchersettings")))
-                sections.append({mod.value(QStringLiteral("priority")).toInt(),
-                                 mod.value(QStringLiteral("launchersettings")).toObject()});
+            const auto read = [&](const QString& name) {
+                QFile file(QDir(dir.absoluteFilePath()).filePath(name));
+                return file.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(file.readAll()).object() : QJsonObject();
+            };
+            const QJsonObject mod = read(QStringLiteral("mod.json"));
+            const QJsonObject launcher = read(QStringLiteral("launcher.json"));
+            // launcher.json sections rank with their pack's mod.json priority.
+            const int priority = mod.value(QStringLiteral("priority")).toInt(launcher.value(QStringLiteral("priority")).toInt());
+            for (const QJsonObject& config : {mod, launcher}) {
+                if (config.contains(QStringLiteral("launchersettings")))
+                    sections.append({priority, config.value(QStringLiteral("launchersettings")).toObject()});
+            }
         }
         std::stable_sort(sections.begin(), sections.end(),
                          [](const auto& a, const auto& b) { return a.first > b.first; });
@@ -104,18 +96,21 @@ QJsonObject hostSettingsDefaults()
     }
     const QString cdn = hostCdnBase();
     QJsonObject urls = defaults.value(kGroupUrls).toObject();
+    for (const QString& key : urls.keys()) {
+        const QString value = urls.value(key).toString();
+        if (!value.contains(QLatin1String("{cdn}")))
+            continue;
+        if (cdn.isEmpty())
+            urls.remove(key);
+        else
+            urls.insert(key, QString(value).replace(QLatin1String("{cdn}"), cdn));
+    }
     // An explicit QTCLIENT_CDN_URL wins over the mods; the brand's CDN only fills a gap.
     if (tip.isEmpty() && !cdn.isEmpty()
         && (!qEnvironmentVariableIsEmpty("QTCLIENT_CDN_URL") || !urls.contains(QStringLiteral("launcherConfiguration"))))
         tip = cdn + QStringLiteral("/launcher/tibiametadata.json");
     if (!tip.isEmpty())
         urls.insert(QStringLiteral("launcherConfiguration"), tip);
-    // The release gate: the portal accepts latest/release.json "revision" as the
-    // client revision at login (errorCode 7 otherwise).
-    if (!cdn.isEmpty() && !urls.contains(QStringLiteral("releaseManifest")))
-        urls.insert(QStringLiteral("releaseManifest"), cdn + QStringLiteral("/latest/release.json"));
-    if (hostUseContentStore(cdn) && !urls.contains(QStringLiteral("contentStore")))
-        urls.insert(QStringLiteral("contentStore"), cdn + QStringLiteral("/content"));
     // The browser host pins the hardware survey to the page origin (a stamped
     // site on another host is cross-origin there), as it does for login.
     const QString survey = qEnvironmentVariable("QTCLIENT_SYSTEM_SURVEY_URL");
@@ -218,15 +213,13 @@ QString TLauncherFilesystemHelper::cdnBase()
     return hostCdnBase();
 }
 
-QUrl TLauncherFilesystemHelper::releaseManifestUrl() const
+QUrl TLauncherFilesystemHelper::clientRevisionUrl() const
 {
-    return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("releaseManifest")));
+    return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("clientRevision")));
 }
 
 QUrl TLauncherFilesystemHelper::contentStoreUrl() const
 {
-    if (qEnvironmentVariable("QTCLIENT_CDN_CONTENT_STORE") == QLatin1String("0"))
-        return {};
     return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("contentStore")));
 }
 
@@ -249,11 +242,9 @@ QUrl TLauncherFilesystemHelper::fileDownloadUrl(const TFileInPackage& file) cons
 std::vector<THostChannel> TLauncherFilesystemHelper::enabledHostChannels(const TPackageBuild& build)
 {
     std::vector<THostChannel> channels;
-    const LauncherMods& mods = LauncherMods::instance();
+    const QStringList& enabled = LauncherMods::instance().channels;
     for (const THostChannel& channel : build.hostChannels) {
-        const bool enabled = (channel.name == QLatin1String("mods") && mods.clientModsChannel)
-                             || (channel.name == QLatin1String("minimap") && mods.minimapChannel);
-        if (enabled && channel.url.isValid() && !channel.url.isEmpty())
+        if (enabled.contains(channel.name) && channel.url.isValid() && !channel.url.isEmpty())
             channels.push_back(channel);
     }
     return channels;

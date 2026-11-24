@@ -10,7 +10,7 @@ pack_sdk() {
   # committed ALLOWLIST. See tools/cip/sdk_tip_closure.py.
   python3 "$OTC/tools/cip/sdk_tip_closure.py" --copy "$DEST" \
     || { echo "[package] error: sdk_tip_closure failed" >&2; return 1; }
-  test -f "$DEST/include/qtclient/mod_api_v1.h" \
+  test -f "$DEST/include/qtclient/abi/host_api_v1.h" \
     || { echo "[package] error: public SDK missing after copy" >&2; return 1; }
 
   cp -a "$OTC/cmake/QtClientMod.cmake" "$DEST/cmake/"

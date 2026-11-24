@@ -161,6 +161,17 @@ void TCyclopediaMapStaticDataStorage::initialize(const QByteArray& mapData)
     }
 
     buildAreaData();
+    // Host: map.dat parsed after the main window was initialized (the asset
+    // loader delivers it after the appearances): the masks are asked for now,
+    // as onGameClientMainWindowInitialized would have.
+    if (m_mainWindowInitialized)
+        requestSubAreaMasks();
+}
+
+void TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized()
+{
+    m_mainWindowInitialized = true;
+    requestSubAreaMasks();
 }
 
 void TCyclopediaMapStaticDataStorage::requestAsset(const QString& fileName, const bool loadErrorReported)

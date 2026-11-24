@@ -4,8 +4,7 @@
 #
 # --tip is the applicationDirPath (desktop) or the directory that contains
 # tibia.wasm (wasm). Destination: <tip>/mods/<pack-id>
-# Keeps default packs (launcher clientmods/minimap); drops qtc-aac
-# (product urls replace it) and any other non-default siblings.
+# Drops qtc-aac (the pack's urls replace it) and any other sibling pack.
 #
 # Usage:
 #   merge-pack-into-tip.sh --pack <mods/<id> tree> --tip <applicationDirPath>
@@ -29,8 +28,6 @@ done
 test -f "$PACK/mod.json" || { echo "missing $PACK/mod.json" >&2; exit 1; }
 test -d "$TIP" || { echo "missing tip dir $TIP" >&2; exit 1; }
 
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-
 # Engine root → Contents/MacOS so ModLoader sees mods next to the Play binary.
 # Callers often pass the qtclient tip root (…/engine) that contains *.app.
 macos="$(find "$TIP" -maxdepth 3 -path '*/Contents/MacOS' -type d 2>/dev/null | head -1 || true)"
@@ -43,14 +40,13 @@ pack_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("
 [[ -n "$pack_id" ]] || pack_id="$(basename "$PACK")"
 
 mods_root="$TIP/mods"
-# Keep default client + launcher packs; drop qtc-aac (product urls) and unknowns.
-keep="clientmods|minimap|${pack_id}"
+# Keep only this pack; drop qtc-aac (the pack's urls) and unknowns.
 if [[ -d "$mods_root" ]]; then
   for sibling in "$mods_root"/*; do
     [[ -e "$sibling" ]] || continue
     base="$(basename "$sibling")"
     [[ "$base" == *.files ]] && continue
-    if [[ ! "$base" =~ ^($keep)$ ]]; then
+    if [[ "$base" != "$pack_id" ]]; then
       rm -rf "$sibling"
     fi
   done
@@ -88,6 +84,3 @@ PY
 ) >"${dest}.files"
 # Manifest lives beside the tree as mods/<id>.files (${dest}.files).
 echo "[merge-pack] ${PACK} → ${dest} ($(wc -l < "${dest}.files" | tr -d ' ') files)"
-
-# Default launcher channel gates (clientmods + minimap).
-bash "$ROOT/scripts/lifecycle/lib/stage-default-launcher-mods.sh" --tip "$TIP"

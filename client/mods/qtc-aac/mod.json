@@ -15,7 +15,8 @@
   },
   "launchersettings": {
     "URLS": {
-      "systemSurvey": "http://127.0.0.1:5173/clientservices/hardwarereceiver.php"
+      "systemSurvey": "http://127.0.0.1:5173/clientservices/hardwarereceiver.php",
+      "clientRevision": "{cdn}/latest/release.json"
     }
   }
 }

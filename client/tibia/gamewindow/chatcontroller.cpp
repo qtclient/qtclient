@@ -1458,24 +1458,7 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
 
 void TChatController::setNpcDialog(TNpcDialogController* dialog)
 {
-    if (m_npcDialog == dialog)
-        return;
-    if (m_npcDialog)
-        disconnect(m_npcDialog, &TNpcDialogController::shownChanged, this, nullptr);
     m_npcDialog = dialog;
-    if (dialog) {
-        // Re-emit chatModeChanged so HudChat re-syncs open/closed (bubble stays
-        // closed while the NPC dialog owns Enter / temporary chat-on).
-        connect(dialog, &TNpcDialogController::shownChanged, this, [this](bool) {
-            Q_EMIT chatModeChanged();
-        });
-    }
-    Q_EMIT chatModeChanged();
-}
-
-bool TChatController::npcDialogShown() const
-{
-    return m_npcDialog && m_npcDialog->isShown();
 }
 
 QString TChatController::sendChatMessageTo(chat::TChatChannel* channel, const QString& chatMessage, const bool isSpell, const int spellCastType)
@@ -1569,7 +1552,7 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     const TChatChannelIdentifier& identifier = channel->identifier();
     switch (identifier.type) {
     case TChatChannelIdentifier::Npc:
-        if (m_npcDialog && m_npcDialog->sayToRemoteNpc(text)) {
+        if (m_npcDialog && m_npcDialog->sayToExternalNpc(text)) {
             if (m_chatChannelStorage)
                 m_chatChannelStorage->addOwnNpcChannelEntry(chat::consoleColor(12), ownName(m_gameSession), text, ownLevel(m_gameSession));
         } else {
@@ -1769,17 +1752,12 @@ bool TChatController::handleAction(const input::IGameAction& action)
         m_primary.setSubscribeToServerLog(!m_primary.isSubscribedToServerLog());
         return true;
     case A::PRESS_ENTER_IN_CHAT:
-        // product: while the NPC dialog is open, Enter drives that input (CIP
-        // focuses the NPC pane; we never hand Enter to HudChat).
-        if (m_npcDialog && m_npcDialog->isShown()) {
-            if (!m_npcDialog->hasFocus())
-                m_npcDialog->takeFocus();
-            else
-                m_npcDialog->pressEnter();
-        } else if (const input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
-                   noDialog || !eventFilters || !eventFilters->isBlocked()) {
+        // CIP: the NPC dialog takes Enter while it has the focus.
+        if (m_npcDialog && m_npcDialog->hasFocus())
+            return true;
+        if (const input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+            noDialog || !eventFilters || !eventFilters->isBlocked())
             pressEnter();
-        }
         return true;
     case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: {
         const auto* input = input::gameActionAs<input::TGameActionSetCurrentChatChannelInputText>(&action);

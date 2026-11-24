@@ -342,13 +342,10 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
-    /// PRESS_ENTER_IN_CHAT, while it is shown SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT
-    /// , and during its product remote session the NPCs channel talks to
-    /// that NPC (Lua game_remote_dialog's console hook).
+    /// PRESS_ENTER_IN_CHAT, while it is shown SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT.
+    /// Host: during its external conversation (TExternalNpcConversation) the
+    /// NPCs channel talks to that NPC.
     void setNpcDialog(TNpcDialogController* dialog);
-    /// True while the NPC conversation dialog is on screen (product: bubble stays
-    /// closed; Enter / temporary chat-on focuses that dialog instead of HudChat).
-    bool npcDialogShown() const;
     /// CIP as the NPC dialog calls it : the line goes to
     /// `channel` rather than the current tab.
     QString sendChatMessageTo(chat::TChatChannel* channel, const QString& chatMessage, bool isSpell = false, int spellCastType = 0);

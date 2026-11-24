@@ -48,6 +48,13 @@ enum {
     QTCLIENT_WALK_UNREACHABLE_GO_UPSTAIRS = 4,
 
     QTCLIENT_THING_CATEGORY_EFFECT = 2,
+
+    /** set_creature_decoration_hook layers. */
+    QTCLIENT_CREATURE_LAYER_UNDER = 0, /* drawn before the creature's outfit */
+    QTCLIENT_CREATURE_LAYER_OVER = 1,  /* drawn after it */
+
+    /** QtClientCreatureDecoration.phase: the appearance's own animation on the frame clock. */
+    QTCLIENT_DECORATION_PHASE_ANIMATED = -1,
 };
 
 #ifdef __cplusplus

@@ -25,9 +25,9 @@ public:
     static void setInstance(TSoundHelperService* service);
 };
 
-/// The pack weather audio follows the sound options of `options`.
+/// An extension's ambience bed (TAmbienceHold) follows the sound options of `options`.
 void followSoundOptions(config::TClientOptions* options);
-/// Option change: the pack weather audio follows the ambience volume.
+/// Option change: an extension's ambience bed follows the ambience volume.
 void applyOptionVolumes();
 
 }

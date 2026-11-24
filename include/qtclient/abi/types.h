@@ -19,9 +19,18 @@ typedef struct QtClientImageView {
     int width;
     int height;
     int bytes_per_line;
-    /** 0 = RGBA8888 premultiplied-agnostic raw; other values reserved. */
+    /** QTCLIENT_IMAGE_FORMAT_*. */
     int format;
 } QtClientImageView;
+
+/** QtClientImageView.format. */
+enum {
+    /** RGBA bytes (premultiplied-agnostic raw). */
+    QTCLIENT_IMAGE_FORMAT_RGBA8888 = 0,
+    /** Native-endian 32-bit 0xAARRGGBB words, premultiplied (QImage::Format_ARGB32_Premultiplied):
+     *  the world frame's light map handed to QtClientWorldFrameHooks.filter_light_map. */
+    QTCLIENT_IMAGE_FORMAT_ARGB32_PREMULTIPLIED = 1,
+};
 
 typedef struct QtClientModIdentity {
     const char* id;

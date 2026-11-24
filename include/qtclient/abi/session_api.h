@@ -136,16 +136,33 @@ typedef struct QtClientTeamFinderTeam {
     uint32_t status;
 } QtClientTeamFinderTeam;
 
-typedef void (*QtClientTravelPathAsyncCallback)(void* user, int ok);
+/** A stored field of the session's map (host API v8+). `walkable`: creatures block. */
+typedef struct QtClientMapFieldInfo {
+    QtClientMapPos pos;
+    int ground_speed;
+    uint8_t walkable;
+    uint8_t pathable;
+} QtClientMapFieldInfo;
+
+/** An area or subarea of the Cyclopedia map's static data, map.dat (host API v8+).
+ *  Names are UTF-8, for display only; ids are the keys. `label` 0,0,0: none.
+ *  `mask_*`: the fields a subarea's mask file covers (has_mask_file 0: none). */
+typedef struct QtClientStaticMapArea {
+    uint16_t id;
+    uint16_t area_id;
+    int is_subarea;
+    char name[96];
+    char alias[96];
+    QtClientMapPos label;
+    int has_mask_file;
+    QtClientMapPos mask_origin;
+    int mask_width;
+    int mask_height;
+} QtClientStaticMapArea;
 
 typedef struct QtClientSessionApiV1 {
     int (*is_online)(void);
     int (*is_dead)(void);
-    /** The pack's scene-frozen flag. The host no longer freezes the scene on
-     *  death and its map handlers do not read the flag (CipSoft's scene keeps
-     *  applying map messages); it is pack-owned state only. */
-    int (*is_scene_frozen)(void);
-    void (*set_scene_frozen)(int frozen);
 
     int (*local_player_present)(void);
     QtClientMapPos (*local_player_map_pos)(void);
@@ -156,7 +173,7 @@ typedef struct QtClientSessionApiV1 {
 
     void (*local_player_stop_auto_walk)(void);
     int (*local_player_is_auto_walking)(void);
-    /** path_mode: tip AutoWalkPathMode as int. */
+    /** path_mode: QTCLIENT_AUTOWALK_PATH_* (the walk uses CipSoft's path finder whatever the mode). */
     int (*local_player_auto_walk)(QtClientMapPos goal, int retry, int path_mode);
 
     void (*talk)(const char* text);
@@ -177,9 +194,6 @@ typedef struct QtClientSessionApiV1 {
     void (*open_local_player_inventory)(uint8_t inventory_slot);
 
     uint8_t (*local_player_bless_visual_state)(void);
-    void (*local_player_set_information_channel)(uint32_t duration_ms);
-    void (*local_player_clear_information_channel)(void);
-    void (*local_player_set_soft_dead)(int soft_dead);
 
     uint32_t (*local_player_health)(void);
     uint32_t (*local_player_max_health)(void);
@@ -230,10 +244,6 @@ typedef struct QtClientSessionApiV1 {
 
     int (*is_sight_clear)(QtClientMapPos from, QtClientMapPos to);
     int (*is_walkable)(QtClientMapPos pos, int ignore_creatures);
-    int (*can_travel_path)(QtClientMapPos from, QtClientMapPos to, int max_complexity);
-
-    void (*can_travel_path_async)(QtClientMapPos from, QtClientMapPos to, QtClientTravelPathAsyncCallback cb,
-                                  void* user);
 
     void (*safe_logout)(void);
     void (*request_bless)(void);
@@ -267,26 +277,10 @@ typedef struct QtClientSessionApiV1 {
     void (*use_inventory_item_with_map_object)(uint16_t item_id, QtClientMapPos to_pos, uint16_t to_item_id,
                                                  int to_stack_pos);
 
-    void (*clear_effect_variants)(void);
-    void (*register_effect_variant)(uint16_t virtual_id, uint16_t base_id, const char* shader_utf8,
-                                   int under_creatures);
-    void (*register_attached_effect_by_thing)(uint16_t id, const char* note_utf8, uint16_t base_id, uint8_t category);
-    void (*remove_attached_effect)(uint16_t id);
-
     int (*creature_type_is_summon)(uint8_t creature_type);
 
     /** Returns stable Item* while the session runs; superseded by the next call on this thread. */
     QtClientHandle (*find_player_item)(uint32_t item_id, int sub_type);
-
-    int (*set_item_thing_shape)(uint16_t item_id, const char* shape_name_utf8);
-
-    /** CIP pathfinder avoid set (SnapBack / levitate mountain face). */
-    void (*set_path_avoid)(QtClientMapPos pos, int avoid);
-    void (*clear_path_avoids)(void);
-
-    /** Show / hide a registered attached effect on a creature (product transport). */
-    void (*attach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
-    void (*detach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
 
     /** QTCLIENT_DIRECTION_* the local player faces, or QTCLIENT_DIRECTION_INVALID offline. */
     int (*local_player_direction)(void);
@@ -323,6 +317,33 @@ typedef struct QtClientSessionApiV1 {
     int (*team_finder_params)(QtClientTeamFinderParams* out);
     size_t (*team_finder_members)(QtClientTeamFinderMember* out, size_t cap);
     size_t (*team_finder_teams)(QtClientTeamFinderTeam* out, size_t cap);
+
+    /** --- Creature draw filter (host API v8+; read only when api_version >= 8) ---
+     *  hidden != 0 keeps creature `creature_id` of the current session off the map
+     *  (outfit, decorations, name and bars); 0 shows it again. No effect for an unknown id;
+     *  the flag goes with the session's creature. */
+    void (*set_creature_hidden)(uint32_t creature_id, int hidden);
+
+    /** --- Map data (host API v8+; read only when api_version >= 8) ---
+     *  stored_fields_on_floor: the session map's stored fields on floor `z`; fills up to
+     *  `cap`, returns the total (0 between sessions). GUI thread.
+     *  is_aware_of_position: the position is in the session's aware range.
+     *  waypoint_costs_snapshot: the minimap's waypoint costs (CipSoft TWaypointCostMap:
+     *  0..250 walkable, 0xfe unknown, 0xff blocked), taken on the GUI thread; one worker
+     *  thread may call waypoint_cost_at on it afterwards; release it once.
+     *  static_map_*: map.dat's areas and subareas (client-wide, not per session).
+     *  static_map_area: `subarea` nonzero asks for a subarea; returns nonzero when known.
+     *  static_map_area_ids / static_map_subareas_of_area: ascending ids, up to `cap`,
+     *  return the total. */
+    size_t (*stored_fields_on_floor)(int z, QtClientMapFieldInfo* out, size_t cap);
+    int (*is_aware_of_position)(QtClientMapPos pos);
+    QtClientHandle (*waypoint_costs_snapshot)(void);
+    int (*waypoint_cost_at)(QtClientHandle costs, int x, int y, int z);
+    void (*waypoint_costs_release)(QtClientHandle costs);
+    uint16_t (*static_map_subarea_at)(QtClientMapPos pos);
+    int (*static_map_area)(uint16_t id, int subarea, QtClientStaticMapArea* out);
+    size_t (*static_map_area_ids)(int subareas, uint16_t* out, size_t cap);
+    size_t (*static_map_subareas_of_area)(uint16_t area_id, uint16_t* out, size_t cap);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

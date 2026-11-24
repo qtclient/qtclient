@@ -501,10 +501,12 @@ public:
     virtual const Position& field() const { return m_fieldPosition; }
     /// The animation's phase, 0 without one.
     int phase() const;
+    /// Host: an effect remap hook draws it in the creature layer of its field.
     bool underCreatures() const { return m_underCreatures; }
     void setUnderCreatures(const bool under) { m_underCreatures = under; }
-    uint16_t variantId() const { return m_variantId; }
-    void setVariantId(const uint16_t variantId) { m_variantId = variantId; }
+    /// Host: the effect remap hook's tint key (0 none), handed to the image tint hook.
+    uint8_t tint() const { return m_tint; }
+    void setTint(const uint8_t tint) { m_tint = tint; }
     tibia::client::MagicEffectSources source() const { return m_source; }
     void setSource(tibia::client::MagicEffectSources source);
     /// The opacity of the effect's source, from the options.
@@ -517,7 +519,7 @@ protected:
 
     qint64 m_startMs{ 0 };
     qint64 m_nowMs{ 0 };
-    uint16_t m_variantId{ 0 };
+    uint8_t m_tint{ 0 };
     tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
     bool m_underCreatures{ false };
     Position m_fieldPosition;

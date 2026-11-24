@@ -83,28 +83,32 @@ QString resolveEnvBrandPack(const QString& envPath)
 
 LauncherMods g_launcherMods;
 
-void scanLauncherCapabilities(const QString& modsRoot)
+void readLauncherChannels(const QString& packDir)
+{
+    QFile file(QDir(packDir).filePath(QStringLiteral("launcher.json")));
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
+    for (const QJsonValue& v : obj.value(QStringLiteral("channels")).toArray()) {
+        const QString channel = v.toString();
+        if (!channel.isEmpty() && !g_launcherMods.channels.contains(channel))
+            g_launcherMods.channels.append(channel);
+    }
+}
+
+/// launcher.json of every pack under `modsRoot`, and of `modsRoot` itself when
+/// it is one pack (QTCLIENT_MODS_DIR may name a pack's launcher/ dir).
+void scanLauncherChannels(const QString& modsRoot)
 {
     QDir mods(modsRoot);
     if (!mods.exists())
         return;
+    readLauncherChannels(modsRoot);
     const QFileInfoList entries = mods.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     for (const QFileInfo& info : entries) {
         if (info.fileName().startsWith(QLatin1Char('_')))
             continue;
-        const QString path = QDir(info.absoluteFilePath()).filePath(QStringLiteral("launcher.json"));
-        QFile file(path);
-        if (!file.open(QIODevice::ReadOnly))
-            continue;
-        const QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
-        const QJsonArray caps = obj.value(QStringLiteral("capabilities")).toArray();
-        for (const QJsonValue& v : caps) {
-            const QString c = v.toString();
-            if (c == QLatin1String("clientmods"))
-                g_launcherMods.clientModsChannel = true;
-            else if (c == QLatin1String("minimap"))
-                g_launcherMods.minimapChannel = true;
-        }
+        readLauncherChannels(info.absoluteFilePath());
     }
 }
 
@@ -127,10 +131,10 @@ void LauncherMods::load(bool noMods)
         return;
     const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
     if (!env.isEmpty()) {
-        scanLauncherCapabilities(env);
+        scanLauncherChannels(env);
         return;
     }
-    scanLauncherCapabilities(tipModsRoot());
+    scanLauncherChannels(tipModsRoot());
 }
 
 void LauncherBrand::load(int argc, char* argv[])

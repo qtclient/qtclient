@@ -96,10 +96,6 @@ const ModIdentity* primaryIdentity();
 void registerModUrls(ModUrls urls);
 /// First non-empty urls after priority sort (product pack priority 10 beats qtc-aac 50).
 const ModUrls* primaryUrls();
-/// Call from mod static initializers so identity is ready before QApplication.
-void ensureModsRegistered();
-using EnsureModsFn = void (*)();
-void setEnsureModsHook(EnsureModsFn fn);
 
 /// Pack `qml/` dirs discovered by ModLoader (startup). Applied when the QML engine is created.
 void addPackQmlImportPath(const std::string& absolutePath);
@@ -110,15 +106,11 @@ const std::vector<std::string>& packQmlImportPaths();
 void addPackOverrideRoot(const std::string& absolutePath);
 const std::vector<std::string>& packOverrideRoots();
 
-using EffectTintFn = uint8_t (*)(uint16_t effectId);
-using EffectVariantTintFn = uint8_t (*)(uint32_t variantId);
+/// The tint key a sprite record carries (effect remap / creature decoration
+/// hooks) recolours its texture once when it is made.
 using ApplyImageTintFn = void (*)(QImage& image, uint8_t tint);
 
-void setEffectTintHook(EffectTintFn fn);
-void setEffectVariantTintHook(EffectVariantTintFn fn);
 void setApplyImageTintHook(ApplyImageTintFn fn);
-EffectTintFn effectTintHook();
-EffectVariantTintFn effectVariantTintHook();
 ApplyImageTintFn applyImageTintHook();
 
 void setMissionBackend(MissionBackend* backend);

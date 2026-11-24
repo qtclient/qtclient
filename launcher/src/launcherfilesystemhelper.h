@@ -61,11 +61,13 @@ public:
     /// "hardwaresurvey" url; qtclient takes it from mod configuration so no
     /// CipSoft url is contacted (empty: no survey).
     QUrl systemSurveyUrl() const;
-    /// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else the pack brand's); empty for stock.
+    /// Host: origin of the tip's CDN bundle (QTCLIENT_CDN_URL, else the pack brand's); empty for stock.
     static QString cdnBase();
-    /// Host: `latest/release.json` of the product CDN (login revision); empty for stock.
-    QUrl releaseManifestUrl() const;
-    /// Host: content-addressed store base, when file downloads use it.
+    /// Host: [URLS] clientRevision — a JSON document whose "revision" is the
+    /// client revision handed to the client; empty: the package version.
+    QUrl clientRevisionUrl() const;
+    /// Host: [URLS] contentStore — content-addressed store base
+    /// (`<store>/<aa>/<packedhash>`) for file downloads; empty: CipSoft's file urls.
     QUrl contentStoreUrl() const;
     /// Host: where `file` is downloaded from (its url, or the content store blob).
     QUrl fileDownloadUrl(const TFileInPackage& file) const;

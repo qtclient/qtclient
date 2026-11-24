@@ -6,7 +6,7 @@
 #include "mods/mission_backend.h"
 #include "mods/registry.h"
 #include "mods/pack_host_abi.h"
-#include "mods/weather_driver.h"
+#include "mods/textureatlashint.h"
 #include "mods/worldview.h"
 #include "sprites/hdscale.h"
 
@@ -23,11 +23,18 @@
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "input/playermovementintent.h"
 #include "input/playermovementintenthandler.h"
+#include "input/keyboardshortcuthandler.h"
+#include "gamewindow/buttonbarcontroller.h"
 #include "protocol/clientmessages.h"
 #include "clockservice.h"
 #include <client/outfit.h>
 #include "game/mapsession.h"
 #include "game/thingsession.h"
+#include "creatures/creaturedecoration.h"
+#include "effects/effectremap.h"
+#include "minimap/waypointcosts.h"
+#include "renderer/worldframeview.h"
+#include "sound/ambiencehold.h"
 #include "game/gamenotify.h"
 #include "game/tgamenotify.h"
 #include "runtime/host.h"
@@ -197,129 +204,6 @@ QtClientImageView imageViewFromQImage(QImage& img)
     return v;
 }
 
-class AbiLightingAdapter final : public tibia::mods::WorldLightingDriver
-{
-public:
-    explicit AbiLightingAdapter(QtClientLightingDriver driver)
-        : m_driver(driver)
-    {
-    }
-
-    bool enabled() const override
-    {
-        return m_driver.enabled && m_driver.enabled(m_driver.self) != 0;
-    }
-    bool frameActive() const override
-    {
-        return m_driver.frame_active && m_driver.frame_active(m_driver.self) != 0;
-    }
-    bool hasFieldAmbient() const override
-    {
-        return !m_driver.has_field_ambient || m_driver.has_field_ambient(m_driver.self) != 0;
-    }
-    qint64 gatherNs() const override
-    {
-        return m_driver.gather_ns ? m_driver.gather_ns(m_driver.self) : 0;
-    }
-    qint64 roofsNs() const override
-    {
-        return m_driver.roofs_ns ? m_driver.roofs_ns(m_driver.self) : 0;
-    }
-    void setFieldAmbient(QImage ambient) override
-    {
-        if (!m_driver.set_field_ambient)
-            return;
-        m_driver.set_field_ambient(m_driver.self, imageViewFromQImage(ambient));
-    }
-    void setFieldClassic(QImage classic) override
-    {
-        if (!m_driver.set_field_classic)
-            return;
-        m_driver.set_field_classic(m_driver.self, imageViewFromQImage(classic));
-    }
-    void clearSession() override
-    {
-        if (m_driver.clear_session)
-            m_driver.clear_session(m_driver.self);
-    }
-    bool beginFrame(tibia::mods::LightingMapPos camera, int drawWidth, int drawHeight, int firstFloor,
-                    int lastFloor) override
-    {
-        if (!m_driver.begin_frame)
-            return false;
-        const QtClientLightingMapPos pos{camera.x, camera.y, camera.z};
-        return m_driver.begin_frame(m_driver.self, pos, drawWidth, drawHeight, firstFloor, lastFloor) != 0;
-    }
-    void beginFloor(int z) override
-    {
-        if (m_driver.begin_floor)
-            m_driver.begin_floor(m_driver.self, z);
-    }
-    void resetShade(int ix, int iy, bool canShade) override
-    {
-        if (m_driver.reset_shade)
-            m_driver.reset_shade(m_driver.self, ix, iy, canShade ? 1 : 0);
-    }
-    void endFrame(const void* worldGeometry) override
-    {
-        if (m_driver.end_frame)
-            m_driver.end_frame(m_driver.self, const_cast<void*>(worldGeometry));
-    }
-    void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) override
-    {
-        if (m_driver.add_center_light)
-            m_driver.add_center_light(m_driver.self, x, y, intensity, color);
-    }
-    void addFrame(const tibia::mods::LightingFrameDesc& frame) override
-    {
-        if (!m_driver.add_frame)
-            return;
-        QtClientLightingFrameDesc f{};
-        f.sprite_id = frame.spriteId;
-        f.anchor_x = frame.anchorX;
-        f.anchor_y = frame.anchorY;
-        f.displacement_x = frame.displacementX;
-        f.displacement_y = frame.displacementY;
-        f.shape = frame.shape;
-        f.elevation = frame.elevation;
-        f.hook = frame.hook;
-        f.on_top = frame.onTop ? 1 : 0;
-        f.casts_shadow = frame.castsShadow ? 1 : 0;
-        f.lying_corpse = frame.lyingCorpse ? 1 : 0;
-        f.has_light = frame.hasLight ? 1 : 0;
-        f.light_intensity = frame.lightIntensity;
-        f.light_color = frame.lightColor;
-        m_driver.add_frame(m_driver.self, &f);
-    }
-    int stampPhase(int animationPhase) const override
-    {
-        return m_driver.stamp_phase ? m_driver.stamp_phase(m_driver.self, animationPhase) : animationPhase;
-    }
-    void beginContext(const tibia::mods::LightingThingContext& ctx) override
-    {
-        if (!m_driver.begin_context)
-            return;
-        QtClientLightingThingContext c{};
-        c.lift = ctx.lift;
-        c.creature = ctx.creature ? 1 : 0;
-        c.walking = ctx.walking ? 1 : 0;
-        c.local_player = ctx.localPlayer ? 1 : 0;
-        c.loose = ctx.loose ? 1 : 0;
-        c.transient = ctx.transient ? 1 : 0;
-        c.caster = ctx.caster ? 1 : 0;
-        c.creature_id = ctx.creatureId;
-        m_driver.begin_context(m_driver.self, &c);
-    }
-    void endContext() override
-    {
-        if (m_driver.end_context)
-            m_driver.end_context(m_driver.self);
-    }
-
-private:
-    QtClientLightingDriver m_driver{};
-};
-
 class AbiOverlayAdapter final : public tibia::mods::WorldOverlayFactory
 {
 public:
@@ -362,7 +246,6 @@ private:
     QtClientWorldOverlayFactory m_factory{};
 };
 
-std::unique_ptr<AbiLightingAdapter> g_abiLighting;
 std::vector<std::unique_ptr<AbiOverlayAdapter>> g_abiOverlays;
 
 constexpr int kMaxBootstraps = 64;
@@ -490,20 +373,90 @@ void abiSetApplyImageTint(QtClientApplyImageTintFn fn)
 
 void abiSetLighting(const QtClientLightingDriver* driver)
 {
-    if (!driver) {
-        g_abiLighting.reset();
-        tibia::mods::setWorldLightingDriver(nullptr);
-        return;
-    }
-    g_abiLighting = std::make_unique<AbiLightingAdapter>(*driver);
-    tibia::mods::setWorldLightingDriver(g_abiLighting.get());
+    tibia::mods::setWorldLightingDriverAbi(driver);
 }
 
 void abiSetFrameHooks(QtClientWorldFrameHooks hooks)
 {
-    tibia::mods::WorldFrameHooks h;
-    h.requestOutdoorGather = hooks.request_outdoor_gather != 0;
-    tibia::mods::setWorldFrameHooks(h);
+    tibia::mods::setWorldFrameHooksAbi(hooks);
+}
+
+QtClientEffectRemapFn g_abiEffectRemap = nullptr;
+void* g_abiEffectRemapUser = nullptr;
+
+bool tipEffectRemap(void*, const uint16_t effectId, tibia::effects::TEffectRemap& out)
+{
+    QtClientEffectRemap remap{};
+    if (!g_abiEffectRemap || !g_abiEffectRemap(g_abiEffectRemapUser, effectId, &remap))
+        return false;
+    out.drawId = remap.draw_id;
+    out.tint = remap.tint;
+    out.underCreatures = remap.under_creatures != 0;
+    return true;
+}
+
+void abiSetEffectRemap(QtClientEffectRemapFn fn, void* user)
+{
+    g_abiEffectRemap = fn;
+    g_abiEffectRemapUser = fn ? user : nullptr;
+    tibia::effects::setEffectRemapHook(fn ? &tipEffectRemap : nullptr, nullptr);
+}
+
+QtClientCreatureDecorationFn g_abiDecoration = nullptr;
+void* g_abiDecorationUser = nullptr;
+
+size_t tipCreatureDecoration(void*, const uint32_t creatureId, const bool overOutfit,
+                             tibia::creatures::TCreatureDecoration* out, const size_t cap)
+{
+    if (!g_abiDecoration || !out || cap == 0)
+        return 0;
+    constexpr size_t MaxDecorations = 16;
+    QtClientCreatureDecoration decorations[MaxDecorations] = {};
+    const size_t limit = std::min(cap, MaxDecorations);
+    const size_t count = std::min(
+        g_abiDecoration(g_abiDecorationUser, creatureId,
+                        overOutfit ? QTCLIENT_CREATURE_LAYER_OVER : QTCLIENT_CREATURE_LAYER_UNDER, decorations, limit),
+        limit);
+    for (size_t i = 0; i < count; ++i) {
+        const QtClientCreatureDecoration& d = decorations[i];
+        out[i].appearanceId = d.appearance_id;
+        out[i].category = d.category;
+        out[i].tint = d.tint;
+        out[i].offsetX = d.offset_x;
+        out[i].offsetY = d.offset_y;
+        out[i].phase = d.phase;
+        out[i].patternX = d.pattern_x;
+        out[i].opacity = d.opacity;
+    }
+    return count;
+}
+
+void abiSetCreatureDecoration(QtClientCreatureDecorationFn fn, void* user)
+{
+    g_abiDecoration = fn;
+    g_abiDecorationUser = fn ? user : nullptr;
+    tibia::creatures::setCreatureDecorationHook(fn ? &tipCreatureDecoration : nullptr, nullptr);
+}
+
+void abiRegisterButtonBarShortcut(const char* id, const char* label, const char* image, const int defaultEnabled,
+                                  void (*run)(void*), void* user)
+{
+    if (!id || !run)
+        return;
+    tibia::gamewindow::TButtonBarController::addExtensionShortcut(
+        QString::fromUtf8(id), label ? QString::fromUtf8(label) : QString(), [run, user] { run(user); },
+        defaultEnabled != 0, image ? QString::fromUtf8(image) : QString());
+}
+
+void abiRegisterHotkeyAction(const char* name, const char* defaultKeys, const char* description,
+                             void (*run)(void*), void* user)
+{
+    if (!name || !run)
+        return;
+    tibia::input::TKeyboardShortcutHandler::addExtensionAction(
+        QString::fromUtf8(name),
+        defaultKeys ? QKeySequence(QString::fromUtf8(defaultKeys), QKeySequence::PortableText) : QKeySequence(),
+        [run, user] { run(user); }, description ? QString::fromUtf8(description) : QString());
 }
 
 void abiSetMission(void* backend)
@@ -517,10 +470,6 @@ void abiSetAttention(void* backend)
 void abiSetInstance(void* backend)
 {
     tibia::mods::setInstanceBackend(static_cast<tibia::mods::InstanceBackend*>(backend));
-}
-void abiSetWeather(void* driver)
-{
-    tibia::mods::setWeatherDriver(static_cast<tibia::mods::WeatherDriver*>(driver));
 }
 void abiAddOverlay(const QtClientWorldOverlayFactory* factory)
 {
@@ -555,7 +504,7 @@ void abiSetLoginSync(QtClientLoginSyncEnqueueFn fn)
 
 void abiSetHdScaler(int factor, QtClientHdScaleFn fn, void* user)
 {
-    // ImagePtr↔view bridge lands with IdleOT MODULE peel; clear or keep factor only.
+    // ImagePtr↔view bridge lands with the MODULE peel; clear or keep factor only.
     Q_UNUSED(fn);
     Q_UNUSED(user);
     if (!fn) {
@@ -734,16 +683,6 @@ int sessIsDead()
     const tibia::game::TGameSessionBase* session = liveSession();
     return session && session->isDead() ? 1 : 0;
 }
-int sessIsFrozen()
-{
-    const tibia::game::TGameSessionBase* session = liveSession();
-    return session && session->isSceneFrozen() ? 1 : 0;
-}
-void sessSetFrozen(int frozen)
-{
-    if (tibia::game::TGameSessionBase* session = liveSession())
-        session->setSceneFrozen(frozen != 0);
-}
 int sessPlayerPresent() { return hasLocalPlayer() ? 1 : 0; }
 
 QtClientMapPos sessPlayerMapPos()
@@ -884,29 +823,16 @@ uint8_t sessBlessVisual()
     return data ? data->blessVisualState() : 0;
 }
 
-void sessSetInfoChannel(uint32_t ms)
+void sessSetCreatureHidden(const uint32_t creatureId, const int hidden)
 {
-    if (const auto player = localPlayerCreature())
-        player->setInformationChannel(ms, tibia::shared::TClockService::frameMillis());
-}
-
-void sessClearInfoChannel()
-{
-    if (const auto player = localPlayerCreature())
-        player->clearInformationChannel();
-}
-
-void sessSetSoftDead(int v)
-{
-    const bool softDead = v != 0;
-    const auto player = localPlayerCreature();
-    if (!player || player->isSoftDead() == softDead)
+    tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
+    if (!storage)
         return;
-    player->setSoftDead(softDead);
-    if (tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && softDead)
-        data->updateHealth(0, static_cast<uint32_t>(data->maxHealth()));
-    if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage())
-        storage->publishCreatureUpdated(player);
+    const auto creature = storage->creatureAt(creatureId);
+    if (!creature || creature->isDrawSuppressed() == (hidden != 0))
+        return;
+    creature->setDrawSuppressed(hidden != 0);
+    storage->publishCreatureUpdated(creature);
 }
 
 uint32_t sessLpHealth()
@@ -1222,28 +1148,82 @@ int sessWalkable(QtClientMapPos pos, int ignore_creatures)
     return tibia::game::isWalkable(toGameMapPos(pos), ignore_creatures != 0) ? 1 : 0;
 }
 
-int sessCanTravelPath(QtClientMapPos from, QtClientMapPos to, int max_complexity)
+size_t sessStoredFieldsOnFloor(int z, QtClientMapFieldInfo* out, size_t cap)
 {
-    return tibia::game::canTravelPath(toGameMapPos(from), toGameMapPos(to), max_complexity) ? 1 : 0;
+    const std::vector<tibia::game::MapFieldInfo> fields = tibia::game::storedFieldsOnFloor(z);
+    for (size_t i = 0; out && i < fields.size() && i < cap; ++i) {
+        const tibia::game::MapFieldInfo& f = fields[i];
+        out[i] = QtClientMapFieldInfo{ { f.pos.x, f.pos.y, f.pos.z }, f.groundSpeed,
+                                       static_cast<uint8_t>(f.walkable ? 1 : 0), static_cast<uint8_t>(f.pathable ? 1 : 0) };
+    }
+    return fields.size();
 }
 
-void sessSetPathAvoid(QtClientMapPos pos, int avoid)
+int sessIsAwareOfPosition(QtClientMapPos pos)
 {
-    tibia::game::setPathAvoid(toGameMapPos(pos), avoid != 0);
+    return tibia::game::isAwareOfPosition(toGameMapPos(pos)) ? 1 : 0;
 }
 
-void sessClearPathAvoids()
+using WaypointCostsRef = std::shared_ptr<tibia::minimap::TWaypointCosts>;
+
+QtClientHandle sessWaypointCostsSnapshot()
 {
-    tibia::game::clearPathAvoids();
+    WaypointCostsRef costs = tibia::game::waypointCostsSnapshot();
+    return QtClientHandle{ costs ? new WaypointCostsRef(std::move(costs)) : nullptr };
 }
 
-void sessCanTravelPathAsync(QtClientMapPos from, QtClientMapPos to, QtClientTravelPathAsyncCallback cb, void* user)
+int sessWaypointCostAt(QtClientHandle costs, int x, int y, int z)
 {
-    if (!cb)
-        return;
-    tibia::game::canTravelPathAsync(
-        toGameMapPos(from), toGameMapPos(to),
-        [cb, user](const bool ok) { tibia::schedule::post([cb, user, ok] { cb(user, ok ? 1 : 0); }); });
+    auto* ref = static_cast<WaypointCostsRef*>(costs.ptr);
+    return ref && *ref ? (*ref)->costAt(x, y, z) : tibia::minimap::TWaypointCosts::UnknownCost;
+}
+
+void sessWaypointCostsRelease(QtClientHandle costs)
+{
+    delete static_cast<WaypointCostsRef*>(costs.ptr);
+}
+
+uint16_t sessStaticMapSubAreaAt(QtClientMapPos pos)
+{
+    return tibia::game::staticMapSubAreaAt(toGameMapPos(pos));
+}
+
+int sessStaticMapArea(uint16_t id, int subarea, QtClientStaticMapArea* out)
+{
+    if (!out)
+        return 0;
+    tibia::game::StaticMapArea area;
+    if (!tibia::game::staticMapArea(id, subarea != 0, area))
+        return 0;
+    *out = QtClientStaticMapArea{};
+    out->id = area.id;
+    out->area_id = area.areaId;
+    out->is_subarea = area.isSubArea ? 1 : 0;
+    std::snprintf(out->name, sizeof out->name, "%s", area.name.c_str());
+    std::snprintf(out->alias, sizeof out->alias, "%s", area.alias.c_str());
+    out->label = QtClientMapPos{ area.label.x, area.label.y, area.label.z };
+    out->has_mask_file = area.hasMaskFile ? 1 : 0;
+    out->mask_origin = QtClientMapPos{ area.maskOrigin.x, area.maskOrigin.y, area.maskOrigin.z };
+    out->mask_width = area.maskWidth;
+    out->mask_height = area.maskHeight;
+    return 1;
+}
+
+size_t copyIds(const std::vector<uint16_t>& ids, uint16_t* out, size_t cap)
+{
+    for (size_t i = 0; out && i < ids.size() && i < cap; ++i)
+        out[i] = ids[i];
+    return ids.size();
+}
+
+size_t sessStaticMapAreaIds(int subareas, uint16_t* out, size_t cap)
+{
+    return copyIds(tibia::game::staticMapAreaIds(subareas != 0), out, cap);
+}
+
+size_t sessStaticMapSubAreasOfArea(uint16_t area_id, uint16_t* out, size_t cap)
+{
+    return copyIds(tibia::game::staticMapSubAreasOfArea(area_id), out, cap);
 }
 
 void sessSafeLogout()
@@ -1395,25 +1375,6 @@ void sessUseInvWithMap(uint16_t item_id, QtClientMapPos to_pos, uint16_t to_item
     tibia::game::notify("onUseWith", pos, item_id, to, 0);
 }
 
-void sessClearEffectVariants() { tibia::game::clearEffectVariants(); }
-
-void sessRegisterEffectVariant(uint16_t virtual_id, uint16_t base_id, const char* shader_utf8, int under_creatures)
-{
-    if (!shader_utf8)
-        return;
-    tibia::game::registerEffectVariant(virtual_id, base_id, std::string(shader_utf8), under_creatures != 0);
-}
-
-void sessRegAttachedByThing(uint16_t id, const char* note_utf8, uint16_t base_id, uint8_t category)
-{
-    if (!note_utf8)
-        return;
-    tibia::game::registerAttachedEffectByThing(id, std::string_view(note_utf8), base_id, category);
-}
-
-void sessRemoveAttached(uint16_t id) { tibia::game::removeAttachedEffect(id); }
-void sessAttachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::attachCreatureEffect(creature_id, effect_id); }
-void sessDetachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::detachCreatureEffect(creature_id, effect_id); }
 int sessLpDirection()
 {
     if (!hasLocalPlayer())
@@ -1447,12 +1408,6 @@ QtClientHandle sessFindPlayerItem(uint32_t item_id, int sub_type)
     return h;
 }
 
-int sessSetItemThingShape(uint16_t item_id, const char* shape_name_utf8)
-{
-    if (!shape_name_utf8)
-        return 0;
-    return tibia::game::setItemThingShape(item_id, std::string_view(shape_name_utf8)) ? 1 : 0;
-}
 
 // The current game session's objects (opaque to the ABI; the pack casts them back).
 void* sessContainerStorage() { return tibia::game::currentContainerStorage(); }
@@ -1575,8 +1530,6 @@ void bindTeamFinderStorage()
 const QtClientSessionApiV1 g_sessionApi = {
     .is_online = &sessIsOnline,
     .is_dead = &sessIsDead,
-    .is_scene_frozen = &sessIsFrozen,
-    .set_scene_frozen = &sessSetFrozen,
     .local_player_present = &sessPlayerPresent,
     .local_player_map_pos = &sessPlayerMapPos,
     .local_player_name = &sessPlayerName,
@@ -1598,9 +1551,6 @@ const QtClientSessionApiV1 g_sessionApi = {
     .open_local_player_inventory = &sessOpenInv,
 
     .local_player_bless_visual_state = &sessBlessVisual,
-    .local_player_set_information_channel = &sessSetInfoChannel,
-    .local_player_clear_information_channel = &sessClearInfoChannel,
-    .local_player_set_soft_dead = &sessSetSoftDead,
 
     .local_player_health = &sessLpHealth,
     .local_player_max_health = &sessLpMaxHealth,
@@ -1643,8 +1593,6 @@ const QtClientSessionApiV1 g_sessionApi = {
 
     .is_sight_clear = &sessSightClear,
     .is_walkable = &sessWalkable,
-    .can_travel_path = &sessCanTravelPath,
-    .can_travel_path_async = &sessCanTravelPathAsync,
 
     .safe_logout = &sessSafeLogout,
     .request_bless = &sessRequestBless,
@@ -1675,21 +1623,12 @@ const QtClientSessionApiV1 g_sessionApi = {
     .use_map_object = &sessUseMapObject,
     .use_inventory_item_with_map_object = &sessUseInvWithMap,
 
-    .clear_effect_variants = &sessClearEffectVariants,
-    .register_effect_variant = &sessRegisterEffectVariant,
-    .register_attached_effect_by_thing = &sessRegAttachedByThing,
-    .remove_attached_effect = &sessRemoveAttached,
 
     .creature_type_is_summon = &sessCreatureTypeIsSummon,
 
     .find_player_item = &sessFindPlayerItem,
 
-    .set_item_thing_shape = &sessSetItemThingShape,
 
-    .set_path_avoid = &sessSetPathAvoid,
-    .clear_path_avoids = &sessClearPathAvoids,
-    .attach_creature_effect = &sessAttachCreatureEffect,
-    .detach_creature_effect = &sessDetachCreatureEffect,
     .local_player_direction = &sessLpDirection,
     .local_player_hold_direction = &sessHoldDirection,
     .local_player_release_direction = &sessReleaseDirection,
@@ -1704,6 +1643,16 @@ const QtClientSessionApiV1 g_sessionApi = {
     .team_finder_params = &sessTfParams,
     .team_finder_members = &sessTfMembers,
     .team_finder_teams = &sessTfTeams,
+    .set_creature_hidden = &sessSetCreatureHidden,
+    .stored_fields_on_floor = &sessStoredFieldsOnFloor,
+    .is_aware_of_position = &sessIsAwareOfPosition,
+    .waypoint_costs_snapshot = &sessWaypointCostsSnapshot,
+    .waypoint_cost_at = &sessWaypointCostAt,
+    .waypoint_costs_release = &sessWaypointCostsRelease,
+    .static_map_subarea_at = &sessStaticMapSubAreaAt,
+    .static_map_area = &sessStaticMapArea,
+    .static_map_area_ids = &sessStaticMapAreaIds,
+    .static_map_subareas_of_area = &sessStaticMapSubAreasOfArea,
 };
 
 // --- Notify nested API ---
@@ -1994,9 +1943,6 @@ const QtClientHostApiV1 g_hostApi = {
     .host_build_id = qtclient_host_build_id,
     .register_mod = &abiRegisterMod,
     .register_early_bootstrap = &abiRegisterEarly,
-    .set_ensure_mods_hook = &tibia::mods::setEnsureModsHook,
-    .set_effect_tint_hook = &tibia::mods::setEffectTintHook,
-    .set_effect_variant_tint_hook = &tibia::mods::setEffectVariantTintHook,
     .set_apply_image_tint_hook = &abiSetApplyImageTint,
     .set_mission_backend = &abiSetMission,
     .set_attention_backend = &abiSetAttention,
@@ -2005,7 +1951,6 @@ const QtClientHostApiV1 g_hostApi = {
     .set_world_lighting_driver = &abiSetLighting,
     .add_world_overlay_factory = &abiAddOverlay,
     .set_world_frame_hooks = &abiSetFrameHooks,
-    .set_weather_driver = &abiSetWeather,
     .set_hd_scaler = &abiSetHdScaler,
     .host_os = &abiHostOs,
     .session = &g_sessionApi,
@@ -2013,6 +1958,13 @@ const QtClientHostApiV1 g_hostApi = {
     .options = &g_optionsApi,
     .pack_host = tibia::mods::packHostAbiTable(),
     .set_walk_unreachable_hook = &tibia::mods::setWalkUnreachableHook,
+    .set_effect_remap_hook = &abiSetEffectRemap,
+    .set_creature_decoration_hook = &abiSetCreatureDecoration,
+    .world_field_stack = &tibia::qmlcomponents::worldFieldStack,
+    .set_texture_atlas_hint = &tibia::mods::setTextureAtlasHint,
+    .sound = tibia::sound::soundApiV1(),
+    .register_button_bar_shortcut = &abiRegisterButtonBarShortcut,
+    .register_hotkey_action = &abiRegisterHotkeyAction,
 };
 
 } // namespace

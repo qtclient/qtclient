@@ -158,7 +158,6 @@ void TAppearancesManager::terminate()
     m_monsterRaces.clear();
     m_marketObjectTypes.clear();
     m_skillWheelGemObjectTypes.clear();
-    m_effectVariants.clear();
     tibia::sprites::TSpriteSystem::instance().clear();
 }
 
@@ -563,34 +562,6 @@ std::set<QString> TAppearancesManager::creatureProductBuyerNames() const
             names.insert(name);
     }
     return names;
-}
-
-bool TAppearancesManager::setThingShape(const uint16_t itemId, const std::string& shape)
-{
-    static constexpr std::pair<std::string_view, ThingShape> names[] = {
-        { "auto", ThingShape::Auto }, { "flat", ThingShape::Flat }, { "wall", ThingShape::Wall },
-        { "box", ThingShape::Box }, { "round", ThingShape::Round }, { "window", ThingShape::Window },
-        { "ridge", ThingShape::Ridge },
-    };
-    const auto it = std::ranges::find(names, shape, &std::pair<std::string_view, ThingShape>::first);
-    if (it == std::end(names))
-        return false;
-    m_thingShapes[itemId] = it->second;
-    return true;
-}
-
-ThingShape TAppearancesManager::thingShape(const uint16_t itemId) const
-{
-    const auto it = m_thingShapes.find(itemId);
-    return it != m_thingShapes.end() ? it->second : ThingShape::Auto;
-}
-
-void TAppearancesManager::registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader, const bool underCreatures)
-{
-    if (virtualId == 0 || baseId == 0) {
-        return;
-    }
-    m_effectVariants[virtualId] = EffectVariant{ baseId, shader, underCreatures };
 }
 
 }

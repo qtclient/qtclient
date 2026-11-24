@@ -18,7 +18,7 @@ namespace chat {
 class TTextStorage;
 class TWhiteBlacklist;
 
-/// The pack's status lines (an IdleOT host extension). The status line and
+/// The pack's status lines (a host extension). The status line and
 /// centre message game actions are chat::TChatGameActionHandler's; the
 /// server's talk and text messages go through chat::TChatProtocolMessageHandler.
 class TGameMessageHandler

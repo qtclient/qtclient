@@ -78,9 +78,10 @@ quint8 buildCpuArchitecture();
 quint8 currentCpuArchitecture();
 
 /// Host (qtclient): a non-CipSoft download channel of a build, published by
-/// the release tip as `<name>url` / `<name>versionurl` (mods, minimap). Its
+/// the launcher configuration as `<name>url` / `<name>versionurl`. Its
 /// manifest has the assets.json shape; the files install into the package
-/// directory together with the assets. Gated by launcher mod capabilities.
+/// directory together with the assets. Only the channels a tip pack names in
+/// its launcher.json "channels" download (enabledHostChannels).
 struct THostChannel {
     QString name;
     QUrl url;
@@ -99,7 +100,7 @@ struct TPackageBuild {
     QUrl assetsUrl;
     QUrl assetsVersionUrl;
     std::unique_ptr<TPackageConfiguration> configuration;
-    /// Host channels the tip publishes for this build (not filtered by capability).
+    /// Host channels the configuration publishes for this build (not filtered).
     std::vector<THostChannel> hostChannels;
     /// Host channels whose version is part of the configuration's assets version.
     QStringList activeHostChannels;

@@ -13,6 +13,7 @@
 #include "config/tibiaconfig.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "mods/textureatlashint.h"
 #include "crashhandler.h"
 #include "downloadpool.h"
 #include "logging.h"
@@ -81,7 +82,7 @@ void TGameApplicationBase::initialize()
     qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
     // Host: qtclient's client options are the process-wide object.
     m_pClientOptions = config::TClientOptions::instance();
-    // Host: the JSON view of the same options (the pack's HD mode is no CIP option).
+    // Host: the JSON view of the same options.
     const app::ClientOptions options = app::ClientOptions::load();
 
     app::probeSupportedRenderers();
@@ -118,15 +119,16 @@ void TGameApplicationBase::initialize()
 
     // The scene graph atlas from the client settings (at least 512 a side,
     // a smaller stored side is written back); textures up to an eighth of
-    // the longer side, at most 256, go into it. Host: the pack's HD mode
-    // (option modHdMode) raises the defaults and the cap so xBRZ 4x plates
-    // stay in the atlas.
-    const bool hdMode = options.options().value(QLatin1String("modHdMode")).toBool(false);
+    // the longer side, at most 256, go into it. Host: an extension's texture
+    // atlas hint may raise the default side and the cap (no hint: CipSoft's).
+    int atlasDefaultSide = 4096;
+    int atlasSizeCap = 256;
+    tibia::mods::applyTextureAtlasHint(atlasDefaultSide, atlasSizeCap);
     const QString graphics = QStringLiteral("GRAPHICS");
-    const qint64 atlasDefault = hdMode ? 8192 : 4096;
+    const qint64 atlasDefault = atlasDefaultSide;
     const int atlasWidth = int(config::clientSettingAtLeast(graphics, QStringLiteral("qsgAtlasWidth"), atlasDefault, 512));
     const int atlasHeight = int(config::clientSettingAtLeast(graphics, QStringLiteral("qsgAtlasHeight"), atlasDefault, 512));
-    const int sizeLimit = std::min(std::max(atlasWidth, atlasHeight) >> 3, hdMode ? 1024 : 256);
+    const int sizeLimit = std::min(std::max(atlasWidth, atlasHeight) >> 3, atlasSizeCap);
     qputenv("QSG_ATLAS_WIDTH", QByteArray::number(atlasWidth));
     qputenv("QSG_ATLAS_HEIGHT", QByteArray::number(atlasHeight));
     qputenv("QSG_ATLAS_SIZE_LIMIT", QByteArray::number(sizeLimit + 1));

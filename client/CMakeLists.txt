@@ -143,9 +143,6 @@ endif()
 # Tip-linked engine TUs only (Phase 8.2). OTC host leftovers (application /
 # graphicalapplication / mouse / platform windows / proxy / discord) deleted.
 set(SOURCE_FILES
-        tibia/idleot/heightstamp.cpp
-        tibia/idleot/appearanceshape.cpp
-        tibia/idleot/stats.cpp
         tibia/client/outfit.cpp
         tibia/client/position.cpp
         tibia/protocol/extendedopcode.cpp
@@ -159,8 +156,6 @@ set(SOURCE_FILES
         tibia/assets/things.cpp
         tibia/assets/specialappearances.cpp
         tibia/worldmap/worldmapfield.cpp
-        tibia/creatures/attachedeffect.cpp
-        tibia/creatures/attachedeffectmanager.cpp
 )
 
 

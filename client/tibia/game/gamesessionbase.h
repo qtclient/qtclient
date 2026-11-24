@@ -808,10 +808,6 @@ public:
     bool isDead() const { return m_dead; }
     /// A same-socket character switch is in progress.
     bool isSwitchingCharacter() const { return m_switchingCharacter; }
-    /// The pack's scene-frozen flag (pack ABI is/set_scene_frozen). The host's
-    /// handlers do not read it: CipSoft's scene keeps applying map messages.
-    bool isSceneFrozen() const { return m_sceneFrozen; }
-    void setSceneFrozen(bool frozen) { m_sceneFrozen = frozen; }
     /// Online, with a living character and a connected game connection (the
     /// pack ABI's can-perform check and the CLI smoke tooling; CipSoft's
     /// controllers hand their messages to the session's queue unchecked).
@@ -949,7 +945,6 @@ private:
     bool m_playerPresent = false;
     bool m_dead = false;
     bool m_switchingCharacter = false;
-    bool m_sceneFrozen = false;
     bool m_expertPvpMode = false;
     bool m_canExivaOptions = false;
     bool m_connectionFailWarned = false;

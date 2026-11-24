@@ -1,7 +1,9 @@
 #include "npctradecontroller.h"
 #include "game/gameactionrouter.h"
 #include "game/gamesessionbase.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/clientoptions.h"
+#include "config/sidebaroptions.h"
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 
@@ -268,12 +270,6 @@ TNPCTradeController::TNPCTradeController(QQuickItem* DialogParentItem, QQmlEngin
     m_confirmation->setCloseOnButtonClicked(true);
     connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
 
-    // Host: the trade options are a host option; a change from elsewhere (the
-    // pack's options.store) refreshes the copy. setOptions refreshes itself.
-    connect(config::TClientOptions::instance(), &config::TClientOptions::extraOptionChanged, this, [this](const QString& name) {
-        if (name == OptionsKey)
-            onNpcTradeOptionsChanged();
-    });
 }
 
 void TNPCTradeController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -304,6 +300,12 @@ void TNPCTradeController::setTradeStorage()
         m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this, &TNPCTradeController::currencyBalanceChanged));
         m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this,
                                                &TNPCTradeController::onAvailableCurrencyBalanceMightHaveChagned));
+        // CIP: the sidebar options' npcTradeOptionsChanged refreshes the trade options.
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+        if (config::TSidebarOptions* sidebarOptions =
+                session && session->characterConfigurationManager() ? session->characterConfigurationManager()->sidebarOptions() : nullptr)
+            m_storageConnections.push_back(connect(sidebarOptions, &config::TSidebarOptions::npcTradeOptionsChanged, this,
+                                                   &TNPCTradeController::onNpcTradeOptionsChanged));
         Q_EMIT showNameFitlerChanged();
         m_refreshTimer.start();
         Q_EMIT currencyChanged();

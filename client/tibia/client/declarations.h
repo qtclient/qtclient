@@ -32,10 +32,6 @@ enum ThingCategory : uint8_t;
 enum PLAYER_ACTION : uint8_t;
 enum ITEM_CATEGORY : uint8_t;
 
-// core
-class LightSink;
-class AttachedEffect;
-
 namespace tibia::appearances {
 class TAppearanceType;
 }
@@ -48,7 +44,6 @@ class TWorldMapField;
 }
 
 using TAppearanceTypePtr = TAppearanceType*;
-using AttachedEffectPtr = std::shared_ptr<AttachedEffect>;
 
 using TAppearanceTypeList = std::vector<TAppearanceTypePtr>;
 

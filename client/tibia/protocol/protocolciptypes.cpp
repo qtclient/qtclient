@@ -31,11 +31,8 @@
 
 #include <protocol.pb.h>
 
-#include <idleot/stats.h>
-
 #include <algorithm>
 #include <cstring>
-#include <format>
 #include <stdexcept>
 #include <string>
 
@@ -2077,8 +2074,6 @@ std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::readGameser
     const EProductMessage productMessage = readProductMessage(reader);
     if (productMessage == EProductMessage::None) {
         if (reader.remaining() > 0) {
-            const uint8_t opcode = reader.p[reader.i];
-            AutoStat stat(STATS_PACKETS, std::format("{} (0x{:02X})", opcode, opcode));
             message = translateServerMessage(reader);
         }
         if (!message)

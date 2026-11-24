@@ -426,14 +426,10 @@ def stage_pack_into_tree(tree: Path, pack: Path, tip_os: str) -> None:
     sibling = mods_root / "qtc-aac"
     if sibling.is_dir() and pack_id != "qtc-aac":
         shutil.rmtree(sibling)
-    # Default launcher channel gates.
-    for gate in ("clientmods", "minimap"):
-        src = OTC / "launcher" / "mods" / gate / "launcher.json"
-        if not src.is_file():
-            continue
-        gdest = mods_root / gate
-        gdest.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, gdest / "launcher.json")
+    # The pack's launcher config (download channels), next to its client/ dir.
+    launcher_json = pack.parent / "launcher" / "launcher.json"
+    if launcher_json.is_file():
+        shutil.copy2(launcher_json, dest / "launcher.json")
 
 
 def iter_pack_files(root: Path) -> list[Path]:

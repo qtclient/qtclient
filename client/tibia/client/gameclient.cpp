@@ -165,7 +165,7 @@
 #include "sound/soundmetadatamanager.h"
 #include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
-#include "sound/weatheraudio.h"
+#include "sound/ambiencehold.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/nextframetimestamppredictor.h"
@@ -1420,8 +1420,8 @@ void TGameClient::onWorldEntered()
     Q_EMIT characterSelectionClosed();
     // The map handler keeps the minimap's floor and fields current.
     setMinimapWorldmapProtocolHandler(worldmapProtocol());
-    // Host: the pack's travel path probe (game/mapsession) reads the minimap's
-    // waypoint costs (TWaypointCosts) of the session's world.
+    // Host: the pack ABI's waypoint cost snapshot (game/mapsession) reads the
+    // minimap's waypoint costs (TWaypointCosts) of the session's world.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
         return minimap::snapshotWaypointCosts(minimapTileStorage().get());
     });
@@ -1773,7 +1773,6 @@ bool TGameClient::initializeWithStartMode(const int StartMode, const TGameWindow
     if (!startEngine(Setup.argv0, Setup.workDir))
         return false;
     initialize();
-    setMainWindow(Setup.window);
     if (!shared::TTibiaFileSystemHelper::hasForcePatchMarker()) {
         assetManager()->startLoading();
         connect(assetManager().get(), &assets::TAssetManager::assetDataAccessible, this, &TGameClient::onAssetFinishedLoading);
@@ -1814,8 +1813,8 @@ void TGameClient::initializeSound()
     ::tibia::client::TGameClientBase::initializeSound();
     if (!m_pSoundController)
         return;
-    // Host: the pack's weather audio plays through the client's controller.
-    sound::TWeatherAudio::instance().setSoundController(m_pSoundController.get());
+    // Host: an extension's ambience hold plays through the client's controller.
+    sound::TAmbienceHold::instance().setSoundController(m_pSoundController.get());
     // Out of the game the title music plays once the sound bank is known.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
         if (!sessionOnline())

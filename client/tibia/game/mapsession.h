@@ -1,7 +1,8 @@
 #pragma once
 
-/// Pack-ABI map peels over the current session's `TWorldMapStorage`: walk, use,
-/// sight and the IdleOT travel path probe. Called from `mods/host_api_v1.cpp`
+/// Pack-ABI map peels over the current session's `TWorldMapStorage` (walk, use,
+/// sight, stored fields), the minimap's waypoint costs and the Cyclopedia map's
+/// static data. Called from `mods/host_api_v1.cpp`
 /// (and the few host callers that want POD positions).
 /// Header must not include `worldmapstorage.h`, `TWorldMapField`, or `client/position.h`
 /// (position.h pulls framework into pack_sdk).
@@ -11,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace tibia {
@@ -50,15 +52,6 @@ struct MapUseHit {
     int stackPos = -1;
 };
 
-/// Sync travel path probe (AutoWalkPathTravel): the IdleOT travel router asks
-/// it before arming an auto walk. `maxComplexity` caps the A* expansion.
-bool canTravelPath(MapPos from, MapPos to, int maxComplexity = 8000);
-
-/// Async travel path probe (AutoWalkPathTravel) on a worker thread.
-/// Live blockers (fire, splash, parcels) fail when aware — no soft-blocker bypass.
-/// Callback runs on the GUI thread via schedule::post.
-void canTravelPathAsync(MapPos from, MapPos to, const std::function<void(bool ok)>& callback);
-
 /// Null-safe `fieldAt(pos)->isWalkable(ignoreCreatures)` — false when the field is missing.
 bool isWalkable(MapPos pos, bool ignoreCreatures = true);
 
@@ -74,15 +67,56 @@ MapUseHit topUseHit(MapPos pos);
 /// Line-of-sight between two map positions.
 bool isSightClear(MapPos from, MapPos to);
 
-/// Fields the travel path finder keeps off (`TWorldMapStorage` path avoids).
-void setPathAvoid(MapPos pos, bool avoid);
-void clearPathAvoids();
+/// A stored field of the current session's map as the pack ABI hands it out
+/// (`TWorldMapField`: ground speed, walkability with creatures, pathability).
+struct MapFieldInfo {
+    MapPos pos;
+    int groundSpeed = 0;
+    bool walkable = false;
+    bool pathable = false;
+};
 
-/// Minimap waypoint costs for the travel path finder (CIP TWaypointCostMap):
-/// set while the CipSoft minimap is live, cleared on world leave.
+/// The stored fields on floor `z` (empty between sessions). GUI thread.
+std::vector<MapFieldInfo> storedFieldsOnFloor(int z);
+
+/// The position lies in the current session's aware range.
+bool isAwareOfPosition(MapPos pos);
+
+/// Where the minimap's waypoint costs come from (CIP TWaypointCostMap): set by
+/// the game client while its minimap is live, cleared on world leave.
 using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
 void setWaypointCostFactory(WaypointCostFactory factory);
 void clearWaypointCostFactory();
+/// A snapshot of the minimap's waypoint costs (the live minimap's tiles, else
+/// the minimap files on disk). Taken on the GUI thread; one worker thread may
+/// read it afterwards.
+std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCostsSnapshot();
+
+/// An area or subarea of the Cyclopedia map's static data (map.dat).
+struct StaticMapArea {
+    uint16_t id = 0;
+    bool isSubArea = false;
+    /// A subarea's area; 0 for an area.
+    uint16_t areaId = 0;
+    std::string name;
+    std::string alias;
+    /// map.dat's label coordinate, else the middle of the area's fields; 0,0,0 for none.
+    MapPos label;
+    /// The fields a subarea's mask file covers (width / height 0 without a file).
+    MapPos maskOrigin;
+    int maskWidth = 0;
+    int maskHeight = 0;
+    bool hasMaskFile = false;
+};
+
+/// The first subarea whose mask holds `pos`; 0 for none.
+uint16_t staticMapSubAreaAt(MapPos pos);
+/// The subarea (`subArea`) or area `id`; false when map.dat has none.
+bool staticMapArea(uint16_t id, bool subArea, StaticMapArea& out);
+/// The ids of map.dat's areas (`subAreas` false) or subareas, ascending.
+std::vector<uint16_t> staticMapAreaIds(bool subAreas);
+/// The subareas an area lists, ascending.
+std::vector<uint16_t> staticMapSubAreasOfArea(uint16_t areaId);
 
 }
 }

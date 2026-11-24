@@ -1131,19 +1131,4 @@ uint8_t TWorldMapStorage::lastAwareFloor() const
                              TWorldMapCentralPosition::LastFloor);
 }
 
-void TWorldMapStorage::setPathAvoid(const Position& position, const bool avoid)
-{
-    if (!position.isValid())
-        return;
-    if (avoid)
-        m_pathAvoids.insert(position);
-    else
-        m_pathAvoids.erase(position);
-}
-
-void TWorldMapStorage::clearPathAvoids()
-{
-    m_pathAvoids.clear();
-}
-
 }

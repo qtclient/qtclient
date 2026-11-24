@@ -404,7 +404,7 @@ private:
     // Host: m_null marks a type the appearances did not define (the factory's
     // per-category dummy types, which CipSoft also hands out for unknown ids and
     // which draw nothing); the frame size in fields is what the host's draw path
-    // and the idleot pack read.
+    // and packs read.
     bool m_null = true;
     bool m_animateAlways = false;
     QSize m_size{ 1, 1 };

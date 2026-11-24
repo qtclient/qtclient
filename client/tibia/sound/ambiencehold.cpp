@@ -1,4 +1,4 @@
-#include "sound/weatheraudio.h"
+#include "sound/ambiencehold.h"
 
 #include "sound/soundcontroller.h"
 
@@ -6,20 +6,20 @@
 
 namespace tibia::sound {
 
-TWeatherAudio& TWeatherAudio::instance()
+TAmbienceHold& TAmbienceHold::instance()
 {
-    static TWeatherAudio audio;
-    return audio;
+    static TAmbienceHold hold;
+    return hold;
 }
 
-TWeatherAudio::TWeatherAudio() = default;
+TAmbienceHold::TAmbienceHold() = default;
 
-void TWeatherAudio::setSoundController(TSoundController* controller)
+void TAmbienceHold::setSoundController(TSoundController* controller)
 {
     m_controller = controller;
 }
 
-float TWeatherAudio::ambienceVolume() const
+float TAmbienceHold::ambienceVolume() const
 {
     const TSoundController* controller = m_controller;
     if (!controller || !controller->configuration()->isAmbienceEnabled())
@@ -27,13 +27,13 @@ float TWeatherAudio::ambienceVolume() const
     return controller->configuration()->ambienceVolume();
 }
 
-uint16_t TWeatherAudio::currentAmbienceId() const
+uint16_t TAmbienceHold::currentAmbienceId() const
 {
     const TSoundController* controller = m_controller;
     return controller ? controller->ambienceStream().ambienceStreamId() : 0;
 }
 
-void TWeatherAudio::beginAmbienceHold()
+void TAmbienceHold::begin()
 {
     if (m_held)
         return;
@@ -42,7 +42,7 @@ void TWeatherAudio::beginAmbienceHold()
         controller->ambienceStream().setAmbienceStream(0);
 }
 
-void TWeatherAudio::endAmbienceHold(const uint16_t fallbackRestoreId)
+void TAmbienceHold::end(const uint16_t fallbackRestoreId)
 {
     m_held = false;
     const uint16_t restore = m_hasDeferred ? m_deferredStreamId : fallbackRestoreId;
@@ -55,7 +55,7 @@ void TWeatherAudio::endAmbienceHold(const uint16_t fallbackRestoreId)
         controller->setAmbienceStream(restore);
 }
 
-bool TWeatherAudio::deferAmbienceStream(const uint16_t streamId)
+bool TAmbienceHold::deferAmbienceStream(const uint16_t streamId)
 {
     if (!m_held)
         return false;
@@ -64,7 +64,7 @@ bool TWeatherAudio::deferAmbienceStream(const uint16_t streamId)
     return true;
 }
 
-bool TWeatherAudio::playHeldAmbience(const uint16_t ambienceStreamId, const bool /*loop*/)
+bool TAmbienceHold::playStream(const uint16_t ambienceStreamId)
 {
     TSoundController* controller = m_controller;
     if (!controller)
@@ -75,7 +75,7 @@ bool TWeatherAudio::playHeldAmbience(const uint16_t ambienceStreamId, const bool
     return controller->ambienceStream().ambienceStreamId() == ambienceStreamId;
 }
 
-bool TWeatherAudio::playHeldAmbiencePath(const std::string& virtualPath, const bool loop)
+bool TAmbienceHold::playFile(const std::string& virtualPath, const bool loop)
 {
     if (virtualPath.empty() || !m_controller)
         return false;
@@ -90,19 +90,19 @@ bool TWeatherAudio::playHeldAmbiencePath(const std::string& virtualPath, const b
     return true;
 }
 
-void TWeatherAudio::setAmbienceVoiceGain(const float gain)
+void TAmbienceHold::setGain(const float gain)
 {
     m_gain = std::clamp(gain, 0.0f, 1.0f);
     updateVolume();
 }
 
-void TWeatherAudio::updateVolume()
+void TAmbienceHold::updateVolume()
 {
     if (m_bed)
         m_bed->setVolume(ambienceVolume() * m_gain);
 }
 
-bool TWeatherAudio::playEffect(const uint16_t soundEffectId, const float gain, const float /*pan*/)
+bool TAmbienceHold::playEffect(const uint16_t soundEffectId, const float gain)
 {
     TSoundController* controller = m_controller;
     if (!controller || soundEffectId == 0 || gain <= 0.0f)
@@ -118,7 +118,7 @@ bool TWeatherAudio::playEffect(const uint16_t soundEffectId, const float gain, c
     return true;
 }
 
-bool TWeatherAudio::playAmbienceOneshot(const std::string& virtualPath, const float gain, const float /*pan*/)
+bool TAmbienceHold::playOneshot(const std::string& virtualPath, const float gain)
 {
     const float volume = ambienceVolume() * std::clamp(gain, 0.0f, 1.0f);
     if (virtualPath.empty() || volume <= 0.0f)
@@ -133,6 +133,66 @@ bool TWeatherAudio::playAmbienceOneshot(const std::string& virtualPath, const fl
     source->setVolume(volume);
     source->play();
     return true;
+}
+
+namespace {
+
+uint16_t abiCurrentAmbienceId()
+{
+    return TAmbienceHold::instance().currentAmbienceId();
+}
+
+void abiBeginHold()
+{
+    TAmbienceHold::instance().begin();
+}
+
+void abiEndHold(const uint16_t fallbackRestoreId)
+{
+    TAmbienceHold::instance().end(fallbackRestoreId);
+}
+
+int abiPlayHeldStream(const uint16_t ambienceStreamId)
+{
+    return TAmbienceHold::instance().playStream(ambienceStreamId) ? 1 : 0;
+}
+
+int abiPlayHeldFile(const char* virtualPath, const int loop)
+{
+    return virtualPath && TAmbienceHold::instance().playFile(virtualPath, loop != 0) ? 1 : 0;
+}
+
+void abiSetHoldGain(const float gain)
+{
+    TAmbienceHold::instance().setGain(gain);
+}
+
+int abiPlayEffect(const uint16_t soundEffectId, const float gain)
+{
+    return TAmbienceHold::instance().playEffect(soundEffectId, gain) ? 1 : 0;
+}
+
+int abiPlayOneshot(const char* virtualPath, const float gain)
+{
+    return virtualPath && TAmbienceHold::instance().playOneshot(virtualPath, gain) ? 1 : 0;
+}
+
+const QtClientSoundApiV1 g_soundApi = {
+    .current_ambience_id = &abiCurrentAmbienceId,
+    .begin_ambience_hold = &abiBeginHold,
+    .end_ambience_hold = &abiEndHold,
+    .play_held_ambience_stream = &abiPlayHeldStream,
+    .play_held_ambience_file = &abiPlayHeldFile,
+    .set_ambience_hold_gain = &abiSetHoldGain,
+    .play_ambience_effect = &abiPlayEffect,
+    .play_ambience_oneshot = &abiPlayOneshot,
+};
+
+} // namespace
+
+const QtClientSoundApiV1* soundApiV1()
+{
+    return &g_soundApi;
 }
 
 }

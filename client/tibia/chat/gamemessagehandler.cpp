@@ -39,7 +39,7 @@ bool option(const QJsonObject& options, const char* name)
 TGameMessageHandler::TGameMessageHandler(TTextStorage& texts)
     : m_texts(texts)
 {
-    // IdleOT host extension: packs post their own status lines (CIP posts SET_STATUS_LINE).
+    // Host extension: packs post their own status lines (CIP posts SET_STATUS_LINE).
     m_hooks.emplace_back("onTextMessage", [this](const Args& args) {
         onTextMessage(protocolMode(args, 0), argString(args, 1));
         return std::any();

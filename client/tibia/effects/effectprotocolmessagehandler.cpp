@@ -2,6 +2,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "client/magiceffectopacity.h"
+#include "effects/effectremap.h"
 #include "effects/effectstorage.h"
 #include "clockservice.h"
 #include "protocol/protocolciptypes.h"
@@ -60,19 +61,18 @@ bool visible(const uint32_t source)
     return client::magicEffectOpacity(static_cast<client::MagicEffectSources>(effectSource(source))) >= 0.01f;
 }
 
-/// Effect `effectId` on `field` (a pack effect variant draws its base effect);
-/// an effect with a delay is wrapped and draws once the delay has passed.
+/// Effect `effectId` on `field`; an effect with a delay is wrapped and draws
+/// once the delay has passed. Host: an effect remap hook may draw another
+/// effect for the id (without one the id draws itself).
 std::shared_ptr<appearances::TEffectInstance> makeEffect(const uint16_t effectId, const Position& field,
                                                          const uint8_t source, const qint64 now, const qint64 delay)
 {
-    const uint16_t drawId = appearances::TAppearancesManager::instance().resolveEffectId(effectId);
-    if (!appearances::TAppearancesManager::instance().isValidDatId(drawId, ThingCategoryEffect))
+    const TEffectRemap remap = remapEffect(effectId);
+    if (!appearances::TAppearancesManager::instance().isValidDatId(remap.drawId, ThingCategoryEffect))
         return nullptr;
-    auto effect = appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(drawId, field, source, now);
-    if (const auto* variant = appearances::TAppearancesManager::instance().findEffectVariant(effectId)) {
-        effect->setUnderCreatures(variant->underCreatures);
-        effect->setVariantId(effectId);
-    }
+    auto effect = appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(remap.drawId, field, source, now);
+    effect->setUnderCreatures(remap.underCreatures);
+    effect->setTint(remap.tint);
     if (delay == 0)
         return effect;
     return std::make_shared<appearances::TDelayedEffectInstance>(effect, now, delay);
@@ -142,8 +142,8 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
 
 void TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage(const GameserverMessageRemoveGraphicalEffect& message)
 {
-    m_effectStorage->remove(appearances::TAppearancesManager::instance().resolveEffectId(static_cast<uint16_t>(message.appearance_id())),
-                                      positionOf(message.coordinate()));
+    m_effectStorage->remove(remapEffect(static_cast<uint16_t>(message.appearance_id())).drawId,
+                            positionOf(message.coordinate()));
 }
 
 }

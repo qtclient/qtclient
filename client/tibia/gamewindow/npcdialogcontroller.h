@@ -81,11 +81,11 @@ private:
     bool m_isObject = false;
 };
 
-/// product: a conversation with an NPC that is not on screen (product opcode 120). While it
-/// is open the dialog shows its name, outfit and keyword buttons, typed text and keywords
-/// go to `say`, the close button to `close`, and the server's trade close keeps the dialog
-/// (the NPC reopens its shop).
-struct TRemoteNpcSession
+/// Host extension: an NPC conversation a pack drives (no NPC chat window message from the
+/// server). While it is open the dialog shows its name, outfit and keyword buttons, typed
+/// text and keywords go to `say`, the close button to `close`, and a trade close keeps the
+/// dialog. Without one the dialog is CipSoft's.
+struct TExternalNpcConversation
 {
     QString name;
     Outfit outfit;
@@ -99,8 +99,8 @@ struct TRemoteNpcSession
 /// window message (talk partners and keyword buttons) opens and closes it;
 /// without one it opens and closes with the trade. The conversation pane
 /// shows the NPCs channel through a time filter: opening the dialog hides what
-/// was said before it (half a second of margin). product remote sessions bring their own keyword
-/// buttons. Focus: TDialogControllerWithFocusHandlingBase (taken when the dialog
+/// was said before it (half a second of margin). Host: an external conversation
+/// (TExternalNpcConversation) brings its own keyword buttons. Focus: TDialogControllerWithFocusHandlingBase (taken when the dialog
 /// shows and on a click inside it, given back on a click elsewhere). The trade
 /// pane has its own TUiFocusManager (+0x160), active while the trade shows; while
 /// it has the keyboard the dialog's focus is not allowed. Losing the focus puts
@@ -139,13 +139,13 @@ public:
     /// or sends `text` (spells to the local chat) and clears it.
     void setInputText(const QString& text, bool send, bool isSpell, int spellCastType);
 
-    /// product remote NPC session (TRemoteNpcSession): opens the dialog.
-    void openRemoteSession(TRemoteNpcSession session);
-    /// Ends the remote session and closes the dialog and the trade.
-    void closeRemoteSession();
-    bool hasRemoteSession() const { return m_remote.has_value(); }
-    /// The remote session's `say`; false without a session.
-    bool sayToRemoteNpc(const QString& text);
+    /// Host extension: opens the dialog for an external conversation.
+    void openExternalConversation(TExternalNpcConversation conversation);
+    /// Ends the external conversation and closes the dialog and the trade.
+    void closeExternalConversation();
+    bool hasExternalConversation() const { return m_external.has_value(); }
+    /// The external conversation's `say`; false without one.
+    bool sayToExternalNpc(const QString& text);
 
 public Q_SLOTS:
     /// CIP (v14): closes the trade and the dialog.
@@ -166,8 +166,7 @@ public Q_SLOTS:
     void onTradeRequestReleaseFocus() override;
 
 Q_SIGNALS:
-    /// product: chat HUD leaves the bubble closed while this dialog is shown so
-    /// Enter / temporary chat-on focuses the NPC input instead of HudChat.
+    /// Host: the dialog showed or hid (no CipSoft counterpart; unused without a pack).
     void shownChanged(bool shown);
 
 protected:
@@ -176,7 +175,6 @@ protected:
     void beforeHide() override;
     void afterShow() override;
     void afterHide() override;
-    bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     void setShowTrade(bool show);
@@ -225,7 +223,7 @@ private:
     std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     input::TEventFilterManager* m_pEventFilterManager;
     QPointer<chat::TChatChannelStorage> m_chatStorage;
-    std::optional<TRemoteNpcSession> m_remote;
+    std::optional<TExternalNpcConversation> m_external;
     int m_savedChatMode = 0;
 
 public Q_SLOTS:

@@ -231,7 +231,7 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
         if (message.has_creature())
             applyProtocolCreature(message.creature());
         break;
-    // Product server party extensions.
+    // Host: update types 16 to 18 are not CipSoft's (server party fields).
     case 16:
         updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
             const auto healthPercent = static_cast<uint8_t>(message.health_percent());
@@ -243,7 +243,7 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
         });
         break;
     case 17:
-        // The product server's party member mana: the battle list shows no mana.
+        // The party member's mana: the battle list shows no mana.
         break;
     case 18:
         updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {

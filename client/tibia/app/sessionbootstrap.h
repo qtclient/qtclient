@@ -33,8 +33,7 @@ class TLoginWaitDialogController;
 /// - keep_renderer_after_restart after a graphics-engine change restart.
 ///
 /// client_too_old / Restart is wired in main.cpp (ShowClientOutOfDate).
-/// Product packs may replace the create-character controller via
-/// installCreateCharacter (product pack pack QML).
+/// A pack may replace the create-character controller (installCreateCharacter).
 class TSessionBootstrap final : public QObject
 {
     Q_OBJECT

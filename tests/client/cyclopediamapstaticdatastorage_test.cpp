@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <stdexcept>
@@ -86,9 +87,53 @@ tibia::protobuf::map::Map sampleMap()
 
 }
 
-// The router slots live in the host file (sprite system and game actions).
+namespace {
+// The mask files the host file's requestSubAreaMasks would ask the sprite
+// resolver for, one list per call.
+std::vector<std::vector<QString>> g_maskRequests;
+}
+
+// The router slot and the mask requests live in the host file (sprite system
+// and game actions); the stand-in records the files it would request.
 void TCyclopediaMapStaticDataStorage::handleGameAction(tibia::input::IGameActionPtr) {}
-void TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized() {}
+void TCyclopediaMapStaticDataStorage::requestSubAreaMasks()
+{
+    std::vector<QString> files;
+    for (const tibia::worldmap::TWorldMapAreaElement& element : m_subAreaMarkers.elements()) {
+        const auto* subArea = std::get_if<tibia::worldmap::TSubAreaWorldMapAreaData>(&element.data);
+        if (subArea && !subArea->fileName.isEmpty())
+            files.push_back(subArea->fileName);
+    }
+    std::sort(files.begin(), files.end());
+    g_maskRequests.push_back(std::move(files));
+}
+
+// CIP: the masks are asked for when the main window is initialized; map.dat
+// parsed before that has its masks requested then.
+TEST(CyclopediaMapStaticDataStorage, MasksRequestedOnMainWindowInitialized)
+{
+    g_maskRequests.clear();
+    TCyclopediaMapStaticDataStorage storage;
+    storage.initialize(serialized(sampleMap()));
+    EXPECT_TRUE(g_maskRequests.empty());
+    storage.onGameClientMainWindowInitialized();
+    ASSERT_EQ(g_maskRequests.size(), 1u);
+    EXPECT_EQ(g_maskRequests[0], (std::vector<QString>{ QStringLiteral("sub-10.bmp"), QStringLiteral("sub-11.bmp") }));
+}
+
+// Host: the assets load asynchronously, so map.dat can be parsed after the
+// main window was initialized; its masks are requested once it is.
+TEST(CyclopediaMapStaticDataStorage, MapDataAfterMainWindowStillRequestsMasks)
+{
+    g_maskRequests.clear();
+    TCyclopediaMapStaticDataStorage storage;
+    storage.onGameClientMainWindowInitialized();
+    ASSERT_EQ(g_maskRequests.size(), 1u);
+    EXPECT_TRUE(g_maskRequests[0].empty());
+    storage.initialize(serialized(sampleMap()));
+    ASSERT_EQ(g_maskRequests.size(), 2u);
+    EXPECT_EQ(g_maskRequests[1], (std::vector<QString>{ QStringLiteral("sub-10.bmp"), QStringLiteral("sub-11.bmp") }));
+}
 
 TEST(CyclopediaMapStaticDataStorage, MalformedDataThrows)
 {

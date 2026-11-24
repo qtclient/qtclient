@@ -5,7 +5,6 @@
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
 #include "appearances/creatureplaceholderappearanceinstance.h"
-#include "idleot/appearanceshape.h"
 #include "appearances/spriteinfo.h"
 #include "renderer/spritetextureprovider.h"
 #include "appearances/worldmaphighlightbaseplate.h"
@@ -13,13 +12,12 @@
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "mods/registry.h"
-#include "mods/weather_driver.h"
 #include "mods/worldview.h"
 #include "renderer/lightmodel.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "renderer/renderinfo.h"
 #include "renderer/rendervolumeprovider.h"
-#include "renderer/worldgeometry.h"
+#include "renderer/worldframeview.h"
 #include "worldmap/lightmap.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/cacheforworldmapstoragelookupmembers.h"
@@ -28,7 +26,7 @@
 #include <QElapsedTimer>
 #include <QJsonObject>
 
-#include <tibia/creatures/attachedeffect.h>
+#include <tibia/creatures/creaturedecoration.h>
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -99,88 +97,31 @@ tibia::mods::LightingMapPos lightingCamera(const Position& camera)
     return { camera.x, camera.y, camera.z };
 }
 
-tibia::game::MapPos geometryCamera(const Position& camera)
-{
-    return { camera.x, camera.y, camera.z };
-}
-
-tibia::mods::LightingThingContext itemLightingContext(TAppearanceType& type, const uint8_t lift,
-                                                      tibia::worldmap::TWorldMapField* tile,
-                                                      const bool castHeight = true)
+/// Host (pack lighting): an object of a field's stack, with its CipSoft type data.
+tibia::mods::LightingThingContext itemLightingContext(const TAppearanceType& type, const uint8_t lift,
+                                                      const int stackIndex)
 {
     tibia::mods::LightingThingContext ctx;
     ctx.lift = lift;
     ctx.loose = !type.isNotMoveable();
-    ctx.caster = castHeight;
-    // Common or on-top objects: walkable commons/onTop on a wall field hang (no cast).
-    const bool common = !type.isGround() && !type.isGroundBorder() && !type.isOnTop() && !type.isOnBottom();
-    if (ctx.caster && (common || type.isOnTop()) && !type.isNotWalkable() && tile && tile->hasBlockingBottomItem())
-        ctx.caster = false;
+    ctx.typeId = type.getId();
+    ctx.typeFlags = appearanceFlagsOf(&type);
+    ctx.stackIndex = static_cast<int16_t>(stackIndex);
     return ctx;
 }
 
+/// Host (pack lighting): a creature; `stackIndex` -1 when it is drawn on a field it does not stand on.
 tibia::mods::LightingThingContext creatureLightingContext(const tibia::creatures::TCreature& stored,
-                                                          const uint8_t lift, const bool castHeight = true)
+                                                          const uint8_t lift, const int stackIndex)
 {
     tibia::mods::LightingThingContext ctx;
     ctx.lift = lift;
     ctx.creature = true;
     ctx.walking = stored.isWalking();
     ctx.localPlayer = stored.isLocalPlayer();
-    // Height stamps only — lights still gather via addCenterLight.
-    ctx.caster = castHeight;
     ctx.creatureId = stored.creatureId();
+    ctx.stackIndex = static_cast<int16_t>(stackIndex);
     return ctx;
-}
-
-/// Topmost standing creatures on a field (draw-list order). Lower ones are covered.
-constexpr int MaxCreatureShadeCasters = 2;
-/// Topmost common items that may stamp height; fullGround above hides the rest (dontHide exempt).
-constexpr int MaxCommonShadeCasters = 3;
-
-bool typeIsCommonItem(const TAppearanceType* type)
-{
-    return type && !type->isGround() && !type->isGroundBorder() && !type->isOnTop() && !type->isOnBottom();
-}
-
-/// Creature ids that should stamp height on this field (last N in the draw list = on top).
-std::vector<uint32_t> shadeCreatureIds(const tibia::worldmap::TWorldMapField& tile)
-{
-    std::vector<uint32_t> order;
-    for (const appearances::TAppearanceInstancePtr& entry : tile.drawList()) {
-        if (const uint32_t id = entry->creatureId())
-            order.push_back(id);
-    }
-    std::vector<uint32_t> keep;
-    const int n = static_cast<int>(order.size());
-    keep.reserve(static_cast<size_t>(std::min(n, MaxCreatureShadeCasters)));
-    for (int i = std::max(0, n - MaxCreatureShadeCasters); i < n; ++i)
-        keep.push_back(order[static_cast<size_t>(i)]);
-    return keep;
-}
-
-/// Per stack index: common items that may stamp height (bank/clip/bottom always cast elsewhere).
-std::vector<char> commonShadeCasters(const tibia::worldmap::TWorldMapField& tile)
-{
-    const auto& appearances = tile.appearances();
-    std::vector<char> cast(appearances.size(), 0);
-    bool hide = false;
-    int left = MaxCommonShadeCasters;
-    // Newest commons sit at the lowest indices among commons and draw last (on top).
-    for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
-        const TAppearanceType* type = appearances[static_cast<size_t>(i)]
-            ? appearances[static_cast<size_t>(i)]->thingType()
-            : nullptr;
-        if (!typeIsCommonItem(type) || appearances[static_cast<size_t>(i)]->creatureId() != 0)
-            continue;
-        if ((!hide || type->isDontHide()) && left > 0) {
-            cast[static_cast<size_t>(i)] = 1;
-            --left;
-        }
-        if (type->isFullGround())
-            hide = true;
-    }
-    return cast;
 }
 
 /// The creature carries creature icon `icon` (not a player icon) with a value.
@@ -209,15 +150,15 @@ Light creatureLight(const tibia::creatures::TCreature& creature)
 
 tibia::mods::LightingThingContext transientLightingContext(const uint8_t lift = 0)
 {
-    // Effects / missiles: never stamp casters; lights must not take soft-occlusion slots.
+    // Effects / missiles.
     tibia::mods::LightingThingContext ctx;
     ctx.lift = lift;
     ctx.transient = true;
-    ctx.caster = false;
     return ctx;
 }
 
-tibia::mods::LightingFrameDesc peelLightingFrame(TAppearanceType& type, const QPoint& anchor, const uint32_t spriteId,
+/// Host (pack lighting): the CipSoft data of a frame the driver stamps.
+tibia::mods::LightingFrameDesc peelLightingFrame(const TAppearanceType& type, const QPoint& anchor, const uint32_t spriteId,
                                                  const int xPattern)
 {
     tibia::mods::LightingFrameDesc desc;
@@ -226,22 +167,17 @@ tibia::mods::LightingFrameDesc peelLightingFrame(TAppearanceType& type, const QP
     desc.anchorY = anchor.y();
     desc.displacementX = type.getDisplacement().x();
     desc.displacementY = type.getDisplacement().y();
-    desc.shape = static_cast<uint8_t>(tibia::idleot::thingShapeOf(type));
     desc.elevation = static_cast<uint8_t>(std::clamp(type.getElevation(), 0, 255));
     desc.hook = static_cast<int8_t>(type.isHangable() ? (type.getNumPatternX() >= 2 ? xPattern : 0) : -1);
     desc.onTop = type.isOnTop();
-    desc.castsShadow = tibia::idleot::castsShadow(type);
-    // Dead bodies lie on the floor: Flat stamps (surface only, no height columns) so they
-    // do not cast sun/lamp shadows. lying_object covers CIP corpses; corpse/player_corpse
-    // catch loot corpses that omit the lying flag.
     desc.lyingCorpse = type.isLyingCorpse() || type.isCorpse() || type.isPlayerCorpse();
-    if (desc.lyingCorpse)
-        desc.shape = static_cast<uint8_t>(ThingShape::Flat);
     desc.hasLight = type.hasLight();
     if (desc.hasLight) {
         desc.lightIntensity = type.getLight().intensity;
         desc.lightColor = type.getLight().color;
     }
+    desc.typeId = type.getId();
+    desc.typeFlags = appearanceFlagsOf(&type);
     return desc;
 }
 
@@ -373,6 +309,12 @@ void TWorldMapRenderProvider::advance()
     if (!m_frame.valid) {
         m_frame.sprites.clear();
         m_frame.creatures.clear();
+        // Host: an extension's frame hooks learn the world is gone.
+        const tibia::mods::WorldFrameHooks& hooks = tibia::mods::worldFrameHooks();
+        if (hooks.afterBuild && drawsLiveWorld()) {
+            const QtClientWorldFrameView view{};
+            hooks.afterBuild(hooks.user, &view);
+        }
     }
     // CIP rebuilds the sprite list every frame; QSG reconciles in place.
     if (m_frame.valid) {
@@ -631,131 +573,28 @@ bool TWorldMapRenderProvider::build()
     m_lightNs = phase.nsecsElapsed();
 
     phase.restart();
-    if (m_lighting) m_lighting->endFrame(m_frame.geometry.valid() ? &m_frame.geometry : nullptr);
+    if (m_lighting)
+        m_lighting->endFrame();
     m_raycastRoofsNs = m_lighting ? m_lighting->roofsNs() : 0;
     m_raycastNs += phase.nsecsElapsed();
     return true;
 }
 
-WeatherFrame TWorldMapRenderProvider::weatherFrame() const
+QtClientWorldFrameView TWorldMapRenderProvider::frameView() const
 {
-    WeatherFrame out;
-    auto* weather = tibia::mods::weatherDriver();
-    if (!weather || !weather->enabled() || !m_frame.valid)
-        return out;
-    const auto state = weather->display();
-    if (!state.hasAtmosphere && weather->lightningFlash() < 0.001f)
-        return out;
-    if (!m_frame.geometry.valid())
-        return out;
-    if (m_camera.z > worldmap::TWorldMapCentralPosition::GroundFloor)
-        return out;
-    out.active = true;
-    out.kind = state.kind;
-    out.intensity = state.intensity;
-    out.fog = state.fog;
-    out.clouds = state.clouds;
-    out.windX = state.windX;
-    out.windY = state.windY;
-    // Seconds since the clock started: a float cannot hold epoch milliseconds.
-    out.time = static_cast<float>(tibia::shared::TClockService::frameMillis() - tibia::shared::TClockService::startMillis()) * 0.001f;
-    out.lightning = weather->lightningFlash();
-    // Midday isometric SE fall (map px). Kept in stock so weather overlays work
-    // without linking a raycast pack.
-    out.fallX = 0.70710678f;
-    out.fallY = 0.70710678f;
-    out.outdoorFraction = m_frame.geometry.outdoorFraction();
-    out.outdoorMask = m_frame.geometry.outdoorMask;
-    out.ceilingMap = m_frame.geometry.ceilingMap;
-    out.shapeMap = m_frame.geometry.shapeMap;
-    out.mapSize = QSize(drawWidth() * FieldSize, drawHeight() * FieldSize);
-    const Position originField = m_camera.translated(-centerX(), -centerY());
-    out.worldOrigin = QPointF(double(originField.x) * FieldSize, double(originField.y) * FieldSize);
-    return out;
-}
-
-void TWorldMapRenderProvider::updateWorldGeometry()
-{
-    bool needGeo = (m_lighting && m_lighting->enabled())
-        || tibia::mods::worldFrameHooks().requestOutdoorGather;
-    if (auto* weather = tibia::mods::weatherDriver()) {
-        weather->tick();
-        const auto geoState = weather->display();
-        needGeo = needGeo
-            || (weather->enabled() && (geoState.hasAtmosphere || weather->lightningFlash() > 0.001f));
-    }
-    if (!needGeo) {
-        m_frame.geometry = {};
-    } else {
-        const worldmap::TWorldMapStorage* storage = worldMapStorage();
-        const uint32_t revision = storage ? storage->itemRevision() : 0;
-        const int sea = worldmap::TWorldMapCentralPosition::GroundFloor;
-        const int origin = m_camera.z > sea ? m_camera.z : static_cast<int>(m_lastFloor);
-        const bool geoFresh = m_frame.geometry.valid() && m_geometryCamera == m_camera
-            && m_geometryRevision == revision && m_geometryWidth == drawWidth()
-            && m_geometryHeight == drawHeight() && m_geometryFirst == m_firstFloor
-            && m_geometryLast == m_lastFloor && m_geometryOrigin == origin;
-        if (!geoFresh) {
-            m_frame.geometry = buildWorldGeometry({
-                .camera = geometryCamera(m_camera),
-                .drawWidth = drawWidth(),
-                .drawHeight = drawHeight(),
-                .centerX = centerX(),
-                .centerY = centerY(),
-                .firstFloor = m_firstFloor,
-                .lastFloor = m_lastFloor,
-                .heightOriginZ = origin,
-            });
-            m_geometryCamera = m_camera;
-            m_geometryRevision = revision;
-            m_geometryWidth = drawWidth();
-            m_geometryHeight = drawHeight();
-            m_geometryFirst = m_firstFloor;
-            m_geometryLast = m_lastFloor;
-            m_geometryOrigin = origin;
-        }
-    }
-
-    if (auto* weather = tibia::mods::weatherDriver()) {
-        const auto state = weather->display();
-        const bool rainingOnPlayer =
-            !m_frame.geometry.valid() || m_frame.geometry.outdoorAt(centerX(), centerY());
-        const bool aboveSea = m_camera.z <= worldmap::TWorldMapCentralPosition::GroundFloor;
-        weather->updateSound(state, weather->lightningFlash(), weather->enabled(), rainingOnPlayer, aboveSea);
-    }
-}
-
-void TWorldMapRenderProvider::applyWeatherAmbientTint()
-{
-    if (m_lightUntinted.isNull()) {
-        if (m_frame.light.isNull())
-            return;
-        m_lightUntinted = m_frame.light;
-    }
-    m_frame.light = m_lightUntinted;
-    auto* weather = tibia::mods::weatherDriver();
-    if (!weather || !weather->enabled() || !m_frame.geometry.valid())
-        return;
-    const auto state = weather->display();
-    // Pack sets ambientTint (mood policy). Tip only applies a neutral cool curve outdoors.
-    const float amount = std::clamp(state.ambientTint, 0.f, 1.f);
-    if (amount < 0.01f)
-        return;
-    const float coolR = 1.f - amount * 0.35f;
-    const float coolG = 1.f - amount * 0.15f;
-    const float coolB = 1.f + amount * 0.08f;
-    for (int y = 0; y < m_frame.light.height() && y < m_frame.geometry.height; ++y) {
-        auto* line = reinterpret_cast<QRgb*>(m_frame.light.scanLine(y));
-        const uchar* outdoor = m_frame.geometry.outdoorMask.constScanLine(y);
-        for (int x = 0; x < m_frame.light.width() && x < m_frame.geometry.width; ++x) {
-            if (outdoor[x] == 0)
-                continue;
-            const QRgb c = line[x];
-            line[x] = qPremultiply(qRgba(std::clamp(int(qRed(c) * coolR), 0, 255),
-                                         std::clamp(int(qGreen(c) * coolG), 0, 255),
-                                         std::clamp(int(qBlue(c) * coolB), 0, 255), qAlpha(c)));
-        }
-    }
+    QtClientWorldFrameView view{};
+    view.valid = 1;
+    view.camera = { m_camera.x, m_camera.y, m_camera.z };
+    view.draw_width = drawWidth();
+    view.draw_height = drawHeight();
+    view.center_x = centerX();
+    view.center_y = centerY();
+    view.first_floor = m_firstFloor;
+    view.last_floor = m_lastFloor;
+    const worldmap::TWorldMapStorage* storage = worldMapStorage();
+    view.item_revision = storage ? storage->itemRevision() : 0;
+    view.clock_start_millis = static_cast<uint64_t>(tibia::shared::TClockService::startMillis());
+    return view;
 }
 
 std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(const bool withLights)
@@ -881,7 +720,13 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
 /// CIP allocates a fresh TLightMap every frame — no idle light-image cache.
 void TWorldMapRenderProvider::buildLight()
 {
-    updateWorldGeometry();
+    // Host: an extension's frame hooks see the frame before its light map
+    // (the session's world only; preview volumes have none).
+    const tibia::mods::WorldFrameHooks& hooks = tibia::mods::worldFrameHooks();
+    const bool hooked = (hooks.afterBuild || hooks.filterLightMap) && drawsLiveWorld();
+    const QtClientWorldFrameView view = hooked ? frameView() : QtClientWorldFrameView{};
+    if (hooked && hooks.afterBuild)
+        hooks.afterBuild(hooks.user, &view);
 
     // Without light effects, or on the software graphics engine, the frame has
     // no light map.
@@ -892,16 +737,26 @@ void TWorldMapRenderProvider::buildLight()
         m_lightMap = buildLightMap(true);
     else
         m_lightMap.reset();
-    m_lightUntinted = m_lightMap ? m_lightMap->toImage() : QImage();
-    m_frame.light = m_lightUntinted;
-    applyWeatherAmbientTint();
+    const QImage untinted = m_lightMap ? m_lightMap->toImage() : QImage();
+    m_frame.light = untinted;
+    if (hooked && hooks.filterLightMap && !m_frame.light.isNull()) {
+        // Host: an extension recolours the frame's light map in place (its own
+        // copy: `untinted` stays as built).
+        QtClientImageView light{};
+        light.pixels = m_frame.light.bits();
+        light.width = m_frame.light.width();
+        light.height = m_frame.light.height();
+        light.bytes_per_line = static_cast<int>(m_frame.light.bytesPerLine());
+        light.format = QTCLIENT_IMAGE_FORMAT_ARGB32_PREMULTIPLIED;
+        hooks.filterLightMap(hooks.user, &view, &light);
+    }
     if (m_lighting && m_lighting->enabled()) {
-        // Host (pack lighting): the raycast reads the floors' light even when
+        // Host (pack lighting): the driver reads the floors' light even when
         // the frame has no light map.
-        const QImage classic = m_lightMap ? m_lightUntinted : buildLightMap(true)->toImage();
-        // Raycast samples the floors' light without the point lights.
+        const QImage classic = m_lightMap ? untinted : buildLightMap(true)->toImage();
+        // The floors' light without the point lights.
         m_lighting->setFieldAmbient(m_lights.empty() ? classic : buildLightMap(false)->toImage());
-        // Same grid the LightMap multiplies (post weather tint) — raycast open-floor SoT.
+        // The grid the light map multiplies (after the frame hooks' filter).
         m_lighting->setFieldClassic(m_lightMap ? m_frame.light : classic);
     }
 }
@@ -1255,6 +1110,8 @@ void TWorldMapRenderProvider::addField(const FieldEntry& field, TOcclusionGrid& 
     // puts them in the field's draw-list order.
     const QPoint dest{ field.x * FieldSize, field.y * FieldSize };
     m_key = DrawKey{ .group = 2, .x = field.x, .y = field.y, .z = m_floor };
+    if (m_gatherRaycast)
+        beginLightingField(field);
     uint8_t elevation = 0;
     addTileBelow(field, dest, elevation, grid);
     addTileCreatures(field, dest, elevation, grid);
@@ -1262,6 +1119,21 @@ void TWorldMapRenderProvider::addField(const FieldEntry& field, TOcclusionGrid& 
     addTileTop(field, dest, grid);
     if (m_showLootHighlighting)
         addLootHighlight(field, dest);
+}
+
+void TWorldMapRenderProvider::beginLightingField(const FieldEntry& field)
+{
+    // Host (pack lighting): the driver sees the field's stack before its things.
+    const int count = peelFieldStack(*field.field, nullptr, 0);
+    if (m_lightingStack.size() < static_cast<size_t>(count))
+        m_lightingStack.resize(static_cast<size_t>(count));
+    peelFieldStack(*field.field, m_lightingStack.data(), count);
+    const Position& pos = field.field->getPosition();
+    m_lighting->beginField({ .ix = field.x,
+                             .iy = field.y,
+                             .pos = { pos.x, pos.y, pos.z },
+                             .stack = m_lightingStack.data(),
+                             .stackCount = count });
 }
 
 void TWorldMapRenderProvider::addLootHighlight(const FieldEntry& field, const QPoint& dest)
@@ -1291,14 +1163,12 @@ void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint
 {
     tibia::worldmap::TWorldMapField* tile = field.field;
     const auto& appearances = tile->appearances();
-    // Raycast height only for visible commons (fullGround cover + top-N budget); lights still gather.
-    const std::vector<char> commonCast = m_lighting ? commonShadeCasters(*tile) : std::vector<char>{};
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
         const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (!type || (!type->isGround() && !type->isGroundBorder()))
             break;
-        addObject(field, i, dest, elevation, true, grid);
+        addObject(field, i, dest, elevation, grid);
     }
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
@@ -1307,7 +1177,7 @@ void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint
             continue;
         if (!type->isOnBottom())
             break;
-        addObject(field, i, dest, elevation, true, grid);
+        addObject(field, i, dest, elevation, grid);
     }
 
     if (tile->hasCommonItem()) {
@@ -1316,14 +1186,12 @@ void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint
             if (!type || type->isGround() || type->isGroundBorder() || type->isOnBottom() || type->isOnTop()
                 || type->getCategory() == ThingCategoryCreature || appearances[i]->isCreature())
                 continue;
-            const bool castHeight = commonCast.empty()
-                || (static_cast<size_t>(i) < commonCast.size() && commonCast[static_cast<size_t>(i)]);
-            addObject(field, i, dest, elevation, castHeight, grid);
+            addObject(field, i, dest, elevation, grid);
         }
     }
 
-    // Product effect variants drawn under creatures sort between the commons
-    // and the creatures of their field.
+    // Host: effects an effect remap hook draws under creatures sort between the
+    // commons and the creatures of their field.
     uint8_t effectElevation = 0;
     const auto& effects = tile->effectAppearances();
     for (int i = 0; i < static_cast<int>(effects.size()); ++i) {
@@ -1339,8 +1207,7 @@ void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint
 }
 
 void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, const int stackIndex,
-                                                    const QPoint& dest, const uint8_t elevation, const bool castHeight,
-                                                    TOcclusionGrid& grid)
+                                                    const QPoint& dest, const uint8_t elevation, TOcclusionGrid& grid)
 {
     if (!tile || stackIndex < 0)
         return;
@@ -1357,7 +1224,7 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const appearances::TAppearanceInstancePtr placeholder = tile->appearanceAt(stackIndex);
     const uint8_t lift = placeholder ? placeholder->elevation() : elevation;
     const QPoint at(dest.x() - lift, dest.y() - lift);
-    addCreature(*row, tile->coordinate(), at, lift, castHeight, grid);
+    addCreature(*row, tile->coordinate(), at, lift, stackIndex, grid);
 }
 
 /// A creature sorts with the field its step covers (CIP: the placeholder's
@@ -1374,22 +1241,10 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
     const int x = field.x;
     const int y = field.y;
     const uint8_t creatureLayer = drawLayerOfKind(4);
-    // Raycast: only the topmost standing creatures stamp height (lower ones are covered).
-    // Local player always stamps; mid-step walkers always stamp. Lights still gather for all.
-    const std::vector<uint32_t> shadeIds = m_lighting ? shadeCreatureIds(*tile) : std::vector<uint32_t>{};
-    const auto shadeKeep = [&](const uint32_t id, const bool local) {
-        if (!m_lighting || shadeIds.empty())
-            return true;
-        if (local)
-            return true;
-        return std::find(shadeIds.begin(), shadeIds.end(), id) != shadeIds.end();
-    };
 
     for (const tibia::worldmap::TStackCreatureEntry& entry : tile->stackCreatureEntries()) {
         m_key = slotKey(field.coordinate, x, y, creatureLayer, drawIndex(*tile, entry.stackIndex));
-        const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(entry.creatureId);
-        const bool castHeight = row && shadeKeep(entry.creatureId, row->isLocalPlayer());
-        addFieldStackCreature(tile, entry.stackIndex, dest, elevation, castHeight, grid);
+        addFieldStackCreature(tile, entry.stackIndex, dest, elevation, grid);
     }
 
     // Host: a stepping creature is drawn from the field its step covers (the
@@ -1406,10 +1261,10 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
             continue;
         const int lift = row->drawElevation();
         m_key = slotKey(field.coordinate, x, y, creatureLayer, drawIndex(*own, stackPos));
-        // Mid-step silhouette is visible on this cell — always stamp height.
+        // Drawn on the field its step covers, which does not hold it (no stack index).
         const QPoint ownCorner(dest.x() + (pos.x - tilePos.x) * FieldSize - lift,
                                dest.y() + (pos.y - tilePos.y) * FieldSize - lift);
-        addCreature(*row, own->coordinate(), ownCorner, static_cast<uint8_t>(std::clamp(lift, 0, 0xff)), true, grid);
+        addCreature(*row, own->coordinate(), ownCorner, static_cast<uint8_t>(std::clamp(lift, 0, 0xff)), -1, grid);
     }
     m_key = DrawKey{ .group = 2, .x = x, .y = y, .z = m_floor };
 }
@@ -1445,12 +1300,12 @@ void TWorldMapRenderProvider::addTileTop(const FieldEntry& field, const QPoint& 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
         const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (type && type->isOnTop())
-            addObject(field, i, dest, elevation, true, grid);
+            addObject(field, i, dest, elevation, grid);
     }
 }
 
 void TWorldMapRenderProvider::addObject(const FieldEntry& field, const int stackIndex, const QPoint& dest,
-                                        uint8_t& elevation, const bool castHeight, TOcclusionGrid& grid)
+                                        uint8_t& elevation, TOcclusionGrid& grid)
 {
     tibia::worldmap::TWorldMapField* tile = field.field;
     if (!tile)
@@ -1482,7 +1337,7 @@ void TWorldMapRenderProvider::addObject(const FieldEntry& field, const int stack
     const uint8_t lift = type->isOnTop() ? 0 : appearance->elevation();
     const QPoint at(dest.x() - lift, dest.y() - lift);
     const SpriteRecord::Highlight highlight = itemHighlightOf(tile->getPosition(), stackIndex, appearance->id());
-    addRenderInfos(*appearance, field.coordinate, at, highlight, lift, tile, castHeight, grid);
+    addRenderInfos(*appearance, field.coordinate, at, highlight, lift, stackIndex, grid);
     m_key = DrawKey{ .group = 2, .x = x, .y = y, .z = m_floor };
     elevation = tile->objectElevation();
 }
@@ -1517,8 +1372,7 @@ int outfitPhase(const appearances::TOutfitAppearanceInstance& outfit, const bool
 void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInstance& instance,
                                              const worldmap::TWorldMapCoordinate& coordinate, const QPoint& dest,
                                              const SpriteRecord::Highlight highlight, const uint8_t lift,
-                                             tibia::worldmap::TWorldMapField* tile, const bool castHeight,
-                                             TOcclusionGrid& grid)
+                                             const int stackIndex, TOcclusionGrid& grid)
 {
     TAppearanceType* type = instance.thingType();
     if (!type)
@@ -1552,7 +1406,7 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
                                                        : 0;
     const int xPattern = object ? object->patternX() : creature ? creature->drawnPatternX() : 0;
     const auto lightingScope = m_lighting && !placeholder
-        ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile, castHeight)))
+        ? std::optional(m_lighting->context(itemLightingContext(*type, lift, stackIndex)))
         : std::nullopt;
     const bool moving = placeholder && placeholder->showsMovingSprite();
     const std::shared_ptr<appearances::TOutfitAppearanceInstance> outfit =
@@ -1653,11 +1507,10 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
 
 void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& stored,
                                           const worldmap::TWorldMapCoordinate& coordinate, const QPoint& dest,
-                                          const uint8_t lift, const bool castHeight, TOcclusionGrid& grid)
+                                          const uint8_t lift, const int stackIndex, TOcclusionGrid& grid)
 {
-    // Host: creatures the game hides, dead ones and the soft-dead local player
-    // are not drawn.
-    if (stored.isLocalPlayer() && stored.isSoftDead())
+    // Host: creatures an extension hides, and dead ones, are not drawn.
+    if (stored.isDrawSuppressed())
         return;
     if (stored.isDead() && !stored.isHidden())
         return;
@@ -1667,11 +1520,10 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
 
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(
-              creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()), castHeight)))
+              creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()), stackIndex)))
         : std::nullopt;
 
-    const QPoint walked = dest + stored.walkOffset();
-    const QPoint at = walked;
+    const QPoint at = dest + stored.walkOffset();
 
     // Host: the creature's HUD is drawn over its head.
     if (m_floor == m_camera.z && !stored.isDead() && !stored.isHidden()) {
@@ -1683,15 +1535,15 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
         }
     }
 
-    // Host: the product's attached effects under and over the creature.
-    addAttachedEffects(stored, walked, at, false);
+    // Host: an extension's decorations under and over the creature.
+    addCreatureDecorations(stored, at, false);
     const appearances::TAppearanceInstancePtr outfitAppearance = stored.outfitAppearance();
     if (!outfitAppearance || dynamic_cast<const appearances::TOutfitAppearanceInstance*>(outfitAppearance.get())
         || !outfitAppearance->thingType()) {
         // The creature draws what its placeholder hands the map.
         // Host: the mouse target is an object of a field (field, stack position,
         // type), never a creature's placeholder.
-        addRenderInfos(*placeholder, coordinate, dest, SpriteRecord::NoHighlight, lift, nullptr, castHeight, grid);
+        addRenderInfos(*placeholder, coordinate, dest, SpriteRecord::NoHighlight, lift, stackIndex, grid);
     } else {
         // Host: an effect worn as an outfit has no outfit sequences; it cycles
         // its phases past the first and last by the clock.
@@ -1716,40 +1568,28 @@ void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& sto
         m_objectCounter.addObject(coordinate, type->getId());
         m_frameTypes.insert(type);
     }
-    addAttachedEffects(stored, walked, at, true);
+    addCreatureDecorations(stored, at, true);
 }
 
-void TWorldMapRenderProvider::addAttachedEffects(const tibia::creatures::TCreature& stored,
-                                                 const QPoint& walked, const QPoint& jumped, const bool onTop)
+void TWorldMapRenderProvider::addCreatureDecorations(const tibia::creatures::TCreature& stored, const QPoint& at,
+                                                     const bool overOutfit)
 {
-    if (!stored.hasAttachedEffects())
+    if (!tibia::creatures::hasCreatureDecorationHook())
         return;
-    for (const AttachedEffectPtr& effect : stored.attachedEffects()) {
-        int phase = 0;
-        QPoint offset;
-        float opacity = 1.f;
-        if (!effect->getDrawFrame(onTop, phase, offset, opacity))
-            continue;
-        TAppearanceType* type = effect->getThingType();
-        const QPoint point = (effect->isFollowingOwner() ? jumped : walked) + offset;
-        const int xPattern = static_cast<int>(effect->getDirection()) % std::max<int>(1, type->getNumPatternX());
-        uint8_t tint = 0;
-        if (const auto hook = tibia::mods::effectTintHook())
-            tint = hook(effect->getId());
-        addSprites(type, point, xPattern, 0, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
-        if (const Light& light = effect->getLight(); light.intensity > 0) {
-            addLight(walked + QPoint(FieldSize / 2, FieldSize / 2), light.intensity, light.color);
-            if (m_lighting) {
-                const QPoint center = walked + QPoint(FieldSize / 2, FieldSize / 2);
-                m_lighting->addCenterLight(center.x(), center.y(), light.intensity, light.color);
-            }
-        }
-        if (type->hasLight()) {
-            addLight(point + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
-            if (m_lighting) {
-                const QPoint center = point + QPoint(FieldSize / 2, FieldSize / 2);
-                m_lighting->addCenterLight(center.x(), center.y(), type->getLight().intensity, type->getLight().color);
-            }
+    m_decorations.clear();
+    tibia::creatures::creatureDecorations(stored.creatureId(), overOutfit,
+                                          static_cast<qint64>(tibia::shared::TClockService::frameMillis()),
+                                          m_decorations);
+    for (const tibia::creatures::TCreatureDecorationSprite& decoration : m_decorations) {
+        const QPoint point = at + decoration.offset;
+        addSprites(decoration.type, point, decoration.patternX, 0, 0, decoration.phase, false, 0,
+                   SpriteRecord::NoHighlight, decoration.opacity, decoration.tint);
+        if (decoration.type->hasLight()) {
+            const QPoint center = point + QPoint(FieldSize / 2, FieldSize / 2);
+            addLight(center, decoration.type->getLight().intensity, decoration.type->getLight().color);
+            if (m_lighting)
+                m_lighting->addCenterLight(center.x(), center.y(), decoration.type->getLight().intensity,
+                                           decoration.type->getLight().color);
         }
     }
 }
@@ -1767,9 +1607,7 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppear
     if (!effect->getFieldDrawFrame(phase, xPattern, yPattern))
         return;
     TAppearanceType* type = appearance->thingType();
-    uint8_t tint = 0;
-    if (const auto hook = tibia::mods::effectVariantTintHook())
-        tint = hook(effect->variantId());
+    const uint8_t tint = effect->tint();
     const QPoint at(dest.x() - elevation, dest.y() - elevation);
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))

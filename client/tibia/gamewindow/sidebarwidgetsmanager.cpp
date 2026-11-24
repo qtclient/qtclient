@@ -632,7 +632,7 @@ QJsonArray TSidebarWidgetsManager::serializeSidebar(const uint sidebarId) const
     for (const auto& [id, widget] : m_battleLists->widgets())
         collect(widget, { { QStringLiteral("instance"), id }, { QStringLiteral("type"), widgetTypeName(BattleList) } });
     for (const auto& [type, hooks] : m_widgets) {
-        // qtclient: pack widget types (e.g. the IdleOT minimap, 100) have no
+        // qtclient: pack widget types (e.g. a pack minimap, 100) have no
         // options name; parseWidgetsManager drops nameless entries, so storing
         // them would never compare equal and every save would re-run the
         // restore (closeAll) below.

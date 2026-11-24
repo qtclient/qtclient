@@ -403,6 +403,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     QQuickItem* gameWindowItem = g.gameWindowItem;
     if (!gameWindowItem)
         return false;
+    // CIP: the client window becomes the main window once the game window is built
+    // (sprite texture providers, the game action router, mainWindowInitialized).
+    if (!preview)
+        setMainWindow(window);
     g.dialogPlaceholder = gameWindowController->gameWindowChild(QStringLiteral("dialogPlaceholder"));
     g.mapWindowPane = gameWindowController->gameWindowChild(QStringLiteral("mapWindowPane"));
     QQuickItem* mapWindowPane = g.mapWindowPane;
@@ -1051,13 +1055,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // PackHostWire* for deferred slots (HUD chat switch, store/options/logout).
     g.packHost = std::make_unique<qtclient::PackHostWire>();
     qtclient::PackHostWire& packHost = *g.packHost;
-    packHost.bindQuestTracker = [&g](mods::MissionBackend* backend, qtclient::BrowseOpenerFn browse) {
+    // Host extension: a pack's extra quest rows (the backend handles its own actions).
+    packHost.bindQuestTracker = [&g](mods::MissionBackend* backend) {
         g.sidebarWidgets->questTrackerWidget()->setMissionBackend(backend);
-        g.sidebarWidgets->questTrackerWidget()->setBrowseOpener(std::move(browse));
     };
-    packHost.bindQuestLog = [this](mods::MissionBackend* backend, qtclient::BrowseOpenerFn browse) {
+    packHost.bindQuestLog = [this](mods::MissionBackend* backend) {
         m_pQuestLogController->setMissionBackend(backend);
-        m_pQuestLogController->setBrowseOpener(std::move(browse));
     };
     packHost.bindInstanceToInfoDialogs = [this](mods::InstanceBackend* instance) {
         m_pCyclopediaDialogController->setInstanceStorage(instance);
@@ -1066,8 +1069,21 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         if (auto* buttonBar = g.sidebarPanels->buttonBar())
             buttonBar->setAttentionStorage(attention);
     };
-    packHost.addProductOptionsPage = [optionsDialog](const int category, void* page) {
-        optionsDialog->addProductPage(category, static_cast<config::TOptionsPage*>(page));
+    packHost.addOptionsPage = [optionsDialog](const int category, void* page) {
+        optionsDialog->addExtensionPage(category, static_cast<config::TOptionsPage*>(page));
+    };
+    // Host extension: chrome drawn over the map window forwards the mouse to it.
+    packHost.mapOverlayHover = [&g](const bool hovering, const double x, const double y) {
+        if (g.mapWindowController)
+            g.mapWindowController->setOverlayHover(hovering, x, y);
+    };
+    packHost.mapOverlayClick = [&g](const int x, const int y, const int button, const int modifiers) {
+        if (g.mapWindowController)
+            g.mapWindowController->onMapWindowClicked(x, y, button, modifiers);
+    };
+    packHost.mapOverlayStartDrag = [&g](const int x, const int y) {
+        if (g.mapWindowController)
+            g.mapWindowController->onMapWindowStartDrag(x, y, nullptr);
     };
     packHost.openOptionsPage = [optionsDialog](const int page) { optionsDialog->open(page); };
     packHost.openStore = [storeDialog] { storeDialog->open(); };

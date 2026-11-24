@@ -699,10 +699,7 @@ QString TClientOptions::exportToBase64String() const
 
 void TClientOptions::setExtraOption(const QString& name, const QJsonValue& value)
 {
-    if (m_extraOptions.value(name) == value && m_extraOptions.contains(name))
-        return;
     m_extraOptions.insert(name, value);
-    Q_EMIT extraOptionChanged(name);
 }
 
 void TClientOptions::setExtraSection(const QString& name, const QJsonValue& value)

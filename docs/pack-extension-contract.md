@@ -41,10 +41,20 @@ Third-party / default packs must `#include <qtclient/…>` only
 | `qtclient/dialog.h` | `gamewindow/dialogmanager.h` | Pack `TDialogController` / dialog stack |
 | `qtclient/outfitpalette.h` | `qmlcomponents/outfitpalette.h` | Outfit colour palette leaf (no QML types) |
 | `qtclient/extendedopcode_json.h` | `protocol/extendedopcode_json.h` | JSON extended-opcode send (no router hub) |
-| `mods::setMissionBackend(MissionBackend*)` | `mods/registry.*` | Expedition / mission rows for quest tracker + quest log |
-| `TQuestTrackerWidgetManager::setMissionBackend` | `gamewindow/questtrackerwidgetcontroller.*` | Tracker UI bind |
-| `TQuestLogController::setMissionBackend` | `gamewindow/questlogcontroller.*` | Quest log bind |
-| `TMinimapRendererQuickItem::setMissionZones` | `qmlcomponents/minimaprendererquickitem.*` | Mission zone overlays on minimap |
+| `mods::setMissionBackend(MissionBackend*)` | `mods/registry.*`, `mods/mission_backend.h` | Extra quest rows: opaque per-row data for the quest tracker (`extension` role) and the quest log (`missionExtension`), activations back to the backend |
+| `TQuestTrackerWidgetManager::setMissionBackend` | `gamewindow/questtrackerwidgetcontroller.*` | Tracker bind (`activateExtension(questFlagId, choice)`) |
+| `TQuestLogController::setMissionBackend` | `gamewindow/questlogcontroller.*` | Quest log bind (`activateMissionExtension(choice)`) |
+| `TMinimapRendererQuickItem::setExtraZoneMasks` | `qmlcomponents/minimaprendererquickitem.*` | Zone masks that are none of map.dat's subareas, drawn like a highlighted subarea |
+| `TMapWindowController::setOverlayHover` | `gamewindow/mapwindowcontroller.*` | Chrome over the map reports the mouse; clicks/drags via `onMapWindowClicked` / `onMapWindowStartDrag` (ABI `pack_host->map_overlay_*`) |
+| `TNpcDialogController::openExternalConversation` | `gamewindow/npcdialogcontroller.*` | A pack-driven NPC conversation (`TExternalNpcConversation`); `shownChanged` |
+| `TButtonBarController::addExtensionShortcut`, `TKeyboardShortcutHandler::addExtensionAction` | `gamewindow/buttonbarcontroller.*`, `input/keyboardshortcuthandler.*` | Display Shortcuts / hotkey actions a pack registers (ABI `register_button_bar_shortcut`, `register_hotkey_action`) |
+| `TOptionsMenuDialogController::addExtensionPage` | `gamewindow/optionsmenudialogcontroller.*` | A pack's options page (ABI `pack_host->add_options_page`) |
+| `set_world_frame_hooks` | `renderer/worldmaprenderprovider.*`, `mods/worldview.*` | `after_build` / `filter_light_map` on the live world's frame (weather, light-map filters) |
+| `world_field_stack` | `renderer/worldframeview.*` | A map field's stack (CipSoft order, type ids + flags) for pack geometry |
+| `sound` (`QtClientSoundApiV1`) | `sound/ambiencehold.*` | Hold CipSoft's ambience channel; play a bed / one-shots at the ambience volume |
+| `set_texture_atlas_hint` | `mods/textureatlashint.*` | Raise the scene graph texture atlas before the first window |
+| `set_effect_remap_hook`, `set_creature_decoration_hook`, `session->set_creature_hidden` | `effects/effectremap.*`, `creatures/creaturedecoration.*` | Draw another effect for a server id; sprites under / over creatures; hide a creature |
+| `session->stored_fields_on_floor`, `waypoint_costs_snapshot`, `static_map_*` | `game/mapsession.*` | Map data peels for pack path finding and map.dat areas / subareas |
 | `TSpeechBubbleOverlayQuickItem::setStatusBottomMargin` | Pack C++ (`THudLayout`, …) | Extra bottom inset so CIP status toasts clear pack chrome |
 
 ## Rules

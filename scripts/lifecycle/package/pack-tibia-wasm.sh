@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Lay out the tibia WASM slice of the CDN bundle:
 #   <dest>/client/<rev>/wasm/tibia.{html,js,wasm}[.gz|.br] qtloader.js qtlogo.svg …
-#   <dest>/.idleot/v3/content-web.json   minimal list (QML is compiled in; no Lua tree)
-#   <dest>/.idleot/wasm.json             (assemble.py reads .idleot/)
+#   <dest>/<meta>/v3/content-web.json    minimal list (QML is compiled in; no Lua tree)
+#   <dest>/<meta>/wasm.json              slice metadata (the bundle assembler reads it)
+# <meta> is QTCLIENT_STORE_META (default .qtclient, as package_desktop.py).
+# A pack (QTCLIENT_PACK_DIR, else mods/<id> next to the wasm) is baked into the
+# tip; its launcher tree comes from QTCLIENT_PACK/launcher.
 # Usage: pack-tibia-wasm.sh <src-dir> <dest-dir>
 set -euo pipefail
 
@@ -23,8 +26,9 @@ if [[ -n "${QTCLIENT_CLIENT_REVISION:-}" ]]; then
   REV="${QTCLIENT_CLIENT_REVISION}"
 fi
 
+META="${QTCLIENT_STORE_META:-.qtclient}"
 OUT="${DEST}/client/${REV}/wasm"
-mkdir -p "$OUT" "${DEST}/.idleot/v3" "${DEST}/content"
+mkdir -p "$OUT" "${DEST}/${META}/v3" "${DEST}/content"
 
 # Flattened build dirs may use symlinks into client/tibia/ — dereference.
 copy_file() {
@@ -63,16 +67,16 @@ for f in tibia.js tibia.wasm; do
 done
 
 # Minimal runtime list so the launcher sync path still has a content-web.json.
-python3 - "$DEST" "$REV" <<'PY'
+python3 - "$DEST" "$REV" "$META" <<'PY'
 import json, sys
 from pathlib import Path
-dest, rev = Path(sys.argv[1]), sys.argv[2]
+dest, rev, meta = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 doc = {"schema": 3, "revision": rev, "engine": rev, "files": {}}
-(dest / ".idleot/v3/content-web.json").write_text(json.dumps(doc, indent=1) + "\n")
+(dest / meta / "v3" / "content-web.json").write_text(json.dumps(doc, indent=1) + "\n")
 print(f"[pack-tibia-wasm] content-web: {len(doc['files'])} files (tibia; QML in binary)")
 PY
 
-cat >"${DEST}/.idleot/wasm.json" <<EOF
+cat >"${DEST}/${META}/wasm.json" <<EOF
 {
   "revision": "${REV}",
   "productSha": "${ENGINE_SHA}",
@@ -81,7 +85,7 @@ cat >"${DEST}/.idleot/wasm.json" <<EOF
 }
 EOF
 
-# Optional product pack: bake into tip next to tibia.wasm for /play OPFS.
+# Optional pack: bake into tip next to tibia.wasm for /play OPFS.
 # Prefer QTCLIENT_PACK_DIR; else mods/<id> next to the wasm (prefer bin/ with brand.json).
 PACK_SRC="${QTCLIENT_PACK_DIR:-}"
 if [[ -z "$PACK_SRC" ]]; then
@@ -92,7 +96,7 @@ if [[ -z "$PACK_SRC" ]]; then
     for cand in "$mods_root"/*; do
       [[ -d "$cand" && -f "$cand/mod.json" ]] || continue
       base="$(basename "$cand")"
-      [[ "$base" == qtc-aac || "$base" == clientmods || "$base" == minimap ]] && continue
+      [[ "$base" == qtc-aac ]] && continue
       [[ -z "$first" ]] && first="$cand"
       if [[ -f "$cand/brand.json" ]]; then
         branded="$cand"
@@ -113,12 +117,8 @@ if [[ -n "$PACK_SRC" && -f "${PACK_SRC}/mod.json" ]]; then
   rm -rf "${OUT}/mods/${pack_id}/lib"
   echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/${pack_id} (brand=$([[ -f ${OUT}/mods/${pack_id}/brand.json ]] && echo yes || echo no))"
 fi
-# Ensure launcher chrome lands even when PACK_SRC was a non-branded tree.
+# The pack's launcher tree (brand, channels, chrome) even when PACK_SRC was a non-branded tree.
 PACK_ROOT="${QTCLIENT_PACK:-}"
-if [[ -z "$PACK_ROOT" ]]; then
-  _umbrella="$(cd "$(dirname "$0")/../../../.." && pwd)"
-  [[ -f "$_umbrella/apps/idleot-client/launcher/brand.json" ]] && PACK_ROOT="$_umbrella/apps/idleot-client"
-fi
 if [[ -n "$PACK_ROOT" && -f "$PACK_ROOT/launcher/brand.json" && -d "${OUT}/mods" ]]; then
   bash "$(cd "$(dirname "$0")/.." && pwd)/lib/merge-launcher-brand.sh" \
     --pack "$PACK_ROOT/launcher" --tip "$OUT" || true

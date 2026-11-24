@@ -204,12 +204,15 @@ TPackageBuild::TPackageBuild(TPackage* owner, const QJsonObject& build, const QU
     versionUrl = optionalUrl("versionurl");
     assetsUrl = optionalUrl("assetsurl");
     assetsVersionUrl = optionalUrl("assetsversionurl");
-    // Host channels of the release tip (see THostChannel).
-    for (const char* channel : {"mods", "minimap"}) {
-        const QString name = QString::fromLatin1(channel);
-        const QString key = name + QStringLiteral("url");
-        if (!build.contains(key))
+    // Host channels: every other `<name>url` of the build (see THostChannel).
+    const QStringList cipKeys{QStringLiteral("url"), QStringLiteral("versionurl"), QStringLiteral("assetsurl"),
+                              QStringLiteral("assetsversionurl")};
+    for (const QString& key : build.keys()) {
+        if (!key.endsWith(QLatin1String("url")) || cipKeys.contains(key))
             continue;
+        const QString name = key.chopped(3);
+        if (name.endsWith(QLatin1String("version")) && build.contains(name.chopped(7) + QStringLiteral("url")))
+            continue; // the version url of another channel
         THostChannel host;
         host.name = name;
         host.url = resolveConfigurationUrl(baseUrl, QUrl(build.value(key).toString()));

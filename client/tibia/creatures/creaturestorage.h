@@ -209,7 +209,8 @@ public:
     bool isPassable() const { return !m_unpassable; }
     bool isPlayer() const;
     bool isLocalPlayer() const { return m_isLocalPlayer; }
-    bool isSoftDead() const { return m_softDead; }
+    /// Host: an extension keeps the creature (and its HUD) off the map.
+    bool isDrawSuppressed() const { return m_drawSuppressed; }
     bool isDead() const { return m_healthPercent == 0; }
     bool isHidden() const;
     /// Some frame shows: one of the colours is set and its option is on.
@@ -287,22 +288,13 @@ public:
     /// creature known only by id is not.
     bool isPlacedOnField() const { return m_placedOnField; }
     void setPlacedOnField(bool placed) { m_placedOnField = placed; }
-    const std::vector<AttachedEffectPtr>& attachedEffects() const { return m_attachedEffects; }
-    bool hasAttachedEffects() const { return !m_attachedEffects.empty(); }
 
     /// Freeze the current step where it is.
     void stopMovement() { m_movementTween.stop(); }
 
     /// Copies the player data's HUD values onto the local player's creature.
     void syncLocalPlayerStats();
-    /// Instance death: the creature shows dead while the server keeps it.
-    void setSoftDead(bool softDead);
-    /// A channel bar under the name fills over `durationMs` from `nowMs`, then
-    /// stays full until cleared.
-    void setInformationChannel(uint32_t durationMs, qint64 nowMs);
-    void clearInformationChannel() { m_informationChannelDurationMs = 0; }
-    /// 0-100 while a channel runs; below 0 when none.
-    float informationChannelProgress(qint64 nowMs) const;
+    void setDrawSuppressed(bool suppressed) { m_drawSuppressed = suppressed; }
 
     /// Protocol writes (storage is authoritative).
     void setName(const QString& name);
@@ -317,9 +309,6 @@ public:
     void setEmblem(uint8_t emblem);
     void setDirection(uint8_t direction);
     void setVocation(uint8_t vocation) { m_vocation = vocation; }
-    void attachEffect(const AttachedEffectPtr& effect);
-    void detachEffectById(uint16_t effectId);
-    void clearTemporaryAttachedEffects();
     void setIcon(uint8_t icon) { m_icon = icon; }
     void setInspectionType(uint8_t inspectionType);
     /// The attack, follow or selection frame in `color`.
@@ -370,7 +359,7 @@ private:
     bool m_hasWalkingTile{ false };
     bool m_unpassable{ false };
     bool m_isLocalPlayer{ false };
-    bool m_softDead{ false };
+    bool m_drawSuppressed{ false };
     TCreatureMarks m_marks;
     bool m_placedOnField{ false };
     uint8_t m_patternX{ 2 };
@@ -389,9 +378,6 @@ private:
     uint8_t m_vocation{ 0 };
     std::vector<TCreatureIcon> m_hudIcons;
     std::set<uint8_t> m_extraIcons;
-    std::vector<AttachedEffectPtr> m_attachedEffects;
-    qint64 m_informationChannelStartMs{ 0 };
-    uint32_t m_informationChannelDurationMs{ 0 };
 
 };
 
@@ -473,11 +459,6 @@ private:
     TCreatureID m_followID{ 0 };
     TCreatureID m_attackID{ 0 };
 };
-
-/// Host: product attached effects on a stored creature.
-void protocolAttachEffect(TCreatureID id, const AttachedEffectPtr& effect);
-void protocolDetachEffect(TCreatureID id, uint16_t effectId);
-void protocolClearTemporaryAttachedEffects(TCreatureID id);
 
 }
 }

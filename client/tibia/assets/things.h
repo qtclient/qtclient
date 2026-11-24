@@ -4,8 +4,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include "specialappearances.h"
 
-#include <idleot/heightstamp.h>
-
 #include <functional>
 #include <map>
 #include <set>
@@ -44,13 +42,6 @@ public:
     const std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping>& spritesheetMapping() const { return m_spritesheetMapping; }
     /// CIP v9: the set of useable appearances, made empty with the manager.
     std::shared_ptr<TUseableAppearances> useableAppearances() const { return m_useableAppearances; }
-
-    struct EffectVariant
-    {
-        uint16_t baseId = 0;
-        std::string shader;
-        bool underCreatures = false;
-    };
 
     void init();
     void terminate();
@@ -113,23 +104,6 @@ public:
     /// The NPCs that buy more than nine kinds of creature products (computed once).
     std::set<QString> creatureProductBuyerNames() const;
 
-    bool setThingShape(uint16_t itemId, const std::string& shape);
-    /// The pack's shape override of an object (Auto without one).
-    ThingShape thingShape(uint16_t itemId) const;
-
-    void registerEffectVariant(uint16_t virtualId, uint16_t baseId, const std::string& shader, bool underCreatures);
-    void clearEffectVariants() { m_effectVariants.clear(); }
-    const EffectVariant* findEffectVariant(uint16_t virtualId) const
-    {
-        const auto it = m_effectVariants.find(virtualId);
-        return it != m_effectVariants.end() ? &it->second : nullptr;
-    }
-    uint16_t resolveEffectId(uint16_t effectId) const
-    {
-        const auto* variant = findEffectVariant(effectId);
-        return variant ? variant->baseId : effectId;
-    }
-
 private:
     TAppearanceType* findType(ThingCategory category, uint16_t id) const;
     void collectObjectLists();
@@ -145,8 +119,6 @@ private:
     TAppearanceTypeList m_skillWheelGemObjectTypes;
     std::shared_ptr<TSpecialAppearancesForProtocolParsing> m_specialAppearances;
     std::string m_assetIdentifier;
-    std::unordered_map<uint16_t, EffectVariant> m_effectVariants;
-    std::unordered_map<uint16_t, ThingShape> m_thingShapes;
 };
 
 }

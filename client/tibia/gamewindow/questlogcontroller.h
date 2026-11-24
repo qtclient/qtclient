@@ -10,6 +10,7 @@
 #include <QTimer>
 #include <QSet>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <functional>
 #include <memory>
@@ -173,13 +174,12 @@ public:
     Q_INVOKABLE void setPinned(int QuestLineId, bool IsPinned);
     Q_INVOKABLE void setTrackingOfQuestFlag(int QuestFlagId, bool IsTracked);
 
-    /// Product mission for the selected quest line (empty when that line has none).
-    Q_PROPERTY(QString missionCta READ missionCta NOTIFY missionChanged)
-    Q_PROPERTY(QString missionProgress READ missionProgress NOTIFY missionChanged)
-    Q_PROPERTY(QVariantList missionChoices READ missionChoices NOTIFY missionChanged)
-    void setMissionBackend(mods::MissionBackend* storage);
-    void setBrowseOpener(std::function<void(const QString& filter)> opener);
-    Q_INVOKABLE void startMission(const QString& taskEntryId = {});
+    /// Host extension: the mission backend's data for the selected quest line
+    /// and mission (empty without one).
+    Q_PROPERTY(QVariantMap missionExtension READ missionExtension NOTIFY missionChanged)
+    void setMissionBackend(mods::MissionBackend* backend);
+    /// Host extension: the selection's extension data was activated (`choice` from it).
+    Q_INVOKABLE void activateMissionExtension(const QString& choice = {});
 
 Q_SIGNALS:
     void missionChanged();
@@ -193,9 +193,7 @@ private:
     void resetSelection();
     std::set<questlog::TQuestFlagID> trackedQuestFlagIds() const;
 
-    QString missionCta() const;
-    QString missionProgress() const;
-    QVariantList missionChoices() const;
+    QVariantMap missionExtension() const;
     QString selectedPartName() const;
 
     QTimer m_questLinesChangedTimer;
@@ -207,7 +205,6 @@ private:
     TQuestLinePartsModel m_parts;
     TQuestLinePartsSortFilterProxyModel m_partsProxy;
     QPointer<mods::MissionBackend> m_missionBackend;
-    std::function<void(const QString&)> m_browseOpener;
 };
 
 }

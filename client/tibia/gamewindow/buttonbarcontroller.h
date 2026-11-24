@@ -76,9 +76,10 @@ class TButtonBarController final : public TSidebarPanelController<cip::tibia::ga
 {
     Q_OBJECT
 public:
-    /// Pack Display Shortcuts (controlButtonsOptions) entries. Numeric ids start
-    /// at ProductShortcutIdBase so they never collide with CIP EButtons.
-    static constexpr int ProductShortcutIdBase = 1000;
+    /// Host extension: Display Shortcuts (controlButtonsOptions) entries a pack
+    /// registers. Numeric ids start at ExtensionShortcutIdBase so they never
+    /// collide with CIP EButtons.
+    static constexpr int ExtensionShortcutIdBase = 1000;
 
     /// The social button opens the social dialog; the logout question is made
     /// with the engine and the dialog parent item.
@@ -86,22 +87,22 @@ public:
                          QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TButtonBarController() override;
 
-    /// Register a product shortcut for Options → Display Shortcuts and the
+    /// Registers an extension shortcut for Options → Display Shortcuts and the
     /// button bar grid. `id` is stored in controlButtonsOptions; `label` is
     /// shown in the options lists and as the button tooltip. When
     /// `defaultEnabled`, reconcile appends it to enabledButtons if the user
     /// has never seen the id. `imageSource` is a `/images/…` (or pack qrc)
     /// path for ButtonBarPanel; empty keeps the text label on the button.
-    static void addProductShortcut(const QString& id, const QString& label, std::function<void()> run,
+    static void addExtensionShortcut(const QString& id, const QString& label, std::function<void()> run,
                                    bool defaultEnabled = true, const QString& imageSource = {});
-    static QStringList productShortcutIds();
-    static QStringList defaultEnabledProductShortcutIds();
-    static QString productShortcutLabel(const QString& id);
-    static QString productShortcutImage(const QString& id);
-    static QString productShortcutIdFromLabel(const QString& label);
-    static int productShortcutButtonId(const QString& id);
-    static QString productShortcutIdFromButtonId(int buttonId);
-    static bool isProductShortcutButtonId(int buttonId);
+    static QStringList extensionShortcutIds();
+    static QStringList defaultEnabledExtensionShortcutIds();
+    static QString extensionShortcutLabel(const QString& id);
+    static QString extensionShortcutImage(const QString& id);
+    static QString extensionShortcutIdFromLabel(const QString& label);
+    static int extensionShortcutButtonId(const QString& id);
+    static QString extensionShortcutIdFromButtonId(int buttonId);
+    static bool isExtensionShortcutButtonId(int buttonId);
 
     /// sidebarPanelsOptions.controlButtonsVisible.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -134,21 +135,12 @@ public:
     /// This week's results are in, or a bounty task can be claimed.
     bool taskboardButtonHighlight() const override;
 
-    /// controlButtonsOptions.enabledButtons names, in order (product side rail).
-    QStringList enabledShortcutIds() const;
-    /// Same gold highlight ButtonBarPanel draws for this controlButtonsOptions id.
-    bool shortcutHighlighted(const QString& name) const;
-    /// Fire the same slot ButtonBarPanel's Loader would for `buttonId` (EButtons).
-    void activateShortcut(int buttonId);
-    /// Same as activateShortcut, keyed by controlButtonsOptions name.
-    void activateShortcutByName(const QString& name);
-
-    /// ButtonBarPanel product delegate: label for a ProductShortcutIdBase id.
-    Q_INVOKABLE QString productShortcutLabelForButtonId(int buttonId) const;
-    /// ButtonBarPanel product delegate: icon path (empty → show label as text).
-    Q_INVOKABLE QString productShortcutImageForButtonId(int buttonId) const;
-    /// ButtonBarPanel product delegate click.
-    Q_INVOKABLE void onProductShortcutClicked(int buttonId);
+    /// A pack's ButtonBarPanel delegate: label for an ExtensionShortcutIdBase id.
+    Q_INVOKABLE QString extensionShortcutLabelForButtonId(int buttonId) const;
+    /// A pack's ButtonBarPanel delegate: icon path (empty → show label as text).
+    Q_INVOKABLE QString extensionShortcutImageForButtonId(int buttonId) const;
+    /// A pack's ButtonBarPanel delegate click: runs the shortcut.
+    Q_INVOKABLE void onExtensionShortcutClicked(int buttonId);
 
 public Q_SLOTS:
     /// CIP .
@@ -168,7 +160,7 @@ public Q_SLOTS:
     /// CIP : closes the open multi-action buttons, then opens the
     /// options' first page.
     void onOptionsButtonClicked() override;
-    /// product: open CIP Change Character (same as Ctrl+G / HUD top bar).
+    /// Host: publishes CHANGE_CHARACTER (a pack's button bar button).
     void onSwitchCharacterButtonClicked();
     /// Asks first; the answer goes to onLogoutRequestConfirmedOrCanceled.
     void onLogoutButtonClicked() override;

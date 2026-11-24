@@ -1,6 +1,6 @@
 #pragma once
 
-/// C ABI for tip pack-host wiring (mirrors PackHostWire ops used by IdleOT suite).
+/// C ABI for tip pack-host wiring (mirrors the PackHostWire ops absorb packs use).
 
 #include <stddef.h>
 #include <stdint.h>
@@ -10,17 +10,17 @@ extern "C" {
 #endif
 
 /** Host passes mission / attention / instance as opaque object pointers. */
-typedef void (*QtClientBrowseFn)(void* browse_ctx, const char* filter_utf8);
-
 typedef struct QtClientPackHostApiV1 {
     /** Returns non-zero when pack wiring is available (bind_quest_tracker set). */
     int (*valid)(void* user);
 
-    void (*bind_quest_tracker)(void* user, void* mission_backend, QtClientBrowseFn browse, void* browse_ctx);
-    void (*bind_quest_log)(void* user, void* mission_backend, QtClientBrowseFn browse, void* browse_ctx);
+    /** v8: the extra quest rows' backend (tip mods::MissionBackend*); it handles its own actions. */
+    void (*bind_quest_tracker)(void* user, void* mission_backend);
+    void (*bind_quest_log)(void* user, void* mission_backend);
     void (*bind_instance_to_info_dialogs)(void* user, void* instance_backend);
     void (*bind_attention_to_button_bar)(void* user, void* attention_backend);
-    void (*add_product_options_page)(void* user, int category, void* options_page);
+    /** v8 (was add_product_options_page): a pack's page (tip config::TOptionsPage*) in the options dialog. */
+    void (*add_options_page)(void* user, int category, void* options_page);
     void (*open_options_page)(void* user, int page);
     void (*open_store)(void* user);
     void (*request_logout_via_button_bar)(void* user);
@@ -51,6 +51,13 @@ typedef struct QtClientPackHostApiV1 {
      *  publishGameAction signals connect to; null before the game window exists.
      *  Host API v4+: read it only when api_version >= 4 (older tables end before it). */
     void* (*game_action_router)(void* user);
+
+    /** Map window overlay input, API v8+: the mouse over chrome drawn on the map
+     *  window (hovering 0: it left), a click, or a drag start at a map point.
+     *  Coordinates are map window pixels. */
+    void (*map_overlay_hover)(void* user, int hovering, double x, double y);
+    void (*map_overlay_click)(void* user, int x, int y, int mouse_button, int keyboard_modifiers);
+    void (*map_overlay_start_drag)(void* user, int x, int y);
 } QtClientPackHostApiV1;
 
 #ifdef __cplusplus

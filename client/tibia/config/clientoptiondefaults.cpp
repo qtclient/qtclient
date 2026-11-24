@@ -290,8 +290,8 @@ QStringList defaultControlButtonIds()
     QStringList ids;
     for (const char* id : ControlButtonIds)
         ids << QString::fromLatin1(id);
-    // Pack Display Shortcuts registered via addProductShortcut (default-enabled).
-    ids += gamewindow::TButtonBarController::defaultEnabledProductShortcutIds();
+    // Pack Display Shortcuts registered via addExtensionShortcut (default-enabled).
+    ids += gamewindow::TButtonBarController::defaultEnabledExtensionShortcutIds();
     return ids;
 }
 
@@ -303,8 +303,8 @@ QJsonObject defaultControlButtonsOptions()
         enabled << QString::fromLatin1(ControlButtonIds[index]);
     for (const int index : DefaultDisabledButtons)
         disabled << QString::fromLatin1(ControlButtonIds[index]);
-    // Pack Display Shortcuts registered via addProductShortcut (default-enabled).
-    enabled += gamewindow::TButtonBarController::defaultEnabledProductShortcutIds();
+    // Pack Display Shortcuts registered via addExtensionShortcut (default-enabled).
+    enabled += gamewindow::TButtonBarController::defaultEnabledExtensionShortcutIds();
     return {
         { QStringLiteral("enabledButtons"), QJsonArray::fromStringList(enabled) },
         { QStringLiteral("disabledButtons"), QJsonArray::fromStringList(disabled) },

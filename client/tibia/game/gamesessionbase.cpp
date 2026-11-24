@@ -1427,7 +1427,7 @@ void TGameSessionBase::processWorldEntered()
 
 void TGameSessionBase::processDeath()
 {
-    // The pack's session state (is_dead); the scene goes on as CipSoft's does.
+    // The death message's session state (is_dead); the scene goes on as CipSoft's does.
     m_dead = true;
 }
 
@@ -1435,7 +1435,6 @@ void TGameSessionBase::resetGameStates()
 {
     m_online = false;
     m_dead = false;
-    m_sceneFrozen = false;
     m_bugReportState = -1;
     m_canExivaOptions = false;
     m_followingCreatureId = 0;

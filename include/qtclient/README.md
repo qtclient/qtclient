@@ -11,7 +11,7 @@
 Extending pack access means adding fields to `QtClientHostApiV1` (bump
 `api_version` when breaking). Packs never import tip symbols.
 
-**Transitional C++ façades** (IdleOT `ABSORB_INTO_QTCLIENT` only) still live beside
+**Transitional C++ façades** (deprecated `ABSORB_INTO_QTCLIENT` packs only) still live beside
 this tree (`worldview.h`, `pack_host.h`, …). New packs must not
 depend on them — peel onto `abi/` instead.
 
@@ -42,7 +42,7 @@ logger writing every Qt message as `[ yyyy-mm-dd hh:mm:ss,zzz ] message` to
 process-wide, so a pack's `qDebug` / `qInfo` / `qWarning` / `qCritical` land in
 the same file with no extra API. Packs log the way CipSoft's client does:
 
-- Plain default-category calls; no product prefixes (`[Tag]`, `idleot:`), no
+- Plain default-category calls; no product prefixes (`[Tag]`, `mypack:`), no
   perf or frame-time lines.
 - QML load failures: `qCritical() << "Component creation error for " << url.url() << "\n" << component.errors();`
 - File / JSON failures: `qWarning() << "Failed to open" << path;`,

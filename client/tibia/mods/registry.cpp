@@ -3,7 +3,6 @@
 #include "mods/attention_backend.h"
 #include "mods/instance_backend.h"
 #include "mods/mission_backend.h"
-#include "mods/weather_driver.h"
 
 #include <algorithm>
 
@@ -15,15 +14,11 @@ std::vector<ModUrls> g_urls;
 std::vector<ModBootstrapFn> g_early;
 std::vector<std::string> g_packQmlImportPaths;
 std::vector<std::string> g_packOverrideRoots;
-EnsureModsFn g_ensureMods = nullptr;
-EffectTintFn g_effectTint = nullptr;
-EffectVariantTintFn g_effectVariantTint = nullptr;
 ApplyImageTintFn g_applyImageTint = nullptr;
 MissionBackend* g_mission = nullptr;
 AttentionBackend* g_attention = nullptr;
 InstanceBackend* g_instance = nullptr;
 LoginSyncEnqueueFn g_loginSync = nullptr;
-WeatherDriver* g_weather = nullptr;
 
 } // namespace
 
@@ -57,14 +52,6 @@ void earlyBootstrapAll(const ModContext& ctx)
 {
     for (ModBootstrapFn fn : g_early)
         fn(ctx);
-}
-
-void setEnsureModsHook(EnsureModsFn fn) { g_ensureMods = fn; }
-
-void ensureModsRegistered()
-{
-    if (g_ensureMods)
-        g_ensureMods();
 }
 
 void addPackQmlImportPath(const std::string& absolutePath)
@@ -142,11 +129,7 @@ bool claimWalkUnreachable(const int x, const int y, const int z, const int reaso
     return g_walkUnreachable && g_walkUnreachable(g_walkUnreachableUser, x, y, z, reason) != 0;
 }
 
-void setEffectTintHook(const EffectTintFn fn) { g_effectTint = fn; }
-void setEffectVariantTintHook(const EffectVariantTintFn fn) { g_effectVariantTint = fn; }
 void setApplyImageTintHook(const ApplyImageTintFn fn) { g_applyImageTint = fn; }
-EffectTintFn effectTintHook() { return g_effectTint; }
-EffectVariantTintFn effectVariantTintHook() { return g_effectVariantTint; }
 ApplyImageTintFn applyImageTintHook() { return g_applyImageTint; }
 
 void setMissionBackend(MissionBackend* backend) { g_mission = backend; }
@@ -164,15 +147,5 @@ void enqueueLoginSync(std::function<void()> fn)
     else if (fn)
         fn();
 }
-
-void setWeatherDriver(WeatherDriver* driver)
-{
-    // Exclusive hook: first non-null wins; log conflicts (docs/mods.md).
-    if (driver && g_weather && g_weather != driver) {
-        return;
-    }
-    g_weather = driver;
-}
-WeatherDriver* weatherDriver() { return g_weather; }
 
 } // namespace tibia::mods

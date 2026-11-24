@@ -66,20 +66,20 @@ public:
     /// CIP : a static hotkey action by name, or null.
     static IGameActionPtr staticAction(const QString& name);
 
-    /// product product hotkey: binding `name` in a hotkey set runs `run`; `defaultKeys` (may be
+    /// Host extension hotkey (a pack's): binding `name` in a hotkey set runs `run`; `defaultKeys` (may be
     /// empty) runs it while unbound. `description` is "Category: text" for the hotkey options
     /// page (CIP label_gameactionidentifier_*). Key repeats are ignored.
-    static void addProductAction(const QString& name, const QKeySequence& defaultKeys, std::function<void()> run,
+    static void addExtensionAction(const QString& name, const QKeySequence& defaultKeys, std::function<void()> run,
                                  const QString& description = {});
 
-    struct TProductActionInfo
+    struct TExtensionActionInfo
     {
         QString name;
         QKeySequence defaultKeys;
         QString description;
     };
-    /// Product actions registered via addProductAction (for the hotkey options page).
-    static QList<TProductActionInfo> productActions();
+    /// The actions registered via addExtensionAction (for the hotkey options page).
+    static QList<TExtensionActionInfo> extensionActions();
     /// CIP names plus Go* (movement pass-through) for DefaultHotkeys mode.
     static QStringList staticActionNames();
 

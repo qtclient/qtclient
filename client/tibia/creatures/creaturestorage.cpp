@@ -3,7 +3,6 @@
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolcodes.h"
 #include "clockservice.h"
-#include "tibia/creatures/attachedeffect.h"
 #include "game/playerdata.h"
 #include "worldmap/worldmapfield.h"
 #include "game/currentgamesession.h"
@@ -339,29 +338,6 @@ void TCreature::syncLocalPlayerStats()
     }
 }
 
-void TCreature::setSoftDead(const bool softDead)
-{
-    if (m_softDead == softDead)
-        return;
-    m_softDead = softDead;
-    if (softDead)
-        m_healthPercent = 0;
-}
-
-void TCreature::setInformationChannel(const uint32_t durationMs, const qint64 nowMs)
-{
-    m_informationChannelStartMs = nowMs;
-    m_informationChannelDurationMs = std::max<uint32_t>(durationMs, 1);
-}
-
-float TCreature::informationChannelProgress(const qint64 nowMs) const
-{
-    if (m_informationChannelDurationMs == 0)
-        return -1.f;
-    const auto elapsed = static_cast<float>(nowMs - m_informationChannelStartMs);
-    return std::min(100.f, elapsed * 100.f / static_cast<float>(m_informationChannelDurationMs));
-}
-
 QColor TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
 {
     static const QColor
@@ -474,31 +450,6 @@ void TCreature::setDirection(const uint8_t direction)
     m_direction = direction;
     m_patternX = patternX;
     updateOutfitPatterns(false);
-}
-
-void TCreature::attachEffect(const AttachedEffectPtr& effect)
-{
-    if (!effect)
-        return;
-    m_attachedEffects.push_back(effect);
-}
-
-void TCreature::detachEffectById(const uint16_t effectId)
-{
-    m_attachedEffects.erase(std::remove_if(m_attachedEffects.begin(), m_attachedEffects.end(),
-                                           [effectId](const AttachedEffectPtr& e) {
-                                               return e && e->getId() == effectId;
-                                           }),
-                            m_attachedEffects.end());
-}
-
-void TCreature::clearTemporaryAttachedEffects()
-{
-    m_attachedEffects.erase(std::remove_if(m_attachedEffects.begin(), m_attachedEffects.end(),
-                                           [](const AttachedEffectPtr& e) {
-                                               return e && !e->isPermanent();
-                                           }),
-                            m_attachedEffects.end());
 }
 
 void TCreature::setInspectionType(const uint8_t inspectionType)
@@ -833,36 +784,6 @@ void TCreatureStorage::publishCreatureUpdated(const std::shared_ptr<TCreature>& 
     notifyCreatureUpdated(row);
     if (appearanceType != ECreatureUpdateAppearanceType::None)
         notifyCreatureAppearanceUpdated(row, appearanceType);
-}
-
-void protocolAttachEffect(const TCreatureID id, const AttachedEffectPtr& effect)
-{
-    TCreatureStorage* storage = game::currentCreatureStorage();
-    if (!storage || !effect)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->attachEffect(effect);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolDetachEffect(const TCreatureID id, const uint16_t effectId)
-{
-    TCreatureStorage* storage = game::currentCreatureStorage();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->detachEffectById(effectId);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolClearTemporaryAttachedEffects(const TCreatureID id)
-{
-    TCreatureStorage* storage = game::currentCreatureStorage();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->clearTemporaryAttachedEffects();
-    storage->publishCreatureUpdated(row);
 }
 
 } // namespace tibia::creatures

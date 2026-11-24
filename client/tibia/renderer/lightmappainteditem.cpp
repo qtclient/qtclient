@@ -106,7 +106,7 @@ public:
 
     void releaseResources() override { destroy(); }
 
-    // Match raycast/weather overlays: claim viewport/scissor so a prior multiply node
+    // Match the world overlays: claim viewport/scissor so a prior multiply node
     // cannot leave a clipped/wrong pass state, and avoid DepthAware (no depth used).
     StateFlags changedStates() const override { return BlendState | ViewportState | ScissorState; }
     RenderingFlags flags() const override { return BoundedRectRendering | NoExternalRendering; }
@@ -282,11 +282,11 @@ void TLightmapPaintedItem::connectToGameSession(const std::shared_ptr<game::IGam
 void TLightmapPaintedItem::takeFrame()
 {
     const TWorldMapRenderProvider::Frame* frame = m_provider ? &m_provider->frame() : nullptr;
-    // Raycast apply bakes shade × classic TLightMap in one multiply. Drawing this
-    // sibling on top would double-darken (and the layered map wrapper has been an
-    // unreliable host for this QSGRenderNode multiply).
+    // Host: a lighting driver that draws the frame's light itself (it multiplies
+    // the light map into its own pass) leaves this one out; drawing both would
+    // darken twice.
     if (tibia::mods::WorldLightingDriver* lighting = tibia::mods::worldLightingDriver();
-        lighting && lighting->enabled()) {
+        lighting && lighting->replacesClassicLight()) {
         m_image = QImage();
         update();
         return;

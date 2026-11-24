@@ -180,7 +180,7 @@ const std::map<QString, IGameActionPtr>& actionsByName()
     return actions;
 }
 
-struct TProductAction
+struct TExtensionAction
 {
     QString name;
     QKeySequence defaultKeys;
@@ -188,9 +188,9 @@ struct TProductAction
     std::function<void()> run;
 };
 
-std::vector<TProductAction>& productActionList()
+std::vector<TExtensionAction>& extensionActionList()
 {
-    static std::vector<TProductAction> actions;
+    static std::vector<TExtensionAction> actions;
     return actions;
 }
 
@@ -225,9 +225,9 @@ void TKeyboardShortcutHandler::onHotkeyOptionsChanged()
         keySequences.insert(keys);
     }
     // Pack hotkeys run on their default keys while unbound.
-    for (const TProductAction& product : productActionList()) {
-        if (!product.defaultKeys.isEmpty())
-            keySequences.insert(product.defaultKeys);
+    for (const TExtensionAction& extension : extensionActionList()) {
+        if (!extension.defaultKeys.isEmpty())
+            keySequences.insert(extension.defaultKeys);
     }
     m_pEventFilter->setKeySequences(std::move(keySequences));
 }
@@ -277,15 +277,15 @@ bool TKeyboardShortcutHandler::keyPressed(const QKeySequence& keys, const bool i
 {
     const auto binding = m_actionSettings.find(keys);
     // Pack hotkeys: bound by name, or on their default keys while unbound.
-    for (const TProductAction& product : productActionList()) {
+    for (const TExtensionAction& extension : extensionActionList()) {
         if (binding != m_actionSettings.end()
-                ? binding->second.kind == config::TActionSetting::ACTION && binding->second.action == product.name
-                : product.defaultKeys == keys) {
+                ? binding->second.kind == config::TActionSetting::ACTION && binding->second.action == extension.name
+                : extension.defaultKeys == keys) {
             // Restricted (a text field has the keyboard): the key goes on to it.
             if (m_areShortcutsRestricted)
                 return false;
             if (!isAutoRepeat)
-                product.run();
+                extension.run();
             return true;
         }
     }
@@ -335,12 +335,12 @@ IGameActionPtr TKeyboardShortcutHandler::staticAction(const QString& name)
     return it == actionsByName().end() ? nullptr : it->second;
 }
 
-void TKeyboardShortcutHandler::addProductAction(const QString& name, const QKeySequence& defaultKeys, std::function<void()> run,
+void TKeyboardShortcutHandler::addExtensionAction(const QString& name, const QKeySequence& defaultKeys, std::function<void()> run,
                                                 const QString& description)
 {
     if (!run || name.isEmpty())
         return;
-    for (TProductAction& action : productActionList()) {
+    for (TExtensionAction& action : extensionActionList()) {
         if (action.name == name) {
             action.defaultKeys = defaultKeys;
             action.description = description;
@@ -348,13 +348,13 @@ void TKeyboardShortcutHandler::addProductAction(const QString& name, const QKeyS
             return;
         }
     }
-    productActionList().push_back({ name, defaultKeys, description, std::move(run) });
+    extensionActionList().push_back({ name, defaultKeys, description, std::move(run) });
 }
 
-QList<TKeyboardShortcutHandler::TProductActionInfo> TKeyboardShortcutHandler::productActions()
+QList<TKeyboardShortcutHandler::TExtensionActionInfo> TKeyboardShortcutHandler::extensionActions()
 {
-    QList<TProductActionInfo> list;
-    for (const TProductAction& action : productActionList())
+    QList<TExtensionActionInfo> list;
+    for (const TExtensionAction& action : extensionActionList())
         list.push_back({ action.name, action.defaultKeys, action.description });
     return list;
 }

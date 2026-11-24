@@ -38,23 +38,6 @@ LightOptions loadOptions();
 /// Tibia's 8-bit palette colours (6³ cube; 215 is white).
 QRgb lightColor(uint8_t color, float brightness);
 
-struct FieldFlags
-{
-    bool bank = false;
-    bool bottom = false;
-    bool unsight = false;
-    bool dontHide = false;
-    bool translucent = false;
-    bool roof = false;
-    bool wall = false;
-};
-
-FieldFlags fieldFlags(tibia::worldmap::TWorldMapField& field);
-
-/// CIP roof mask: a floor above `pos` with `flags.roof` (bank / border / roof-edge,
-/// not translucent). Returns floors up to that cover, or 0 if open sky.
-uint8_t underRoofFloors(const Position& pos);
-
 struct PointLight
 {
     QPoint center;

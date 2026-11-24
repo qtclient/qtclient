@@ -1,6 +1,6 @@
 #pragma once
 
-/// Pack-facing mod registry / identity / backends / effect + weather hooks.
+/// Pack-facing mod registry / identity / backends / effect hooks.
 
 #include "mods/registry.h"
 #include "mods/attention_backend.h"

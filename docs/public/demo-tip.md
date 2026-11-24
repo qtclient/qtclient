@@ -33,11 +33,10 @@ Or edit/reinstall `mods/qtc-aac/mod.json` `urls` — no host rebuild.
 ## Product tip
 
 `make qtclient desktop install` merges product pack FS chrome (portal urls; often
-without `qtc-aac`). Run loads all autoload tip packs. Default launcher mods
-(`clientmods`, `minimap`) gate optional CDN channels.
+without `qtc-aac`). Run loads all autoload tip packs. A pack's `launcher.json` (`"channels"`)
+enables the optional CDN download channels of the launcher configuration.
 
 ## Emitter
 
-`emit_demo_tip.py` stages `mods/qtc-aac` and launcher
-`clientmods`/`minimap` next to the Play binary and writes a
+`emit_demo_tip.py` stages `mods/qtc-aac` next to the Play binary and writes a
 CipSoft-shaped tip with CipSoft `assetsurl`.

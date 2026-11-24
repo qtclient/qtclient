@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-/** Simple field hook (args ignored) — covers most IdleOT SoftHook sites. */
+/** Simple field hook (args ignored) — covers most pack notify sites. */
 typedef void (*QtClientNotifySimpleFn)(void* user);
 
 /**

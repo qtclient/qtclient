@@ -153,7 +153,7 @@ ascending priority sort.
 | Native C++ | Each pack’s `qtclient_mod_register` via ModLoader |
 | QML import paths | Append all `mods/<id>/qml` |
 | Overrides | Later load wins (`PackQmlInterceptor` reverse scan) |
-| Exclusive hooks | Lighting / weather / HD: first setter wins; conflicts are logged |
+| Exclusive hooks | Lighting / HD / texture atlas hint: first setter wins; conflicts are logged |
 | Additive hooks | Overlay factories append |
 
 CMake: `-DQTCLIENT_LINKED_PACK=<pack>/client` (one source pack, IdleOT) or
@@ -164,6 +164,25 @@ Local product Play may set `QTCLIENT_MODS_DIR` to a **launcher brand** directory
 so tip `mods/<id>/mod.json` still supplies `urls.loginBase` and identity.
 
 Optional `urls` on `mod.json` merge into `LauncherEnv`.
+
+### Launcher config (`launcher.json`, `launchersettings`)
+
+The launcher is CipSoft's; a pack configures it from its tip `mods/<id>/`
+(staged from the pack's `launcher/` tree by `merge-launcher-brand.sh`):
+
+| File / key | Role |
+|------------|------|
+| `brand.json` | identity + chrome (`productName`, `defaultCdn`, `images/launcher/`) |
+| `launcher.json` `"channels": ["<name>", …]` | download channels of a build (`<name>url` / `<name>versionurl` in the launcher configuration) the launcher installs next to the assets; stock has none |
+| `mod.json` / `launcher.json` `"launchersettings"` | `[GROUP] key` defaults (CipSoft's `launchersettings.ini` groups); higher `priority` number loses |
+
+Host `[URLS]` keys beside CipSoft's: `clientRevision` (a JSON document whose
+`revision` is handed to the client as `QTCLIENT_CLIENT_REVISION`; the default
+`qtc-aac` pack sets `{cdn}/latest/release.json`), `contentStore`
+(content-addressed file downloads, `<store>/<aa>/<packedhash>`; unset = CipSoft's
+file urls), `systemSurvey`. `{cdn}` in a url is the tip CDN (`QTCLIENT_CDN_URL`,
+else `QTCLIENT_ASSET_BASE`, else the brand's `defaultCdn`); without one the url
+is unset.
 
 | Pack | Role |
 |------|------|

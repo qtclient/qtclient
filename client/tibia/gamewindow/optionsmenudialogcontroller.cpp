@@ -315,7 +315,7 @@ void TOptionsMenuDialogController::setInGame(const bool inGame)
     Q_EMIT gameSessionChanged();
 }
 
-void TOptionsMenuDialogController::addProductPage(const int category, config::TOptionsPage* page)
+void TOptionsMenuDialogController::addExtensionPage(const int category, config::TOptionsPage* page)
 {
     m_pages.push_back({ static_cast<EDialogCategories>(category), page });
 }

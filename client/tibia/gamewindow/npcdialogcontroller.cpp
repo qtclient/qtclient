@@ -17,7 +17,6 @@
 #include <client/outfit.h>
 
 #include <QGuiApplication>
-#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -165,7 +164,7 @@ QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds
 
 void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, std::vector<TNpcKeywordButtonModel::Button> buttons)
 {
-    if (m_remote)
+    if (m_external)
         return;
     m_talkPartners = npcIds;
     m_keywordButtons.setItems(buttons);
@@ -206,16 +205,15 @@ void TNpcDialogController::postTalkingTo(const QString& names)
 TNpcDialogController::~TNpcDialogController()
 {
     resetConversation();
-    qApp->removeEventFilter(this);
     if (m_chatControl)
         m_chatControl->setNpcDialog(nullptr);
 }
 
 void TNpcDialogController::closeButtonPressed()
 {
-    if (m_remote) {
-        const std::function<void()> close = m_remote->close;
-        closeRemoteSession();
+    if (m_external) {
+        const std::function<void()> close = m_external->close;
+        closeExternalConversation();
         if (close)
             close();
         return;
@@ -329,7 +327,7 @@ QString TNpcDialogController::sendChatMessage(const QString& Message, const bool
     const QString text = Message.trimmed();
     if (text.isEmpty())
         return {};
-    if (!sayToRemoteNpc(text))
+    if (!sayToExternalNpc(text))
         if (const auto* session = dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get()); session)
             tibia::protocol::gameclient::sendTalk(12, 0, "", text.toStdString()); // CIP chat message mode NpcTo
     // As TChatController::sayInChannel: the server does not echo NPC-channel lines.
@@ -375,18 +373,18 @@ void TNpcDialogController::setInputText(const QString& text, const bool send, co
     item->setProperty("currentChatInput", QString());
 }
 
-bool TNpcDialogController::sayToRemoteNpc(const QString& text)
+bool TNpcDialogController::sayToExternalNpc(const QString& text)
 {
-    if (!m_remote)
+    if (!m_external)
         return false;
-    if (m_remote->say)
-        m_remote->say(text);
+    if (m_external->say)
+        m_external->say(text);
     return true;
 }
 
 void TNpcDialogController::onRequestOpenNPCTrade()
 {
-    if (!m_remote && m_talkPartners.empty()) {
+    if (!m_external && m_talkPartners.empty()) {
         const QString names = m_storage ? m_storage->npcName() : QString();
         setTalkPartnerNames(names);
         m_outfit.setFromCreatureNamed(dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get()), names);
@@ -399,7 +397,7 @@ void TNpcDialogController::onRequestOpenNPCTrade()
 void TNpcDialogController::onRequestCloseNPCTrade()
 {
     setShowTrade(false);
-    if (!m_remote && m_talkPartners.empty())
+    if (!m_external && m_talkPartners.empty())
         dialog()->close();
 }
 
@@ -409,20 +407,20 @@ void TNpcDialogController::bindNpcChannel()
         m_chat.setChannel(m_chatStorage->find({ chat::TChatChannelIdentifier::Npc }));
 }
 
-void TNpcDialogController::openRemoteSession(TRemoteNpcSession session)
+void TNpcDialogController::openExternalConversation(TExternalNpcConversation conversation)
 {
-    setTalkPartnerNames(session.name);
-    m_outfit.setOutfit(session.outfit);
-    m_keywordButtons.setItems(session.keywordButtons);
-    m_remote = std::move(session);
+    setTalkPartnerNames(conversation.name);
+    m_outfit.setOutfit(conversation.outfit);
+    m_keywordButtons.setItems(conversation.keywordButtons);
+    m_external = std::move(conversation);
     dialog()->show();
 }
 
-void TNpcDialogController::closeRemoteSession()
+void TNpcDialogController::closeExternalConversation()
 {
-    if (!m_remote)
+    if (!m_external)
         return;
-    m_remote.reset();
+    m_external.reset();
     m_keywordButtons.setItems({});
     if (m_showTrade)
         m_trade.onRequestCloseNpcTrade();
@@ -508,37 +506,13 @@ void TNpcDialogController::beforeHide()
 
 void TNpcDialogController::afterShow()
 {
-    // product remote sessions: Escape closes (eventFilter).
-    qApp->installEventFilter(this);
-    if (QQuickItem* item = dialog()->item()) {
-        // product: ChatFab owns chat on/off — hide CIP mode button in the NPC input.
-        for (QQuickItem* child : item->findChildren<QQuickItem*>(Qt::FindChildrenRecursively)) {
-            if (child->property("showChatModeButton").isValid())
-                child->setProperty("showChatModeButton", false);
-        }
-    }
     m_tradeFocus.setActive(m_showTrade);
     Q_EMIT shownChanged(true);
 }
 
 void TNpcDialogController::afterHide()
 {
-    qApp->removeEventFilter(this);
     Q_EMIT shownChanged(false);
-}
-
-bool TNpcDialogController::eventFilter(QObject* watched, QEvent* event)
-{
-    // product remote sessions: ESC closes (CIP in-world NPC keeps Escape for game hotkeys;
-    // NpcDialog.qml's onCancelPressedFunction is never reached for that reason).
-    if (m_remote && dialog()->isShown() && event->type() == QEvent::KeyPress) {
-        const auto* key = static_cast<QKeyEvent*>(event);
-        if (key->key() == Qt::Key_Escape && !key->isAutoRepeat()) {
-            closeButtonPressed();
-            return true;
-        }
-    }
-    return TDialogControllerWithFocusHandlingBase::eventFilter(watched, event);
 }
 
 }

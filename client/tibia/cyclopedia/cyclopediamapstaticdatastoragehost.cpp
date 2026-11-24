@@ -95,7 +95,7 @@ void TCyclopediaMapStaticDataStorage::handleGameAction(tibia::input::IGameAction
     setSubAreaMaskImage(asset->spritesheetId(), resolved->sprite()->getImage());
 }
 
-void TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized()
+void TCyclopediaMapStaticDataStorage::requestSubAreaMasks()
 {
     // The masks are asked for at 1/32 of a pixel per field, as the minimap tiles.
     constexpr float MaskScale = 0.03125f;

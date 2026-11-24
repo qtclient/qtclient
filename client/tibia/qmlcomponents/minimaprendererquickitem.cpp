@@ -69,8 +69,8 @@ void deleteTextures(const std::unordered_map<qint64, QSGTexture*>& textures)
         delete texture;
 }
 
-/// Host: the item's scene graph: the draw commands' node, then the pack's
-/// mission zone images (with the textures drawn last frame).
+/// Host: the item's scene graph: the draw commands' node, then the extra zone
+/// mask images (with the textures drawn last frame).
 class TRendererNode final : public QSGNode
 {
 public:
@@ -78,18 +78,18 @@ public:
         : drawCommands(commands)
     {
         appendChildNode(commands);
-        appendChildNode(missionZones);
+        appendChildNode(extraZones);
     }
     ~TRendererNode() override { deleteTextures(textures); }
-    void clearMissionZones()
+    void clearExtraZones()
     {
-        while (QSGNode* child = missionZones->firstChild()) {
-            missionZones->removeChildNode(child);
+        while (QSGNode* child = extraZones->firstChild()) {
+            extraZones->removeChildNode(child);
             delete child;
         }
     }
     TQSGScenegraphDrawCommandsNode* drawCommands;
-    QSGNode* missionZones = new QSGNode;
+    QSGNode* extraZones = new QSGNode;
     std::unordered_map<qint64, QSGTexture*> textures;
 };
 
@@ -347,29 +347,15 @@ void TMinimapRendererQuickItem::setHighlightedCoordinate(const Position& coordin
     m_renderInfoStorage->setSelectedPassage(worldmap::TWorldMapCoordinate(coordinate));
 }
 
-void TMinimapRendererQuickItem::setMissionZones(std::vector<TMissionZoneOverlay> zones)
+void TMinimapRendererQuickItem::setExtraZoneMasks(std::vector<TExtraZoneMask> masks)
 {
-    m_missionZones.clear();
-    m_missionZoneImages.clear();
-    for (TMissionZoneOverlay& zone : zones) {
-        if (zone.id <= 0 || zone.file.isEmpty())
+    m_extraZoneMasks.clear();
+    m_extraZoneMaskImages.clear();
+    for (TExtraZoneMask& mask : masks) {
+        if (mask.id <= 0 || mask.file.isEmpty())
             continue;
-        m_missionZones[zone.id] = std::move(zone);
+        m_extraZoneMasks[mask.id] = std::move(mask);
     }
-    scheduleUpdate();
-}
-
-void TMinimapRendererQuickItem::setMissionCaptions(std::vector<TMissionCaption> captions)
-{
-    m_missionCaptions = std::move(captions);
-    scheduleUpdate();
-}
-
-void TMinimapRendererQuickItem::setShowCyclopediaSubareaCaptions(const bool show)
-{
-    if (show == m_showCyclopediaSubareaCaptions)
-        return;
-    m_showCyclopediaSubareaCaptions = show;
     scheduleUpdate();
 }
 
@@ -469,7 +455,7 @@ void TMinimapRendererQuickItem::updatePolish()
     if (m_rebuildRequested) {
         m_rebuildRequested = false;
         m_zoneImages.clear();
-        m_missionZoneImages.clear();
+        m_extraZoneMaskImages.clear();
     }
     m_worldCamera->applyPendingCenter();
     if (!m_drawCommandsOutdated && !m_rescaling)
@@ -492,15 +478,15 @@ void TMinimapRendererQuickItem::updateDrawCommands()
     m_drawCommandProvider->setViewExtent(viewExtent);
     m_drawCommandProvider->updateSpriteDrawCommands();
     updateCaptions();
-    // Host: the pack's mission zones and the marker rectangles under the mouse.
-    m_missionZoneDraws.clear();
+    // Host: the extra zone masks and the marker rectangles under the mouse.
+    m_extraZoneDraws.clear();
     if (m_showZones)
-        addMissionZones(m_missionZoneDraws);
+        addExtraZoneMasks(m_extraZoneDraws);
     updateMarkerHits();
     update();
 }
 
-void TMinimapRendererQuickItem::addMissionZones(std::vector<TImageDraw>& draws)
+void TMinimapRendererQuickItem::addExtraZoneMasks(std::vector<TImageDraw>& draws)
 {
     const auto& data = TStaticData::instance();
     const QRectF viewport = boundingRect();
@@ -516,14 +502,15 @@ void TMinimapRendererQuickItem::addMissionZones(std::vector<TImageDraw>& draws)
     for (const int layer : layers) {
         for (const int subareaId : m_highlighted) {
             if (const auto* subArea = data.subArea(static_cast<quint16>(subareaId)); subArea && !subArea->fileName.isEmpty()) {
-                // The CipSoft overlays show the ground floor's subareas above ground.
+                // map.dat's own mask wins: the CipSoft overlays show the ground
+                // floor's subareas above ground.
                 if (subArea->extent.origin.z == layer && layer == GroundLayer && z <= GroundLayer)
                     continue;
             }
-            const auto zoneIt = m_missionZones.find(subareaId);
-            if (zoneIt == m_missionZones.end())
+            const auto zoneIt = m_extraZoneMasks.find(subareaId);
+            if (zoneIt == m_extraZoneMasks.end())
                 continue;
-            const TMissionZoneOverlay& zone = zoneIt->second;
+            const TExtraZoneMask& zone = zoneIt->second;
             if (zone.z != layer || zone.fields.isEmpty() || zone.file.isEmpty())
                 continue;
             const QRect& fields = zone.fields;
@@ -531,7 +518,7 @@ void TMinimapRendererQuickItem::addMissionZones(std::vector<TImageDraw>& draws)
                                 m_worldCamera->pixelOf(fields.x() + fields.width(), fields.y() + fields.height(), layer));
             if (!target.intersects(viewport))
                 continue;
-            const QImage mask = missionZoneImage(zone);
+            const QImage mask = extraZoneMaskImage(zone);
             if (mask.isNull())
                 continue;
             draws.push_back({ mask, target, QRectF(QPointF(0, 0), QSizeF(fields.size())), true, opacity });
@@ -554,9 +541,9 @@ QImage TMinimapRendererQuickItem::zoneImage(const int subareaId, const QImage& m
     return colored;
 }
 
-QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zone)
+QImage TMinimapRendererQuickItem::extraZoneMaskImage(const TExtraZoneMask& zone)
 {
-    if (const auto it = m_missionZoneImages.find(zone.id); it != m_missionZoneImages.end())
+    if (const auto it = m_extraZoneMaskImages.find(zone.id); it != m_extraZoneMaskImages.end())
         return it->second;
     const std::string path = tibia::files::data().assetsRoot()
         + zone.file.toStdString();
@@ -564,16 +551,16 @@ QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zo
     try {
         data = tibia::files::data().readFileContents(path);
     } catch (const std::exception&) {
-        m_missionZoneImages.emplace(zone.id, QImage{});
+        m_extraZoneMaskImages.emplace(zone.id, QImage{});
         return {};
     }
     const QImage mask = tibia::assets::decodeCipBmpImage(QByteArray(data.data(), qsizetype(data.size())));
     if (mask.isNull()) {
-        m_missionZoneImages.emplace(zone.id, QImage{});
+        m_extraZoneMaskImages.emplace(zone.id, QImage{});
         return {};
     }
     const QImage colored = zoneImage(zone.id, mask);
-    m_missionZoneImages[zone.id] = colored;
+    m_extraZoneMaskImages[zone.id] = colored;
     return colored;
 }
 
@@ -774,8 +761,6 @@ void TMinimapRendererQuickItem::updateCaptions()
             // but CIP may place a name on z7 even when the hunt is deeper (Cyclopolis).
             if (area.label.z != layer)
                 continue;
-            if (area.isSubarea && !m_showCyclopediaSubareaCaptions)
-                continue;
             const float opacity = area.isSubarea ? subareaOpacity : 1.0f - subareaOpacity;
             if (opacity <= 0)
                 continue;
@@ -816,53 +801,6 @@ void TMinimapRendererQuickItem::updateCaptions()
             caption.item->setZ(1);
             shown.insert(area.id);
         }
-        // FO≥1 hunt pins only ("Name -N"). Never on the surface (z≤7) — even if the
-        // catalog left center.z wrong — so "Edron Surroundings -1" cannot appear on z7.
-        // FO0 / surface names come from CIP AreaData above (Cyclopolis, …).
-        for (const TMissionCaption& pin : m_missionCaptions) {
-            if (pin.id <= 0 || pin.name.isEmpty() || shown.contains(pin.id))
-                continue;
-            if (pin.z <= GroundLayer || pin.z != layer)
-                continue;
-            float opacity = subareaOpacity;
-            if (m_highlighted.contains(pin.id))
-                opacity = 1.0f;
-            if (opacity <= 0)
-                continue;
-            const QPointF topLeft = m_worldCamera->pixelOf(pin.x, pin.y, pin.z);
-            const QPointF bottomRight = m_worldCamera->pixelOf(pin.x + 1, pin.y + 1, pin.z);
-            const QRectF rect(topLeft, bottomRight);
-            if (!rect.adjusted(-100, -50, 100, 50).intersects(viewport))
-                continue;
-            TCaption& caption = m_captions[pin.id];
-            if (!caption.item) {
-                caption.controller = new TAreaCaptionController(pin.id, false, this);
-                connect(caption.controller, &TAreaCaptionController::clicked, this, &TMinimapRendererQuickItem::areaClicked);
-                QObject* object = m_captionComponent->beginCreate(qmlContext(this));
-                caption.item = qobject_cast<QQuickItem*>(object);
-                if (!caption.item) {
-                    delete object;
-                    delete caption.controller;
-                    m_captions.erase(pin.id);
-                    continue;
-                }
-                caption.item->setParentItem(this);
-                caption.item->setZ(1);
-                caption.item->setProperty("controller", QVariant::fromValue<QObject*>(caption.controller));
-                m_captionComponent->completeCreate();
-            }
-            QColor color(Qt::white);
-            if (m_storage)
-                color = m_storage->subareaColor(pin.id);
-            caption.controller->set(pin.name, color, false);
-            caption.item->setX(rect.x());
-            caption.item->setY(rect.y());
-            caption.item->setWidth(rect.width());
-            caption.item->setHeight(rect.height());
-            caption.item->setOpacity(opacity);
-            caption.item->setZ(1);
-            shown.insert(pin.id);
-        }
     }
     for (auto it = m_captions.begin(); it != m_captions.end();) {
         if (shown.contains(it->first)) {
@@ -888,10 +826,10 @@ QSGNode* TMinimapRendererQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePain
     }
     bool animated = root->drawCommands->update(m_drawCommandProvider->rootDrawCommand());
 
-    // Host: the pack's mission zones over the tree, pulsing like the overlays.
-    root->clearMissionZones();
+    // Host: the extra zone masks over the tree, pulsing like the overlays.
+    root->clearExtraZones();
     std::unordered_map<qint64, QSGTexture*> used;
-    for (const TImageDraw& image : m_missionZoneDraws) {
+    for (const TImageDraw& image : m_extraZoneDraws) {
         const qint64 key = image.image.cacheKey();
         QSGTexture* texture = nullptr;
         if (const auto it = used.find(key); it != used.end()) {
@@ -914,7 +852,7 @@ QSGNode* TMinimapRendererQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePain
         auto* opacityNode = new QSGOpacityNode;
         opacityNode->setOpacity(image.opacity);
         opacityNode->appendChildNode(node);
-        root->missionZones->appendChildNode(opacityNode);
+        root->extraZones->appendChildNode(opacityNode);
         animated = true;
     }
     deleteTextures(root->textures);

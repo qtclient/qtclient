@@ -21,30 +21,18 @@ int ph_valid(void*)
     return (g_packWire && g_packWire->valid()) ? 1 : 0;
 }
 
-void ph_bind_quest_tracker(void*, void* mission_backend, QtClientBrowseFn browse, void* browse_ctx)
+void ph_bind_quest_tracker(void*, void* mission_backend)
 {
     if (!g_packWire || !g_packWire->bindQuestTracker || !mission_backend)
         return;
-    g_packWire->bindQuestTracker(static_cast<MissionBackend*>(mission_backend),
-                                 [browse, browse_ctx](const QString& filter) {
-                                     if (browse && browse_ctx) {
-                                         const QByteArray u = filter.toUtf8();
-                                         browse(browse_ctx, u.constData());
-                                     }
-                                 });
+    g_packWire->bindQuestTracker(static_cast<MissionBackend*>(mission_backend));
 }
 
-void ph_bind_quest_log(void*, void* mission_backend, QtClientBrowseFn browse, void* browse_ctx)
+void ph_bind_quest_log(void*, void* mission_backend)
 {
     if (!g_packWire || !g_packWire->bindQuestLog || !mission_backend)
         return;
-    g_packWire->bindQuestLog(static_cast<MissionBackend*>(mission_backend),
-                             [browse, browse_ctx](const QString& filter) {
-                                 if (browse && browse_ctx) {
-                                     const QByteArray u = filter.toUtf8();
-                                     browse(browse_ctx, u.constData());
-                                 }
-                             });
+    g_packWire->bindQuestLog(static_cast<MissionBackend*>(mission_backend));
 }
 
 void ph_bind_instance_to_info_dialogs(void*, void* instance_backend)
@@ -61,11 +49,11 @@ void ph_bind_attention_to_button_bar(void*, void* attention_backend)
     g_packWire->bindAttentionToButtonBar(static_cast<AttentionBackend*>(attention_backend));
 }
 
-void ph_add_product_options_page(void*, int category, void* options_page)
+void ph_add_options_page(void*, int category, void* options_page)
 {
-    if (!g_packWire || !g_packWire->addProductOptionsPage || !options_page)
+    if (!g_packWire || !g_packWire->addOptionsPage || !options_page)
         return;
-    g_packWire->addProductOptionsPage(category, options_page);
+    g_packWire->addOptionsPage(category, options_page);
 }
 
 void ph_open_options_page(void*, int page)
@@ -236,6 +224,24 @@ void* ph_button_bar_panel_item(void*)
     return g_packWire->buttonBarPanelItem();
 }
 
+void ph_map_overlay_hover(void*, int hovering, double x, double y)
+{
+    if (g_packWire && g_packWire->mapOverlayHover)
+        g_packWire->mapOverlayHover(hovering != 0, x, y);
+}
+
+void ph_map_overlay_click(void*, int x, int y, int mouse_button, int keyboard_modifiers)
+{
+    if (g_packWire && g_packWire->mapOverlayClick)
+        g_packWire->mapOverlayClick(x, y, mouse_button, keyboard_modifiers);
+}
+
+void ph_map_overlay_start_drag(void*, int x, int y)
+{
+    if (g_packWire && g_packWire->mapOverlayStartDrag)
+        g_packWire->mapOverlayStartDrag(x, y);
+}
+
 } // namespace
 
 void fillPackHostAbiFromPackHostWire(qtclient::PackHostWire* wire)
@@ -247,7 +253,7 @@ void fillPackHostAbiFromPackHostWire(qtclient::PackHostWire* wire)
         .bind_quest_log = &ph_bind_quest_log,
         .bind_instance_to_info_dialogs = &ph_bind_instance_to_info_dialogs,
         .bind_attention_to_button_bar = &ph_bind_attention_to_button_bar,
-        .add_product_options_page = &ph_add_product_options_page,
+        .add_options_page = &ph_add_options_page,
         .open_options_page = &ph_open_options_page,
         .open_store = &ph_open_store,
         .request_logout_via_button_bar = &ph_request_logout_via_button_bar,
@@ -272,6 +278,9 @@ void fillPackHostAbiFromPackHostWire(qtclient::PackHostWire* wire)
         .inventory_panel_item = &ph_inventory_panel_item,
         .button_bar_panel_item = &ph_button_bar_panel_item,
         .game_action_router = &ph_game_action_router,
+        .map_overlay_hover = &ph_map_overlay_hover,
+        .map_overlay_click = &ph_map_overlay_click,
+        .map_overlay_start_drag = &ph_map_overlay_start_drag,
     };
 }
 

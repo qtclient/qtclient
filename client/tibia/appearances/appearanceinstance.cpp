@@ -532,7 +532,7 @@ TDelayedEffectInstance::TDelayedEffectInstance(std::shared_ptr<TEffectInstance> 
     m_emptyInstance = std::make_shared<TAppearanceInstance>(m_emptyType.get());
     m_emptySpriteInfo = std::make_shared<TDummyAppearanceInstanceSpriteInfo>();
     // Host: the renderer draws an effect's sprite sequence and pattern, and
-    // reads its source and variant from the instance it holds.
+    // reads its source and tint from the instance it holds.
     m_spriteSequence = m_effect->spriteSequence();
     m_patternX = m_effect->patternX();
     m_patternY = m_effect->patternY();
@@ -540,7 +540,7 @@ TDelayedEffectInstance::TDelayedEffectInstance(std::shared_ptr<TEffectInstance> 
     m_startMs = createdMs;
     m_nowMs = createdMs;
     setSource(m_effect->source());
-    setVariantId(m_effect->variantId());
+    setTint(m_effect->tint());
     setUnderCreatures(m_effect->underCreatures());
 }
 

@@ -212,8 +212,8 @@ public:
     bool hasStartupNotice() const { return m_hasStartupNotice; }
     QString startupNotice() const { return m_startupNotice; }
 
-    /// Host extension: options and top-level sections no CIP option names,
-    /// kept as stored so pack and host settings survive load and save.
+    /// Host: options and top-level sections no CIP option names, kept as
+    /// stored (opaque JSON, no change signal) so they survive load and save.
     QJsonObject extraOptions() const { return m_extraOptions; }
     void setExtraOption(const QString& name, const QJsonValue& value);
     QJsonValue extraSection(const QString& name) const { return m_extraSections.value(name); }
@@ -235,8 +235,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void optionChanged(tibia::config::EClientOption id);
-    /// Host extension: a host option (setExtraOption) changed its value.
-    void extraOptionChanged(const QString& name);
 
 private:
     void readBoolOptions(const QJsonObject& options);

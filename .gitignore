@@ -57,10 +57,6 @@ vc18/
 !/client/mods/qtc-aac/**
 /launcher/mods/*
 !/launcher/mods/.gitkeep
-!/launcher/mods/clientmods/
-!/launcher/mods/clientmods/**
-!/launcher/mods/minimap/
-!/launcher/mods/minimap/**
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

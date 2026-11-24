@@ -13,7 +13,6 @@
 
 class QQmlEngine;
 class QQuickItem;
-class QQuickWindow;
 
 namespace tibia::game {
 class IGameSession;
@@ -54,9 +53,6 @@ class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowCont
     /// FOV in fields. Always CIP 15×11 (HUD and classic share the same world size).
     Q_PROPERTY(int fovWidth READ fovWidth NOTIFY fovChanged)
     Q_PROPERTY(int fovHeight READ fovHeight NOTIFY fovChanged)
-    /// Classic vs product HUD chrome (chat/status). FOV stays 15×11 either way;
-    /// grey gutters / unusedWidth feed CIP expandable sidebars in both modes.
-    Q_PROPERTY(bool classicView READ classicView NOTIFY classicViewChanged)
     /// CIP map scale: map window height / 352.
     Q_PROPERTY(qreal viewScale READ viewScale NOTIFY fovChanged)
 public:
@@ -70,7 +66,7 @@ public:
                          qmlcomponents::TLenshelpManager* lenshelpManager, bool softwareRenderer, QObject* parent = nullptr);
     ~TMapWindowController() override;
 
-    /// Drops the window's pointer filter and the game session.
+    /// Drops the game session.
     void unbind();
     /// CIP connector: the pane's items draw `GameSession`'s world, texts and
     /// numerical effects, and the mouse picks in its view; null unsets them.
@@ -80,7 +76,6 @@ public:
 
     int fovWidth() const { return m_fovWidth; }
     int fovHeight() const { return m_fovHeight; }
-    bool classicView() const;
     qreal viewScale() const { return m_viewScale; }
 
     /// The render options: textual effects, antialiasing mode, even-multiple
@@ -94,8 +89,6 @@ public:
     void clearTrackedUseAtMouseCursorGameAction() override;
     /// Keep FOV at CIP 15×11 and refresh viewScale from the map window height.
     void syncFov();
-    /// Classic vs product pack HUD chrome layout (FOV unchanged).
-    void refreshClassicView();
     /// The window went full screen: with a session its camera takes the
     /// pane's mapWindowScaleFactor, then the creature HUDs refresh.
     void onFullscreenModeEntered();
@@ -109,10 +102,15 @@ public Q_SLOTS:
     void onMapWindowDragDropped(int mouseX, int mouseY);
     /// MapWindowPane's TibiaTargetSelection: publishes the TARGET_SELECTED under the click.
     void onMapWindowTargetSelected(int mouseX, int mouseY);
+    /// Host (overlay input): an item drawn over the map window that takes the
+    /// mouse itself (a pack's chrome) reports the mouse at `mouseX`, `mouseY`
+    /// in mapWindow pixels while `hovering`; the map's hover follows it like the
+    /// pane's own hover. Clicks and drags under such an item go through
+    /// onMapWindowClicked / onMapWindowStartDrag. Unused without one.
+    void setOverlayHover(bool hovering, qreal mouseX, qreal mouseY);
 
 Q_SIGNALS:
     void fovChanged();
-    void classicViewChanged();
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -138,25 +136,8 @@ private:
     QPoint toMapPixel(const QPointF& mapWindowPoint) const;
     /// The TARGET_SELECTED candidate at a mapWindow point, creatures first.
     input::TTargetSelectedPtr targetAt(const QPointF& mapWindowPoint) const;
-    /// Refresh m_hovering / m_hoverPosition from the live cursor inside mapWindow.
-    /// IdleOT HUD chrome (action bar, etc.) sits above the FOV and steals the
-    /// map MouseArea's hover; the blue baseplate must still track map tiles under it.
-    bool syncHoverFromCursor();
     /// The hover's cursor shape and highlighted thing, once per frame.
     void updateMouseTarget();
-    /// Keep a filter on the QQuickWindow so overlay HUD cannot eat map drag/click.
-    void ensureWindowPointerFilter();
-    /// Window-level press/move/release: start map drag (and optionally click) when
-    /// HUD chrome above the FOV owns the MouseArea grab.
-    bool filterWindowPointer(QEvent* event);
-    /// Top-most QQuickItem under a scene position (front-to-back walk).
-    QQuickItem* leafItemAtScenePos(const QPointF& scenePos) const;
-    /// True when the leaf is pack/HUD chrome that must not synthesize a map
-    /// click. FOV MouseArea stays false. Items with passMapPointer are skipped
-    /// in leafItemAtScenePos; absorbMapClicks / MouseArea / AbstractButton
-    /// ancestors count as interactive.
-    bool isInteractiveOverlay(const QQuickItem* leaf) const;
-    void ungrabOverlayPointer(QQuickItem* from) const;
 
     QQmlEngine* m_pEngine = nullptr;
     QPointer<QQuickItem> m_pane;
@@ -183,24 +164,14 @@ private:
     int m_fovWidth = 15;
     int m_fovHeight = 11;
     qreal m_viewScale = 1;
-    bool m_classicView = false;
     bool m_hovering = false;
     QPointF m_hoverPosition;
     /// CIP +0x140: the tracked use at the mouse cursor, and the frames since (+0x150).
     std::shared_ptr<const input::TGameActionUseAtMouseCursor> m_trackedUseAtMouseCursor;
     int m_trackedUseAtMouseCursorFrames = 0;
 
-    /// MapWindowPane mouseAreaDrag — FOV grabber (under IdleOT HUD z-order).
+    /// MapWindowPane's mouseAreaDrag: the hover comes from its events.
     QPointer<QQuickItem> m_mapMouseArea;
-    QPointer<QQuickWindow> m_pointerWindow;
-    /// Window pointer bridge (HUD-over-FOV). Matches TibiaStyle.dragThreshold.
-    static constexpr qreal MapDragThresholdPx = 10.;
-    bool m_mapPressActive = false;
-    bool m_mapDragStarted = false;
-    bool m_mapOwnedPress = false;
-    Qt::MouseButton m_mapPressButton = Qt::NoButton;
-    Qt::KeyboardModifiers m_mapPressModifiers = Qt::NoModifier;
-    QPointF m_mapPressPos;
 
 public Q_SLOTS:
     /// CIP: USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR from the router

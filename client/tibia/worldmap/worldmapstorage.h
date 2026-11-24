@@ -38,7 +38,6 @@ class TLocationWorldMapCoordinateWithStackPositionContext;
 }
 namespace minimap {
 struct TMinimapDataOfOneField;
-class TWaypointCosts;
 class TWaypointSectors;
 }
 namespace worldmap {
@@ -198,18 +197,6 @@ public:
     bool isCovered(const Position& position, bool& isLoading, uint8_t firstFloor = 0);
     bool isCompletelyCovered(const Position& position, bool& isLoading, uint8_t firstFloor = 0);
 
-    /// Host (pack travel path finder): fields the path finder keeps off.
-    void setPathAvoid(const Position& position, bool avoid);
-    void clearPathAvoids();
-    bool isPathAvoided(const Position& position) const { return m_pathAvoids.contains(position); }
-    const std::unordered_set<Position, Position::Hasher>& pathAvoids() const { return m_pathAvoids; }
-    /// Indexed8 waypoint snapshot factory (CIP TWaypointCostMap), set from
-    /// TGameClient while the CipSoft minimap is live; cleared on world leave.
-    using WaypointCostFactory = std::function<std::shared_ptr<minimap::TWaypointCosts>()>;
-    const WaypointCostFactory& waypointCostFactory() const { return m_waypointCostFactory; }
-    void setWaypointCostFactory(WaypointCostFactory factory) { m_waypointCostFactory = std::move(factory); }
-    void clearWaypointCostFactory() { m_waypointCostFactory = {}; }
-
     /// CIP: informationAtWorldMapCoordinateHasChanged — call after a field mutate.
     void notifyCoordinateChanged(const Position& position);
     /// The storage keeps the fields of the visible area around `center` (the
@@ -330,8 +317,6 @@ private:
     /// Frame-local memo: seen|empty|opaque|topGround|loading (see probeCoverTile).
     bool m_coverProbeActive{ false };
     std::unordered_map<Position, uint8_t, Position::Hasher> m_coverProbe;
-    std::unordered_set<Position, Position::Hasher> m_pathAvoids;
-    WaypointCostFactory m_waypointCostFactory;
 };
 
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).

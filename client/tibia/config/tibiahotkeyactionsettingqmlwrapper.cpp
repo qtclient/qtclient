@@ -28,9 +28,9 @@ QString hotkeyActionSettingDescription(const TActionSetting& setting)
         // A passive ability has no text.
         if (setting.action.isEmpty())
             return {};
-        for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
-            if (product.name == setting.action)
-                return product.description.isEmpty() ? setting.action : product.description;
+        for (const auto& extension : input::TKeyboardShortcutHandler::extensionActions()) {
+            if (extension.name == setting.action)
+                return extension.description.isEmpty() ? setting.action : extension.description;
         }
         const QString id = QStringLiteral("label_gameactionidentifier_") + setting.action;
         // CIP map::at throws only for an unknown key. Movement names (GoNorth, …)

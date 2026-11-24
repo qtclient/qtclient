@@ -8,8 +8,8 @@
  * applicationDirPath()/mods/<id>/ with brand.json (+ optional images/launcher)
  * overrides identity and chrome at runtime — same idea as client --no-mods.
  *
- * Non-CIP download channels are gated by launcher.json capabilities on tip
- * mods/<id>/ (see LauncherMods): clientmods + minimap are default launcher mods.
+ * Non-CipSoft download channels of a build are enabled by the tip packs'
+ * launcher.json "channels" (see LauncherMods); stock CipSoft has none.
  */
 struct LauncherBrand {
     QString id;
@@ -38,10 +38,11 @@ struct LauncherBrand {
     QString imagePath(const QString& fileName) const;
 };
 
-/// Tip launcher mods (launcher.json capabilities). Stock CIP has neither channel.
+/// Tip launcher config: every tip mods/<id>/launcher.json lists the download
+/// channels it enables (`"channels": ["<name>", …]`). A build of the launcher
+/// configuration publishes a channel as `<name>url` / `<name>versionurl`.
 struct LauncherMods {
-    bool clientModsChannel = false;
-    bool minimapChannel = false;
+    QStringList channels;
 
     static LauncherMods& instance();
     /// Scan tip mods/<id>/launcher.json unless --no-mods.
