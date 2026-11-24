@@ -231,7 +231,7 @@ QUrl PortalUrls::mapCipUrl(const LauncherEnv& env, const QUrl& url)
 {
     const QString host = url.host().toLower();
     if (host == QLatin1String("www.tibia.com") || host == QLatin1String("tibia.com")
-        || host == QLatin1String("qt.tibia.com"))
+        || host == QLatin1String("qt.tibia.com") || host == QLatin1String("www.test.tibia.com"))
         return rebase(env.loginBase, url);
     if (host == QLatin1String("static.tibia.com"))
         return rebase(env.assetBase, url);

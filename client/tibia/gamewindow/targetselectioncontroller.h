@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QPointer>
 
+class QQmlContext;
 class QQuickItem;
 
 namespace tibia {
@@ -22,6 +23,9 @@ public:
     ~TTargetSelectionController() override;
 
     TTargetSelectionEventFilter* eventFilterObject() const { return m_filter; }
+    /// Publishes this controller in the root context as
+    /// tibiaTargetSelectionController.
+    void registerInQmlContext(QQmlContext* RootContext);
     void setSelecting(bool selecting);
 
 public Q_SLOTS:

@@ -1,5 +1,6 @@
 #include "actionbuttoncontroller.h"
 
+#include "appearances/appearanceinstance.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "game/gamesessionbase.h"
 #include "game/passiveabilityinfostorage.h"
@@ -109,6 +110,7 @@ void TActionButtonController::reset()
     m_castType = 0;
     m_objectID = 0;
     m_objectInstance = {};
+    m_objectAppearanceInstance.reset();
     m_objectUpgradeTier = 0;
     m_liquidType = Info::ELiquidType::EMPTY;
     m_hookDirection = Info::EHookDirection::NONE;
@@ -252,6 +254,18 @@ void TActionButtonController::setObjectCount(const uint objectCount)
         return;
     m_objectCount = objectCount;
     Q_EMIT changed();
+    Q_EMIT appearanceChanged();
+}
+
+void TActionButtonController::setObjectAppearanceInstance(const std::shared_ptr<appearances::TAppearanceInstance>& instance)
+{
+    if (m_objectAppearanceInstance) {
+        const bool sameType = instance && m_objectAppearanceInstance->id() == instance->id()
+                              && m_objectAppearanceInstance->category() == instance->category();
+        if (!sameType || m_objectAppearanceInstance == instance)
+            return;
+    }
+    m_objectAppearanceInstance = instance;
     Q_EMIT appearanceChanged();
 }
 

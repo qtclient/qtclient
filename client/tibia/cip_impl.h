@@ -69,6 +69,9 @@ CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TAppearanceInstanceRenderer, ::tibia:
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType, ::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType, ::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType);
 
+#include "qmlcomponents/textureatlasviewer.h"
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TTextureAtlasViewer, ::tibia::qmlcomponents::TTextureAtlasViewer);
+
 #include "store/dynamicallyloadedimage.h"
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem, ::tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem);
 #endif

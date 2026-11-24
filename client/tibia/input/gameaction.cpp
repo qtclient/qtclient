@@ -1,4 +1,5 @@
 #include "gameaction.h"
+#include "gameactionhandlers.h"
 
 #include "chat/chatchannel.h"
 #include "protocol/protocolcodes.h"
@@ -486,14 +487,18 @@ IGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destinat
     if (!moved)
         return nullptr;
     const TObjectGameActionContext& object = moved->context();
-    if (moved->moveAll() || object.position() == destination)
-        return std::make_shared<TGameActionMoveObject>(object, destination, moved->moveAll(), moved->amount());
-    // Creatures are not stacks — never open the amount dialog for one.
-    if (creatureOfObject(object))
-        return std::make_shared<TGameActionMoveObject>(object, destination, false, moved->amount());
-    if (modifiers & Qt::ShiftModifier)
-        return std::make_shared<TGameActionMoveObject>(object, destination, true, moved->amount());
-    auto action = std::make_shared<TGameActionMoveObject>(object, destination, false, moved->amount());
+    // Host: the dragged move gets its destination here.
+    auto action = std::make_shared<TGameActionMoveObject>(object, destination, moved->moveAll(), moved->amount());
+    // One object (a creature, a single item), or an object put back where it
+    // lies, moves as it is.
+    if (moveObjectCount(*action) == 1 || object.position() == destination)
+        return action;
+    // Shift moves one object of the stack.
+    if (modifiers & Qt::ShiftModifier) {
+        action->setAmount(1);
+        return action;
+    }
+    // Ctrl pressed as the move-all default says: the amount is asked for.
     if (((modifiers & Qt::ControlModifier) != 0) == defaultIsMoveAll)
         return std::make_shared<TGameActionShowSplitStackDialog>(action);
     return action;

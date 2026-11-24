@@ -143,12 +143,15 @@ TAppearancesManager::~TAppearancesManager() = default;
 
 void TAppearancesManager::init()
 {
-    m_appearanceTypes.clear();
+    // The categories stay (findAppearanceType reads them with at()); only their types go.
+    for (auto& [category, types] : m_appearanceTypes)
+        types.clear();
 }
 
 void TAppearancesManager::terminate()
 {
-    m_appearanceTypes.clear();
+    for (auto& [category, types] : m_appearanceTypes)
+        types.clear();
     m_monsterRaces.clear();
     m_marketObjectTypes.clear();
     m_skillWheelGemObjectTypes.clear();

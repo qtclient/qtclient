@@ -129,7 +129,7 @@ TSpriteTexture TSpriteTextureCache::lookup(const SpriteIdentifier& identifier, b
 
 void TSpriteTextureCache::insert(const SpriteIdentifier& identifier, const TSpriteTexture& texture)
 {
-    Entry entry{ .texture = texture.texture, .rect = texture.rect, .frame = m_frame, .owner = texture.owner };
+    Entry entry{ .texture = texture.texture, .rect = texture.rect(), .frame = m_frame, .owner = texture.owner };
     // A sprite that does not exist is remembered so it is not looked up again.
     if (!entry.texture) {
         m_textures.insert(identifier, entry);

@@ -1,12 +1,16 @@
 #pragma once
 
+#include "game/gameciptypes.h"
 #include "gamewindow/dialogmanager.h"
 
 #include <cip_gen.h>
 
-#include <string>
-#include <tuple>
+#include <memory>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -17,20 +21,23 @@ class TServerModalDialogController final : public TDialogController<cip::tibia::
 {
     Q_OBJECT
 public:
-    using Options = std::vector<std::tuple<uint8_t, std::string>>;
-
     TServerModalDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
-    /// CIP : replaces the shown dialog.
-    void open(uint32_t id, const QString& title, const QString& text, const Options& buttons, uint8_t enterButton, uint8_t escapeButton,
-              const Options& choices);
+    /// CIP: closes the dialog (a priority dialog stays when the session goes),
+    /// keeps the session and shows the dialogs its server modal dialog
+    /// protocol handler asks for.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     void answerButtonClicked(int ButtonIndex, int SelectionIndex) override;
 
+public Q_SLOTS:
+    /// CIP: replaces the shown dialog with `RequestedDialog`.
+    void showDialog(const ::tibia::game::TServerModalDialogData& RequestedDialog);
+
 private:
-    uint32_t m_id = 0;
-    std::vector<uint8_t> m_buttonIds;
-    std::vector<uint8_t> m_choiceIds;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
+    game::TServerModalDialogData m_dialogData;
 };
 
 }

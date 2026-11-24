@@ -148,7 +148,7 @@ bossbestiary::TBosstiaryFilter TBosstiaryDialogController::filter() const
 
 TCyclopediaDialogContext TBosstiaryDialogController::captureContext() const
 {
-    return TBosstiaryCyclopediaContext{ filter(), m_currentPage };
+    return TBosstiaryCyclopediaContext{ filter(), { static_cast<quint16>(m_currentPage), static_cast<quint8>(BossesPerPage) } };
 }
 
 void TBosstiaryDialogController::onListChanged()
@@ -241,7 +241,7 @@ void TBosstiaryDialogController::restoreContext(const TCyclopediaDialogContext& 
     m_restoring = true;
     if (m_storage)
         m_storage->setFilter(context.filter);
-    m_currentPage = std::max(1, context.page);
+    m_currentPage = std::max(1, static_cast<int>(context.pagination.currentPage));
     rebuild();
     Q_EMIT pagesChanged();
     Q_EMIT filterChanged();

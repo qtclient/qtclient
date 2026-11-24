@@ -449,12 +449,6 @@ void processCounterTrade(std::string_view name, const std::vector<::tibia::conta
     gameSessionState().processCounterTrade(name, items);
 }
 
-void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
-                        const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
-                        uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority)
-{
-    gameSessionState().processModalDialog(id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
-}
 void processItemDetail(const ItemInspectionData& data)
 {
     tibia::game::notify("onParseItemDetail", data);

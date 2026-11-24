@@ -221,6 +221,9 @@ public:
     ~TProgressWidgetController() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// Keeps the premium time storage; its premiumTimeChanged becomes
+    /// optionsChanged (the gauge and graph are premium features).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
 
     bool isGaugeVisible() const override;
     bool isGraphVisible() const override;
@@ -279,6 +282,7 @@ private Q_SLOTS:
 private:
     TProgressStorage* m_storage;
     QPointer<config::TSidebarOptions> m_options;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     QPointer<gamewindow::TGenericEnterTextDialogController> m_targetDialog;
     std::vector<client::gamecore::Hook> m_hooks;
     qint64 m_lastTexts = 0;

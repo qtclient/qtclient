@@ -2,6 +2,7 @@
 
 #include "authentication/authenticationjsondocumenthelper.h"
 #include "gamewindow/characterinformationmodeldata.h"
+#include "gamewindow/characterlogindata.h"
 #include "gamewindow/dialogmanager.h"
 
 #include <cip_gen.h>
@@ -26,21 +27,6 @@ namespace tibia {
 namespace gamewindow {
 
 class TPreventAutoCloseEventFilter;
-
-/// What CipSoft's character selection hands on for a login: the character and
-/// how to reach its world (CIP TCharacterLoginData).
-struct TCharacterLoginData
-{
-    QString characterName;
-    QString worldAddressProtected;
-    QString worldAddressUnprotected;
-    int worldPortUnprotected = 0;
-    int worldPortProtected = 0;
-    QString worldName;
-    bool antiCheatProtection = false;
-    bool tutorial = false;
-    bool isMale = false;
-};
 
 /// CharacterSelection.qml's controller (CIP TCharacterSelectionController), a
 /// dialog controller: it makes, shows and closes its own dialog. It keeps the

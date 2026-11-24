@@ -94,11 +94,6 @@ public:
 
     // questlog
 
-    // modal dialogs >= 970
-    static void processModalDialog(uint32_t id, std::string_view title, std::string_view message, const std::vector<std::tuple<uint8_t, std::string>>
-                                   & buttonList, uint8_t enterButton, uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>
-                                   & choiceList, bool priority);
-
     // cyclopedia
 
 public:

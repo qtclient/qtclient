@@ -6,6 +6,7 @@
 #include "gamewindow/weeklytaskscontroller.h"
 #include "input/gameactionhandlers.h"
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "taskboard/taskboardbountytasksstorage.h"
 #include "taskboard/taskboardcurrenciesstorage.h"
 #include "taskboard/taskboardshopstorage.h"
@@ -97,6 +98,8 @@ void TTaskboardDialogController::connectToGameSession(const std::shared_ptr<game
     m_gameSessionConnections.disconnectAll();
     m_gameSession = GameSession;
     if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get())) {
+        // The player whose main land arrival lets the dialog open (kept from the last session).
+        m_pPlayerData = session->playerData();
         taskboard::TTaskboardCurrenciesStorage* currencies = session->taskboardCurrenciesStorage().get();
         using Currencies = taskboard::TTaskboardCurrenciesStorage;
         using Self = TTaskboardDialogController;
@@ -145,7 +148,7 @@ QString TTaskboardDialogController::soulSealsString() const
 void TTaskboardDialogController::showDialog(const DialogTab& Tab)
 {
     closeDialog();
-    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerHasReachedMain()) {
+    if (!m_pPlayerData || !m_pPlayerData->hasReachedMain()) {
         m_notOnMain->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                            QKeySequence(QStringLiteral("Return"))) });
         m_notOnMain->showMessage(qtTrId("taskboard_need_to_reach_main_caption"), qtTrId("taskboard_need_to_reach_main_text"));

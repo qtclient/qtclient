@@ -835,16 +835,15 @@ void TGameClient::submitCredentials(const QString& account, const QString& passw
 
 void TGameClient::refreshAccount(const QJsonObject& reply)
 {
+    // Host: the client's account model (the world ports and PvP types the
+    // session meta info reads, the characters a character switch shows) takes
+    // the reply's play data; the authentication shows it in the selection.
     authentication::LoginResult result = authentication::TLoginRequestUploader::parse(reply);
-    if (result.characters.empty()) {
-        login();
+    if (result.characters.empty())
         return;
-    }
     if (result.session.sessionKey.isEmpty())
         result.session = m_account.session;
-    const QString autoCharacter = std::exchange(m_options.autoCharacter, {});
-    onLoginSuccessful(result);
-    m_options.autoCharacter = autoCharacter;
+    m_account = std::move(result);
 }
 
 void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
@@ -1113,27 +1112,25 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
     if (m_pGameSessionDisconnectReactionController)
         m_pGameSessionDisconnectReactionController->resetShowCharacterSelectionOnDisconnect();
     // CIP: the session gets the account's login data and the character's.
-    // Host: qtclient's meta info keeps the credentials the game server login
-    // reads; the world's game port (the WebSocket port in the browser), its
-    // PvP type and the session key are the login service's answer.
-    game::GameserverCredentials& credentials = gameserver->loginData;
-    credentials.account = LoginData.email;
-    credentials.password = LoginData.password;
-    credentials.sessionKey = LoginData.sessionKey.isEmpty() ? m_account.session.sessionKey : LoginData.sessionKey;
-    credentials.characterName = CharacterLoginData.characterName;
-    credentials.worldName = CharacterLoginData.worldName;
-    credentials.host = CharacterLoginData.worldAddressProtected;
-    credentials.port = CharacterLoginData.worldPortProtected;
+    // Host: the world's game port (the WebSocket port in the browser), its PvP
+    // type and the session key (when the login request has none) are the login
+    // service's answer.
+    gameserver->loginRequestData = LoginData;
+    gameserver->characterLoginData = CharacterLoginData;
+    authentication::TLoginRequestData& loginRequestData = gameserver->loginRequestData;
+    gamewindow::TCharacterLoginData& characterLoginData = gameserver->characterLoginData;
+    if (loginRequestData.sessionKey.isEmpty())
+        loginRequestData.sessionKey = m_account.session.sessionKey;
     m_worldType = -1;
     for (const auto& [worldId, world] : m_account.worlds) {
-        if (world.name == CharacterLoginData.worldName) {
-            credentials.port = world.port();
+        if (world.name == characterLoginData.worldName) {
+            characterLoginData.worldPortProtected = world.port();
             m_worldType = world.pvpType;
             break;
         }
     }
     if (!m_options.recordTo.isEmpty())
-        credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
+        gameserver->recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
     // CIP: a tutorial character first watches the tutorial dump. Host: the
     // dump is qtclient's local tutorial file (CipSoft's comes from its assets).
     if (CharacterLoginData.tutorial) {
@@ -1147,12 +1144,12 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
                 tutorial->sessiondump.hasHints = true;
             }
             setGameSessionSettings(*tutorial);
-            tutorial->characterName = credentials.characterName;
-            tutorial->isMale = CharacterLoginData.isMale;
+            tutorial->characterName = characterLoginData.characterName;
+            tutorial->isMale = characterLoginData.isMale;
             // CIP: [URLS] tutorialProgressWebService. Host: the launcher
             // environment's receiver, as for the other client services.
             tutorial->tutorialProgressWebService = app::LauncherEnv::load(QDir::currentPath()).tutorialProgressWebServiceUrl();
-            tutorial->clientSessionId = credentials.sessionKey;
+            tutorial->clientSessionId = loginRequestData.sessionKey;
             metaInfos.push_back(std::move(tutorial));
         }
     }
@@ -1198,8 +1195,8 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     // CIP: a crash report from now on names the character and its world, and
     // the item prices are the world's.
     if (const auto* gameserver = dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(metaInfo.get())) {
-        setCharacterCrashReportAnnotations(gameserver->loginData.characterName, gameserver->loginData.worldName);
-        m_pItemPriceStorage->setWorldName(gameserver->loginData.worldName);
+        setCharacterCrashReportAnnotations(gameserver->characterLoginData.characterName, gameserver->characterLoginData.worldName);
+        m_pItemPriceStorage->setWorldName(gameserver->characterLoginData.worldName);
     }
     const auto live = createGameSession<game::TGameserverGameSession>();
     live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
@@ -1758,6 +1755,9 @@ void TGameClient::onBeforeRenderFrameMainThread()
     // frames' render times).
     const qint64 renderTimeMicros = m_frameDurations->averageNs() / 1000;
     updateFrameStatistics();
+    // CIP: the game window's render driver asks for the frame after this one.
+    if (gamewindow::TGameWindowController* controller = gameWindowController())
+        controller->requestRenderDriverUpdate();
     m_predictor->setOffset(renderTimeMicros);
     const qint64 nextFrameTimestamp = m_predictor->predict();
     // Host: the appearance animations and sounds run on the frame clock.

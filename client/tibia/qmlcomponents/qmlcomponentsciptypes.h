@@ -203,43 +203,11 @@ public:
     using cip::tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem::TScenegraphDrawCommandsRendererQuickItem;
 };
 
-class TSimpleTextureMaterial final : public ::tibia::CipTyped
-{
-public:
-    TSimpleTextureMaterial() = default;
-};
-
-class TSimpleTextureShader final : public ::tibia::CipTyped
-{
-public:
-    TSimpleTextureShader() = default;
-};
-
-class TSimpleTextureShaderScenegraphNode final : public ::tibia::CipTyped
-{
-public:
-    TSimpleTextureShaderScenegraphNode() = default;
-};
-
 class TTargetSelectionQuickItem final : public cip::tibia::qmlcomponents::TTargetSelectionQuickItem
 {
     Q_OBJECT
 public:
     using cip::tibia::qmlcomponents::TTargetSelectionQuickItem::TTargetSelectionQuickItem;
-};
-
-class TTextureAtlasViewer final : public cip::tibia::qmlcomponents::TTextureAtlasViewer
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TTextureAtlasViewer::TTextureAtlasViewer;
-};
-
-class TTextureAtlasViewerController final : public cip::tibia::qmlcomponents::TTextureAtlasViewerController
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TTextureAtlasViewerController::TTextureAtlasViewerController;
 };
 
 /// CIP QML type name (product camera type: `TWorldMapCamera` in minimaprendererquickitem.h).

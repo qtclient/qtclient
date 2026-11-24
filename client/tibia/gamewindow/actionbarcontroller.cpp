@@ -1,6 +1,8 @@
 #include "actionbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "appearances/appearanceinstance.h"
+#include "protocol/objectdata.h"
 #include "chat/chatmodemanager.h"
 #include "config/actionbaroptions.h"
 #include "container/containerciptypes.h"
@@ -428,8 +430,14 @@ void TActionBarController::onHotkeyOptionsChanged()
 {
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
     const bool chatOn = this->chatOn();
-    for (TActionButtonController* button : m_buttons)
-        button->setHotkeys(hotkeys->allButtonKeys(m_actionBarId, int(button->actionButtonID()), chatOn));
+    for (TActionButtonController* button : m_buttons) {
+        // The keys running the button's trigger action.
+        Setting trigger;
+        trigger.kind = Setting::ACTION;
+        trigger.action = config::THotkeyOptions::triggerActionButtonName(m_actionBarId, int(button->actionButtonID()));
+        const std::vector<QKeySequence> keys = hotkeys->keysForSetting(trigger, chatOn);
+        button->setHotkeys(QList<QKeySequence>(keys.begin(), keys.end()));
+    }
 }
 
 void TActionBarController::setFirstVisibleButtonId(const int v)
@@ -706,9 +714,20 @@ void TActionBarController::onEnableConditionsChanged()
                 uint count = uint(m_objectInfoStorage->count(instance));
                 if (const std::optional<uint16_t> counterpart = type ? type->expireCounterpart() : std::nullopt)
                     count += uint(m_objectInfoStorage->count(TObjectAppearanceInstanceTypeID::plain(*counterpart)));
-                // qtclient's instance id has no amount; the button carries it.
-                if (count != action->objectCount())
+                // A new amount: the button gets an instance with it (a stack
+                // holds at most 255), then shows the amount.
+                if (count != action->objectCount()) {
+                    protocol::TObjectData data = instance.hasLiquid() ? protocol::TObjectData::liquid(instance.typeId, instance.liquid)
+                                                 : instance.hasTier()  ? protocol::TObjectData::upgradeable(instance.typeId, instance.tier)
+                                                                       : protocol::TObjectData::plain(instance.typeId);
+                    if (type && type->isStackable())
+                        data = protocol::TObjectData::cumulative(instance.typeId, static_cast<uint8_t>(std::min<uint>(count, 0xff)));
+                    if (m_appearanceInstanceFactory) {
+                        if (const appearances::TAppearanceInstancePtr object = m_appearanceInstanceFactory->createObject(data))
+                            action->setObjectAppearanceInstance(object);
+                    }
                     action->setObjectCount(count);
+                }
                 bool enabled = true;
                 if (const std::optional<spells::TSpellInfo> rune = spellStorage->runeSpellInfo(int(instance.typeId)); rune && rune->rune) {
                     const spells::TSpellCastParameters& cast = rune->rune->cast;
@@ -975,8 +994,17 @@ void TActionBarController::onAssignHotkey(const uint ButtonId)
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
     const bool chatOn = this->chatOn();
     const QString action = config::THotkeyOptions::triggerActionButtonName(m_actionBarId, int(ButtonId));
+    // The button's trigger action; its first key is the one shown.
+    Setting trigger;
+    trigger.kind = Setting::ACTION;
+    trigger.action = action;
+    if (trigger.isEmpty())
+        return;
+    QKeySequence current;
+    if (const std::vector<QKeySequence> keys = hotkeys->keysForSetting(trigger, chatOn); !keys.empty())
+        current = keys.front();
     m_hotkeyButtonId = int(ButtonId);
-    m_hotkeyDialog->showDialog(chatOn, false, hotkeys->buttonKeys(m_actionBarId, int(ButtonId), chatOn),
+    m_hotkeyDialog->showDialog(chatOn, false, current,
                                qtTrId("actionbar_button_identifier").arg(m_actionBarId).arg(ButtonId),
                                TRecordKeyboardShortcutDialogController::occupiedKeys(action, chatOn));
 }

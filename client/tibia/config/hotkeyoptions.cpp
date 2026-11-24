@@ -659,31 +659,6 @@ QString THotkeyOptions::triggerActionButtonName(const int actionBarId, const int
     return QStringLiteral("TriggerActionButton_%1.%2").arg(actionBarId).arg(buttonId);
 }
 
-QKeySequence THotkeyOptions::buttonKeys(const int actionBarId, const int buttonId, const bool chatOn) const
-{
-    const THotkeySet* current = set(m_current);
-    if (!current)
-        return {};
-    const QString name = triggerActionButtonName(actionBarId, buttonId);
-    for (const THotkeyBinding& binding : chatOn ? current->chatOn : current->chatOff)
-        if (binding.setting.kind == TActionSetting::ACTION && binding.setting.action == name)
-            return binding.keys;
-    return {};
-}
-
-QList<QKeySequence> THotkeyOptions::allButtonKeys(const int actionBarId, const int buttonId, const bool chatOn) const
-{
-    QList<QKeySequence> keys;
-    const THotkeySet* current = set(m_current);
-    if (!current)
-        return keys;
-    const QString name = triggerActionButtonName(actionBarId, buttonId);
-    for (const THotkeyBinding& binding : chatOn ? current->chatOn : current->chatOff)
-        if (binding.setting.kind == TActionSetting::ACTION && binding.setting.action == name)
-            keys.push_back(binding.keys);
-    return keys;
-}
-
 void THotkeyOptions::setButtonKeys(const int actionBarId, const int buttonId, const bool chatOn, const QKeySequence& keys)
 {
     QList<QKeySequence> list;
@@ -700,6 +675,18 @@ QList<QKeySequence> THotkeyOptions::actionKeys(const QString& action, const bool
         return keys;
     for (const THotkeyBinding& binding : chatOn ? current->chatOn : current->chatOff)
         if (binding.setting.kind == TActionSetting::ACTION && binding.setting.action == action)
+            keys.push_back(binding.keys);
+    return keys;
+}
+
+std::vector<QKeySequence> THotkeyOptions::keysForSetting(const TActionSetting& setting, const bool chatOn) const
+{
+    std::vector<QKeySequence> keys;
+    const THotkeySet* current = set(m_current);
+    if (!current)
+        return keys;
+    for (const THotkeyBinding& binding : chatOn ? current->chatOn : current->chatOff)
+        if (binding.setting == setting)
             keys.push_back(binding.keys);
     return keys;
 }

@@ -99,6 +99,9 @@ public:
     /// and the pane layout (options gameWindowUpperPaneHeight,
     /// gameWindowLowerPaneHeight, gameWindowResizingMode).
     void onClientOptionsChangedAfterShowGameWindows() override;
+    /// CIP: before each frame the game window's render driver is polished and
+    /// its window asked for the next frame.
+    void requestRenderDriverUpdate();
 
     /// Button-bar Compendium / News button (CIP TNewsButtonController).
 
@@ -218,6 +221,8 @@ private:
     std::shared_ptr<input::TEventFilterManager> m_pEventFilterManager;
     std::unique_ptr<TStatusBarController> m_pStatusBarController;
     QPointer<QQuickItem> m_gameWindowItem;
+    /// The game window's RenderDriver (objectName renderDriver).
+    QPointer<QQuickItem> m_renderDriver;
     QUrl m_hintsUrl;
     QVector<tibia::shared::Hint> m_hints;
     /// Seconds since the epoch of the last hints download.

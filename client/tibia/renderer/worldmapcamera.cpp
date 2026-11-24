@@ -143,6 +143,19 @@ worldmap::TWorldMapCuboid TWorldMapCamera::visibleArea() const
     return worldmap::TWorldMapCuboid(first, last.x - first.x, last.y - first.y);
 }
 
+worldmap::TWorldMapCuboid TWorldMapCamera::visibleArea(const int layer) const
+{
+    return visibleArea().floorArea(layer);
+}
+
+QRect TWorldMapCamera::convertCuboidToRectangle(const worldmap::TWorldMapCuboid& cuboid) const
+{
+    using worldmap::TWorldMapSubfieldCoordinate;
+    const QPoint topLeft = convertSubfieldCoordinateToPoint(TWorldMapSubfieldCoordinate::fromField(cuboid.getOrigin(), 0, 0));
+    const QPoint end = convertSubfieldCoordinateToPoint(TWorldMapSubfieldCoordinate::fromField(cuboid.getEnd(), 0, 0));
+    return QRect(topLeft, end - QPoint(1, 1));
+}
+
 QRect TWorldMapCamera::projectedSubfieldRectangle(const worldmap::TWorldMapCuboid& cuboid) const
 {
     const worldmap::TWorldMapCoordinate& origin = cuboid.origin;

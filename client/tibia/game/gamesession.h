@@ -275,9 +275,6 @@ void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view m
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
-void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
-                        const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
-                        uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority);
 void processItemDetail(const ItemInspectionData& data);
 void processInspectionState(uint32_t creatureId, uint8_t state);
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData);

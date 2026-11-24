@@ -1,5 +1,6 @@
 #include "sidebarwidgetsmanager.h"
 
+#include "analysers/analyserwidgets.h"
 #include "config/sidebaroptions.h"
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -355,6 +356,9 @@ void TSidebarWidgetsManager::setPremiumTimeStorage(game::TPremiumTimeStorage* pr
         m_skills->setPremiumTimeStorage(premiumTimeStorage);
     if (m_battleLists)
         m_battleLists->setPremiumTimeStorage(premiumTimeStorage);
+    if (TSidebarWidget* progress = currentWidget(XpAnalyser))
+        if (auto* controller = qobject_cast<analysers::TProgressWidgetController*>(progress->controller()))
+            controller->setPremiumTimeStorage(premiumTimeStorage);
     if (!m_premiumTimeStorage)
         return;
     connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSidebarWidgetsManager::onPremiumTimeChanged);

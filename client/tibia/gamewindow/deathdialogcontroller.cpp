@@ -10,7 +10,6 @@
 #include "game/gamesessionbase.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -30,14 +29,6 @@ TDeathDialogController::TDeathDialogController(QQmlEngine* engine, QQuickItem* d
     m_box->setCloseOnButtonClicked(true);
     m_box->setTextCentered(true);
     m_box->setMessageDialogTextFormat(TDeathMessageDialog::STYLED_TEXT);
-    connect(m_box, &TDeathMessageDialog::acceptClicked, this, &TDeathDialogController::onLogoutRequested);
-    connect(m_box, &TDeathMessageDialog::buttonClicked, this, [this](Button id, bool) { onButtonClicked(id); });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TDeathDialogController::onWorldEntered);
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        closeBox();
-    });
 }
 
 TDeathDialogController::~TDeathDialogController() = default;
@@ -52,9 +43,20 @@ void TDeathDialogController::connectToGameSession(const std::shared_ptr<game::IG
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
         return;
-    m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
+    game::TGameProtocolMessageHandler* gameProtocolMessageHandler = session->gameProtocolMessageHandler().get();
+    m_gameSessionConnections.push_back(connect(gameProtocolMessageHandler,
                                                &game::TGameProtocolMessageHandler::requestOpenDeathDialog, this,
                                                &TDeathDialogController::onRequestOpenDeathDialog));
+    // OK enters the world again; Cancel logs out; the store button goes to onButtonClicked.
+    m_gameSessionConnections.push_back(connect(m_box, &TDeathMessageDialog::acceptClicked, gameProtocolMessageHandler,
+                                               &game::TGameProtocolMessageHandler::emitSendEnterWorldMessage));
+    m_gameSessionConnections.push_back(
+        connect(m_box, &TDeathMessageDialog::discardClicked, this, &TDeathDialogController::onLogoutRequested));
+    m_gameSessionConnections.push_back(
+        connect(m_box, &TDeathMessageDialog::buttonClicked, this, [this](Button id, bool) { onButtonClicked(id); }));
+    m_gameSessionConnections.push_back(connect(session->playerProtocolMessageHandler().get(),
+                                               &game::TPlayerProtocolMessageHandler::worldEntered, this,
+                                               &TDeathDialogController::onWorldEntered));
 }
 
 /// The caption and, by death type, the text with the store button's hint; OK, Cancel and
@@ -140,6 +142,8 @@ void TDeathDialogController::onButtonClicked(
 
 void TDeathDialogController::onWorldEntered()
 {
+    // Host: the scene the death message froze runs again.
+    tibia::game::setSceneFrozen(false);
     if (!m_openStoreOnWorldEntered)
         return;
     m_openStoreOnWorldEntered = false;

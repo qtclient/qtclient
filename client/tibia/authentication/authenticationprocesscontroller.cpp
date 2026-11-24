@@ -606,6 +606,18 @@ void TAuthenticationProcessController::onShowCharacterSelectionStateEntered()
         Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionShowCreateCharacterDialog>(true));
 }
 
+void TAuthenticationProcessController::setPlayDataFromReply(const QJsonDocument& Reply)
+{
+    TAuthenticationJsonDocumentHelper helper;
+    TCharacterList characters;
+    TWorldList worlds;
+    helper.parsePlayData(Reply.object(), characters, worlds);
+    m_pLoginRequestUploader->setPlayData(characters, worlds);
+    m_pCharacterSelectionController->setCharacters(characters, worlds);
+    if (characters.size() == 1 && characters.front().tutorial)
+        m_pCharacterSelectionController->selectCharacter(characters.front().name);
+}
+
 void TAuthenticationProcessController::onShowCharacterSelectionStateLeft()
 {
     if (m_pCharacterSelectionController)

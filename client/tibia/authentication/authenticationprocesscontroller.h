@@ -6,6 +6,7 @@
 
 #include "qtconnectionmanager.h"
 
+#include <QJsonDocument>
 #include <QObject>
 #include <QString>
 
@@ -179,6 +180,11 @@ public:
     /// TLoginRequestUploader's signals) to the machine.
     template<typename Uploader>
     void bindLoginUploader(Uploader* uploader);
+
+    /// CIP: the account's play data from a reply (the character creation's): the
+    /// login request uploader and the character selection take its characters and
+    /// worlds; a single character still in the tutorial is selected (logs in).
+    void setPlayDataFromReply(const QJsonDocument& Reply);
 
     /// Starts the machine (again, when it runs); with `shortcutToCharacterSelection`
     /// it goes straight to the character selection (a running session's character switch).

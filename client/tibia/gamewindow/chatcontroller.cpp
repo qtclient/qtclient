@@ -107,7 +107,7 @@ QString sessionPassword(const std::shared_ptr<game::IGameSession>& session)
 {
     const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
     const auto* metaInfo = base ? dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(base->metaInfo().get()) : nullptr;
-    return metaInfo ? metaInfo->loginData.password : QString();
+    return metaInfo ? metaInfo->loginRequestData.password : QString();
 }
 
 void own(QObject* object)

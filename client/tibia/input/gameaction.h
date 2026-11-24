@@ -3556,9 +3556,9 @@ inline TGameActionList filterActions(const TGameActionList& candidates, std::ini
 /// The candidates in a panel's context-menu order (CONTEXT_MENU_SEPARATOR between groups).
 TGameActionList contextMenuActions(const TGameActionList& candidates, std::span<const EGameAction> order);
 
-/// A dragged object's drop (CIP:). Shift moves everything; a
-/// stack asks for the amount when Ctrl's state matches option
-/// dragAndDropDefaultActionIsMoveAll.
+/// A dragged object's drop: one object, or one put back, moves as it is;
+/// Shift moves one object of a stack; otherwise a stack asks for the amount
+/// when Ctrl's state matches option dragAndDropDefaultActionIsMoveAll.
 IGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
 
 }

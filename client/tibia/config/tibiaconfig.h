@@ -51,6 +51,9 @@ public:
     QUrl accountCreationClientServicesUrl() const;
     /// CIP: [URLS] hintsUrl (empty when unset).
     QUrl hintsUrl() const;
+    /// CIP: [URLS] wheelOfDestinyPlannerDirectUrl, http://www.tibia.com/ when
+    /// unset: the skill wheel planner (the wheel's code is appended).
+    QUrl wheelOfDestinyPlannerDirectUrl() const;
 
     std::shared_ptr<QSettings> settings() const { return m_pSettings; }
 

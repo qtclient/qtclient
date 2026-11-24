@@ -389,12 +389,6 @@ void TGameSessionState::processCounterTrade(const std::string_view name, const s
 
 
 
-void TGameSessionState::processModalDialog(const uint32_t id, const std::string_view title, const std::string_view message, const std::vector<std::tuple<uint8_t, std::string>>
-                                & buttonList, const uint8_t enterButton, const uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>
-                                & choiceList, const bool priority)
-{
-    tibia::game::notify("onModalDialog", id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
-}
 
 
 

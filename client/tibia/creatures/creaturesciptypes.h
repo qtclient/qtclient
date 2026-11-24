@@ -17,6 +17,18 @@
 #include <memory>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace config {
+class TClientOptions;
+}
+namespace effects {
+class TEffectStorage;
+}
+namespace shared {
+class IClockService;
+}
 namespace exivaoptions {
 class TExivaOptionsStorage;
 }
@@ -45,7 +57,14 @@ class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCre
 {
     Q_OBJECT
 public:
-    explicit TCreatureProtocolMessageHandler(worldmap::TWorldMapStorage* worldMapStorage, QObject* parent = nullptr);
+    /// The session's world map, creature and effect storages, its appearance
+    /// instance factory, clock and client options.
+    TCreatureProtocolMessageHandler(std::shared_ptr<worldmap::TWorldMapStorage> worldMapStorage,
+                                    std::shared_ptr<TCreatureStorage> creatureStorage,
+                                    std::shared_ptr<effects::TEffectStorage> effectStorage,
+                                    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                                    std::shared_ptr<shared::IClockService> clockService,
+                                    std::shared_ptr<config::TClientOptions> clientOptions);
 
     void handleMoveCreatureMessage(const ::tibia::protobuf::protocol::GameserverMessageMoveCreature& message);
     void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
@@ -76,9 +95,13 @@ private:
     /// The server changed the attack or follow target the sequence names.
     void applyUpdateTarget(uint32_t sequence, uint32_t target);
 
-    /// The session's world map.
-    worldmap::TWorldMapStorage* m_worldMapStorage = nullptr;
+    std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
     std::shared_ptr<minimap::TMinimapTileStorage> m_minimapTileStorage;
+    std::shared_ptr<TCreatureStorage> m_creatureStorage;
+    std::shared_ptr<effects::TEffectStorage> m_effectStorage;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<shared::IClockService> m_clockService;
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };
 };

@@ -3,6 +3,8 @@
 #include "gamewindow/dialogmanager.h"
 #include "input/gameactionhandlers.h"
 
+#include <QQmlContext>
+
 namespace tibia::gamewindow {
 
 TTargetSelectionController::TTargetSelectionController(QQuickItem* root, QObject* parent)
@@ -26,6 +28,11 @@ TTargetSelectionController::~TTargetSelectionController()
         QObject::disconnect(m_dialogConn);
     if (m_filterFinishedConn)
         QObject::disconnect(m_filterFinishedConn);
+}
+
+void TTargetSelectionController::registerInQmlContext(QQmlContext* RootContext)
+{
+    RootContext->setContextProperty(QStringLiteral("tibiaTargetSelectionController"), this);
 }
 
 void TTargetSelectionController::bindDialogStack()

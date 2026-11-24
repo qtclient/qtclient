@@ -151,8 +151,8 @@ QSGNode* TQSGScenegraphDrawCommandsNode::updateNodeWithScenegraphDrawCommand(
             QRectF rectangle = data.rectangle;
             if (data.spriteIdentifier && texture.texture != nullptr
                 && data.spriteIdentifier->identifierKind() == sprites::ISpriteIdentifier::ResourceIdentifier) {
-                rectangle = QRectF(data.rectangle.x() + texture.rect.x(), data.rectangle.y() + texture.rect.y(),
-                                   texture.rect.width(), texture.rect.height());
+                rectangle = QRectF(data.rectangle.x() + texture.rect().x(), data.rectangle.y() + texture.rect().y(),
+                                   texture.rect().width(), texture.rect().height());
             }
             if (image->rect() != rectangle)
                 image->setRect(rectangle);

@@ -21,6 +21,7 @@
 
 #include "news/eventqmlentry.h"
 #include "news/eventsuploader.h"
+#include "renderer/renderdriver.h"
 #include "clockservice.h"
 #include "jsondocumenthttppostsender.h"
 #include "shared/tibiafilesystemhelper.h"
@@ -267,6 +268,17 @@ void TGameWindowController::setGameWindowItem(QQuickItem* gameWindowItem)
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             &TGameWindowController::onClientOptionsChangedAfterShowGameWindows, Qt::UniqueConnection);
     onClientOptionsChangedAfterShowGameWindows();
+    if (auto* renderDriver = qobject_cast<qmlcomponents::TRenderDriver*>(gameWindowChild(QStringLiteral("renderDriver"))))
+        m_renderDriver = renderDriver;
+}
+
+void TGameWindowController::requestRenderDriverUpdate()
+{
+    if (!m_renderDriver)
+        return;
+    m_renderDriver->polish();
+    if (QQuickWindow* window = m_renderDriver->window())
+        window->requestUpdate();
 }
 
 void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
@@ -550,9 +562,40 @@ void TGameWindowController::showGameScreen()
 
 void TGameWindowController::showStartScreen()
 {
-    setScreen(QString(), true, QColor(QStringLiteral("#041020")));
+    // A cached hint while the hints are under an hour old, else a new download.
+    updateHint();
+    // The live numbers refresh every 10 minutes; the boosted creature now.
+    // Host: in the browser they wait for the account login (setAuthenticated).
+    if (tibia::platform::kStartScreenServicesBeforeLogin || m_isAuthenticated) {
+        if (m_liveInfoUploader)
+            m_liveInfoUploader->requestUpdateAndStartTimer(600000);
+        if (m_boostedUploader)
+            m_boostedUploader->requestUpdate();
+    }
+    // An already shown start screen keeps its state.
+    if (!m_gameWindowState.isEmpty()) {
+        if (m_container)
+            m_container->setProperty("backgroundImageVisible", true);
+        if (m_pEventFilterManager) {
+            m_pEventFilterManager->disableKeyboardShortcuts();
+            m_pEventFilterManager->disableMovementKeys();
+        }
+        m_gameWindowState = QString();
+        if (m_container) {
+            if (QQuickWindow* window = m_container->window())
+                window->setColor(QColor(QStringLiteral("#041020")));
+        }
+        Q_EMIT gameWindowStateChanged();
+    }
+    // The Caps Lock hint starts from the keyboard's state; the key filter keeps it.
+    const bool capsLockActive = tibia::platform::isCapsLockActive();
+    if (m_isCapsLockActive != capsLockActive) {
+        m_isCapsLockActive = capsLockActive;
+        Q_EMIT isCapsLockActiveChanged();
+    }
     QCoreApplication::instance()->installEventFilter(this);
-    requestStartScreenServices();
+    // CIP: the looping sounds pause.
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSoundTrigger>(true));
     Q_EMIT startScreenNowDisplayed();
 }
 

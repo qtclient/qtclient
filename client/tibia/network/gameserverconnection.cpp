@@ -214,7 +214,7 @@ shared::TRsaHelper& loginRsaHelper()
     return helper;
 }
 
-void installGameServerConnection()
+QByteArray loginRsaPublicKey()
 {
     // Crystal's login RSA modulus, big-endian; the exponent is 65537.
     static const QByteArray LoginModulus = QByteArray::fromHex(
@@ -222,7 +222,12 @@ void installGameServerConnection()
         "a837aa60561d7ccb9452fa0080594909882ab5bca58a1a1b35f8b1059b72b121"
         "2611c6152ad3dbb3cfbee7adc142a75d3d75971509c321c5c24a5bd51fd460f0"
         "1b4e15beb0de1930528a5d3f15c1e3cbf5c401d6777e10acaab33dbe8d5b7ff5");
-    loginRsaHelper().setPublicKey(LoginModulus);
+    return LoginModulus;
+}
+
+void installGameServerConnection()
+{
+    loginRsaHelper().setPublicKey(loginRsaPublicKey());
 }
 
 }

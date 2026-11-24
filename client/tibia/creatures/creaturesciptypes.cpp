@@ -89,9 +89,8 @@ uint16_t attackAnimationEffect(const uint32_t weaponType)
 /// A message about one stored creature: apply it, then tell the views; a
 /// creature the storage does not hold is ignored.
 template <typename Apply>
-void updateCreature(const uint32_t creatureId, Apply&& apply)
+void updateCreature(TCreatureStorage* storage, const uint32_t creatureId, Apply&& apply)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
     const auto creature = storage ? storage->creatureAt(creatureId) : nullptr;
     if (!creature) {
         return;
@@ -102,9 +101,18 @@ void updateCreature(const uint32_t creatureId, Apply&& apply)
 
 } // namespace
 
-TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(worldmap::TWorldMapStorage* worldMapStorage, QObject* parent)
-    : cip::tibia::creatures::TCreatureProtocolMessageHandler(parent)
-    , m_worldMapStorage(worldMapStorage)
+TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(
+    std::shared_ptr<worldmap::TWorldMapStorage> worldMapStorage, std::shared_ptr<TCreatureStorage> creatureStorage,
+    std::shared_ptr<effects::TEffectStorage> effectStorage,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+    std::shared_ptr<shared::IClockService> clockService, std::shared_ptr<config::TClientOptions> clientOptions)
+    : cip::tibia::creatures::TCreatureProtocolMessageHandler(nullptr)
+    , m_worldMapStorage(std::move(worldMapStorage))
+    , m_creatureStorage(std::move(creatureStorage))
+    , m_effectStorage(std::move(effectStorage))
+    , m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
+    , m_clockService(std::move(clockService))
+    , m_clientOptions(std::move(clientOptions))
     , m_showAttackAnimation(showAttackAnimationOption())
 {
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -116,7 +124,7 @@ TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(worldmap::TWorl
 void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creatureId, const uint32_t kind,
                                                                  const uint32_t value)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = m_creatureStorage.get();
     const auto creature = storage ? storage->creatureAt(creatureId) : nullptr;
     if (!creature)
         return;
@@ -156,7 +164,7 @@ void TCreatureProtocolMessageHandler::applyUpdateTarget(const uint32_t sequence,
 {
     // The server replaces the target the sequence names (the id the player
     // attacked or followed); 0 drops it.
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = m_creatureStorage.get();
     if (!storage)
         return;
     if (storage->attackID() == sequence)
@@ -177,7 +185,7 @@ void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const Gameserver
     if (byId) {
         // The id form needs a known creature that stands on the map (its
         // placeholder is what the fields hold); the message is rejected otherwise.
-        TCreatureStorage* storage = TCreatureStorage::instance();
+        TCreatureStorage* storage = m_creatureStorage.get();
         const std::shared_ptr<TCreature> creature = storage ? storage->creatureAt(creatureId) : nullptr;
         if (!creature)
             throw std::runtime_error(QStringLiteral("no creature with id %1 found").arg(creatureId).toStdString());
@@ -196,21 +204,21 @@ void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const Gameserver
         return;
     const Position newPos = positionFromPb(message.to_pos());
     tibia::worldmap::TWorldMapStorage* const mapStorage =
-        m_worldMapStorage ? m_worldMapStorage : tibia::worldmap::TWorldMapStorage::ensureStorage();
+        m_worldMapStorage ? m_worldMapStorage.get() : tibia::worldmap::TWorldMapStorage::ensureStorage();
     (void)mapStorage->applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
 }
 
 void TCreatureProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
 {
     // The login names the own character.
-    if (TCreatureStorage* storage = TCreatureStorage::instance())
+    if (TCreatureStorage* storage = m_creatureStorage.get())
         storage->setPlayerID(message.player_id());
 }
 
 void TCreatureProtocolMessageHandler::handleSessionDumpStartMessage(const GameserverMessageSessionDumpStart& message)
 {
     // A replay names the character it recorded.
-    if (TCreatureStorage* storage = TCreatureStorage::instance())
+    if (TCreatureStorage* storage = m_creatureStorage.get())
         storage->setPlayerID(message.player_id());
 }
 
@@ -238,7 +246,7 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
         break;
     // Product server party extensions.
     case 16:
-        updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
             creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
         });
         tibia::game::notify("onPartyMemberHealthChange", id, static_cast<uint8_t>(message.health_percent()),
@@ -249,7 +257,7 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
                             message.max_mana());
         break;
     case 18:
-        updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
             creature->setVocation(static_cast<uint8_t>(message.vocation()));
         });
         tibia::game::notify("onPartyMemberInfoChange", id, static_cast<uint8_t>(message.vocation()),
@@ -322,7 +330,7 @@ void TCreatureProtocolMessageHandler::handleUpdateTargetMessage(const Gameserver
 
 void TCreatureProtocolMessageHandler::handleCreatureTypeMessage(const GameserverMessageCreatureType& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+    updateCreature(m_creatureStorage.get(), message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
         // The type as sent: the views tell the player's own summons by
         // their master.
         creature->setCreatureType(static_cast<uint8_t>(message.type()));

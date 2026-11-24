@@ -32,7 +32,9 @@ public:
     TDeathDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TDeathDialogController() override;
 
-    /// CIP: closes the dialog and connects the session's death dialog request.
+    /// CIP: closes the dialog and follows the session: its death dialog request,
+    /// OK (enter the world again), Cancel (log out), the store button and the
+    /// player's world entered.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
@@ -40,10 +42,10 @@ public Q_SLOTS:
     void showDeadMessage(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
     /// Keeps the request; the dialog opens on the fifth frame after it.
     void onRequestOpenDeathDialog(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
-    /// OK (and the store button): QUIT_GAME, logging the character out.
+    /// Cancel: QUIT_GAME, logging the character out.
     void onLogoutRequested() override;
-    /// The store button logs out too and opens the store (useful thing 11) when the
-    /// next character enters the world.
+    /// The store button enters the world again (accept) and opens the store
+    /// (useful thing 11) once the character is back in the world.
     void onButtonClicked(
         cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
 

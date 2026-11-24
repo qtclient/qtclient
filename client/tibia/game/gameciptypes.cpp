@@ -879,17 +879,26 @@ void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const Gameserve
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 
-void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& m)
+void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& ShowModalDialogMessage)
 {
-    using namespace ::tibia::protobuf::protocol;
-    std::vector<std::tuple<uint8_t, std::string>> buttons;
-    for (const auto& b : m.buttons())
-        buttons.emplace_back(static_cast<uint8_t>(b.choice_id()), b.text());
-    std::vector<std::tuple<uint8_t, std::string>> choices;
-    for (const auto& c : m.choices())
-        choices.emplace_back(static_cast<uint8_t>(c.choice_id()), c.text());
-    tibia::game::processModalDialog(m.dialog_id(), m.title(), m.message(), buttons, static_cast<uint8_t>(m.enter_button()),
-                                    static_cast<uint8_t>(m.escape_button()), choices, m.priority());
+    const auto& m = ShowModalDialogMessage;
+    TServerModalDialogData dialog;
+    dialog.id = m.dialog_id();
+    dialog.title = QString::fromStdString(m.title());
+    dialog.text = QString::fromStdString(m.message());
+    dialog.defaultEnterButton = m.enter_button();
+    dialog.defaultEscapeButton = m.escape_button();
+    dialog.priority = m.priority();
+    TServerModalDialogData::Options buttons;
+    for (const auto& button : m.buttons())
+        buttons.emplace_back(static_cast<int>(button.choice_id()), QString::fromStdString(button.text()));
+    dialog.buttons = std::move(buttons);
+    TServerModalDialogData::Options choices;
+    for (const auto& choice : m.choices())
+        choices.emplace_back(static_cast<int>(choice.choice_id()), QString::fromStdString(choice.text()));
+    dialog.choices = std::move(choices);
+    Q_EMIT openModalDialog(dialog);
 }
 
 void TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& m)

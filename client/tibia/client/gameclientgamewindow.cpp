@@ -184,33 +184,9 @@ namespace client {
 
 namespace {
 
-template<class T>
-const T* notifyArg(const gamecore::Args& args, const size_t index)
+/// Host: the game's end empties the quest log.
+void clearQuestLogOnGameEnd(gamewindow::TQuestLogController* questLog)
 {
-    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
-}
-
-/// Host: the server's modal dialogs still arrive on
-/// the game notify bus; each block feeds one controller until it follows the
-/// session's protocol handler itself.
-void hookDialogsToGameNotify(std::vector<gamecore::Hook>& hooks, gamewindow::TServerModalDialogController* modalDialog,
-                             gamewindow::TQuestLogController* questLog)
-{
-    using gamecore::argInt;
-    using gamecore::argString;
-
-    // TServerModalDialogController.
-    hooks.emplace_back(tibia::game::kNotifyScope, "onModalDialog", [modalDialog](GameObject*, const gamecore::Args& args) {
-        using Options = gamewindow::TServerModalDialogController::Options;
-        static const Options none;
-        const auto* buttons = notifyArg<Options>(args, 3);
-        const auto* choices = notifyArg<Options>(args, 6);
-        modalDialog->open(argInt(args, 0), argString(args, 1), argString(args, 2), buttons ? *buttons : none, argInt(args, 4),
-                          argInt(args, 5), choices ? *choices : none);
-        return std::any{};
-    });
-
-    // TQuestLogController: the game's end empties the quest log.
     QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, questLog,
                      [questLog] { questLog->clear(); });
 }
@@ -239,10 +215,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
     /// CIP: the button bar's Cyclopedia and Bosstiary buttons (held here
     /// until the button bar makes them).
-    /// Host: the game notify hooks that feed the client's dialogs (server
-    /// modal dialog, creature podium) until they follow the
-    /// session's protocol handlers themselves.
-    std::vector<gamecore::Hook> dialogNotifyHooks;
     std::unique_ptr<gamewindow::TDragAndDropController> dragAndDrop;
     /// CIP: the game window controller's shared image downloader (store, social, news, …).
     std::shared_ptr<store::TDynamicallyLoadedImageManager> dynamicallyLoadedImageManager;
@@ -482,13 +454,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // context menu, the analysers' storages) and the packs' early bootstrap,
     // before the game window controllers.
     gameWindowController->configureClientServices(clientWebService, g.env.revision);
-    // Host: the start screen turns the keyboard shortcuts and walking keys off.
-    input::TEventFilterManager* const eventFilterManager = m_pEventFilterManager.get();
-    connect(gameWindowController, &gamewindow::TGameWindowController::startScreenNowDisplayed, eventFilterManager,
-            [eventFilterManager] {
-                eventFilterManager->disableKeyboardShortcuts();
-                eventFilterManager->disableMovementKeys();
-            });
     gameWindowController->showStartScreen();
     g.productHost = std::make_unique<QObject>();
     {
@@ -558,8 +523,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                                                                                  passiveAbilityInfoStorage(), position));
         }
     }
-    // Host: the target selection (CipSoft's lives in the root context).
+    // CIP: the target selection controller, published in the root context.
     g.targetSelection = std::make_unique<gamewindow::TTargetSelectionController>(gameWindowItem);
+    g.targetSelection->registerInQmlContext(engine->rootContext());
     // CIP: the cooldown bar.
     g.cooldownBar = std::make_unique<gamewindow::TCooldownBarController>(
         spellInfoStorage(), gameWindowItem ? gameWindowItem->findChild<QQuickItem*>(QStringLiteral("cooldownBar")) : nullptr);
@@ -658,10 +624,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.characterTradeDialog = std::make_unique<gamewindow::TCharacterTradeDialogController>(engine, dialogParentItem);
     m_pExaltationForgeDialogController =
         std::make_unique<gamewindow::TExaltationForgeDialogController>(clientOptions(), engine, dialogParentItem);
-    // CIP: the skill wheel dialog with the client's planner url (wheelOfDestinyPlannerDirectUrl; host: the
-    // CipSoft value, the portal url handler maps www.tibia.com).
+    // CIP: the skill wheel dialog with the client's planner url ([URLS] wheelOfDestinyPlannerDirectUrl; the
+    // portal url handler maps the tibia.com hosts, www.test.tibia.com among them).
     g.skillWheelDialog = std::make_unique<skillwheel::TSkillWheelDialogController>(
-        QStringLiteral("https://www.tibia.com/community/?subtopic=wheelofdestinyplanner&code="), engine, dialogParentItem);
+        tibiaConfig()->wheelOfDestinyPlannerDirectUrl().toString(), engine, dialogParentItem);
     m_pWeaponProficiencyDialogController =
         std::make_unique<proficiency::TWeaponProficiencyDialogController>(clientOptions(), engine, dialogParentItem);
     m_pWeaponProficiencyShapeDialogController =
@@ -823,9 +789,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // options through the client.
     g.clientOptionsModeSwitcher = std::make_unique<config::TClientOptionsModeSwitcher>(clientOptions(), dialogParentItem);
     g.clientOptionsModeSwitcher->connectToGameSession([this] { return sidebarOptions(); });
-    // Host: the game notify hooks and the client's game actions that feed the
+    // Host: the game's end and the client's game actions that feed the
     // dialogs above until they follow the session and the router themselves.
-    hookDialogsToGameNotify(g.dialogNotifyHooks, m_pServerModalDialogController.get(), m_pQuestLogController.get());
+    clearQuestLogOnGameEnd(m_pQuestLogController.get());
     g.gameActions.on(input::EGameAction::OPEN_QUESTLOG_DIALOG, [this](const input::TGameActionOpenQuestLog& action) {
         m_pQuestLogController->showDialog(action.questId());
         return true;
@@ -1367,8 +1333,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
     // The quest log and the quest tracker show the session's quest log storage.
     if (m_pQuestLogController)
         m_pQuestLogController->connectToGameSession(GameSession);
-    // Host: the server modal dialog still hears the game notify bus
-    // (hookDialogsToGameNotify) instead of the session's protocol handler.
+    if (m_pServerModalDialogController)
+        m_pServerModalDialogController->connectToGameSession(GameSession);
     if (m_pGameSessionDisconnectReactionController)
         m_pGameSessionDisconnectReactionController->connectToGameSession(GameSession);
     if (m_pWhiteBlacklist)

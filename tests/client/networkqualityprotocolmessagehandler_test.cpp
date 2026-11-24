@@ -22,7 +22,8 @@ using namespace tibia::protobuf::protocol;
 
 // Test double of the classic encoding (protocolciptypes.cpp is not linked): the type byte, then
 // the connection of a connection ping back.
-QByteArray tibia::protocol::TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message)
+QByteArray tibia::protocol::TProtobufClientMessageTranslator::translateToClassic(
+    const GameclientMessage& message, tibia::shared::TRsaHelper*, const tibia::protocol::TProtobufObjectPositionHelper*)
 {
     QByteArray data(1, static_cast<char>(message.type()));
     if (message.HasExtension(GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back))
@@ -203,7 +204,8 @@ TEST(ProtocolClientMessageProcessor, SendsAConnectionPingBackOnTheConnectionOfIt
     auto messageStream = std::make_shared<tibia::network::TUnencryptedRawMessageStream>();
     auto translator = std::make_shared<tibia::protocol::TProtobufClientMessageTranslator>(
         std::make_shared<tibia::protocol::TProtocolWriter>(
-            std::make_shared<tibia::shared::TIODeviceWriter>(messageStream, QDataStream::LittleEndian)));
+            std::make_shared<tibia::shared::TIODeviceWriter>(messageStream, QDataStream::LittleEndian)),
+        nullptr, nullptr, tibia::appearances::TSpecialAppearancesForProtocolParsing());
     tibia::protocol::TProtocolClientMessageProcessor processor(translator, messageStream);
     GameclientMessage message;
     message.set_type(28);

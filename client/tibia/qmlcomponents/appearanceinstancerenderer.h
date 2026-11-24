@@ -52,6 +52,14 @@ public:
     static uint8_t getQmlUpgradeTier(const appearances::TAppearanceInstancePtr& instance);
     /// A deco item kit's deco item id; 0 for any other instance.
     static uint16_t getQmlDecoItemObjectID(const appearances::TAppearanceInstancePtr& instance);
+
+    /// The serial number of the instance the renderer made for this info in its
+    /// storage (0 before it made one).
+    uint32_t serialNumber() const { return m_serialNumber; }
+    void setSerialNumber(uint32_t SerialNumber);
+
+private:
+    uint32_t m_serialNumber = 0;
 };
 
 /// A creature outfit placed in an AppearanceInstanceRenderer (QML OutfitAppearanceInstance;
@@ -68,6 +76,14 @@ public:
     TAppearanceType* type() const;
     /// The palette indices of the colours, as the sprite cache takes them.
     uint32_t colors() const;
+
+    /// The serial number of the instance the renderer made for this info in its
+    /// storage (0 before it made one).
+    uint32_t serialNumber() const { return m_serialNumber; }
+    void setSerialNumber(uint32_t SerialNumber);
+
+private:
+    uint32_t m_serialNumber = 0;
 };
 
 /// Draws a list of appearance instances placed in world pixels (QML
@@ -97,6 +113,7 @@ public:
     QString getRaceName(int RaceID) override;
 
 protected:
+    QList<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType*> appearanceInstanceInfos() const override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;
     void updateDrawCommands() override;
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;

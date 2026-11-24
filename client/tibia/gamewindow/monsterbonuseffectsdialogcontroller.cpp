@@ -353,7 +353,7 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
     m_monsterInfos.clear();
     std::vector<std::pair<QString, int>> races;
     if (m_monsterRaceStorage) {
-        // The tab's race list; a race keeps out while a charm of the tab's kind is on it.
+        // The tab's race list, by the name filter.
         const QList<TCharm> all = charms();
         const std::vector<cyclopedia::TMonsterRace>& tabRaces =
             minorTab ? m_monsterRaceStorage->racesUnlockedForMinorCharms() : m_monsterRaceStorage->racesUnlockedForCharms();
@@ -362,8 +362,9 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
             const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
             if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
                 continue;
+            // The unlocked charms on the race; one of the tab's kind keeps it out.
             const bool assigned = std::any_of(all.begin(), all.end(), [raceId, minorTab](const TCharm& charm) {
-                return charm.raceId == raceId && charm.isMinor() == minorTab;
+                return charm.grade != 0 && charm.raceId == raceId && charm.isMinor() == minorTab;
             });
             if (assigned)
                 continue;

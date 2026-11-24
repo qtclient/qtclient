@@ -62,6 +62,7 @@ qtclient_add_port_test(client_gamesessionmetainfo_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/game/sessiondumpgamesessionmetainfo.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/game/tutorialsessiondumpgamesessionmetainfo.cpp
 )
+target_link_libraries(client_gamesessionmetainfo_tests PRIVATE Qt6::Network)
 # Classic positions of game action locations (depot search items included).
 qtclient_add_port_test(client_gameactioncontext_tests
     gameactioncontext_test.cpp
@@ -737,4 +738,9 @@ qtclient_add_port_test(client_movingoutfitanimatorbase_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
     ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
+)
+# Wave 19: protocol::TObjectData ordering/equality (header only).
+qtclient_add_port_test(client_objectdata_tests
+    objectdata_test.cpp
+    objectdata_factories_stub.cpp
 )

@@ -1,5 +1,6 @@
 #include "gameservergamesession.h"
 
+#include "assets/things.h"
 #include "authentication/authenticationandencryptioninfo.h"
 #include "authentication/gameserverloginprocesscontroller.h"
 #include "authentication/loginprotocolmessagehandler.h"
@@ -41,6 +42,7 @@
 #include "network/gameservertcpconnection.h"
 #include "network/networkqualityprotocolmessagehandler.h"
 #include "protocol/protobufclientmessagetranslator.h"
+#include "protocol/protobufobjectpositionhelper.h"
 #include "protocol/protocolclientmessageprocessor.h"
 #include "protocol/protocolwriter.h"
 #include "shared/iodevicewriter.h"
@@ -73,6 +75,7 @@
 #include "compressionhelper.h"
 #include "crashhandler.h"
 #include "hashhelper.h"
+#include "rsahelper.h"
 #include "sessiondump/clientsessiondumprecorder.h"
 
 #include <protocol.pb.h>
@@ -112,22 +115,23 @@ std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetwor
     return std::make_shared<network::TGameserverNetworkPacketConnection>(tcpConnection);
 }
 
-/// Host: qtclient's meta info carries the game server login as
-/// GameserverCredentials. CrystalServer serves both game connections of a
-/// world on one address and port (the world's game port).
-authentication::TGameserverLoginRequestData gameserverLoginRequestData(const GameserverCredentials& Credentials)
+/// The game server login from the meta info's login and character data. Host:
+/// CrystalServer serves both game connections of a world on one address and
+/// port (the world's game port).
+authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGameserverGameSessionMetaInfo& MetaInfo)
 {
+    const authentication::TLoginRequestData& login = MetaInfo.loginRequestData;
+    const gamewindow::TCharacterLoginData& character = MetaInfo.characterLoginData;
     authentication::TGameserverLoginRequestData data;
-    data.email = Credentials.account;
-    data.password = Credentials.password;
-    data.token = Credentials.authenticatorToken;
-    data.sessionKey = Credentials.sessionKey;
-    data.characterName = Credentials.characterName;
-    data.worldAddressUnprotected = Credentials.host;
-    data.worldAddressProtected = Credentials.host;
-    data.worldPortUnprotected = Credentials.port;
-    data.worldPortProtected = Credentials.port;
-    data.worldName = Credentials.worldName;
+    data.email = login.email;
+    data.password = login.password;
+    data.sessionKey = login.sessionKey;
+    data.characterName = character.characterName;
+    data.worldAddressUnprotected = character.worldAddressProtected;
+    data.worldAddressProtected = character.worldAddressProtected;
+    data.worldPortUnprotected = character.worldPortProtected;
+    data.worldPortProtected = character.worldPortProtected;
+    data.worldName = character.worldName;
     data.assetsIdentifier = QString::fromStdString(tibia::game::assetIdentifier());
     return data;
 }
@@ -273,8 +277,8 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createSoundProviders();
     createGameActionProvidersAndHandlers();
     createNetworkStack();
-    m_loginData = gameserverLoginRequestData(gameserverMetaInfo->loginData);
-    m_recordTo = gameserverMetaInfo->loginData.recordTo;
+    m_loginData = gameserverLoginRequestData(*gameserverMetaInfo);
+    m_recordTo = gameserverMetaInfo->recordTo;
     createSessionControllers();
     m_playerMovementGameActionHandler =
         std::make_shared<input::TPlayerMovementGameActionHandler>(m_playerMovementIntentHandler);
@@ -329,10 +333,17 @@ void TGameserverGameSession::createNetworkStack()
     m_sequenceFlowProcessor = std::make_shared<TGameserverNetworkPacketSequenceFlowProcessor>();
     // The client translator writes each message into the client message stream;
     // the client message processor reads it back into the message's packet.
+    // Its RSA helper encrypts the login blocks with the game server's public key
+    // (host: the game server's key instead of CipSoft's).
     auto clientMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
+    auto rsaHelper = std::make_shared<shared::TRsaHelper>();
+    rsaHelper->setPublicKey(network::loginRsaPublicKey());
     m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>(
-        std::make_shared<protocol::TProtobufClientMessageTranslator>(std::make_shared<protocol::TProtocolWriter>(
-            std::make_shared<shared::TIODeviceWriter>(clientMessageStream, QDataStream::LittleEndian))),
+        std::make_shared<protocol::TProtobufClientMessageTranslator>(
+            std::make_shared<protocol::TProtocolWriter>(
+                std::make_shared<shared::TIODeviceWriter>(clientMessageStream, QDataStream::LittleEndian)),
+            rsaHelper, std::make_shared<protocol::TProtobufObjectPositionHelper>(),
+            appearancesManager()->specialAppearancesForProtocolParsing()),
         clientMessageStream);
     m_rawDataProcessor = std::make_shared<network::TGameserverNetworkPacketRawDataProcessor>(
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);

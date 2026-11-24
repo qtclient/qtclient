@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <tuple>
 
 namespace tibia::protobuf::protocol {
 class ProtocolInventoryItem;
@@ -36,6 +37,15 @@ struct TObjectData
     static TObjectData plain(uint16_t Id);
     static TObjectData liquid(uint16_t Id, uint32_t LiquidType);
     static TObjectData cumulative(uint16_t Id, uint8_t Count);
+    /// A hangable object hanging by `HookState` (the QML hook direction).
+    static TObjectData hangable(const uint16_t Id, const uint32_t HookState)
+    {
+        TObjectData data;
+        data.id = Id;
+        data.kind = EKind::Hangable;
+        data.hookState = HookState;
+        return data;
+    }
     static TObjectData upgradeable(uint16_t Id, uint8_t UpgradeClassification);
     /// A decoration kit: named by its deco item (its own type while it has none).
     static TObjectData decoItemKit(uint16_t Id, uint16_t DecoItemId);
@@ -48,6 +58,24 @@ struct TObjectData
     /// exclusive object kinds (liquid before cumulative, then upgradeable and
     /// deco item kit; any other object is plain).
     static TObjectData fromProtocolInventoryItem(const ::tibia::protobuf::protocol::ProtocolInventoryItem& item);
+
+    /// Every member is the same.
+    friend bool operator==(const TObjectData& Left, const TObjectData& Right)
+    {
+        return Left.id == Right.id && Left.count == Right.count && Left.kind == Right.kind
+            && Left.liquidType == Right.liquidType && Left.upgradeClassification == Right.upgradeClassification
+            && Left.hookState == Right.hookState && Left.decoItemId == Right.decoItemId;
+    }
+    /// Ordered by id, count, liquid type, upgrade classification, kind, hook
+    /// state, deco item id (the 32-bit values signed).
+    friend bool operator<(const TObjectData& Left, const TObjectData& Right)
+    {
+        const auto key = [](const TObjectData& Data) {
+            return std::make_tuple(Data.id, Data.count, static_cast<int32_t>(Data.liquidType), Data.upgradeClassification,
+                                   static_cast<int32_t>(Data.kind), static_cast<int32_t>(Data.hookState), Data.decoItemId);
+        };
+        return key(Left) < key(Right);
+    }
 };
 
 }

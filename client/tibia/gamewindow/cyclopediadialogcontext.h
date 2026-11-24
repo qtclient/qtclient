@@ -2,6 +2,7 @@
 
 #include "bossbestiary/bosstiarystorage.h"
 #include "worldmap/coordinates.h"
+#include "paginationproxymodel.h"
 
 #include <cip_gen.h>
 
@@ -92,12 +93,15 @@ struct TCharacterInfoCyclopediaContext
     bool operator==(const TCharacterInfoCyclopediaContext&) const = default;
 };
 
-/// The bosstiary page: the filter and the page.
+/// The bosstiary page: the filter and the pagination (page, bosses a page).
 struct TBosstiaryCyclopediaContext
 {
     bossbestiary::TBosstiaryFilter filter;
-    int page = 1;
-    bool operator==(const TBosstiaryCyclopediaContext&) const = default;
+    shared::TPaginationProxyModel::TPagination pagination{ 1, 8 };
+    bool operator==(const TBosstiaryCyclopediaContext& other) const
+    {
+        return filter == other.filter && !(pagination != other.pagination);
+    }
 };
 
 /// The boss slots page keeps nothing.

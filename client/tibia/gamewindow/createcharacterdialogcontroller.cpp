@@ -523,7 +523,10 @@ void TCreateCharacterDialogController::onCharacterCreated(QNetworkReply* reply)
     }
     const QJsonObject answer = replyObject(reply);
     if (answer[QLatin1String("Success")].toBool()) {
-        // The reply carries the account's characters; the host applies them.
+        // The reply carries the account's play data for the authentication.
+        if (m_authentication)
+            m_authentication->setPlayDataFromReply(QJsonDocument(answer));
+        // Host: the client's account model follows the new character list.
         Q_EMIT characterCreated(answer[QLatin1String("CharacterName")].toString(), answer);
         cancel();
         return;

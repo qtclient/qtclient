@@ -21,6 +21,7 @@ std::shared_ptr<QSettings> settingsFrom(const QTemporaryDir& dir, const QByteArr
 
 const QByteArray kIni = "[URLS]\n"
                         "loginWebService=https://www.test.tibia.com/clientservices/loginservice.php\n"
+                        "wheelOfDestinyPlannerDirectUrl=https://www.test.tibia.com/community/?subtopic=wheelofdestinyplanner&code=\n"
                         "[GRAPHICS]\n"
                         ";spritesheetCacheSize=350\n"
                         "qsgAtlasWidth=4096\n"
@@ -75,6 +76,19 @@ TEST(TTibiaConfig, UrlsComeFromTheUrlsGroup)
     ASSERT_TRUE(emptyDir.isValid());
     const TTibiaConfig empty(settingsFrom(emptyDir, QByteArray()));
     EXPECT_TRUE(empty.loginWebServiceUrl().isEmpty());
+}
+
+TEST(TTibiaConfig, WheelPlannerUrlDefaultsToTheTibiaPage)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const TTibiaConfig config(settingsFrom(dir, kIni));
+    EXPECT_EQ(config.wheelOfDestinyPlannerDirectUrl().toString(),
+              QStringLiteral("https://www.test.tibia.com/community/?subtopic=wheelofdestinyplanner&code="));
+    QTemporaryDir emptyDir;
+    ASSERT_TRUE(emptyDir.isValid());
+    const TTibiaConfig empty(settingsFrom(emptyDir, QByteArray()));
+    EXPECT_EQ(empty.wheelOfDestinyPlannerDirectUrl(), QUrl(QStringLiteral("http://www.tibia.com/")));
 }
 
 }

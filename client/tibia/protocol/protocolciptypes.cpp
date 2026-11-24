@@ -61,10 +61,11 @@ void writeCoordinate(ClassicWriter& w, const ProtocolCoordinate& c)
     w.u8(uint8_t(c.z()));
 }
 
-/// The classic coordinate of an object position (TProtobufObjectPositionHelper).
-void writeObjectPosition(ClassicWriter& w, const ::tibia::protobuf::protocol::ObjectPosition& objectPosition)
+/// The classic coordinate of an object position.
+void writeObjectPosition(ClassicWriter& w, const TProtobufObjectPositionHelper& objectPositionHelper,
+                         const ::tibia::protobuf::protocol::ObjectPosition& objectPosition)
 {
-    const Position coordinate = TProtobufObjectPositionHelper().toClassicCoordinate(objectPosition);
+    const Position coordinate = objectPositionHelper.toClassicCoordinate(objectPosition);
     w.u16(static_cast<uint16_t>(coordinate.x));
     w.u16(static_cast<uint16_t>(coordinate.y));
     w.u8(coordinate.z);
@@ -72,10 +73,11 @@ void writeObjectPosition(ClassicWriter& w, const ::tibia::protobuf::protocol::Ob
 
 /// An object of a client message: the coordinate of its position, its type and
 /// its stack position.
-void writeObject(ClassicWriter& w, const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
+void writeObject(ClassicWriter& w, const TProtobufObjectPositionHelper& objectPositionHelper,
+                 const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
                  const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier)
 {
-    writeObjectPosition(w, objectPosition);
+    writeObjectPosition(w, objectPositionHelper, objectPosition);
     w.u16(static_cast<uint16_t>(objectIdentifier.type_id()));
     w.u8(TProtobufClientMessageTranslator::stackPosition(objectPosition, objectIdentifier));
 }
@@ -769,7 +771,8 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     }
 }
 
-QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
+QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode, shared::TRsaHelper& rsaHelper,
+                                     const TProtobufObjectPositionHelper& objectPositionHelper)
 {
     using namespace ::tibia::protobuf::protocol;
     ClassicWriter w;
@@ -800,7 +803,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         if (m.has_product_transport())
             w.string(m.product_transport());
         // TRsaHelper pads the block with random bytes to the key size.
-        const QByteArray encrypted = tibia::network::loginRsaHelper().encrypt(w.out.mid(block));
+        const QByteArray encrypted = rsaHelper.encrypt(w.out.mid(block));
         w.out.truncate(block);
         w.out.append(encrypted);
         return w.out;
@@ -813,7 +816,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(0);
         w.string(m.first_string());
         w.string(m.token());
-        const QByteArray encrypted = tibia::network::loginRsaHelper().encrypt(w.out.mid(block));
+        const QByteArray encrypted = rsaHelper.encrypt(w.out.mid(block));
         w.out.truncate(block);
         w.out.append(encrypted);
         return w.out;
@@ -1182,7 +1185,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
             // the attacked creature.
             w.u8(static_cast<uint8_t>(m.aim_mode()));
             if (m.aim_mode() == 1 || m.aim_mode() == 2)
-                writeObjectPosition(w, m.aim_position());
+                writeObjectPosition(w, objectPositionHelper, m.aim_position());
         }
         return w.out;
     }
@@ -1255,7 +1258,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         const auto action = m.action();
         w.u8(static_cast<uint8_t>(action));
         if (action < 3) {
-            writeObject(w, m.object_position(), m.object_identifier());
+            writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
             if (action == 0) // stow one item: the count
                 w.u8(static_cast<uint8_t>(m.count()));
         } else if (action == 3) { // withdraw
@@ -1272,7 +1275,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         if (action != 3) {
             w.u8(static_cast<uint8_t>(m.category()));
             if (action == 0 || action == 4)
-                writeObject(w, m.object_position(), m.object_identifier());
+                writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         } else {
             w.u8(m.use_main_as_fallback() ? 1 : 0);
         }
@@ -1293,7 +1296,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         switch (type) {
         case 0: {
             // An object somewhere: its classic coordinate.
-            const Position coordinate = TProtobufObjectPositionHelper().toClassicCoordinate(m.object_position());
+            const Position coordinate = objectPositionHelper.toClassicCoordinate(m.object_position());
             w.u16(static_cast<uint16_t>(coordinate.x));
             w.u16(static_cast<uint16_t>(coordinate.y));
             w.u8(coordinate.z);
@@ -1569,7 +1572,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 255: {
         const auto& m = msg.GetExtension(GameclientMessageGatherAll::gameclient_message_gather_all);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 206: {
@@ -1599,7 +1602,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(static_cast<uint8_t>(m.variant()));
         // Variants 0 and 1 (one corpse, all corpses around) name the clicked object.
         if (m.variant() < 2)
-            writeObject(w, m.object().object_position(), m.object().object_identifier());
+            writeObject(w, objectPositionHelper, m.object().object_position(), m.object().object_identifier());
         return w.out;
     }
     case 148: {
@@ -1619,7 +1622,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 149: {
         const auto& m = msg.GetExtension(GameclientMessageOpenParentContainer::gameclient_message_open_parent_container);
-        writeObjectPosition(w, m.object_position());
+        writeObjectPosition(w, objectPositionHelper, m.object_position());
         return w.out;
     }
     case 152: {
@@ -1644,7 +1647,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 157: {
         const auto& m = msg.GetExtension(GameclientMessageGetTextForReport::gameclient_message_get_text_for_report);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 159: {
@@ -1726,7 +1729,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(static_cast<uint8_t>(m.action()));
         // Action 1 picks the object to imbue.
         if (m.action() == 1)
-            writeObject(w, m.object_position(), m.object_identifier());
+            writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 186: {
@@ -1781,8 +1784,8 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 120: {
         const auto& m = msg.GetExtension(GameclientMessageMoveObject::gameclient_message_move_object);
-        writeObject(w, m.source_object_position(), m.object_identifier());
-        writeObjectPosition(w, m.destination_object_position());
+        writeObject(w, objectPositionHelper, m.source_object_position(), m.object_identifier());
+        writeObjectPosition(w, objectPositionHelper, m.destination_object_position());
         w.u8(static_cast<uint8_t>(m.count()));
         w.u8(m.extra_flag() ? 1 : 0);
         return w.out;
@@ -1812,7 +1815,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 125: {
         const auto& m = msg.GetExtension(GameclientMessageTradeObject::gameclient_message_trade_object);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         w.u32(static_cast<uint32_t>(m.creature_id()));
         return w.out;
     }
@@ -1824,30 +1827,30 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 130: {
         const auto& m = msg.GetExtension(GameclientMessageUseObject::gameclient_message_use_object);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         w.u8(static_cast<uint8_t>(m.container_index()));
         return w.out;
     }
     case 131: {
         const auto& m = msg.GetExtension(GameclientMessageUseTwoObjects::gameclient_message_use_two_objects);
-        writeObject(w, m.source_object_position(), m.source_object_identifier());
-        writeObject(w, m.destination_object_position(), m.destination_object_identifier());
+        writeObject(w, objectPositionHelper, m.source_object_position(), m.source_object_identifier());
+        writeObject(w, objectPositionHelper, m.destination_object_position(), m.destination_object_identifier());
         return w.out;
     }
     case 132: {
         const auto& m = msg.GetExtension(GameclientMessageUseOnCreature::gameclient_message_use_on_creature);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         w.u32(static_cast<uint32_t>(m.creature_id()));
         return w.out;
     }
     case 133: {
         const auto& m = msg.GetExtension(GameclientMessageTurnObject::gameclient_message_turn_object);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 134: {
         const auto& m = msg.GetExtension(GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 135: {
@@ -1875,12 +1878,12 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 139: {
         const auto& m = msg.GetExtension(GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 140: {
         const auto& m = msg.GetExtension(GameclientMessageLook::gameclient_message_look);
-        writeObject(w, m.object_position(), m.object_identifier());
+        writeObject(w, objectPositionHelper, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 141: {
@@ -2009,13 +2012,21 @@ uint8_t TProtobufClientMessageTranslator::stackPosition(const ::tibia::protobuf:
 
 QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message)
 {
+    static const TProtobufObjectPositionHelper objectPositionHelper{};
+    return translateToClassic(message, &tibia::network::loginRsaHelper(), &objectPositionHelper);
+}
+
+QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message,
+                                                                shared::TRsaHelper* rsaHelper,
+                                                                const TProtobufObjectPositionHelper* objectPositionHelper)
+{
     if (!message.has_type()) {
         return {};
     }
     const int opcode = message.type();
     if (opcode < 0 || opcode > 0xff)
         return {};
-    auto structured = serializeStructuredClient(message, opcode);
+    auto structured = serializeStructuredClient(message, opcode, *rsaHelper, *objectPositionHelper);
     if (!structured.isEmpty())
         return structured;
     QByteArray out;

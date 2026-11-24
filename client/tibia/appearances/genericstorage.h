@@ -35,6 +35,8 @@ public:
     void addAppearanceInstance(const std::shared_ptr<TAppearanceInstance>& Instance);
     /// Forgets the instance with `Instance`'s serial number.
     void removeAppearanceInstance(const std::shared_ptr<TAppearanceInstance>& Instance);
+    /// The instance kept under `SerialNumber`; null without one.
+    std::shared_ptr<TAppearanceInstance> appearanceInstance(uint32_t SerialNumber) const;
     /// Forgets every instance; with `KeepEffects` the effect instances stay.
     void clear(bool KeepEffects);
 

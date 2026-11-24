@@ -58,6 +58,13 @@ public:
     /// top-left's field, as wide and high as the field under the viewport's
     /// far corner lies from it, one floor deep.
     worldmap::TWorldMapCuboid visibleArea() const;
+    /// The visible area as drawn on layer `layer` (its origin sheared to that
+    /// floor, one floor deep).
+    worldmap::TWorldMapCuboid visibleArea(int layer) const;
+    /// The pixels the cuboid covers: from where its origin field's top-left
+    /// corner is drawn to one pixel before where its end's is (right and bottom
+    /// included).
+    QRect convertCuboidToRectangle(const worldmap::TWorldMapCuboid& cuboid) const;
     /// The cuboid's first floor in projected subfields: its origin projected
     /// onto layer 0 ((z + x) * 32, (z + y) * 32), 32 subfields per field of its
     /// width and height (right and bottom included).

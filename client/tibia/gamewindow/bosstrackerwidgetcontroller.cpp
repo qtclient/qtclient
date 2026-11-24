@@ -83,11 +83,19 @@ void TBossTrackerListModel::clearOutfits()
         row.outfit = nullptr;
 }
 
+QString TBossTrackerListModel::itemKey(const bossbestiary::TBossTrackerEntry& entry)
+{
+    return QString::number(static_cast<quint16>(entry.raceId));
+}
+
 void TBossTrackerListModel::setRows(std::vector<Row> rows)
 {
     beginResetModel();
     clearOutfits();
     m_all = std::move(rows);
+    std::sort(m_all.begin(), m_all.end(), [](const Row& left, const Row& right) {
+        return QString::compare(itemKey(left.entry), itemKey(right.entry), Qt::CaseSensitive) < 0;
+    });
     rebuildVisible();
     endResetModel();
 }

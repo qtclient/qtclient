@@ -42,9 +42,12 @@ QSize spriteSizeOf(const SpriteIdentifier& identifier);
 /// texture pixels divided by the sprite's scale).
 struct TSpriteTexture
 {
+    /// The part of the sprite the texture holds, in sprite pixels.
+    QRect rect() const { return m_rect; }
+
     QSGTexture* texture = nullptr;
     /// In sprite pixels; the sprite's top-left is (0, 0).
-    QRect rect;
+    QRect m_rect;
     /// The texture's owner from the texture creator (null with no texture).
     std::shared_ptr<QSGTexture> owner;
 };

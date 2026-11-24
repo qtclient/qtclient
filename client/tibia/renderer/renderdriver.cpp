@@ -23,16 +23,10 @@ QSGNode* TRenderDriver::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 
 void TRenderDriver::itemChange(const ItemChange change, const ItemChangeData& value)
 {
-    if (change == ItemSceneChange) {
-        disconnect(m_frameSwapped);
-        if (QQuickWindow* window = value.window) {
-            m_frameSwapped = connect(window, &QQuickWindow::frameSwapped, this, [this] {
-                if (isVisible())
-                    polish();
-            }, Qt::QueuedConnection);
-            polish();
-        }
-    }
+    // The game client polishes the driver every frame (TGameWindowController::requestRenderDriverUpdate);
+    // host: the first polish when the driver enters a window.
+    if (change == ItemSceneChange && value.window)
+        polish();
     cip::tibia::qmlcomponents::TRenderDriver::itemChange(change, value);
 }
 

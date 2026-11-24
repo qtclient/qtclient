@@ -106,6 +106,7 @@ qt_add_executable(tibia
   news/newsdiskio.cpp news/newsdiskio.h
   news/newsentrymodels.cpp news/newsentrymodels.h
   controllers/characterselectioncontroller.cpp controllers/characterselectioncontroller.h
+  gamewindow/characterlogindata.h
   gamewindow/characterinformationmodeldata.cpp gamewindow/characterinformationmodeldata.h
   gamewindow/gamewindowcontroller.cpp gamewindow/gamewindowcontroller.h
   gamewindow/newsdialogcontroller.cpp gamewindow/newsdialogcontroller.h
@@ -903,6 +904,9 @@ if(TIBIA_WITH_GAMECORE)
     qmlcomponents/offscreenoutlinetexttoimageservice.cpp qmlcomponents/offscreenoutlinetexttoimageservice.h
     qmlcomponents/qsgscenegraphdrawcommandsnode.cpp qmlcomponents/qsgscenegraphdrawcommandsnode.h
     qmlcomponents/appearanceinstancerendererbase.cpp qmlcomponents/appearanceinstancerendererbase.h
+    qmlcomponents/simpletextureshaderscenegraphnode.cpp qmlcomponents/simpletextureshaderscenegraphnode.h
+    qmlcomponents/textureatlasviewer.cpp qmlcomponents/textureatlasviewer.h
+    qmlcomponents/textureatlasviewercontroller.cpp qmlcomponents/textureatlasviewercontroller.h
     renderer/childrenscenegraphnode.h
     renderer/highlightedspritenode.cpp renderer/highlightedspritenode.h
     renderer/lightmodel.cpp renderer/lightmodel.h

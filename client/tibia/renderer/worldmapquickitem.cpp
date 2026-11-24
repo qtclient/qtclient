@@ -293,12 +293,12 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
                 waiting = true;
             continue;
         }
-        // The texture holds the sprite's part `sprite.rect` (HD textures hold more
+        // The texture holds the sprite's part `sprite.rect()` (HD textures hold more
         // texels per pixel; they are drawn at the part's size).
         const QRectF source(QPointF(), texture->textureSize());
         const QSize spriteSize = spriteSizeOf(record.sprite);
-        const QPoint topLeft = record.anchor - QPoint(spriteSize.width(), spriteSize.height()) + sprite.rect.topLeft();
-        const QRectF rect(topLeft, sprite.rect.size());
+        const QPoint topLeft = record.anchor - QPoint(spriteSize.width(), spriteSize.height()) + sprite.rect().topLeft();
+        const QRectF rect(topLeft, sprite.rect().size());
 
         if (record.highlight != SpriteRecord::NoHighlight && !bakeHighlight) {
             const QColor base = renderer::TScenegraphNodeProvider::highlightColor(record.highlight);

@@ -11,6 +11,7 @@ const QString kLoginWebService = QStringLiteral("loginWebService");
 const QString kClientWebService = QStringLiteral("clientWebService");
 const QString kAccountCreationClientServices = QStringLiteral("accountCreationClientServices");
 const QString kHintsUrl = QStringLiteral("hintsUrl");
+const QString kWheelOfDestinyPlannerDirectUrl = QStringLiteral("wheelOfDestinyPlannerDirectUrl");
 
 }
 
@@ -96,6 +97,11 @@ QUrl TTibiaConfig::accountCreationClientServicesUrl() const
 QUrl TTibiaConfig::hintsUrl() const
 {
     return readUrl(kHintsUrl, QUrl());
+}
+
+QUrl TTibiaConfig::wheelOfDestinyPlannerDirectUrl() const
+{
+    return readUrl(kWheelOfDestinyPlannerDirectUrl, QUrl(QStringLiteral("http://www.tibia.com/")));
 }
 
 }

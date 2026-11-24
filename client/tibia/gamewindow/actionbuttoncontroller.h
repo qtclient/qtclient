@@ -11,6 +11,7 @@
 
 namespace tibia {
 namespace appearances {
+class TAppearanceInstance;
 class TAppearanceInstanceFactory;
 }
 namespace container {
@@ -75,6 +76,14 @@ public:
     void setObject(const appearances::TObjectAppearanceInstanceTypeID& objectInstance, config::EUseType useType, bool useEquipSmartMode);
     /// The amount shown on an object button; announces a change.
     void setObjectCount(uint objectCount);
+    /// The object's appearance instance (its amount included): taken when the
+    /// button holds none, else only for another instance of the same type;
+    /// announces the appearance change.
+    void setObjectAppearanceInstance(const std::shared_ptr<appearances::TAppearanceInstance>& instance);
+    const std::shared_ptr<appearances::TAppearanceInstance>& objectAppearanceInstance() const
+    {
+        return shown()->m_objectAppearanceInstance;
+    }
     /// The server's name of the button's object (only while it holds an
     /// object); announces a change.
     void setObjectInfoName(const QString& objectInfoName);
@@ -207,6 +216,7 @@ private:
     bool m_useEquipSmartMode = false;
     /// The object of an object button; m_text holds its server name.
     appearances::TObjectAppearanceInstanceTypeID m_objectInstance;
+    std::shared_ptr<appearances::TAppearanceInstance> m_objectAppearanceInstance;
     /// The cooldown of a spell or object button (COOLDOWN progress).
     qint64 m_cooldownEnd = 0;
     qint64 m_remainingCooldown = 0;

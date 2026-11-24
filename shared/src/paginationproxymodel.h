@@ -42,7 +42,7 @@ Q_SIGNALS:
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
-private:
+public:
     /// The page shown and the page size; neither is ever 0.
     struct TPagination
     {
@@ -51,11 +51,18 @@ private:
         quint16 numberOfPages(int rowCount) const;
         /// The page of row `row`.
         quint16 pageOfRow(unsigned row) const;
+        /// Another page size or another page.
+        bool operator!=(const TPagination& other) const
+        {
+            return entriesPerPage != other.entriesPerPage || currentPage != other.currentPage;
+        }
+        bool operator==(const TPagination& other) const { return !(*this != other); }
 
         quint16 currentPage = 1;
         quint8 entriesPerPage = 1;
     };
 
+private:
     void onRowsRemoved();
     void onRowsInserted();
     int sourceRowCount() const;

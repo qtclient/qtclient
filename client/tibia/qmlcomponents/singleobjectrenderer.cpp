@@ -252,12 +252,12 @@ QSGNode* TSingleObjectAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNo
     node->setTexture(texture);
     node->setFiltering(m_smoothTextureFiltering ? QSGTexture::Linear : QSGTexture::Nearest);
     node->setSourceRect(QRectF(QPointF(), texture->textureSize()));
-    // The texture holds the part `sprite.rect` of the sprite drawn at m_target.
+    // The texture holds the part `sprite.rect()` of the sprite drawn at m_target.
     const QSize spriteSize = spriteSizeOf(m_sprite);
     const qreal sx = spriteSize.width() > 0 ? m_target.width() / spriteSize.width() : 1.0;
     const qreal sy = spriteSize.height() > 0 ? m_target.height() / spriteSize.height() : 1.0;
-    node->setRect(QRectF(m_target.left() + sprite.rect.left() * sx, m_target.top() + sprite.rect.top() * sy,
-                         sprite.rect.width() * sx, sprite.rect.height() * sy));
+    node->setRect(QRectF(m_target.left() + sprite.rect().left() * sx, m_target.top() + sprite.rect().top() * sy,
+                         sprite.rect().width() * sx, sprite.rect().height() * sy));
     return node;
 }
 

@@ -185,7 +185,7 @@ TSpriteTexture TSpriteTextureProvider::texture(const SpriteIdentifier& identifie
     const QImage image = resolvedImage(identifier, scale, mode, rect, loading, cacheable);
     if (loading)
         return {};
-    TSpriteTexture texture{ .rect = rect };
+    TSpriteTexture texture{ .m_rect = rect };
     if (!image.isNull() && m_textureCreator) {
         // Cacheable sprites may go to the atlas.
         texture.owner = cacheable ? m_textureCreator->createTextureFromImage(image)
@@ -227,7 +227,7 @@ void TSpriteTextureProvider::onBeforeRenderNewFrame()
 TSpriteTexture TSpriteTextureProvider::emptyTexture()
 {
     if (!m_emptyTexture.texture && m_textureCreator) {
-        m_emptyTexture.owner = m_textureCreator->createNonAtlasTextureFromImage(QImage());
+        m_emptyTexture.owner = m_textureCreator->createTextureFromImage(QImage());
         m_emptyTexture.texture = m_emptyTexture.owner.get();
     }
     return m_emptyTexture;

@@ -353,9 +353,9 @@ public:
     /// The password of a password login (empty after a launcher login): CIP's
     /// game session login data (+0x18) the chat refuses to send .
     const QString& accountPassword() const { return m_options.password; }
-    /// The account changed (a character was created): `reply` is the login
-    /// service's document with the new character list. Logs in again when
-    /// it has none.
+    /// Host: the account changed (a character was created): `reply` is the
+    /// login service's document with the new character list, kept as the
+    /// client's account (a reply without characters changes nothing).
     void refreshAccount(const QJsonObject& reply);
     /// Password login from the product login dialog (`make client-start` without SSO).
     void submitCredentials(const QString& account, const QString& password);

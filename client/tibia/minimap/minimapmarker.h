@@ -22,7 +22,11 @@ constexpr uint8_t MINIMAP_MARKER_ICONS = 20;
 /// A minimap flag: where it is, its icon and text, and when it was set.
 struct TMinimapMarker
 {
-    TMinimapMarker() = default;
+    /// No field, icon or text; set at the epoch.
+    TMinimapMarker()
+        : creationTime(QDateTime::fromSecsSinceEpoch(0))
+    {
+    }
     TMinimapMarker(const worldmap::TWorldMapCoordinate& coordinate_, const uint8_t icon_, QString description_,
                    QDateTime creationTime_ = {})
         : coordinate(coordinate_)

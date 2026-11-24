@@ -163,6 +163,14 @@ uint16_t TObjectAppearanceInstanceInfoQmlType::getQmlDecoItemObjectID(const appe
     return 0;
 }
 
+/// The new serial number is announced with the sprite size (the values that
+/// follow from the instance).
+void TObjectAppearanceInstanceInfoQmlType::setSerialNumber(const uint32_t SerialNumber)
+{
+    m_serialNumber = SerialNumber;
+    Q_EMIT spriteSizeChanged();
+}
+
 void TObjectAppearanceInstanceInfoQmlType::setCumulativeCount(const int v)
 {
     if (v != m_cumulativeCount)
@@ -214,6 +222,13 @@ void TOutfitAppearanceInstanceQmlType::setPosition(const QPoint& v)
 {
     if (v != m_position)
         cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::setPosition(v);
+}
+
+/// As the object info's.
+void TOutfitAppearanceInstanceQmlType::setSerialNumber(const uint32_t SerialNumber)
+{
+    m_serialNumber = SerialNumber;
+    Q_EMIT spriteSizeChanged();
 }
 
 uint32_t TOutfitAppearanceInstanceQmlType::colors() const
@@ -280,22 +295,26 @@ void TAppearanceInstanceRenderer::append(QQmlListProperty<InstanceBase>* list, I
     if (!instance)
         return;
     self->m_appearanceInstances.append(instance);
-    const auto changed = [self] { self->requestDrawCommandsUpdate(); };
+    // Each info has an instance of its own in the storage: whatever the
+    // instance is made of makes it again (and redraws); a new step duration
+    // only restarts the walking outfit's animation.
+    const auto changed = [self] { self->requestAppearanceInstancesUpdate(); };
     connect(instance, &InstanceBase::positionChanged, self, changed);
     connect(instance, &InstanceBase::typeIDChanged, self, changed);
     connect(instance, &InstanceBase::appearanceInstancePropertyChanged, self, changed);
     connect(instance, &QObject::destroyed, self, [self, instance] {
         self->m_appearanceInstances.removeAll(instance);
-        self->requestDrawCommandsUpdate();
+        self->requestAppearanceInstancesUpdate();
     });
     if (auto* outfit = qobject_cast<cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType*>(instance)) {
         connect(outfit, &cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::outfitConfigurationChanged, self, changed);
-        connect(outfit, &cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::movingChanged, self, changed);
+        connect(outfit, &cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::movingChanged, self,
+                [self] { self->requestOutfitMovementUpdate(); });
         connect(outfit, &cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::mountedChanged, self, changed);
     }
     if (auto* object = qobject_cast<ObjectInfo*>(instance))
         connect(object, &ObjectInfo::propertyChanged, self, changed);
-    self->requestDrawCommandsUpdate();
+    self->requestAppearanceInstancesUpdate();
 }
 
 qsizetype TAppearanceInstanceRenderer::count(QQmlListProperty<InstanceBase>* list)
@@ -314,7 +333,12 @@ void TAppearanceInstanceRenderer::clear(QQmlListProperty<InstanceBase>* list)
     for (InstanceBase* instance : std::as_const(self->m_appearanceInstances))
         disconnect(instance, nullptr, self, nullptr);
     self->m_appearanceInstances.clear();
-    self->requestDrawCommandsUpdate();
+    self->requestAppearanceInstancesUpdate();
+}
+
+QList<InstanceBase*> TAppearanceInstanceRenderer::appearanceInstanceInfos() const
+{
+    return m_appearanceInstances;
 }
 
 void TAppearanceInstanceRenderer::setCameraPosition(const QPoint& v)
@@ -622,12 +646,12 @@ QSGNode* TAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNode, UpdatePa
             continue;
         }
         const QSizeF textureSize = texture->textureSize();
-        // The texture holds the part drawn.rect of the sprite (HD textures more texels).
+        // The texture holds the part drawn.rect() of the sprite (HD textures more texels).
         const QSize spriteSize = spriteSizeOf(sprite.sprite);
         const QPointF topLeft = (QPointF(sprite.anchor) - QPointF(spriteSize.width(), spriteSize.height())
-                                 + QPointF(drawn.rect.topLeft()) - m_origin)
+                                 + QPointF(drawn.rect().topLeft()) - m_origin)
             * m_scale;
-        const QRectF rect(topLeft, QSizeF(drawn.rect.size()) * m_scale);
+        const QRectF rect(topLeft, QSizeF(drawn.rect().size()) * m_scale);
         if (!rect.intersects(view))
             continue;
         prepared.push_back({ texture, textureSize, rect });

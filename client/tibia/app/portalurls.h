@@ -28,6 +28,7 @@ public:
     /// [URLS] pages default to www.tibia.com; qtclient serves the same paths
     /// from the configured origins):
     ///   www.tibia.com / tibia.com / qt.tibia.com → loginBase
+    ///   www.test.tibia.com (the shipped config.ini's planner) → loginBase
     ///   static.tibia.com                         → assetBase
     ///   payments.cipsoft.com                     → paymentsBase (else loginBase)
     ///   limesurvey.cipsoft.com, www.cipsoft.com  → loginBase

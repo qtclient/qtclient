@@ -221,14 +221,12 @@ public:
     /// CIP 's lookup: the bar button's setting in the current set.
     TActionSetting mapping(int actionBarId, int buttonId) const;
     void setMapping(int actionBarId, int buttonId, const TActionSetting& setting);
-    /// The key bound to TriggerActionButton_<bar>.<button> (the button's label).
-    QKeySequence buttonKeys(int actionBarId, int buttonId, bool chatOn) const;
-    /// Every key bound to TriggerActionButton_<bar>.<button> in one chat mode
-    /// (CIP via , the button tooltip's hotkeys).
-    QList<QKeySequence> allButtonKeys(int actionBarId, int buttonId, bool chatOn) const;
     void setButtonKeys(int actionBarId, int buttonId, bool chatOn, const QKeySequence& keys);
     /// Keys bound to a static / product action name in one chat mode.
     QList<QKeySequence> actionKeys(const QString& action, bool chatOn) const;
+    /// The keys of the current set that run exactly this setting in one chat
+    /// mode, in binding order.
+    std::vector<QKeySequence> keysForSetting(const TActionSetting& setting, bool chatOn) const;
     /// Replaces the keys for `action` in one chat mode (CIP options-page apply).
     void setActionKeys(const QString& action, bool chatOn, const QList<QKeySequence>& keys);
     /// The setting a key runs in one chat mode.

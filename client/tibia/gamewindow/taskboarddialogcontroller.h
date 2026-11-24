@@ -15,6 +15,7 @@
 namespace tibia {
 namespace game {
 class IGameSession;
+class TPlayerData;
 }
 namespace input {
 class TGameActionMapper;
@@ -81,6 +82,8 @@ private:
     TMessageDialogController* m_notOnMain = nullptr;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's player (the dialog opens once it reached the main land).
+    std::shared_ptr<game::TPlayerData> m_pPlayerData;
     /// The weekly tab's mouse mapping and clock (CipSoft hands them to the weekly tasks controller).
     std::shared_ptr<input::TGameActionMapper> m_gameActionMapper;
     std::shared_ptr<shared::IClockService> m_clockService;

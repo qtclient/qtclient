@@ -619,10 +619,6 @@ TProgressWidgetController::TProgressWidgetController(TProgressStorage* storage, 
         onExperienceInProgressStorageChanged();
     });
     connect(m_storage, &TProgressStorage::optionsChanged, this, &TProgressWidgetController::optionsChanged);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
-        Q_EMIT optionsChanged();
-        return std::any{};
-    });
     for (const char* event : { "onExperienceChange", "onLevelChange" }) {
         m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
             Q_EMIT experienceDataChangedForTexts();
@@ -646,6 +642,17 @@ void TProgressWidgetController::setSidebarOptions(config::TSidebarOptions* optio
 {
     m_options = options;
     onWidgetOptionsChanged();
+}
+
+void TProgressWidgetController::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TProgressWidgetController::optionsChanged);
+    m_premiumTimeStorage = premiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TProgressWidgetController::optionsChanged);
+    Q_EMIT optionsChanged();
 }
 
 QQuickItem* TProgressWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -708,9 +715,15 @@ void TProgressWidgetController::updateXPGraphData()
     Q_EMIT experienceDataChangedForGraph();
 }
 
-bool TProgressWidgetController::isGaugeVisible() const { return m_storage->gaugeVisible() && isPremiumPlayer(); }
+bool TProgressWidgetController::isGaugeVisible() const
+{
+    return m_storage->gaugeVisible() && m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
+}
 
-bool TProgressWidgetController::isGraphVisible() const { return m_storage->graphVisible() && isPremiumPlayer(); }
+bool TProgressWidgetController::isGraphVisible() const
+{
+    return m_storage->graphVisible() && m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
+}
 
 double TProgressWidgetController::xpGaugeTargetValue() const { return m_storage->gaugeTarget() * 3600.0; }
 
@@ -819,7 +832,7 @@ void TProgressWidgetController::onShowXPGraphContextMenu()
 void TProgressWidgetController::appendXPGaugeContextMenuEntries()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
+    const bool premium = m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
     if (premium) {
         connect(menu->addCustomEntry(qtTrId("progress_set_gauge_target")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_targetDialog->showWithText(QString::number(m_storage->gaugeTarget() * 3600.0, 'g')); });
@@ -830,7 +843,7 @@ void TProgressWidgetController::appendXPGaugeContextMenuEntries()
     gauge->setChecked(m_storage->gaugeVisible() && premium);
     // A free account gets the store's premium page instead.
     connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) {
-        if (isPremiumPlayer())
+        if (m_premiumTimeStorage && m_premiumTimeStorage->isPremium())
             m_storage->setGaugeVisible(checked);
         else
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
@@ -841,13 +854,13 @@ void TProgressWidgetController::appendXPGaugeContextMenuEntries()
 void TProgressWidgetController::appendXPGraphContextMenuEntries()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
+    const bool premium = m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
     gamewindow::TContextMenuEntryItem* graph =
         menu->addCustomEntry(qtTrId("progress_show_graph"), premium ? QString() : qtTrId("context_premium_feature"));
     graph->setCheckable(true);
     graph->setChecked(m_storage->graphVisible() && premium);
     connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) {
-        if (isPremiumPlayer())
+        if (m_premiumTimeStorage && m_premiumTimeStorage->isPremium())
             m_storage->setGraphVisible(checked);
         else
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
@@ -1172,6 +1185,7 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     add<TProgressWidgetController>(W::XpAnalyser, [this] {
         auto* controller = new TProgressWidgetController(m_storages->progress(), m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         return controller;
     });
     add<TLootAndWasteWidgetController>(W::LootAnalyser, [this] {

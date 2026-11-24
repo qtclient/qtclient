@@ -71,6 +71,9 @@ public:
     void setSortMode(int mode);
 
 private:
+    /// The key the rows are stored by: the race id as text, compared case
+    /// sensitively. Rows the sort order sees as equal keep this order.
+    static QString itemKey(const bossbestiary::TBossTrackerEntry& entry);
     void clearOutfits();
     /// The rows passing the name filter, in sort order.
     void rebuildVisible();

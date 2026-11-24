@@ -36,6 +36,12 @@ void TAppearanceInstanceGenericStorage::removeAppearanceInstance(const std::shar
     m_appearanceInstances.erase(static_cast<uint32_t>(Instance->serialNumber()));
 }
 
+std::shared_ptr<TAppearanceInstance> TAppearanceInstanceGenericStorage::appearanceInstance(const uint32_t SerialNumber) const
+{
+    const auto it = m_appearanceInstances.find(SerialNumber);
+    return it != m_appearanceInstances.end() ? it->second : nullptr;
+}
+
 void TAppearanceInstanceGenericStorage::clear(const bool KeepEffects)
 {
     if (!KeepEffects) {

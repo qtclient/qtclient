@@ -17,12 +17,14 @@
 #include <QJsonArray>
 #include <QObject>
 #include <QPointer>
+#include <QString>
 
 #include <array>
 #include <memory>
 #include <optional>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tibia {
@@ -529,15 +531,34 @@ private:
     QPointer<TPremiumTimeStorage> m_premiumTimeStorage;
 };
 
+/// A dialog the server asks for: its id, title and text, the selection list
+/// and the answer buttons (each an id with its text), the buttons Return and
+/// Escape answer, and whether it stays open when the session goes.
+struct TServerModalDialogData
+{
+    using Options = std::vector<std::pair<int, QString>>;
+
+    uint32_t id = 0;
+    QString title;
+    QString text;
+    Options choices;
+    Options buttons;
+    uint32_t defaultEnterButton = 0;
+    uint32_t defaultEscapeButton = 0;
+    bool priority = false;
+};
+
 class TServerModalDialogProtocolMessageHandler final : public cip::tibia::game::TServerModalDialogProtocolMessageHandler
 {
     Q_OBJECT
 public:
     using cip::tibia::game::TServerModalDialogProtocolMessageHandler::TServerModalDialogProtocolMessageHandler;
 
-    static void handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& message);
+    /// The message's dialog as TServerModalDialogData, emitted with openModalDialog.
+    void handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& ShowModalDialogMessage);
 
 Q_SIGNALS:
+    void openModalDialog(const ::tibia::game::TServerModalDialogData& RequestedDialog);
     void sendAnswerModalDialog(const ::tibia::protobuf::protocol::GameclientMessageAnswerModalDialog& AnswerModalDialogMessage);
 };
 

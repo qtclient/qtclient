@@ -19,6 +19,9 @@ namespace network {
 
 /// Installs the login RSA key (Crystal's modulus) into loginRsaHelper().
 void installGameServerConnection();
+/// The game server's login RSA public key (Crystal's modulus, big-endian; the
+/// exponent is 65537).
+QByteArray loginRsaPublicKey();
 /// Encrypts the RSA blocks of the login messages.
 shared::TRsaHelper& loginRsaHelper();
 

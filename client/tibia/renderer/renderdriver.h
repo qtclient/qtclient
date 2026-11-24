@@ -19,7 +19,6 @@ protected:
     void itemChange(ItemChange change, const ItemChangeData& value) override;
 
 private:
-    QMetaObject::Connection m_frameSwapped;
 };
 
 }

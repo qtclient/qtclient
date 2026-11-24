@@ -331,7 +331,8 @@ void TGameSessionBase::createStorages()
 
 void TGameSessionBase::createProtocolMessageHandlers()
 {
-    m_creatureProtocolMessageHandler = std::make_shared<creatures::TCreatureProtocolMessageHandler>(m_worldMapStorage.get());
+    m_creatureProtocolMessageHandler = std::make_shared<creatures::TCreatureProtocolMessageHandler>(
+        m_worldMapStorage, m_creatureStorage, m_effectStorage, m_appearanceInstanceFactory, clockService(), m_clientOptions);
     m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(
         m_worldMapStorage, m_ambientLightStorage, m_creatureStorage, m_effectStorage, m_appearanceInstanceFactory,
         clockService(), m_worldMapViewport, m_creatureProtocolMessageHandler);
