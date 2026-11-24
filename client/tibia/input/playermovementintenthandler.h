@@ -121,6 +121,10 @@ public Q_SLOTS:
     /// CIP v14: called every frame, and when the session's movement timer
     /// fires: repeats a held direction and sends a pending path.
     void tick();
+    /// The slot for the internal game action router's actions
+    /// (publishGameActionInternal). The intent handler takes none of them: its
+    /// movement intents come from the movement game action handler.
+    virtual void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 
 Q_SIGNALS:
     void sendGoPath(std::vector<tibia::creatures::EMovementDirection> path);

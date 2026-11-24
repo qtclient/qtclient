@@ -393,6 +393,10 @@ bool TPlayerMovementIntentHandler::advance()
     return false;
 }
 
+void TPlayerMovementIntentHandler::handleGameAction(tibia::input::IGameActionPtr)
+{
+}
+
 void TPlayerMovementIntentHandler::tick()
 {
     if (!m_repeatTimer.isValid())

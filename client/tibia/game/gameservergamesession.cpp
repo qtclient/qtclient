@@ -757,6 +757,8 @@ void TGameserverGameSession::connectGameActionHandlers()
             &TPlayerMovementGameActionHandler::handleGameAction);
     connect(movement, &TPlayerMovementGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_playerMovementIntentHandler.get(),
+            &input::TPlayerMovementIntentHandler::handleGameAction);
     connect(m_playerMovementIntentHandler.get(), &input::TPlayerMovementIntentHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
 }
