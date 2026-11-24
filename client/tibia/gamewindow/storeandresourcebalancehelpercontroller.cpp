@@ -1,5 +1,6 @@
 #include "storeandresourcebalancehelpercontroller.h"
 
+#include "config/characterconfigurationmanager.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "exaltation/exaltationstorage.h"
 #include "game/gamesessionbase.h"
@@ -11,6 +12,7 @@
 #include "taskboard/taskboardcurrenciesstorage.h"
 
 #include <QLocale>
+#include <QQmlContext>
 
 #include <algorithm>
 
@@ -32,13 +34,21 @@ TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperControll
     m_exaltedDustMaximum = 100;
 }
 
+void TStoreAndResourceBalanceHelperController::registerInRootContext(QQmlContext* RootContext)
+{
+    RootContext->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"), this);
+}
+
 void TStoreAndResourceBalanceHelperController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
 {
     m_gameSessionConnections.disconnectAll();
     m_gameSession = std::move(GameSession);
+    m_skillWheelStorage = nullptr;
     game::TGameSessionBase* session = sessionBase(m_gameSession);
     if (!session)
         return;
+    if (session->characterConfigurationManager())
+        m_skillWheelStorage = session->characterConfigurationManager()->skillWheelStorage();
     using Self = TStoreAndResourceBalanceHelperController;
     const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
     add(connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &Self::onGoldBalanceChanged));

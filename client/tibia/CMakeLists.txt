@@ -622,7 +622,6 @@ if(TIBIA_WITH_GAMECORE)
     skillwheel/skillwheelstorage.cpp skillwheel/skillwheelstorage.h
     skillwheel/skillwheelmodels.cpp skillwheel/skillwheelmodels.h
     skillwheel/skillwheelcontrollers.cpp skillwheel/skillwheelcontrollers.h
-    skillwheel/skillwheelmanager.cpp skillwheel/skillwheelmanager.h
     skillwheel/gridconfiguration.cpp skillwheel/gridconfiguration.h
     skillwheel/qmlreshapemod.cpp skillwheel/qmlreshapemod.h
     skillwheel/gematelierreshapemoddialogcontroller.cpp skillwheel/gematelierreshapemoddialogcontroller.h
@@ -736,6 +735,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/twofactorcodeentertextdialogcontroller.cpp gamewindow/twofactorcodeentertextdialogcontroller.h
     gamewindow/tooltiptextvisitor.cpp gamewindow/tooltiptextvisitor.h
     gamewindow/inspectobjectdata.h
+    gamewindow/appearancetypefilterselection.cpp gamewindow/appearancetypefilterselection.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -988,6 +988,7 @@ if(TIBIA_WITH_GAMECORE)
     game/traderstorage.cpp game/traderstorage.h
     game/fpsdropslogger.cpp game/fpsdropslogger.h
     game/gameworldvolumestorage.cpp game/gameworldvolumestorage.h
+    game/configurecreaturepodiumdata.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h)
 endif()

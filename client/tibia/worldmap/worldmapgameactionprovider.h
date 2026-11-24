@@ -19,6 +19,9 @@ namespace tibia {
 namespace input {
 class TGenericObjectGameActionProvider;
 }
+namespace minimap {
+class TMinimapMarkerStorage;
+}
 namespace worldmap {
 
 class TWorldMapViewport;
@@ -38,6 +41,11 @@ public:
     }
 
     input::TGameActionList actionsAt(const QPoint& mapPixel) const;
+    /// The minimap markers the actions create, edit or delete a field's marker in.
+    void setMinimapMarkerStorage(std::shared_ptr<minimap::TMinimapMarkerStorage> minimapMarkerStorage)
+    {
+        m_minimapMarkerStorage = std::move(minimapMarkerStorage);
+    }
 
     /// What an action highlights on the map under the mouse: a world map
     /// field's object (type, field and stack position) or a creature.
@@ -61,6 +69,7 @@ private:
     const qmlcomponents::TWorldMapRenderProvider& m_provider;
     const TWorldMapViewport& m_viewport;
     std::shared_ptr<input::TGenericObjectGameActionProvider> m_genericObjectGameActionProvider;
+    std::shared_ptr<minimap::TMinimapMarkerStorage> m_minimapMarkerStorage;
 };
 
 }

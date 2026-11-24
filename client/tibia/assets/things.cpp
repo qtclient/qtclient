@@ -125,23 +125,16 @@ void TAppearancesManager::setInstance(TAppearancesManager* manager)
     g_appearancesManager = manager;
 }
 
-TAppearancesManager::TAppearancesManager() = default;
+TAppearancesManager::TAppearancesManager()
+    : m_spritesheetMapping(std::make_shared<sprites::TAppearanceTypeSpritesheetMapping>())
+{
+    // Every category exists from the start, empty until the appearances load.
+    for (const EAppearanceCategory category :
+         { EAppearanceCategory::Effect, EAppearanceCategory::Missile, EAppearanceCategory::Object, EAppearanceCategory::Outfit })
+        m_appearanceTypes[category];
+}
 
 TAppearancesManager::~TAppearancesManager() = default;
-
-TAppearanceInstanceTracker& TAppearancesManager::tracker()
-{
-    return *sharedTracker();
-}
-
-const std::shared_ptr<TAppearanceInstanceTracker>& TAppearancesManager::sharedTracker()
-{
-    if (!m_spritesheetMapping)
-        m_spritesheetMapping = std::make_shared<sprites::TAppearanceTypeSpritesheetMapping>();
-    if (!m_tracker)
-        m_tracker = std::make_shared<TAppearanceInstanceTracker>(m_spritesheetMapping);
-    return m_tracker;
-}
 
 
 
@@ -248,8 +241,7 @@ void TAppearancesManager::postprocessAppearances()
     for (const uint16_t coin : { special.goldCoin, special.platinumCoin, special.crystalCoin })
         objects[coin].setMarketCategory(30);
 
-    // Every type's spritesheets, for the instance tracker to load.
-    (void)sharedTracker();
+    // Every type's spritesheets, for the instance trackers to load.
     if (const auto& metadata = tibia::sprites::TSpriteSystem::instance().metadata()) {
         for (const auto& [category, types] : m_appearanceTypes) {
             for (const auto& [id, type] : types)
@@ -299,6 +291,7 @@ TStaticInformation TAppearancesManager::parseStaticInformation(const std::string
         race.occurrence = checkedEnum(monster.occurrence(), 4);
         race.hasCategory = monster.has_flag6();
         race.category = monster.flag6() ? 1 : 0;
+        race.flag7 = monster.flag7();
         information.monsters.push_back(std::move(race));
     }
     information.monsterClasses.reserve(static_cast<size_t>(message.monster_class_size()));
@@ -365,7 +358,8 @@ void TAppearancesManager::setStaticInformation(TStaticInformation information)
 
 TAppearanceTypePtr TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
 {
-    return TAppearanceInstanceFactory::appearanceType(category < ThingLastCategory ? category : ThingCategoryItem, id);
+    return TAppearanceInstanceFactory::installed()->appearanceType(category < ThingLastCategory ? category : ThingCategoryItem,
+                                                                  id);
 }
 
 TAppearanceType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)

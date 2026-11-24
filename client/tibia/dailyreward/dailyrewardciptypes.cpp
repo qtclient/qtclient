@@ -209,8 +209,10 @@ QString TDailyRewardStorage::rewardStreakInfoText() const
 // ---------------------------------------------------------------------------
 // TDailyRewardGameActionHandler
 
-TDailyRewardGameActionHandler::TDailyRewardGameActionHandler(TDailyRewardStorage* storage, QObject* parent)
+TDailyRewardGameActionHandler::TDailyRewardGameActionHandler(std::shared_ptr<TDailyRewardProtocolMessageHandler> protocolMessageHandler,
+                                                             TDailyRewardStorage* storage, QObject* parent)
     : cip::tibia::dailyreward::TDailyRewardGameActionHandler(parent)
+    , m_protocolMessageHandler(std::move(protocolMessageHandler))
     , m_storage(storage)
 {
     for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
@@ -238,18 +240,18 @@ void TDailyRewardGameActionHandler::handleRequestOpenRewardWallGameAction()
         Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE));
         return;
     }
-    tibia::game::sendOpenRewardWall();
+    m_protocolMessageHandler->requestOpenRewardWall();
 }
 
 void TDailyRewardGameActionHandler::handleRequestDailyRewardHistoryGameAction()
 {
-    tibia::game::requestOpenRewardHistory();
+    m_protocolMessageHandler->requestDailyRewardHistory();
 }
 
 /// Away from a shrine the reward costs an Instant Reward Access.
 void TDailyRewardGameActionHandler::handleCollectFixedItemsDailyRewardGameAction()
 {
-    tibia::game::requestGetRewardDaily(m_storage->isUsingRewardShrine() ? 0 : 1, {});
+    m_protocolMessageHandler->collectDailyReward(!m_storage->isUsingRewardShrine());
 }
 
 }
@@ -269,7 +271,7 @@ void addReward(TDailyRewardStorage& storage, container::TObjectAppearanceInstanc
     std::vector<TDailyRewardFixedItems::TItem> items;
     for (const ProtocolDailyRewardObject& object : content.objects()) {
         const auto typeId = static_cast<uint16_t>(object.object_id());
-        const TAppearanceType* type = appearances::TAppearanceInstanceFactory::appearanceType(ThingCategoryItem, typeId);
+        const TAppearanceType* type = appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
         if (!type || type->isFluidContainer() || type->isSplash())
             continue;
         const QString name = QString::fromStdString(object.name());
@@ -291,6 +293,23 @@ TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler(
     , m_storage(storage)
     , m_objectInfoStorage(std::move(objectInfoStorage))
 {
+}
+
+void TDailyRewardProtocolMessageHandler::requestOpenRewardWall()
+{
+    Q_EMIT sendOpenRewardWall(GameclientMessageOpenRewardWall());
+}
+
+void TDailyRewardProtocolMessageHandler::requestDailyRewardHistory()
+{
+    Q_EMIT sendDailyRewardHistory(GameclientMessageDailyRewardHistory());
+}
+
+void TDailyRewardProtocolMessageHandler::collectDailyReward(const bool fromShrine)
+{
+    GameclientMessageCollectDailyReward message;
+    message.set_from_shrine(fromShrine);
+    Q_EMIT sendCollectDailyReward(message);
 }
 
 void TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)

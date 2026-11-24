@@ -1,18 +1,24 @@
 #include "animation/phaseanimator.h"
 
-#include <random>
+#include "randomnumbergenerator.h"
+
 #include <utility>
 
 namespace tibia::animation {
 
 namespace {
 
-qint64 randomBetween(const qint64 minimum, const qint64 maximum)
+std::shared_ptr<shared::TRandomNumberGenerator>& animatorsRandomNumberGenerator()
 {
-    static std::mt19937_64 generator{ std::random_device{}() };
-    return std::uniform_int_distribution<qint64>(minimum, maximum)(generator);
+    static std::shared_ptr<shared::TRandomNumberGenerator> generator;
+    return generator;
 }
 
+}
+
+void TAnimator::setRandomNumberGenerator(std::shared_ptr<shared::TRandomNumberGenerator> generator)
+{
+    animatorsRandomNumberGenerator() = std::move(generator);
 }
 
 TAnimator::TAnimator(TAnimationInfo info, const qint64 startMs)
@@ -28,7 +34,10 @@ qint64 TAnimator::phaseDuration(const TAnimationInfo& info, const int phase)
     const auto [minimum, maximum] = info.phases[static_cast<size_t>(phase)];
     if (info.fixedDurations || minimum == maximum)
         return minimum;
-    return randomBetween(minimum, maximum);
+    std::shared_ptr<shared::TRandomNumberGenerator> generator = animatorsRandomNumberGenerator();
+    if (!generator)
+        generator = shared::TRandomNumberGenerator::instance();
+    return generator->getRandomNumber(minimum, maximum);
 }
 
 void TAnimator::update(const qint64 nowMs)

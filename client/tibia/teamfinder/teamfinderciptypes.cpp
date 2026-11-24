@@ -89,24 +89,6 @@ void fillAssembly(::tibia::protobuf::protocol::ProtocolTeamFinderAssembly* Assem
     }
 }
 
-std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> newAssembleTeamMessage(
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam*& Message)
-{
-    using namespace ::tibia::protobuf::protocol;
-    auto message = protocol::newGameclientMessage(44);
-    Message = message->MutableExtension(GameclientMessageTeamFinderAssembleTeam::gameclient_message_team_finder_assemble_team);
-    return message;
-}
-
-std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> newJoinTeamMessage(
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam*& Message)
-{
-    using namespace ::tibia::protobuf::protocol;
-    auto message = protocol::newGameclientMessage(45);
-    Message = message->MutableExtension(GameclientMessageTeamFinderJoinTeam::gameclient_message_team_finder_join_team);
-    return message;
-}
-
 } // namespace
 
 QString localDateTimeString(const uint32_t Timestamp)
@@ -260,13 +242,13 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage(
         for (TTeamMember& member : members) {
             if (member.status != TeamMemberPending || !m_ignoreList || !m_ignoreList->isBlacklisted(member.name))
                 continue;
-            ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = nullptr;
-            auto message = newAssembleTeamMessage(request);
+            ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam message;
+            ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = &message;
             request->set_action(2);
             request->set_member_id(member.characterId);
             request->set_member_status(TeamMemberRejected);
             m_storage->setMemberStatus(member.characterId, TeamMemberRejected);
-            protocol::sendGameclientMessage(std::move(message));
+            Q_EMIT sendTeamFinderAssembleTeam(message);
             member.status = TeamMemberRejected;
         }
         m_storage->setMembers(members);
@@ -339,19 +321,19 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage(
 
 void TTeamFinderProtocolMessageHandler::requestOwnTeam()
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = nullptr;
-    auto message = newAssembleTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = &message;
     request->set_action(0);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderAssembleTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::unlistTeam()
 {
     m_storage->reset();
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = nullptr;
-    auto message = newAssembleTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = &message;
     request->set_action(1);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderAssembleTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::assembleTeam(TTeamParameters Parameters)
@@ -367,50 +349,50 @@ void TTeamFinderProtocolMessageHandler::assembleTeam(TTeamParameters Parameters)
 
 void TTeamFinderProtocolMessageHandler::updateTeam(const TTeamParameters& Parameters)
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = nullptr;
-    auto message = newAssembleTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = &message;
     request->set_action(3);
     fillAssembly(request->mutable_assembly(), Parameters);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderAssembleTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::setMemberStatus(const uint32_t CharacterID, const uint32_t Status)
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = nullptr;
-    auto message = newAssembleTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam* request = &message;
     request->set_action(2);
     request->set_member_id(CharacterID);
     request->set_member_status(Status);
     m_storage->setMemberStatus(CharacterID, Status);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderAssembleTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::requestTeamList()
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = nullptr;
-    auto message = newJoinTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = &message;
     request->set_action(0);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderJoinTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::joinTeam(const uint16_t TeamID)
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = nullptr;
-    auto message = newJoinTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = &message;
     request->set_action(1);
     request->set_leader_id(TeamID);
     m_storage->setTeamStatus(TeamID, 1);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderJoinTeam(message);
 }
 
 void TTeamFinderProtocolMessageHandler::leaveTeam(const uint16_t TeamID)
 {
-    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = nullptr;
-    auto message = newJoinTeamMessage(request);
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam message;
+    ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam* request = &message;
     request->set_action(2);
     request->set_leader_id(TeamID);
     m_storage->setTeamStatus(TeamID, 0);
-    protocol::sendGameclientMessage(std::move(message));
+    Q_EMIT sendTeamFinderJoinTeam(message);
 }
 
 // ---------------------------------------------------------------------------

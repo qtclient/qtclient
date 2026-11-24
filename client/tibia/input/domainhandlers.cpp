@@ -29,11 +29,13 @@ using A = EGameAction;
 
 }
 
-TClipboardGameActionHandler::TClipboardGameActionHandler(QObject* parent)
+TClipboardGameActionHandler::TClipboardGameActionHandler(std::shared_ptr<shared::TTibiaClipboardHelper> TibiaClipboardHelper,
+                                                         std::shared_ptr<config::TClientOptions> ClientOptions,
+                                                         std::shared_ptr<shared::TTibiaUrlTools> TibiaUrlTools, QObject* parent)
     : cip::tibia::input::TClipboardGameActionHandler(parent)
-    // Host: CipSoft receives the game client's helper instances.
-    , m_clipboardHelper(std::make_shared<shared::TTibiaClipboardHelper>(std::make_shared<shared::TClipboardHelper>(),
-                                                                         std::make_shared<shared::TTibiaUrlTools>()))
+    , m_pTibiaClipboardHelper(std::move(TibiaClipboardHelper))
+    , m_pClientOptions(std::move(ClientOptions))
+    , m_pTibiaUrlTools(std::move(TibiaUrlTools))
 {
 }
 
@@ -60,19 +62,18 @@ void TClipboardGameActionHandler::handleGameAction(const tibia::input::IGameActi
 void TClipboardGameActionHandler::handleCopyTextToClipboardGameAction(
     const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
 {
-    const config::TClientOptions* options = config::TClientOptions::instance();
-    if (options && options->boolOption(config::EClientOption::linkCopyWarningEnabled)
-        && shared::TTibiaUrlTools::containsUrl(pGameAction->text())) {
+    if (m_pClientOptions->boolOption(config::EClientOption::linkCopyWarningEnabled)
+        && m_pTibiaUrlTools->containsUrl(pGameAction->text())) {
         Q_EMIT publishGameAction(std::make_shared<TGameActionRequestConformationForCopyingTextToClipboard>(pGameAction->text()));
         return;
     }
-    m_clipboardHelper->setTextInClipboard(pGameAction->text());
+    m_pTibiaClipboardHelper->setTextInClipboard(pGameAction->text());
 }
 
 void TClipboardGameActionHandler::handleCopyTrustedTextToClipboardGameAction(
     const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
 {
-    m_clipboardHelper->setTextInClipboard(pGameAction->text());
+    m_pTibiaClipboardHelper->setTextInClipboard(pGameAction->text());
 }
 
 TGatherAllGameActionHandler::TGatherAllGameActionHandler(std::shared_ptr<TGatherAllProtocolMessageHandler> protocolMessageHandler,
@@ -96,21 +97,25 @@ void TGatherAllGameActionHandler::handleGatherAllAction(const std::shared_ptr<co
     m_protocolMessageHandler->requestGatherAll(pAction->context());
 }
 
-TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* parent)
+TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(
+    std::shared_ptr<protocol::TGameActionContextHelper> GameActionContextHelper, QObject* parent)
     : cip::tibia::input::TGatherAllProtocolMessageHandler(parent)
-{}
+    , m_pGameActionContextHelper(std::move(GameActionContextHelper))
+{
+}
+
+TGatherAllProtocolMessageHandler::~TGatherAllProtocolMessageHandler() = default;
 
 void TGatherAllProtocolMessageHandler::requestGatherAll(const TObjectGameActionContext& object)
 {
     ::tibia::protobuf::protocol::GameclientMessageGatherAll message;
-    const ::tibia::protocol::TGameActionContextHelper helper;
     // Without a location the object is anywhere the player has it.
     if (object.location())
-        helper.fillObjectPosition(object.location(), message.mutable_object_position());
+        m_pGameActionContextHelper->fillObjectPosition(object.location(), message.mutable_object_position());
     else
         message.mutable_object_position()->set_unknown_position(true);
     if (object.object())
-        helper.fillObjectIdentifier(object.object(), message.mutable_object_identifier());
+        m_pGameActionContextHelper->fillObjectIdentifier(object.object(), message.mutable_object_identifier());
     Q_EMIT sendGatherAll(message);
 }
 

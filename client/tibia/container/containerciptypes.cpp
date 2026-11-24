@@ -418,7 +418,7 @@ TInventorySlot TInventorySlot::fromProtocolObject(TAppearanceType* type, const u
 
     const uint16_t count = slot.stackable ? slot.count : 0;
     const uint8_t subType = slot.fluidOrSplash ? slot.fluid : 0;
-    slot.appearance = appearances::TAppearanceInstanceFactory::fromProtocolObject(type, count, subType, tier,
+    slot.appearance = appearances::TAppearanceInstanceFactory::installed()->fromProtocolObject(type, count, subType, tier,
                                                                                     slot.fluid, hangSide);
     return slot;
 }
@@ -465,9 +465,9 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
     if (slot.brandNew) {
         using appearances::TAppearanceInstanceFactory;
         if (std::dynamic_pointer_cast<appearances::TWearoutObjectAppearanceInstance>(slot.appearance))
-            slot.appearance = TAppearanceInstanceFactory::createWearoutObject(type, slot.charges, true);
+            slot.appearance = TAppearanceInstanceFactory::installed()->createWearoutObject(type, slot.charges, true);
         else if (std::dynamic_pointer_cast<appearances::TExpireObjectAppearanceInstance>(slot.appearance))
-            slot.appearance = TAppearanceInstanceFactory::createExpireObject(type, 0, true, false);
+            slot.appearance = TAppearanceInstanceFactory::installed()->createExpireObject(type, 0, true, false);
     }
     if (item.has_deco_item_id())
         slot.decoItemId = static_cast<uint16_t>(item.deco_item_id());
@@ -518,11 +518,11 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             using appearances::TAppearanceInstanceFactory;
             std::shared_ptr<appearances::TOutfitAppearanceInstance> figure;
             if (podiumOutfit.isCreature() && podiumOutfit.getId() != 0)
-                figure = TAppearanceInstanceFactory::createOutfit(
-                    TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, podiumOutfit.getId()), podiumOutfit,
+                figure = TAppearanceInstanceFactory::installed()->createOutfit(
+                    TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, podiumOutfit.getId()), podiumOutfit,
                     podiumDirection);
             else if (podiumOutfit.isItem() && podiumOutfit.getAuxId() != 0)
-                figure = TAppearanceInstanceFactory::createObjectOutfit(podiumOutfit.getAuxId());
+                figure = TAppearanceInstanceFactory::installed()->createObjectOutfit(podiumOutfit.getAuxId());
             std::shared_ptr<appearances::TOutfitAppearanceInstance> mount;
             if (podiumOutfit.hasMount()) {
                 Outfit mountLook;
@@ -532,13 +532,13 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
                 mountLook.setBody(podiumOutfit.getMountBody());
                 mountLook.setLegs(podiumOutfit.getMountLegs());
                 mountLook.setFeet(podiumOutfit.getMountFeet());
-                mount = TAppearanceInstanceFactory::createOutfit(
-                    TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, podiumOutfit.getMount()), mountLook,
+                mount = TAppearanceInstanceFactory::installed()->createOutfit(
+                    TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, podiumOutfit.getMount()), mountLook,
                     podiumDirection);
             }
             if (mount && figure)
                 figure->setPatterns(podiumDirection, podiumDirection, 1, false);
-            slot.appearance = TAppearanceInstanceFactory::makeTracked<appearances::TShowOffSocketAppearanceInstance>(
+            slot.appearance = TAppearanceInstanceFactory::installed()->makeTracked<appearances::TShowOffSocketAppearanceInstance>(
                 type, podiumVisible, std::move(figure), std::move(mount));
         }
     }

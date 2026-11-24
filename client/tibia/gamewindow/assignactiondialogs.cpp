@@ -8,7 +8,6 @@
 #include "game/gamesessionbase.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
-#include "gamewindow/smoothfiltering.h"
 
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/actionbarmanager.h"
@@ -21,6 +20,9 @@
 #include "spells/spellinfostorage.h"
 
 #include "container/containerciptypes.h"
+#include "appearances/appearanceinstance.h"
+#include "input/gameactioncontext.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -40,17 +42,29 @@ namespace {
 using Setting = config::TActionSetting;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
-TAppearanceTypePtr itemType(const int objectId)
-{
-    return objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
 }
 
-bool isEquipable(const TAppearanceTypePtr& type)
+std::shared_ptr<const input::IGameActionContext> objectContextWithTier(const input::TObjectGameActionContext& Context)
 {
-    return type && (type->isCloth() || type->getClothSlot() > 0);
-}
-
-
+    const input::TGameActionContextPtr& object = Context.object();
+    const auto* plain = dynamic_cast<const input::TObjectApperanceTypeGameActionContext*>(object.get());
+    if (!plain || plain->objectApperanceTypeContextType() != input::EObjectApperanceTypeContextType::PLAIN)
+        return object;
+    const auto position = Context.position();
+    if (position.x != UINT16_MAX)
+        return object;
+    uint8_t tier = 0;
+    if (position.y & 0x40) {
+        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+            if (const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F))
+                tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + Context.stackPosition()).tier;
+        }
+    } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+        tier = inventory->slotAt(position.y).tier;
+    }
+    if (tier == 0)
+        return object;
+    return std::make_shared<input::TUpgradeableObjectApperanceTypeGameActionContext>(plain->appearanceTypeId(), tier);
 }
 
 namespace {
@@ -649,8 +663,17 @@ void TAssignSpellActionDialogController::onCloseClicked()
 
 TAssignObjectActionDialogController::TAssignObjectActionDialogController(const uint8_t actionBarId, QObject* parent)
     : TAssignActionDialogControllerBase(QStringLiteral("AssignObjectActionDialog.qml"), actionBarId, parent)
+    // Host: the client's factory until a session hands its own (the hotkey
+    // options page has no session of its own).
+    , m_appearanceInstanceFactory(appearances::TAppearanceInstanceFactory::installed())
 {
     m_useObjectType = uint(config::EUseType::SelectUseTarget);
+}
+
+void TAssignObjectActionDialogController::setAppearanceInstanceFactory(
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory)
+{
+    m_appearanceInstanceFactory = std::move(AppearanceInstanceFactory);
 }
 
 void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex)
@@ -659,14 +682,13 @@ void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const 
     startTargetSelection();
 }
 
-void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
-                                                     const int UpgradeTier, const int LiquidType, const config::EUseType UseType,
+void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex,
+                                                     const protocol::TObjectData& ObjectData, const config::EUseType UseType,
                                                      const bool SmartModeEnabled, const bool assignWithoutDialog)
 {
     dialog()->close();
     setActionButton(ButtonId, MultiActionIndex);
-    setObject(ObjectId, UpgradeTier);
-    m_liquidType = Info::ELiquidType(LiquidType);
+    setObject(ObjectData);
     setUseObjectType(uint(UseType));
     setSmartModeEnabled(SmartModeEnabled);
     if (!assignWithoutDialog) {
@@ -677,15 +699,43 @@ void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const 
     emitRequestAssignObject();
 }
 
-void TAssignObjectActionDialogController::showDialogForObject(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
-                                                              const int UpgradeTier, const bool assignWithoutDialog)
+void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
+                                                     const int UpgradeTier, const int LiquidType, const config::EUseType UseType,
+                                                     const bool SmartModeEnabled, const bool assignWithoutDialog)
 {
-    if (!itemType(ObjectId)) {
+    showDialog(ButtonId, MultiActionIndex, objectDataOfSetting(ObjectId, UpgradeTier, LiquidType), UseType, SmartModeEnabled,
+               assignWithoutDialog);
+}
+
+void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex,
+                                                     const std::shared_ptr<const input::IGameActionContext>& Object,
+                                                     const bool assignWithoutDialog)
+{
+    using input::EObjectApperanceTypeContextType;
+    using protocol::TObjectData;
+    if (!m_appearanceInstanceFactory)
+        return;
+    const auto* object = dynamic_cast<const input::TObjectApperanceTypeGameActionContext*>(Object.get());
+    const uint16_t typeId = object ? object->appearanceTypeId() : 0;
+    const TAppearanceType* type = m_appearanceInstanceFactory->appearanceType(ThingCategoryItem, typeId);
+    // Only objects that can be taken go on a button.
+    if (!object || !type || !type->isPickupable()) {
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("invalid_object")));
         return;
     }
-    showDialog(ButtonId, MultiActionIndex, ObjectId, UpgradeTier, 0, TActionBarManager::defaultUseType(ObjectId), false,
-               assignWithoutDialog);
+    TObjectData data;
+    if (object->objectApperanceTypeContextType() == EObjectApperanceTypeContextType::LIQUID) {
+        const auto* liquid = dynamic_cast<const input::TLiquidObjectApperanceTypeGameActionContext*>(object);
+        data = TObjectData::liquid(typeId, liquid ? liquid->liquidType() : 0);
+    } else if (object->objectApperanceTypeContextType() == EObjectApperanceTypeContextType::UPGRADEABLE) {
+        const auto* upgradeable = dynamic_cast<const input::TUpgradeableObjectApperanceTypeGameActionContext*>(object);
+        data = TObjectData::upgradeable(typeId, upgradeable ? upgradeable->tier() : 0);
+    } else if (type->isStackable()) {
+        data = TObjectData::cumulative(typeId, 1);
+    } else {
+        data = TObjectData::plain(typeId);
+    }
+    showDialog(ButtonId, MultiActionIndex, data, TActionBarManager::defaultUseType(typeId), false, assignWithoutDialog);
 }
 
 void TAssignObjectActionDialogController::setClientSettingSmoothFiltering(const bool enabled)
@@ -714,36 +764,74 @@ void TAssignObjectActionDialogController::setSmartModeEnabled(const bool enabled
 
 void TAssignObjectActionDialogController::emitRequestAssignObject()
 {
-    Q_EMIT requestAssignObject(m_buttonId, m_multiActionIndex, int(m_objectID), int(m_upgradeTier), int(m_liquidType),
+    const int upgradeTier = m_objectData.isUpgradeable() ? int(m_objectData.upgradeClassification) : 0;
+    const int liquidType = m_objectData.isLiquid() ? int(m_objectData.liquidType) : 0;
+    Q_EMIT requestAssignObject(m_buttonId, m_multiActionIndex, int(m_objectData.id), upgradeTier, liquidType,
                                config::EUseType(m_useObjectType), m_smartModeEnabled);
 }
 
-uint TAssignObjectActionDialogController::objectID() const { return m_objectID; }
-uint TAssignObjectActionDialogController::objectCount() const { return m_objectCount; }
-uint TAssignObjectActionDialogController::upgradeTier() const { return m_upgradeTier; }
-Info::ELiquidType TAssignObjectActionDialogController::liquidType() const { return m_liquidType; }
-Info::EHookDirection TAssignObjectActionDialogController::hookDirection() const { return m_hookDirection; }
-uint TAssignObjectActionDialogController::useObjectType() const { return m_useObjectType; }
-bool TAssignObjectActionDialogController::canBeEquiped() const { return m_canBeEquiped; }
-bool TAssignObjectActionDialogController::canBeMultiUsed() const { return m_canBeMultiUsed; }
-bool TAssignObjectActionDialogController::canHaveSmartMode() const { return m_canHaveSmartMode; }
-bool TAssignObjectActionDialogController::smartModeEnabled() const { return m_smartModeEnabled; }
-bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+using InstanceInfo = qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
-void TAssignObjectActionDialogController::setObject(const int objectId, const int upgradeTier)
+uint TAssignObjectActionDialogController::objectID() const { return InstanceInfo::getQmlTypeId(m_objectInstance); }
+uint TAssignObjectActionDialogController::objectCount() const { return InstanceInfo::getQmlCumulativeCount(m_objectInstance); }
+uint TAssignObjectActionDialogController::upgradeTier() const { return InstanceInfo::getQmlUpgradeTier(m_objectInstance); }
+Info::ELiquidType TAssignObjectActionDialogController::liquidType() const { return InstanceInfo::getQmlLiquidType(m_objectInstance); }
+Info::EHookDirection TAssignObjectActionDialogController::hookDirection() const
 {
-    const TAppearanceTypePtr type = itemType(objectId);
-    m_objectID = uint(objectId);
-    m_upgradeTier = uint(upgradeTier);
-    m_objectCount = 0;
-    m_liquidType = Info::ELiquidType::EMPTY;
-    m_hookDirection = Info::EHookDirection::NONE;
-    m_canBeMultiUsed = type && type->isMultiUse();
-    m_canBeEquiped = isEquipable(type);
-    // Clothes have the smart mode, except worn containers in the backpack (3)
-    // or quiver (11) slot.
-    m_canHaveSmartMode = type && type->isCloth()
-                         && (!type->isContainer() || (type->getClothSlot() != 3 && type->getClothSlot() != 11));
+    return InstanceInfo::getQmlHookDirection(m_objectInstance);
+}
+uint TAssignObjectActionDialogController::useObjectType() const { return m_useObjectType; }
+
+/// Hangable objects, and clothes except worn containers in the backpack (3) or
+/// quiver (11) slot.
+bool TAssignObjectActionDialogController::canBeEquiped() const
+{
+    const TAppearanceType* type = m_objectInstance ? m_objectInstance->thingType() : nullptr;
+    if (!type)
+        return false;
+    if (type->isHangable())
+        return true;
+    if (!type->isCloth())
+        return false;
+    return !type->isContainer() || (type->getClothSlot() != 3 && type->getClothSlot() != 11);
+}
+
+bool TAssignObjectActionDialogController::canBeMultiUsed() const
+{
+    const TAppearanceType* type = m_objectInstance ? m_objectInstance->thingType() : nullptr;
+    return type && type->isMultiUse();
+}
+
+/// Objects with an expire counterpart (they change when worn).
+bool TAssignObjectActionDialogController::canHaveSmartMode() const
+{
+    const TAppearanceType* type = m_objectInstance ? m_objectInstance->thingType() : nullptr;
+    return type && type->expireCounterpart().has_value();
+}
+
+bool TAssignObjectActionDialogController::smartModeEnabled() const { return m_smartModeEnabled; }
+bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return m_clientSettingSmoothFiltering; }
+
+protocol::TObjectData TAssignObjectActionDialogController::objectDataOfSetting(const int ObjectId, const int UpgradeTier,
+                                                                               const int LiquidType) const
+{
+    using protocol::TObjectData;
+    const auto id = uint16_t(ObjectId);
+    const TAppearanceType* type =
+        m_appearanceInstanceFactory ? m_appearanceInstanceFactory->appearanceType(ThingCategoryItem, id) : nullptr;
+    if (type && (type->isFluidContainer() || type->isSplash()))
+        return TObjectData::liquid(id, uint32_t(LiquidType));
+    if (UpgradeTier > 0)
+        return TObjectData::upgradeable(id, uint8_t(UpgradeTier));
+    if (type && type->isStackable())
+        return TObjectData::cumulative(id, 1);
+    return TObjectData::plain(id);
+}
+
+void TAssignObjectActionDialogController::setObject(const protocol::TObjectData& ObjectData)
+{
+    m_objectData = ObjectData;
+    m_objectInstance = m_appearanceInstanceFactory ? m_appearanceInstanceFactory->createObject(ObjectData) : nullptr;
     Q_EMIT objectAppearanceChanged();
     Q_EMIT changed();
 }
@@ -774,20 +862,9 @@ void TAssignObjectActionDialogController::startTargetSelection()
         if (!self || !self->m_selectingTarget)
             return;
         // A picked object reopens the dialog with it.
-        if (target && target->objectClientId()) {
-            uint8_t tier = 0;
-            if (target->position().x == UINT16_MAX) {
-                if (target->position().y & 0x40) {
-                    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                        if (const container::TStoredContainer* row = storage->containerAt(target->position().y & 0x3F))
-                            tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + target->stackPosition()).tier;
-                    }
-                } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-                    tier = inventory->slotAt(target->position().y).tier;
-                }
-            }
-            self->showDialogForObject(self->m_buttonId, self->m_multiActionIndex, target->objectClientId(), tier, false);
-        }
+        if (target && target->context().object()
+            && target->context().object()->gameActionContextType() == input::EGameActionContextType::OBJECT_APPEARANCE_TYPE)
+            self->showDialog(self->m_buttonId, self->m_multiActionIndex, objectContextWithTier(target->context()), false);
         // The selection ended: a hidden dialog shows again.
         self->m_selectingTarget = false;
         if (self->dialog()->item() && !self->dialog()->isShown())

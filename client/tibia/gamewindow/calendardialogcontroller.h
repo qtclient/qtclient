@@ -3,51 +3,39 @@
 #include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
-#include "news/eventsuploader.h"
 
 #include <cip_gen.h>
 
-#include <QColor>
 #include <QDate>
-#include <QDateTime>
-#include <QHash>
-#include <QJsonArray>
 #include <QVariantMap>
 
-#include <functional>
-#include <vector>
+#include <memory>
+
+class QQmlEngine;
+class QQuickItem;
 
 namespace tibia {
+namespace news {
+class TEventsStorage;
+}
+namespace shared {
+class IClockService;
+}
 namespace gamewindow {
 
-/// One `eventlist` row of the portal `eventschedule` reply (CIP: news's
-/// TEventInformation, what TEventsStorage keeps).
-struct TEventInformation
-{
-    QDate startDate;
-    QDate endDate;
-    QString name;
-    QString description;
-    QColor colorLight;
-    QColor colorDark;
-    uint displayPriority = 0;
-    bool isSeasonal = false;
-};
-
-/// CalendarDialog.qml (CIP: TCalendarDialogController): the event schedule,
-/// one list of TEventQMLEntry per day. Seasonal events only show in the
-/// seasonal tooltip.
+/// CalendarDialog.qml (CIP: TCalendarDialogController): the event schedule of
+/// the client's events storage, one list of TEventQMLEntry per day. Seasonal
+/// events only show in the seasonal tooltip.
 class TCalendarDialogController final : public TDialogController<cip::tibia::gamewindow::TCalendarDialogController>
 {
     Q_OBJECT
 public:
-    explicit TCalendarDialogController(QObject* parent = nullptr);
+    /// CIP: made by the client with its clock, its events storage (the events
+    /// uploader fills it), the engine and the dialog parent item.
+    TCalendarDialogController(std::shared_ptr<shared::IClockService> ClockService,
+                              std::shared_ptr<news::TEventsStorage> EventsStorage, QQmlEngine* Engine,
+                              QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TCalendarDialogController() override;
-
-    /// The events storage's schedule, from the portal reply's `eventlist`.
-    void setEvents(const std::vector<news::TEventInformation>& events);
-    /// The game server's clock (CIP: the time provider passed at creation).
-    void setServerClock(std::function<QDateTime()> clock) { m_serverClock = std::move(clock); }
 
     QString currentTimeServer() const override;
     QDate todayDateServer() const override;
@@ -62,23 +50,13 @@ public:
     void handleGameAction(const input::IGameAction& action);
 
 private:
-    struct EntryDetails
-    {
-        QString description;
-        uint displayPriority = 0;
-    };
-
     void updateEvents();
     void clearEvents();
-    QObject* makeEntry(const TEventInformation& event, bool startsOrEndsThatDay);
-    bool entryLessThan(const QObject* a, const QObject* b) const;
     QString tooltipFor(const QVariantMap& events, const QString& dateString) const;
 
-    std::function<QDateTime()> m_serverClock;
-    std::vector<TEventInformation> m_events;
+    std::shared_ptr<shared::IClockService> m_pClockService;
+    std::shared_ptr<news::TEventsStorage> m_pEventsStorage;
     QVariantMap m_seasonalEventsMap;
-    /// What TEventQMLEntry carries in CIP but the qtclient entry does not.
-    QHash<const QObject*, EntryDetails> m_entryDetails;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

@@ -2,6 +2,8 @@
 
 #include "input/gameactionhandlers.h"
 #include "news/eventqmlentry.h"
+#include "news/eventsuploader.h"
+#include "iclockservice.h"
 #include "qmlcomponents/texthelper.h"
 
 #include <QJsonObject>
@@ -18,9 +20,12 @@ QList<QObject*> entriesOf(const QVariant& value) { return value.value<QList<QObj
 
 }
 
-TCalendarDialogController::TCalendarDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("CalendarDialog.qml"), parent)
-    , m_serverClock([] { return QDateTime::currentDateTimeUtc(); })
+TCalendarDialogController::TCalendarDialogController(std::shared_ptr<shared::IClockService> ClockService,
+                                                     std::shared_ptr<news::TEventsStorage> EventsStorage,
+                                                     QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("CalendarDialog.qml"), Engine, DialogParentItem, parent)
+    , m_pClockService(std::move(ClockService))
+    , m_pEventsStorage(std::move(EventsStorage))
 {
     m_gameActions.on(A::OPEN_CALENDAR_DIALOG, [this](const input::IGameAction& action) {
         handleGameAction(action);
@@ -33,35 +38,18 @@ TCalendarDialogController::~TCalendarDialogController()
     clearEvents();
 }
 
-void TCalendarDialogController::setEvents(const std::vector<news::TEventInformation>& events)
-{
-    m_events.clear();
-    for (const news::TEventInformation& e : events) {
-        TEventInformation event;
-        event.startDate = e.startDate;
-        event.endDate = e.endDate;
-        event.name = e.name;
-        event.description = e.description;
-        event.colorLight = e.colorLight;
-        event.colorDark = e.colorDark;
-        event.displayPriority = static_cast<uint>(e.displayPriority);
-        event.isSeasonal = e.isSeasonal;
-        m_events.push_back(std::move(event));
-    }
-}
-
 QString TCalendarDialogController::currentTimeServer() const
 {
-    if (!m_serverClock)
+    if (!m_pClockService)
         return {};
-    return qmlcomponents::formatServerDateTime(m_serverClock());
+    return qmlcomponents::formatServerDateTime(m_pClockService->currentDateTime());
 }
 
 QDate TCalendarDialogController::todayDateServer() const
 {
-    if (!m_serverClock)
+    if (!m_pClockService)
         return QDate::currentDate();
-    return qmlcomponents::toServerTime(m_serverClock()).date();
+    return qmlcomponents::toServerTime(m_pClockService->currentDateTime()).date();
 }
 
 QDate TCalendarDialogController::minimumDate() const
@@ -76,29 +64,15 @@ QDate TCalendarDialogController::maximumDate() const
     return QDate(last.year(), last.month(), last.daysInMonth());
 }
 
-QObject* TCalendarDialogController::makeEntry(const TEventInformation& event, const bool startsOrEndsThatDay)
-{
-    auto* entry = new news::TEventQMLEntry(event.name, event.colorLight, event.colorDark, startsOrEndsThatDay);
-    m_entryDetails.insert(entry, { event.description, event.displayPriority });
-    return entry;
-}
-
-bool TCalendarDialogController::entryLessThan(const QObject* a, const QObject* b) const
-{
-    const uint priorityA = m_entryDetails.value(a).displayPriority;
-    const uint priorityB = m_entryDetails.value(b).displayPriority;
-    if (priorityA != priorityB)
-        return priorityA < priorityB;
-    return a->property("title").toString() < b->property("title").toString();
-}
-
-/// Rebuilds both maps from the schedule: every day of an event gets an entry
-/// in its list, keyed "yyyy-MM-dd"; each day's list is sorted by priority,
-/// then title.
+/// Rebuilds both maps from the events storage: every day of an event gets an
+/// entry in its list, keyed "yyyy-MM-dd"; each day's list is sorted by
+/// priority, then title.
 void TCalendarDialogController::updateEvents()
 {
     clearEvents();
-    for (const TEventInformation& event : m_events) {
+    if (!m_pEventsStorage)
+        return;
+    for (const news::TEventInformation& event : m_pEventsStorage->events()) {
         QVariantMap& map = event.isSeasonal ? m_seasonalEventsMap : m_eventsMap;
         for (QDate day = event.startDate; day <= event.endDate; day = day.addDays(1)) {
             const QString key = day.toString(QStringLiteral("yyyy-MM-dd"));
@@ -106,15 +80,17 @@ void TCalendarDialogController::updateEvents()
                 map.insert(key, QVariant::fromValue(QList<QObject*>()));
             QList<QObject*> entries = entriesOf(map.value(key));
             const bool edge = !event.isSeasonal && (day == event.startDate || day == event.endDate);
-            entries.append(makeEntry(event, edge));
+            entries.append(new news::TEventQMLEntry(event, edge));
             map.insert(key, QVariant::fromValue(entries));
         }
     }
     for (QVariantMap* map : { &m_eventsMap, &m_seasonalEventsMap }) {
         for (auto it = map->begin(); it != map->end(); ++it) {
             QList<QObject*> entries = entriesOf(it.value());
-            std::sort(entries.begin(), entries.end(),
-                      [this](const QObject* a, const QObject* b) { return entryLessThan(a, b); });
+            std::sort(entries.begin(), entries.end(), [](const QObject* a, const QObject* b) {
+                return news::TEventQMLEntry::lessThan(static_cast<const news::TEventQMLEntry*>(a),
+                                                      static_cast<const news::TEventQMLEntry*>(b));
+            });
             it.value() = QVariant::fromValue(entries);
         }
     }
@@ -132,7 +108,6 @@ void TCalendarDialogController::clearEvents()
         }
         map->clear();
     }
-    m_entryDetails.clear();
 }
 
 void TCalendarDialogController::showDialog()
@@ -162,7 +137,7 @@ QString TCalendarDialogController::tooltipFor(const QVariantMap& events, const Q
             tooltip.append(QLatin1String("<br><br>\n"));
         tooltip.append(QStringLiteral("<u>%1:</u><br>\n%2")
                            .arg(entry->title())
-                           .arg(m_entryDetails.value(entry).description));
+                           .arg(entry->description()));
     }
     return tooltip;
 }

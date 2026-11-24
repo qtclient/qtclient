@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <memory>
 
 #include <QByteArray>
@@ -44,6 +46,9 @@ public:
     void handleBugReportsAllowedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed& Message);
 
+Q_SIGNALS:
+    void sendBugReport(const ::tibia::protobuf::protocol::GameclientMessageBugReport& BugReportMessage);
+
 private:
     std::shared_ptr<TReportingStorage> m_storage;
 };
@@ -58,6 +63,10 @@ public:
     /// its author, the text's edit id and the text itself.
     void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message);
+
+Q_SIGNALS:
+    void sendRuleViolationReport(const ::tibia::protobuf::protocol::GameclientMessageRuleViolationReport& RuleViolationReportMessage);
+    void sendGetTextForReport(const ::tibia::protobuf::protocol::GameclientMessageGetTextForReport& GetTextForReportMessage);
 
 private:
     std::shared_ptr<protocol::TGameActionContextHelper> m_gameActionContextHelper;

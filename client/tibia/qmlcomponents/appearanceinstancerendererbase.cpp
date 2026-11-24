@@ -118,11 +118,11 @@ void TAppearanceInstanceRendererBase<TGeneratedRenderer>::showGraphicalEffect(co
         return;
     const Position field(SubfieldCoordinate.x() / FieldSize, SubfieldCoordinate.y() / FieldSize, 0);
     const appearances::TAppearanceType* type =
-        appearances::TAppearanceInstanceFactory::appearanceType(ThingCategoryEffect, static_cast<uint16_t>(AppearanceTypeID));
+        appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryEffect, static_cast<uint16_t>(AppearanceTypeID));
     if (type->getId() != 0) {
         const qint64 timestamp = effectTimestamp();
         m_pAppearanceInstanceStorage->addAppearanceInstance(
-            appearances::TAppearanceInstanceFactory::createFieldEffect(type->getId(), field, 0, timestamp));
+            appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(type->getId(), field, 0, timestamp));
         m_effectsActive = true;
         m_drawCommandsChanged = true;
     }
@@ -140,11 +140,11 @@ void TAppearanceInstanceRendererBase<TGeneratedRenderer>::showMissileEffect(cons
     const Position source(SourceCoordinate.x() / FieldSize, SourceCoordinate.y() / FieldSize, 0);
     const Position destination(DestinationCoordinate.x() / FieldSize, DestinationCoordinate.y() / FieldSize, 0);
     const appearances::TAppearanceType* type =
-        appearances::TAppearanceInstanceFactory::appearanceType(ThingCategoryMissile, static_cast<uint16_t>(AppearanceTypeID));
+        appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryMissile, static_cast<uint16_t>(AppearanceTypeID));
     if (type->getId() != 0) {
         const qint64 timestamp = effectTimestamp();
         m_pAppearanceInstanceStorage->addAppearanceInstance(
-            appearances::TAppearanceInstanceFactory::createMissile(type->getId(), source, destination, 0, timestamp));
+            appearances::TAppearanceInstanceFactory::installed()->createMissile(type->getId(), source, destination, 0, timestamp));
         m_effectsActive = true;
         m_drawCommandsChanged = true;
     }

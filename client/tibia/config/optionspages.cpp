@@ -16,8 +16,6 @@
 #include "spells/spellinfostorage.h"
 #include "appearances/appearanceinstance.h"
 
-#include <tibia/game/thingsession_forward.h>
-
 #include "sound/soundengine.h"
 
 #include <QColor>
@@ -1154,21 +1152,18 @@ bool TSoundOptionsPage::soundEnabled() const
 
 namespace {
 
-/// CIP (row builder): the picture of an object setting: its liquid, else its
-/// tier, else the plain type.
-appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting& setting)
+/// The picture of an object setting, made by `factory`: a liquid object for
+/// its liquid, else an upgradeable object for its tier, else the plain object.
+appearances::TAppearanceInstancePtr hotkeyObjectAppearance(appearances::TAppearanceInstanceFactory& factory, const TActionSetting& setting)
 {
-    TAppearanceType* type = setting.objectId > 0 ? tibia::game::rawThingType(static_cast<uint16_t>(setting.objectId), ThingCategoryItem)
-                                           : nullptr;
-    if (!type)
+    if (setting.objectId <= 0)
         return nullptr;
+    const auto id = static_cast<uint16_t>(setting.objectId);
     if (setting.liquidType)
-        return std::make_shared<appearances::TLiquidObjectAppearanceInstance>(type, static_cast<uint32_t>(*setting.liquidType));
-    appearances::TAppearanceInstancePtr instance = appearances::TAppearanceInstanceFactory::fromThingType(type);
+        return factory.createLiquidObject(id, static_cast<uint32_t>(*setting.liquidType));
     if (setting.upgradeTier)
-        if (auto* object = dynamic_cast<appearances::TObjectAppearanceInstance*>(instance.get()))
-            object->setTier(static_cast<uint8_t>(*setting.upgradeTier));
-    return instance;
+        return factory.createUpgradeableObject(id, static_cast<uint8_t>(*setting.upgradeTier));
+    return factory.createObject(id);
 }
 
 } // namespace
@@ -1180,20 +1175,32 @@ constexpr uint8_t NoActionBar = 0xff;
 
 }
 
-THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
+THotkeysOptionsPage::THotkeysOptionsPage(QQmlEngine* Engine, QQuickItem* DialogParentItem, spells::TSpellInfoStorage* SpellInfoStorage,
+                                         input::TEventFilterManager* EventFilterManager,
+                                         std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                         QObject* parent)
     : cip::tibia::config::THotkeysQMLOptionsPage(parent)
-    , m_enterTextDialog(std::make_unique<gamewindow::TGenericEnterTextDialogController>())
-    , m_messageDialog(std::make_unique<gamewindow::TMessageDialogController>())
+    , m_pEngine(Engine)
+    , m_pDialogParentItem(DialogParentItem)
+    , m_pSpellInfoStorage(SpellInfoStorage)
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_enterTextDialog(std::make_unique<gamewindow::TGenericEnterTextDialogController>(QString(), QString(), 255, m_pEngine,
+                                                                                         m_pDialogParentItem))
+    , m_messageDialog(std::make_unique<gamewindow::TMessageDialogController>(m_pEngine, m_pDialogParentItem))
     , m_assignSpellDialog(std::make_unique<gamewindow::TAssignSpellActionDialogController>(NoActionBar))
     , m_assignObjectDialog(std::make_unique<gamewindow::TAssignObjectActionDialogController>(NoActionBar))
     , m_assignTextDialog(std::make_unique<gamewindow::TAssignTextActionDialogController>(NoActionBar))
     , m_recordKeyboardShortcutDialog(std::make_unique<gamewindow::TRecordKeyboardShortcutDialogController>())
 {
     using namespace gamewindow;
+    // Host: the assign dialogs and the key recorder take neither the engine
+    // nor the event filter manager yet; they use the client's.
+    Q_UNUSED(EventFilterManager);
     m_messageDialog->setCloseOnButtonClicked(true);
     connect(m_enterTextDialog.get(), &TGenericEnterTextDialogController::textEntered, this, &THotkeysOptionsPage::onPresetTextEntered);
     connect(m_messageDialog.get(), &TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
     m_assignObjectDialog->setShowActionBarTarget(false);
+    m_assignObjectDialog->setAppearanceInstanceFactory(m_pAppearanceInstanceFactory);
     connect(m_assignObjectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this,
             &THotkeysOptionsPage::publishGameAction);
     connect(m_assignObjectDialog.get(), &TAssignObjectActionDialogController::requestAssignObject, this,
@@ -1465,7 +1472,7 @@ void THotkeysOptionsPage::rebuildModel()
         }
         TTibiaHotkeyActionSettingQmlWrapper* row = addRow(CustomHotkeys, binding.setting, binding.keys);
         if (binding.setting.objectId != 0)
-            row->setObjectAppearanceInstance(hotkeyObjectAppearance(binding.setting));
+            row->setObjectAppearanceInstance(hotkeyObjectAppearance(*m_pAppearanceInstanceFactory, binding.setting));
     }
     for (size_t i = 0; i < rows.size(); ++i) {
         TTibiaHotkeyActionSettingQmlWrapper* row = rows[i];
@@ -1640,7 +1647,7 @@ void THotkeysOptionsPage::showEditActionMenu(const int rowIndex)
     if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
         const TActionSetting& setting = row->hotkeyActionSetting();
         if (!setting.text.isEmpty()) {
-            const spells::TSpellInfoStorage::TSpellText spell = spells::TSpellInfoStorage::instance()->parseSpellText(setting.text);
+            const spells::TSpellInfoStorage::TSpellText spell = m_pSpellInfoStorage->parseSpellText(setting.text);
             hasSpell = spell.spell != nullptr;
             hasText = !hasSpell;
         }
@@ -1667,7 +1674,7 @@ void THotkeysOptionsPage::openAssignSpellDialog(const int rowIndex)
     if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
         const TActionSetting& setting = row->hotkeyActionSetting();
         if (!setting.text.isEmpty()) {
-            const spells::TSpellInfoStorage::TSpellText spell = spells::TSpellInfoStorage::instance()->parseSpellText(setting.text);
+            const spells::TSpellInfoStorage::TSpellText spell = m_pSpellInfoStorage->parseSpellText(setting.text);
             if (spell.spell)
                 m_assignSpellDialog->showDialog(uint(rowIndex), -1, spell.spell->id, spell.parameters,
                                                 gamewindow::ECastType(setting.spellCastType));
@@ -1753,7 +1760,7 @@ void THotkeysOptionsPage::onObjectAssignedToHotkeyAction(const int HotkeyActionS
     setting.setUseType(UseType);
     setting.setUseEquipSmartMode(UseEquipSmartMode);
     row->hotkeyActionSetting() = setting;
-    row->setObjectAppearanceInstance(hotkeyObjectAppearance(setting));
+    row->setObjectAppearanceInstance(hotkeyObjectAppearance(*m_pAppearanceInstanceFactory, setting));
     row->notifyChanged();
     commitRows(true);
     if (added)
@@ -1770,7 +1777,7 @@ void THotkeysOptionsPage::onSpellAssignedToHotkeyAction(const int HotkeyActionSe
         m_rows.append(row);
     }
     TActionSetting setting;
-    setting.setChatText(spells::TSpellInfoStorage::instance()->spellFormula(SpellId, Parameters));
+    setting.setChatText(m_pSpellInfoStorage->spellFormula(SpellId, Parameters));
     setting.setSendAutomatically(true);
     setting.setSpellCastType(CastType);
     row->hotkeyActionSetting() = setting;

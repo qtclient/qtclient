@@ -1,6 +1,8 @@
 #include "lightmappainteditem.h"
 
+#include "game/gamesessionbase.h"
 #include "mods/worldview.h"
+#include "worldmap/worldmapviewport.h"
 #include "renderer/wasnglsl.h"
 #include "renderer/worldmaprenderprovider.h"
 
@@ -260,12 +262,20 @@ TLightmapPaintedItem::TLightmapPaintedItem(QQuickItem* parent)
     setFlag(ItemHasContents);
 }
 
-void TLightmapPaintedItem::setRenderProvider(TWorldMapRenderProvider* provider)
+void TLightmapPaintedItem::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     disconnect(m_frameConnection);
-    m_provider = provider;
-    if (provider)
-        m_frameConnection = connect(provider, &TWorldMapRenderProvider::overlaysAdvanced, this, &TLightmapPaintedItem::takeFrame);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (session) {
+        m_provider = session->worldMapRenderProvider();
+        m_viewport = session->worldMapViewport();
+    } else {
+        m_viewport.reset();
+        m_provider.reset();
+    }
+    // Host: the light map repaints on the provider's frames.
+    if (m_provider)
+        m_frameConnection = connect(m_provider.get(), &TWorldMapRenderProvider::overlaysAdvanced, this, &TLightmapPaintedItem::takeFrame);
     takeFrame();
 }
 

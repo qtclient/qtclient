@@ -18,6 +18,9 @@ namespace tibia {
 namespace config {
 class TSidebarOptions;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 }
 
 namespace tibia {
@@ -59,6 +62,7 @@ public:
                                        QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
     bool isPremium() const override;
     bool lootTrackerVisible() const override;
     bool lootAnalyserVisible() const override;
@@ -119,7 +123,7 @@ private:
 
     QPointer<gamewindow::TSidebarWidgetsManager> m_widgets;
     QPointer<config::TSidebarOptions> m_options;
-    std::vector<client::gamecore::Hook> m_hooks;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 };
 
 /// HuntingSessionWidget.qml (CIP: THuntingSessionWidgetController, ctor , metacall

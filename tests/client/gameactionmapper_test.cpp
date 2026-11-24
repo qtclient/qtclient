@@ -107,6 +107,29 @@ TEST(GameActionMapper, SetControlSchemeResetsTheRules)
     EXPECT_THROW(mapper.setControlScheme(0), std::out_of_range);
 }
 
+// A scheme that has a table keeps it; a new scheme's table is used once it is
+// selected; while rules are active, adding a scheme does not switch to it.
+TEST(GameActionMapper, AddControlSchemeKeepsExistingTables)
+{
+    using Rule = TGameActionMapper::TRule;
+    TGameActionMapper mapper(Classic, TGameActionMapper::LootShiftRight);
+    mapper.addControlScheme(Classic, { Rule{ 0, 1, 0, { A::LOOK } } });
+    EXPECT_EQ(mapper.controlScheme(), Classic);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0),
+              std::vector<A>{ A::SET_PLAYER_MOVEMENT_INTENT });
+
+    mapper.addControlScheme(7, { Rule{ 0, 1, 0, { A::LOOK } } });
+    EXPECT_EQ(mapper.controlScheme(), Classic);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0),
+              std::vector<A>{ A::SET_PLAYER_MOVEMENT_INTENT });
+
+    mapper.setControlScheme(7);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0), std::vector<A>{ A::LOOK });
+    mapper.setControlScheme(Classic);
+    EXPECT_EQ(mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::LeftButton, 0),
+              std::vector<A>{ A::SET_PLAYER_MOVEMENT_INTENT });
+}
+
 TEST(GameActionMapper, SmartLeftClickIsNotClassic)
 {
     const TGameActionMapper smart(Smart, TGameActionMapper::LootRight);

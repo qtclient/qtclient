@@ -16,6 +16,12 @@ namespace chat {
 class TTextOverlayRenderProvider;
 struct TTextOverlay;
 }
+namespace game {
+class IGameSession;
+}
+namespace renderer {
+class TWorldMapCamera;
+}
 namespace worldmap {
 class TWorldMapSubfieldCoordinate;
 }
@@ -59,9 +65,11 @@ public:
     explicit TSpeechBubbleOverlayQuickItem(QQuickItem* parent = nullptr);
     ~TSpeechBubbleOverlayQuickItem() override;
 
-    /// Shows the session's text overlays over `provider`'s world, refreshed
-    /// every frame.
-    void setSources(TWorldMapRenderProvider* provider, std::shared_ptr<chat::TTextOverlayRenderProvider> textOverlays);
+    /// The session's text overlay render provider and world map camera (both
+    /// unset without a session); the overlay is enabled when both are set.
+    /// Host: the session's render provider supplies the frame and pixels and
+    /// refreshes the bubbles every frame.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// Extra bottom inset for the status line (product automation / FABs band).
     void setStatusBottomMargin(int margin);
@@ -89,8 +97,10 @@ private:
     QPointF anchorOf(const worldmap::TWorldMapSubfieldCoordinate& anchor) const;
     void placeAbove(TSpeechBubbleController& controller, const worldmap::TWorldMapSubfieldCoordinate& anchor) const;
 
+    bool m_enabled = false;
+    std::shared_ptr<chat::TTextOverlayRenderProvider> m_textOverlayRenderProvider;
+    std::shared_ptr<renderer::TWorldMapCamera> m_worldMapCamera;
     QPointer<TWorldMapRenderProvider> m_provider;
-    std::shared_ptr<chat::TTextOverlayRenderProvider> m_textOverlays;
     QMetaObject::Connection m_frameConnection;
     QQmlComponent* m_component = nullptr;
     /// CIP's overlay+0x20 and +0x24.

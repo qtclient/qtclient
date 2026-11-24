@@ -36,21 +36,19 @@ using ::tibia::protobuf::protocol::GameserverMessageSkillWheel;
 
 void TSkillWheelProtocolMessageHandler::requestSkillWheel(const uint32_t playerId)
 {
-    auto message = protocol::newGameclientMessage(97);
-    message->MutableExtension(protobuf::protocol::GameclientMessageRequestSkillWheel::gameclient_message_request_skill_wheel)
-        ->set_character_id(playerId);
-    protocol::sendGameclientMessage(std::move(message));
+    protobuf::protocol::GameclientMessageRequestSkillWheel message;
+    message.set_character_id(playerId);
+    Q_EMIT sendRequestSkillWheel(message);
 }
 
 void TSkillWheelProtocolMessageHandler::saveSkillWheel(const TWheel& wheel)
 {
-    auto message = protocol::newGameclientMessage(98);
-    auto* m = message->MutableExtension(protobuf::protocol::GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
+    protobuf::protocol::GameclientMessageApplySkillWheel message;
     for (const int points : wheel.points)
-        m->add_slot_points(static_cast<uint32_t>(points));
+        message.add_slot_points(static_cast<uint32_t>(points));
     for (const std::optional<TGem>& gem : wheel.vessels)
-        m->add_vessel_gems(gem ? static_cast<uint32_t>(gem->id & 0xffff) : UINT32_MAX);
-    protocol::sendGameclientMessage(std::move(message));
+        message.add_vessel_gems(gem ? static_cast<uint32_t>(gem->id & 0xffff) : UINT32_MAX);
+    Q_EMIT sendApplySkillWheel(message);
 }
 
 void TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(const uint32_t characterId)

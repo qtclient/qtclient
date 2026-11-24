@@ -5,6 +5,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 
 #include <memory>
@@ -29,11 +31,14 @@ public Q_SLOTS:
     /// Adds (track) or removes the action's quest flags from the tracked ones.
     void handleChangeTrackedQuestFlagsGameAction(const ::tibia::input::TGameActionChangeTrackedQuestFlags& pGameAction);
 
+Q_SIGNALS:
+    void sendTrackQuestFlags(const ::tibia::protobuf::protocol::GameclientMessageTrackQuestFlags& TrackQuestFlagsMessage);
+
 private:
     /// The ids of the storage's tracked quest flags.
     std::set<TQuestFlagID> trackedQuestFlagIds() const;
     /// CIP: the TrackQuestFlags message with the ids and the storage's options.
-    void sendTrackQuestFlags(const std::set<TQuestFlagID>& questFlagIds) const;
+    void trackQuestFlags(const std::set<TQuestFlagID>& questFlagIds);
 
     std::shared_ptr<TQuestLogStorage> m_questLogStorage;
 };

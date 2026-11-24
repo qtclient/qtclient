@@ -264,7 +264,7 @@ void TDragAndDropController::updateIcon()
             break;
         }
         }
-        m_draggedObjectInstance = appearances::TAppearanceInstanceFactory::createObject(data);
+        m_draggedObjectInstance = appearances::TAppearanceInstanceFactory::installed()->createObject(data);
     }
     applyIconProperties();
     if (m_icon)

@@ -144,12 +144,17 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
 
 void TGenericGameActionHandler::handleLookAction(const TGameActionLook& action)
 {
-    tibia::game::lookMapObject(action.position(), action.objectClientId(), action.stackPosition());
+    if (!action.position().isValid() || action.objectClientId() == 0 || action.stackPosition() < 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageLook message;
+    tibia::protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                                  action.position(), action.stackPosition(), action.objectClientId());
+    Q_EMIT sendLook(message);
 }
 
 void TGenericGameActionHandler::handleUseAction(const TObjectGameAction& action)
 {
-    if (!tibia::game::canPerformGameAction() || !hasObject(action))
+    if (!hasObject(action))
         return;
     uint8_t containerIndex = 0xFF;
     if (action.gameActionType() == A::OPEN) {
@@ -158,8 +163,12 @@ void TGenericGameActionHandler::handleUseAction(const TObjectGameAction& action)
         container::TContainerStorage* storage = container::TContainerStorage::instance();
         containerIndex = storage ? static_cast<uint8_t>(storage->findEmptyId()) : 0;
     }
-    tibia::protocol::gameclient::sendUseItem(action.position(), action.objectClientId(),
-                                             static_cast<uint8_t>(action.stackPosition()), containerIndex);
+    ::tibia::protobuf::protocol::GameclientMessageUseObject message;
+    tibia::protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                                  action.position(), static_cast<uint8_t>(action.stackPosition()),
+                                                  action.objectClientId());
+    message.set_container_index(containerIndex);
+    Q_EMIT sendUseObject(message);
 }
 
 void TGenericGameActionHandler::handleBrowseFieldAction(const TGameActionBrowseField& action)
@@ -167,7 +176,11 @@ void TGenericGameActionHandler::handleBrowseFieldAction(const TGameActionBrowseF
     // Only a world map field can be browsed.
     if (!action.position().isValid() || action.position().x == UINT16_MAX)
         return;
-    tibia::game::browseField(action.position());
+    ::tibia::protobuf::protocol::GameclientMessageBrowseField message;
+    message.mutable_position()->set_x(action.position().x);
+    message.mutable_position()->set_y(action.position().y);
+    message.mutable_position()->set_z(action.position().z);
+    Q_EMIT sendBrowseField(message);
 }
 
 void TGenericGameActionHandler::handleMoveUpAction(const TGameActionMoveUp& action)
@@ -180,20 +193,33 @@ void TGenericGameActionHandler::handleMoveUpAction(const TGameActionMoveUp& acti
 
 void TGenericGameActionHandler::handleWrapAndUnwrapAction(const TObjectGameAction& action)
 {
-    tibia::game::wrapMapObject(action.position(), action.objectClientId(), action.stackPosition());
+    if (!action.position().isValid() || action.objectClientId() == 0 || action.stackPosition() < 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageToggleWrapState message;
+    tibia::protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                                  action.position(), action.stackPosition(), action.objectClientId());
+    Q_EMIT sendToggleWrapState(message);
 }
 
 void TGenericGameActionHandler::handleConfigureShowOffSocketAction(const TGameActionConfigureShowOffSocket& action)
 {
     if (!hasObject(action))
         return;
-    tibia::game::configureShowOffSocket(action.position(), action.objectClientId(),
-                                        static_cast<uint8_t>(action.stackPosition()));
+    ::tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket message;
+    tibia::protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                                  action.position(), static_cast<uint8_t>(action.stackPosition()),
+                                                  action.objectClientId());
+    Q_EMIT sendConfigureShowOffSocket(message);
 }
 
 void TGenericGameActionHandler::handleRotateAction(const TGameActionRotate& action)
 {
-    tibia::game::rotateMapObject(action.position(), action.objectClientId(), action.stackPosition());
+    if (!action.position().isValid() || action.objectClientId() == 0 || action.stackPosition() < 0)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageTurnObject message;
+    tibia::protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                                  action.position(), action.stackPosition(), action.objectClientId());
+    Q_EMIT sendTurnObject(message);
 }
 
 void TGenericGameActionHandler::handleQuitGameAction()
@@ -223,12 +249,18 @@ void TGenericGameActionHandler::handleRequestResourceBalanceAction(const TGameAc
     const int resourceType = static_cast<int>(action.resourceType());
     if (std::find(ProtocolResourceTypes.begin(), ProtocolResourceTypes.end(), resourceType) == ProtocolResourceTypes.end())
         throw std::runtime_error("unhandled enum value");
-    tibia::game::requestResourceBalance(static_cast<uint8_t>(resourceType));
+    ::tibia::protobuf::protocol::GameclientMessageRequestResourceBalance message;
+    message.set_resource_type(static_cast<uint32_t>(resourceType));
+    Q_EMIT sendRequestResourceBalance(message);
 }
 
 void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameActionTeleportToCoordinate& action)
 {
-    tibia::game::sendTeleport(action.coordinate());
+    ::tibia::protobuf::protocol::GameclientMessageTeleport message;
+    message.mutable_position()->set_x(action.coordinate().x);
+    message.mutable_position()->set_y(action.coordinate().y);
+    message.mutable_position()->set_z(action.coordinate().z);
+    Q_EMIT sendTeleport(message);
 }
 
 void TGenericGameActionHandler::handleResetHuntingSessionAction()

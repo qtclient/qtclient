@@ -42,6 +42,12 @@ public:
     /// the local player while it moves or moved at most 75 ms before the last
     /// update and holds a movement intent, unless they are suppressed.
     bool showsMovingSprite() const;
+    /// CIP v12: appends what the creature draws on `coordinate`: its marks,
+    /// its mount (while mounted) and its outfit, idle or moving by
+    /// showsMovingSprite, each on the field it covers while stepping (a draw
+    /// offset past a field moves it to the next field), displaced by
+    /// creatureDisplacement.
+    void appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate, renderer::TRenderInfoList& infos) const;
 
 private:
     std::weak_ptr<creatures::TCreature> m_creature;

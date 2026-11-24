@@ -2,7 +2,11 @@
 
 #include "gamewindow/assignactiondialogs.h"
 
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+
 #include <tibia/game/gamesession.h>
+#include <protocol.pb.h>
 
 #include <QQuickItem>
 
@@ -13,9 +17,23 @@ TVocationSelectionDialogController::TVocationSelectionDialogController(QQmlEngin
     : TDialogController(QStringLiteral("tutorial/VocationSelectionPopup.qml"), engine, dialogParentItem, parent)
     , m_mapWindowPane(mapWindowPane)
 {
-    // The popup starts on its first page; it has no session and no spell
-    // list model (the popup finds no spell icons then).
+    // The popup starts on its first page; without a session it has no spell list model (the popup
+    // finds no spell icons then).
     m_stage = 0;
+}
+
+void TVocationSelectionDialogController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    m_gameSession = std::move(GameSession);
+    if (!m_gameSession)
+        return;
+    // Host: qtclient's proxy reads the spell infos itself (CipSoft hands it the session's).
+    TSpellListDataModelSortFilterProxy* const spellList = new TSpellListDataModelSortFilterProxy(this);
+    if (m_spellList)
+        m_spellList->deleteLater();
+    m_spellList = spellList;
+    m_spellListModel = spellList;
+    spellList->connectToGameSession(m_gameSession);
 }
 
 void TVocationSelectionDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
@@ -38,8 +56,11 @@ void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcom
 {
     // In a session the choice goes to the server: the protocol's vocation is
     // the same number (None..Monk convert one to one).
-    if (tibia::game::isOnline())
-        tibia::game::sendTutorialChangeVocation(static_cast<uint8_t>(Vocation));
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        ::tibia::protobuf::protocol::GameclientMessageSetVocation message;
+        message.set_vocation(static_cast<uint32_t>(Vocation));
+        Q_EMIT session->gameProtocolMessageHandler()->sendSetVocation(message);
+    }
     dialog()->close();
 }
 

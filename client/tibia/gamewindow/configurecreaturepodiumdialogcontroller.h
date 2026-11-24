@@ -25,6 +25,11 @@ class TAppearanceInstanceFactory;
 namespace tibia::config {
 class TClientOptions;
 }
+namespace tibia::game {
+class IGameSession;
+class TOutfitDialogStorage;
+struct TConfigureCreaturePodiumData;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -88,8 +93,9 @@ protected:
 };
 
 /// outfitdialog/ConfigureCreaturePodiumDialog.qml (CIP:
-/// TConfigureCreaturePodiumDialogController). Opens on onConfigureCreaturePodium
-/// (S 0xC2 / Crystal sendMonsterPodiumWindow; notify bus).
+/// TConfigureCreaturePodiumDialogController). Opens when the session's player
+/// protocol handler asks for it, on the podium data in the session's outfit
+/// dialog storage.
 class TConfigureCreaturePodiumDialogController final
     : public TDialogController<cip::tibia::gamewindow::TConfigureCreaturePodiumDialogController>
 {
@@ -102,9 +108,13 @@ public:
                                              config::TClientOptions* ClientOptions, QQmlEngine* Engine,
                                              QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
-    /// Fills the skin list from the ConfigureCreaturePodium message and shows the dialog.
-    void open(const Outfit& selected, uint16_t selectedRace, bool bossPodium, const std::vector<RaceRow>& races, const Position& pos,
-              uint16_t itemId, uint8_t stackpos, bool podiumVisible, bool monsterVisible, uint8_t direction);
+    /// CIP: forgets the previous session's connections, keeps the session and
+    /// its outfit dialog storage, and opens on the player protocol handler's
+    /// showConfigureCreaturePodiumDialog.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// CIP: fills the skin list from the outfit dialog storage's podium data
+    /// and shows the dialog.
+    void open();
 
     /// The look of the chosen race's skin, 0 without one.
     int chosenOutfit() const override;
@@ -129,7 +139,11 @@ private:
     Outfit m_selected;
     Position m_position;
     uint8_t m_stackpos = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
+    std::shared_ptr<game::IGameSession> m_pGameSession;
+    std::shared_ptr<game::TOutfitDialogStorage> m_pOutfitDialogStorage;
+    /// The podium data open() last read.
+    std::shared_ptr<const game::TConfigureCreaturePodiumData> m_pData;
 };
 
 }

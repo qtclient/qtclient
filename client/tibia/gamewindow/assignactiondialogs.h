@@ -2,6 +2,7 @@
 
 #include "config/hotkeyoptions.h"
 #include "gamewindow/dialogmanager.h"
+#include "protocol/objectdata.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -12,9 +13,17 @@
 #include <set>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstance;
+class TAppearanceInstanceFactory;
+}
 namespace game {
 class IGameSession;
 class TPlayerData;
+}
+namespace input {
+class IGameActionContext;
+class TObjectGameActionContext;
 }
 namespace gamewindow {
 
@@ -237,6 +246,12 @@ private:
     int m_spellId = 0;
 };
 
+/// Host: the object context of a picked or dropped object. qtclient's map,
+/// container and inventory positions name a plain appearance type; an object
+/// with a tier in its container or inventory slot gets the upgradeable context
+/// CipSoft's contexts carry.
+std::shared_ptr<const input::IGameActionContext> objectContextWithTier(const input::TObjectGameActionContext& Context);
+
 /// AssignObjectActionDialog.qml (CIP: TAssignObjectActionDialogController,
 /// one per action bar). OK and Apply ask the bar to assign the object.
 class TAssignObjectActionDialogController final
@@ -246,15 +261,23 @@ class TAssignObjectActionDialogController final
 public:
     explicit TAssignObjectActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
 
+    /// The factory that makes the shown object's instance (the session's).
+    void setAppearanceInstanceFactory(std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory);
+
     /// CIP v26: no object yet, so the next click picks one.
     void showDialog(uint ButtonId, int MultiActionIndex);
     /// CIP v33: shows an object with its use; with `assignWithoutDialog` it is
     /// assigned at once instead.
+    void showDialog(uint ButtonId, int MultiActionIndex, const protocol::TObjectData& ObjectData, config::EUseType UseType,
+                    bool SmartModeEnabled, bool assignWithoutDialog);
+    /// Host: v33 for an action setting, which keeps the object as its id, tier
+    /// and liquid (see objectDataOfSetting).
     void showDialog(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, int LiquidType, config::EUseType UseType,
                     bool SmartModeEnabled, bool assignWithoutDialog);
-    /// CIP v34 (qtclient's appearance data): an object picked or dropped, with
-    /// its default use.
-    void showDialogForObject(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, bool assignWithoutDialog);
+    /// CIP v34: an object picked or dropped (its appearance type context), with
+    /// its default use. Objects that cannot be taken are refused.
+    void showDialog(uint ButtonId, int MultiActionIndex, const std::shared_ptr<const input::IGameActionContext>& Object,
+                    bool assignWithoutDialog);
     /// The smooth filtering client setting the preview uses.
     void setClientSettingSmoothFiltering(bool enabled);
 
@@ -283,11 +306,19 @@ Q_SIGNALS:
                              tibia::config::EUseType UseType, bool UseEquipSmartMode);
 
 private:
-    void setObject(int objectId, int upgradeTier);
+    /// The object data of a setting's flat object: a liquid for a fluid
+    /// container or splash, an upgradeable object with a tier, one piece of a
+    /// cumulative object, else a plain object.
+    protocol::TObjectData objectDataOfSetting(int ObjectId, int UpgradeTier, int LiquidType) const;
+    void setObject(const protocol::TObjectData& ObjectData);
     void setUseObjectType(uint useObjectType);
     void setSmartModeEnabled(bool enabled);
     void emitRequestAssignObject();
 
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    protocol::TObjectData m_objectData;
+    /// The shown object, made by the factory from m_objectData.
+    std::shared_ptr<appearances::TAppearanceInstance> m_objectInstance;
     /// A target selection runs for this dialog.
     bool m_selectingTarget = false;
 };

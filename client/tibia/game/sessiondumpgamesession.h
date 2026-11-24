@@ -47,7 +47,19 @@ class TSessiondumpGameSession : public TGameSessionBase
 {
     Q_OBJECT
 public:
-    explicit TSessiondumpGameSession(QObject* parent = nullptr);
+    /// Built by the game client with the objects it shares with every session.
+    TSessiondumpGameSession(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+                            std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+                            std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                            std::shared_ptr<config::TClientOptions> clientOptions,
+                            std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+                            std::shared_ptr<shared::TTibiaUrlTools> urlTools,
+                            std::shared_ptr<shared::IClockService> clientClockService,
+                            std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage,
+                            std::shared_ptr<sound::TSoundController> soundController,
+                            std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
+                            spells::TSpellInfoStorage* spellInfoStorage, TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                            proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent = nullptr);
     ~TSessiondumpGameSession() override;
 
     /// Builds the session from a TSessiondumpGameSessionMetaInfo: storages,

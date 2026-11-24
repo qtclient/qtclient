@@ -3,6 +3,7 @@
 #include "authentication/authenticationandencryptioninfo.h"
 #include "authentication/gameserverloginprocesscontroller.h"
 #include "authentication/loginprotocolmessagehandler.h"
+#include "bossbestiary/bossbestiaryciptypes.h"
 #include "chat/chatgameactionhandler.h"
 #include "config/characterconfigurationmanager.h"
 #include "container/containerciptypes.h"
@@ -10,14 +11,22 @@
 #include "creatures/creaturesciptypes.h"
 #include "creatures/creaturesgameactionhandler.h"
 #include "creatures/creaturestorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "dailyreward/dailyrewardciptypes.h"
+#include "exaltation/exaltationprotocolmessagehandler.h"
+#include "exivaoptions/exivaoptionsprotocolmessagehandler.h"
 #include "friends/friendsciptypes.h"
+#include "game/blessingsprotocolmessagehandler.h"
 #include "game/gameactionrouter.h"
 #include "game/gameciptypes.h"
 #include "game/playergameactionhandler.h"
 #include "game/tgamenotify.h"
 #include "game/thingsession_forward.h"
+#include "highscores/highscoresciptypes.h"
+#include "imbuing/imbuingciptypes.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/domainhandlers.h"
+#include "input/genericgameactionhandler.h"
 #include "input/playermovementgameactionhandler.h"
 #include "input/playermovementintenthandler.h"
 #include "market/marketciptypes.h"
@@ -37,12 +46,22 @@
 #include "protocol/protocolserverpacketprocessor.h"
 #include "protocol/protocolservermessageprocessor.h"
 #include "network/unencryptedrawmessagestream.h"
+#include "prey/preyprotocolmessagehandler.h"
+#include "proficiency/proficiencyciptypes.h"
 #include "protocol/extendedopcode.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
 #include "protocol/protocolreader.h"
+#include "questlog/questlogciptypes.h"
+#include "questlog/questloggameactionhandler.h"
+#include "quickloot/quicklootciptypes.h"
+#include "reporting/reportingciptypes.h"
 #include "shared/iodevicereader.h"
 #include "shared/tibiafilesystemhelper.h"
+#include "skillwheel/skillwheelciptypes.h"
+#include "store/storestorage.h"
+#include "taskboard/taskboardciptypes.h"
+#include "teamfinder/teamfinderciptypes.h"
 #include "trade/tradeciptypes.h"
 #include "worldmap/worldmapgameactionhandler.h"
 
@@ -84,9 +103,6 @@ constexpr int64_t SessiondumpKeepSeconds = 10;
 constexpr uint8_t LoginOpcode = 10;
 constexpr uint8_t SecondaryLoginOpcode = 11;
 constexpr uint8_t ConnectionPingBackOpcode = 28;
-
-/// Host: the session's network tick (CipSoft runs it with the game client's tick).
-constexpr int NetworkTickMillis = 10;
 
 std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetworkPacketConnection()
 {
@@ -187,12 +203,23 @@ void hubDisconnectNow()
         gameSessionState().cancelLogin();
 }
 
-TGameserverGameSession::TGameserverGameSession(QObject* parent)
-    : TGameSessionBase(parent)
+TGameserverGameSession::TGameserverGameSession(
+    std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+    std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+    std::shared_ptr<config::TClientOptions> clientOptions, std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+    std::shared_ptr<shared::TTibiaUrlTools> urlTools, std::shared_ptr<shared::IClockService> clientClockService,
+    std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage, std::shared_ptr<sound::TSoundController> soundController,
+    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler, spells::TSpellInfoStorage* spellInfoStorage,
+    TPassiveAbilityInfoStorage* passiveAbilityInfoStorage, proficiency::TProficiencyStorage* proficiencyStorage,
+    QObject* parent)
+    : TGameSessionBase(std::move(tibiaFileSystemHelper), std::move(appearancesManager), std::move(appearanceInstanceFactory),
+                       std::move(clientOptions), std::move(clipboardHelper), std::move(urlTools),
+                       std::move(clientClockService), std::move(itemPriceStorage), std::move(soundController),
+                       std::move(keyboardShortcutHandler), spellInfoStorage, passiveAbilityInfoStorage, proficiencyStorage,
+                       parent)
     , m_authenticationAndEncryptionInfo(std::make_shared<authentication::TAuthenticationAndEncryptionInfo>())
 {
-    m_networkTick.setInterval(NetworkTickMillis);
-    connect(&m_networkTick, &QTimer::timeout, this, &TGameserverGameSession::processNetwork);
     // CIP typed lifecycle (TGameNotify) — prefer over string SoftHook for end/fail.
     // The base announces worldEntered for every WorldEntered message.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
@@ -207,7 +234,6 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
 
 TGameserverGameSession::~TGameserverGameSession()
 {
-    m_networkTick.stop();
     m_connectionManager.disconnectAll();
     m_clientMessageConnections.disconnectAll();
     if (const auto sessionNetwork = m_sessionNetwork.lock()) {
@@ -422,6 +448,8 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     TGameProtocolMessageHandler* game = gameProtocolMessageHandler().get();
     link(connect(game, &TGameProtocolMessageHandler::sendEnterWorldMessage, queue, &Queue::sendEnterWorld));
     link(connect(game, &TGameProtocolMessageHandler::sendClientDetails, queue, &Queue::sendClientDetails));
+    link(connect(game, &TGameProtocolMessageHandler::sendSetClientOptions, queue, &Queue::sendSetClientOptions));
+    link(connect(game, &TGameProtocolMessageHandler::sendSetVocation, queue, &Queue::sendSetVocationMessage));
 
     using container::TContainerProtocolMessageHandler;
     TContainerProtocolMessageHandler* containers = containerProtocolMessageHandler().get();
@@ -431,6 +459,20 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(containers, &TContainerProtocolMessageHandler::sendGetObjectInfoMessage, queue, &Queue::sendGetObjectInfo));
     link(connect(containers, &TContainerProtocolMessageHandler::sendContainerActionMessage, queue,
                  &Queue::sendContainerActionMessage));
+
+    // The generic object actions' messages. QUIT_GAME (sendQuitGame) stays the
+    // game client's (host: it logs out through the session's logout request).
+    using input::TGenericGameActionHandler;
+    TGenericGameActionHandler* generic = genericGameActionHandler().get();
+    link(connect(generic, &TGenericGameActionHandler::sendToggleWrapState, queue, &Queue::sendToggleWrapState));
+    link(connect(generic, &TGenericGameActionHandler::sendTurnObject, queue, &Queue::sendTurnObject));
+    link(connect(generic, &TGenericGameActionHandler::sendConfigureShowOffSocket, queue, &Queue::sendConfigureShowOffSocket));
+    link(connect(generic, &TGenericGameActionHandler::sendUseObject, queue, &Queue::sendUseObject));
+    link(connect(generic, &TGenericGameActionHandler::sendLook, queue, &Queue::sendLook));
+    link(connect(generic, &TGenericGameActionHandler::sendBrowseField, queue, &Queue::sendBrowseField));
+    link(connect(generic, &TGenericGameActionHandler::sendMoveObject, queue, &Queue::sendMoveObject));
+    link(connect(generic, &TGenericGameActionHandler::sendRequestResourceBalance, queue, &Queue::sendRequestResourceBalance));
+    link(connect(generic, &TGenericGameActionHandler::sendTeleport, queue, &Queue::sendTeleport));
 
     using creatures::TCreaturesGameActionHandler;
     namespace pb = ::tibia::protobuf::protocol;
@@ -486,6 +528,7 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     TUseWithGameActionHandler* useWith = useWithGameActionHandler().get();
     link(connect(useWith, &TUseWithGameActionHandler::sendUseTwoObjects, queue, &Queue::sendUseTwoObjects));
     link(connect(useWith, &TUseWithGameActionHandler::sendUseOnCreature, queue, &Queue::sendUseOnCreature));
+    link(connect(game, &TGameProtocolMessageHandler::sendStartOfflineTraining, queue, &Queue::sendStartOfflineTrainingMessage));
     link(connect(player, &TPlayerGameActionHandler::sendSetTactics, queue, &Queue::sendSetTactics));
 
     using chat::TChatGameActionHandler;
@@ -534,6 +577,8 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendRejectTrade, queue, &Queue::sendRejectTrade));
     link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendLookTrade, queue, &Queue::sendLookTrade));
     link(connect(playerTrade, &TPlayerTradeProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+    link(connect(playerTradeGameActionHandler().get(), &trade::TPlayerTradeGameActionHandler::sendTradeObject, queue,
+                 &Queue::sendTradeObject));
 
     using creatures::TVipGameActionHandler;
     TVipGameActionHandler* vip = vipGameActionHandler().get();
@@ -541,6 +586,114 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(vip, &TVipGameActionHandler::sendRemoveBuddy, queue, &Queue::sendRemoveBuddy));
     link(connect(vip, &TVipGameActionHandler::sendEditBuddy, queue, &Queue::sendEditBuddy));
     link(connect(vip, &TVipGameActionHandler::sendBuddyGroup, queue, &Queue::sendBuddyGroup));
+
+    using questlog::TQuestLogProtocolMessageHandler;
+    TQuestLogProtocolMessageHandler* questLog = questLogProtocolMessageHandler().get();
+    link(connect(questLog, &TQuestLogProtocolMessageHandler::sendGetQuestLog, queue, &Queue::sendGetQuestLog));
+    link(connect(questLog, &TQuestLogProtocolMessageHandler::sendGetQuestLine, queue, &Queue::sendGetQuestLine));
+    link(connect(questLogGameActionHandler().get(), &questlog::TQuestLogGameActionHandler::sendTrackQuestFlags, queue,
+                 &Queue::sendTrackQuestFlags));
+
+    link(connect(serverModalDialogProtocolMessageHandler().get(), &TServerModalDialogProtocolMessageHandler::sendAnswerModalDialog,
+                 queue, &Queue::sendAnswerModalDialog));
+
+    using reporting::TRuleViolationProtocolMessageHandler;
+    TRuleViolationProtocolMessageHandler* ruleViolation = ruleViolationProtocolMessageHandler().get();
+    link(connect(ruleViolation, &TRuleViolationProtocolMessageHandler::sendRuleViolationReport, queue, &Queue::sendRuleViolationReport));
+    link(connect(ruleViolation, &TRuleViolationProtocolMessageHandler::sendGetTextForReport, queue, &Queue::sendGetTextForReport));
+    link(connect(bugReportProtocolMessageHandler().get(), &reporting::TBugReportProtocolMessageHandler::sendBugReport, queue,
+                 &Queue::sendBugReport));
+
+    TEditTextProtocolMessageHandler* editText = editTextProtocolMessageHandler().get();
+    link(connect(editText, &TEditTextProtocolMessageHandler::sendEditText, queue, &Queue::sendEditText));
+    link(connect(editText, &TEditTextProtocolMessageHandler::sendEditList, queue, &Queue::sendEditList));
+    link(connect(editText, &TEditTextProtocolMessageHandler::sendEditGuildMessage, queue, &Queue::sendEditGuildMessage));
+
+    using store::TStoreProtocolMessageHandler;
+    TStoreProtocolMessageHandler* store = storeProtocolMessageHandler().get();
+    link(connect(store, &TStoreProtocolMessageHandler::sendRequestStoreCategories, queue, &Queue::sendRequestStoreCategories));
+    link(connect(store, &TStoreProtocolMessageHandler::sendRequestStoreOffers, queue, &Queue::sendRequestStoreOffers));
+    link(connect(store, &TStoreProtocolMessageHandler::sendBuyStoreOffer, queue, &Queue::sendBuyStoreOffer));
+    link(connect(store, &TStoreProtocolMessageHandler::sendOpenTransactionHistory, queue, &Queue::sendOpenTransactionHistory));
+    link(connect(store, &TStoreProtocolMessageHandler::sendGetTransactionHistory, queue, &Queue::sendGetTransactionHistory));
+    link(connect(store, &TStoreProtocolMessageHandler::sendTransferCurrency, queue, &Queue::sendTransferCurrency));
+    link(connect(store, &TStoreProtocolMessageHandler::sendStoreEvent, queue, &Queue::sendStoreEvent));
+    link(connect(store, &TStoreProtocolMessageHandler::sendGetOfferDescription, queue, &Queue::sendGetOfferDescription));
+    link(connect(store, &TStoreProtocolMessageHandler::sendRequestTransactionDetails, queue, &Queue::sendOpenTransactionDetails));
+
+    link(connect(game, &TGameProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+
+    using imbuing::TImbuingProtocolMessageHandler;
+    TImbuingProtocolMessageHandler* imbuing = imbuingProtocolMessageHandler().get();
+    link(connect(imbuing, &TImbuingProtocolMessageHandler::sendPickObjectToImbue, queue, &Queue::sendPickObjectToImbue));
+    link(connect(imbuing, &TImbuingProtocolMessageHandler::sendApplyImbuement, queue, &Queue::sendApplyImbuement));
+    link(connect(imbuing, &TImbuingProtocolMessageHandler::sendApplyClearingCharm, queue, &Queue::sendApplyClearingCharm));
+    link(connect(imbuing, &TImbuingProtocolMessageHandler::sendCloseImbuingDialog, queue, &Queue::sendCloseImbuingDialog));
+    link(connect(imbuing, &TImbuingProtocolMessageHandler::sendTrackImbuementsMessage, queue, &Queue::sendTrackImbuementsMessage));
+
+    link(connect(preyProtocolMessageHandler().get(), &prey::TPreyProtocolMessageHandler::sendPreyAction, queue, &Queue::sendPreyAction));
+    link(connect(blessingsProtocolMessageHandler().get(), &TBlessingsProtocolMessageHandler::sendBlessingsDialog, queue,
+                 &Queue::sendBlessingsDialog));
+
+    using dailyreward::TDailyRewardProtocolMessageHandler;
+    TDailyRewardProtocolMessageHandler* dailyReward = dailyRewardProtocolMessageHandler().get();
+    link(connect(dailyReward, &TDailyRewardProtocolMessageHandler::sendOpenRewardWall, queue, &Queue::sendOpenRewardWall));
+    link(connect(dailyReward, &TDailyRewardProtocolMessageHandler::sendDailyRewardHistory, queue, &Queue::sendDailyRewardHistory));
+    link(connect(dailyReward, &TDailyRewardProtocolMessageHandler::sendCollectDailyReward, queue, &Queue::sendCollectDailyReward));
+
+    link(connect(bestiaryTrackerProtocolMessageHandler().get(), &cyclopedia::TBestiaryTrackerProtocolMessageHandler::sendTrackBestiaryRace,
+                 queue, &Queue::sendTrackBestiaryRace));
+
+    using quickloot::TManagedContainersProtocolMessageHandler;
+    TManagedContainersProtocolMessageHandler* managedContainers = managedContainersProtocolMessageHandler().get();
+    link(connect(managedContainers, &TManagedContainersProtocolMessageHandler::sendQuickLoot, queue, &Queue::sendQuickLoot));
+    link(connect(managedContainers, &TManagedContainersProtocolMessageHandler::sendManagedContainer, queue, &Queue::sendManagedContainer));
+    link(connect(managedContainers, &TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist, queue,
+                 &Queue::sendQuickLootBlackWhitelist));
+
+    link(connect(exivaOptionsProtocolMessageHandler().get(), &exivaoptions::TExivaOptionsProtocolMessageHandler::sendSetExivaOptions, queue,
+                 &Queue::sendSetExivaOptions));
+    link(connect(highscoresProtocolMessageHandler().get(), &highscores::THighscoresProtocolMessageHandler::sendHighscoresMessage, queue,
+                 &Queue::sendHighscoresMessage));
+
+    using teamfinder::TTeamFinderProtocolMessageHandler;
+    TTeamFinderProtocolMessageHandler* teamFinder = teamFinderProtocolMessageHandler().get();
+    link(connect(teamFinder, &TTeamFinderProtocolMessageHandler::sendTeamFinderAssembleTeam, queue, &Queue::sendTeamFinderAssembleTeam));
+    link(connect(teamFinder, &TTeamFinderProtocolMessageHandler::sendTeamFinderJoinTeam, queue, &Queue::sendTeamFinderJoinTeam));
+
+    link(connect(characterTradeProtocolMessageHandler().get(), &trade::TCharacterTradeProtocolMessageHandler::sendCharacterTradeConfigurationAction,
+                 queue, &Queue::sendCharacterTradeConfiguration));
+
+    using exaltation::TExaltationProtocolMessageHandler;
+    TExaltationProtocolMessageHandler* exaltation = exaltationProtocolMessageHandler().get();
+    link(connect(exaltation, &TExaltationProtocolMessageHandler::sendExaltationAction, queue, &Queue::sendExaltationAction));
+    link(connect(exaltation, &TExaltationProtocolMessageHandler::sendOpenExaltationHistory, queue, &Queue::sendOpenExaltationHistory));
+
+    using bossbestiary::TBossBestiaryProtocolMessageHandler;
+    TBossBestiaryProtocolMessageHandler* bossBestiary = bossBestiaryProtocolMessageHandler().get();
+    link(connect(bossBestiary, &TBossBestiaryProtocolMessageHandler::sendOpenBosstiary, queue, &Queue::sendOpenBosstiary));
+    link(connect(bossBestiary, &TBossBestiaryProtocolMessageHandler::sendOpenBossSlots, queue, &Queue::sendOpenBossSlots));
+    link(connect(bossBestiary, &TBossBestiaryProtocolMessageHandler::sendEditBossSlot, queue, &Queue::sendEditBossSlot));
+
+    using skillwheel::TSkillWheelProtocolMessageHandler;
+    TSkillWheelProtocolMessageHandler* skillWheel = skillWheelProtocolMessageHandler().get();
+    link(connect(skillWheel, &TSkillWheelProtocolMessageHandler::sendRequestSkillWheel, queue, &Queue::sendRequestSkillWheel));
+    link(connect(skillWheel, &TSkillWheelProtocolMessageHandler::sendApplySkillWheel, queue, &Queue::sendApplySkillWheel));
+    link(connect(skillWheel, &TSkillWheelProtocolMessageHandler::sendRequestSkillWheelViaCyclopedia, queue,
+                 &Queue::sendOpenCyclopediaCharacterInfo));
+    link(connect(skillWheel, &TSkillWheelProtocolMessageHandler::sendGemAtelierAction, queue, &Queue::sendGemAtelier));
+
+    using proficiency::TProficiencyProtocolMessageHandler;
+    TProficiencyProtocolMessageHandler* proficiency = proficiencyProtocolMessageHandler().get();
+    link(connect(proficiency, &TProficiencyProtocolMessageHandler::sendWeaponProficiencyCommand, queue,
+                 &Queue::sendWeaponProficiencyCommandMessage));
+    link(connect(proficiency, &TProficiencyProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+
+    using taskboard::TTaskboardProtocolMessageHandler;
+    TTaskboardProtocolMessageHandler* taskboard = taskboardProtocolMessageHandler();
+    link(connect(taskboard, &TTaskboardProtocolMessageHandler::sendTaskboardCommand, queue, &Queue::sendTaskboardCommandMessage));
+    link(connect(taskboard, &TTaskboardProtocolMessageHandler::sendFightMonsterInSoulPitCommand, queue,
+                 &Queue::sendSoulSealsFightMonsterMessage));
 }
 
 void TGameserverGameSession::connectGameActionHandlers()
@@ -585,8 +738,6 @@ void TGameserverGameSession::connectToGameserver()
         m_loginProtocolMessageHandler->setProductTransport("ExtendedOpcodes");
 
     gameserverLoginProcessController()->login(m_loginData);
-    // Host: the network tick (CipSoft's game client processes the network every frame).
-    m_networkTick.start();
 }
 
 void TGameserverGameSession::requestLogout()
@@ -606,7 +757,7 @@ void TGameserverGameSession::disconnectNow()
 
 std::shared_ptr<shared::IClockService> TGameserverGameSession::clockService() const
 {
-    return shared::TClockService::process();
+    return clientClockService();
 }
 
 void TGameserverGameSession::processNetwork()
@@ -705,7 +856,6 @@ void TGameserverGameSession::onClientMessageReadyToProcess(
 
 void TGameserverGameSession::closeConnection()
 {
-    m_networkTick.stop();
     if (m_dualConnection)
         m_dualConnection->disconnectFromGameserver();
 }

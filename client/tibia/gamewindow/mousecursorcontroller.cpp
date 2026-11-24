@@ -6,13 +6,19 @@
 #include <QGuiApplication>
 #include <QPixmap>
 #include <QPointer>
+#include <QQmlContext>
+#include <QQmlEngine>
 #include <QTransform>
+
+#include <memory>
 
 namespace tibia::gamewindow {
 
 namespace {
 
 QPointer<TMouseCursorController> s_instance;
+/// CIP: the controller the factory made last.
+std::shared_ptr<TMouseCursorController> s_sharedInstance;
 
 }
 
@@ -38,6 +44,15 @@ TMouseCursorController::~TMouseCursorController()
 TMouseCursorController* TMouseCursorController::instance()
 {
     return s_instance;
+}
+
+void TMouseCursorController::createInstance(QQmlEngine* Engine, const QJsonObject& Options)
+{
+    std::shared_ptr<TMouseCursorController> controller(new TMouseCursorController(Options));
+    Engine->rootContext()->setContextProperty(QStringLiteral("tibiaMouseCursorController"), controller.get());
+    s_sharedInstance = std::move(controller);
+    // Host: released with the engine, before the application goes.
+    QObject::connect(Engine, &QObject::destroyed, [] { s_sharedInstance.reset(); });
 }
 
 void TMouseCursorController::onOptionsChanged()

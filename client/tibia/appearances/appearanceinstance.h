@@ -15,6 +15,7 @@
 #include <QColor>
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -310,9 +311,11 @@ private:
 class TDecoItemKitAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
+    /// A deco item kit of `type` that holds `decoItemId`; it draws its first pattern.
     explicit TDecoItemKitAppearanceInstance(TAppearanceType* type, uint16_t decoItemId = 0)
         : TObjectAppearanceInstance(type), m_decoItemId(decoItemId)
     {
+        setSpritePattern(TAppearancePattern{ 0, 0, 0 });
     }
 
     uint16_t decoItemId() const { return m_decoItemId; }
@@ -600,7 +603,8 @@ public:
 class TTutorialFieldEffectInstance final : public TEffectInstance
 {
 public:
-    using TEffectInstance::TEffectInstance;
+    /// A tutorial marker of `type`: its animation loops until it is stopped.
+    explicit TTutorialFieldEffectInstance(TAppearanceType* type);
 
     void stop() { m_stopped = true; }
     bool isFinished() const override { return m_stopped || TEffectInstance::isFinished(); }
@@ -615,88 +619,101 @@ class TAppearanceInstanceFactory final : public ::tibia::CipTyped
 public:
     /// The type of `id` in `category`, or the category's dummy type: no flags
     /// and one empty frame group (it reports isNull()).
-    static TAppearanceType* appearanceType(ThingCategory category, uint16_t id);
+    TAppearanceType* appearanceType(ThingCategory category, uint16_t id) const;
     /// The appearances define `id` in `category`.
-    static bool hasAppearanceType(ThingCategory category, uint16_t id);
+    bool hasAppearanceType(ThingCategory category, uint16_t id) const;
     /// The dummy type of `category` (every category has one).
-    static TAppearanceType* dummyAppearanceType(ThingCategory category);
-    static TAppearanceInstancePtr fromThingType(TAppearanceType* type);
+    TAppearanceType* dummyAppearanceType(ThingCategory category) const;
+    TAppearanceInstancePtr fromThingType(TAppearanceType* type);
     /// An object with no state of its own: hangable objects hang, every other
     /// one follows its field's pattern.
-    static TAppearanceInstancePtr createObject(TAppearanceType* type);
+    TAppearanceInstancePtr createObject(TAppearanceType* type);
     /// The object `id` with no state of its own (createObject of its type).
-    static TAppearanceInstancePtr createObject(uint16_t id);
-    static std::shared_ptr<TCumulativeObjectAppearanceInstance> createCumulativeObject(uint16_t id, uint8_t count);
-    static std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType);
-    static std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId);
-    static std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier);
+    TAppearanceInstancePtr createObject(uint16_t id);
+    std::shared_ptr<TCumulativeObjectAppearanceInstance> createCumulativeObject(uint16_t id, uint8_t count);
+    std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType);
+    std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId);
+    std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier);
     /// CIP v6: the container object `id` with its two category sets and
     /// optional value; `withFieldEffect` gives it field effect 252 (made like
     /// createFieldEffect, on field (0, 0, 0) from source 0).
-    static std::shared_ptr<TContainerObjectAppearanceInstance>
+    std::shared_ptr<TContainerObjectAppearanceInstance>
     createContainerObject(uint16_t id, std::set<int> firstCategories, std::set<int> secondCategories, bool hasValue,
                           int value, bool withFieldEffect, qint64 animationStartMs);
-    static std::shared_ptr<TWearoutObjectAppearanceInstance> createWearoutObject(TAppearanceType* type, uint32_t charges,
+    std::shared_ptr<TWearoutObjectAppearanceInstance> createWearoutObject(TAppearanceType* type, uint32_t charges,
                                                                                 bool brandNew);
-    static std::shared_ptr<TExpireObjectAppearanceInstance> createExpireObject(TAppearanceType* type,
+    std::shared_ptr<TExpireObjectAppearanceInstance> createExpireObject(TAppearanceType* type,
                                                                               int64_t remainingMilliseconds,
                                                                               bool brandNew, bool stopped);
     /// The instance of a protocol object, by its kind: liquid, cumulative,
     /// upgradeable, deco item kit, else a plain object (a hangable one takes
     /// the hook state of a hangable kind).
-    static TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
+    TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
     /// CIP v20: the instance of a protocol map object by its extension:
     /// liquid, cumulative, container, show-off socket, upgradeable, wearout,
     /// expire (the duration in seconds) or deco item kit; a plain object
     /// without one. `nowMs` starts a container's field effect.
-    static TAppearanceInstancePtr createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object, qint64 nowMs);
+    TAppearanceInstancePtr createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object, qint64 nowMs);
     /// CIP v19: the outfit of a protocol outfit: with a look type that outfit
     /// (its colours and addons), else with an object type that object drawn
     /// as an outfit, else none.
-    static std::shared_ptr<TOutfitAppearanceInstance> createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit,
+    std::shared_ptr<TOutfitAppearanceInstance> createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit,
                                                                                uint8_t direction);
     /// Effect `id` on `field` from `source`, created at `nowMs` (CIP v7).
-    static std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
+    std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
                                                                    qint64 nowMs);
     /// Effect `id` on `field` drawn towards `direction` (CIP v8).
-    static std::shared_ptr<TDirectionalFieldEffectInstance> createDirectionalFieldEffect(uint16_t id, const Position& field,
+    std::shared_ptr<TDirectionalFieldEffectInstance> createDirectionalFieldEffect(uint16_t id, const Position& field,
                                                                                          int direction, qint64 nowMs);
     /// Missile `id` flying from `from` to `to` (CIP v9).
-    static std::shared_ptr<TMissileEffectInstance> createMissile(uint16_t id, const Position& from, const Position& to,
+    std::shared_ptr<TMissileEffectInstance> createMissile(uint16_t id, const Position& from, const Position& to,
                                                                  uint8_t source, qint64 nowMs);
     /// An object drawn as an outfit (an outfit look of an object id).
-    static std::shared_ptr<TObjectOutfitAppearanceInstance> createObjectOutfit(uint16_t id);
+    std::shared_ptr<TObjectOutfitAppearanceInstance> createObjectOutfit(uint16_t id);
     /// Creates `T` the way every factory instance is made: the appearance
     /// instance tracker counts it while it lives.
     template <class T, class... Args>
-    static std::shared_ptr<T> makeTracked(TAppearanceType* type, Args&&... args);
+    std::shared_ptr<T> makeTracked(TAppearanceType* type, Args&&... args);
     /// An outfit looking towards `direction`: outfits with colour layers, or
     /// with addon patterns while an addon is worn, are customizable.
-    static std::shared_ptr<TOutfitAppearanceInstance> createOutfit(TAppearanceType* type, const Outfit& outfit,
+    std::shared_ptr<TOutfitAppearanceInstance> createOutfit(TAppearanceType* type, const Outfit& outfit,
                                                                    uint8_t direction);
     /// CIP v15: a customizable outfit.
-    static std::shared_ptr<TCustomizableOutfitAppearanceInstance>
+    std::shared_ptr<TCustomizableOutfitAppearanceInstance>
     createCustomizableOutfit(TAppearanceType* type, uint8_t direction, const TOutfitCustomization& customization);
     /// CIP v16: an outfit without colours or addons.
-    static std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(TAppearanceType* type, uint8_t direction);
+    std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(TAppearanceType* type, uint8_t direction);
     /// CIP v17: the plain outfit `id` (or the outfit category's dummy).
-    static std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(uint16_t id, uint8_t direction);
+    std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(uint16_t id, uint8_t direction);
     /// CIP v23: the tracker counting every instance the factory makes.
-    static std::shared_ptr<TAppearanceInstanceTracker> instanceTracker();
-    static TAppearanceInstancePtr fromProtocolObject(TAppearanceType* type, uint16_t count = 0, uint8_t subType = 0,
+    std::shared_ptr<TAppearanceInstanceTracker> instanceTracker() const;
+    TAppearanceInstancePtr fromProtocolObject(TAppearanceType* type, uint16_t count = 0, uint8_t subType = 0,
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
-    static TAppearanceInstancePtr fromOutfit(const Outfit& outfit, TAppearanceType* type);
+    TAppearanceInstancePtr fromOutfit(const Outfit& outfit, TAppearanceType* type);
     /// A tutorial marker on `field`: kind 1 is effect 57, any other kind effect 56.
-    static std::shared_ptr<TTutorialFieldEffectInstance> createTutorialFieldEffect(int kind, const Position& field);
+    std::shared_ptr<TTutorialFieldEffectInstance> createTutorialFieldEffect(int kind, const Position& field);
 
-    /// CIP: the client's factory, making its instances from `AppearancesManager`'s types.
-    explicit TAppearanceInstanceFactory(std::shared_ptr<TAppearancesManager> AppearancesManager)
-        : m_pAppearancesManager(std::move(AppearancesManager))
-    {
-    }
+    /// The client's factory: it makes its instances from `AppearancesManager`'s
+    /// types, keeps one dummy type per category and counts every instance it
+    /// makes in its own tracker (over the manager's spritesheet mapping).
+    explicit TAppearanceInstanceFactory(std::shared_ptr<TAppearancesManager> AppearancesManager);
+    ~TAppearanceInstanceFactory();
+
+    /// Host: the game client's factory while a client exists (install), else
+    /// one factory over the process-wide appearances manager. For code that
+    /// does not hold the factory CipSoft hands it.
+    static const std::shared_ptr<TAppearanceInstanceFactory>& installed();
+    /// Host: installs the game client's factory; null goes back to the fallback.
+    static void install(std::shared_ptr<TAppearanceInstanceFactory> factory);
 
 private:
+    /// One dummy type per category: a type without flags whose only frame
+    /// group is an empty initial one.
+    static std::map<ThingCategory, std::unique_ptr<TAppearanceType>> makeDummyAppearanceTypes();
+
     std::shared_ptr<TAppearancesManager> m_pAppearancesManager;
+    std::map<ThingCategory, std::unique_ptr<TAppearanceType>> m_dummyAppearanceTypes;
+    std::shared_ptr<TAppearanceInstanceTracker> m_instanceTracker;
 };
 
 

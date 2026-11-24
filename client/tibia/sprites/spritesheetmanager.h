@@ -15,6 +15,13 @@ class TReadOnlyMemoryBlob;
 namespace tibia {
 namespace sprites {
 
+/// A spritesheet's compressed file content.
+using TCompressedSpritesheetPointer = std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob>;
+
+/// Registers TSpritesheetID, TSpritesheetPointer and TCompressedSpritesheetPointer
+/// as meta types (they travel through queued signals).
+void registerSpritesheetMetaTypes();
+
 class TSpritesheetDecompressor;
 
 /// Holds every spritesheet file's bytes and hands out their images, decompressing

@@ -17,6 +17,7 @@
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "game/gameciptypes.h"
+#include <protocol.pb.h>
 #include "game/gamesessionbase.h"
 #include "game/offlineskilltrainingdata.h"
 #include "game/tgamenotify.h"
@@ -1032,7 +1033,11 @@ void TMultiOfflineTrainingDialogController::requestClose()
 void TMultiOfflineTrainingDialogController::startOfflineTraining(
     const cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType Skill)
 {
-    tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(Skill));
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        ::tibia::protobuf::protocol::GameclientMessageStartOfflineTraining message;
+        message.set_skill(static_cast<uint32_t>(Skill));
+        Q_EMIT session->gameProtocolMessageHandler()->sendStartOfflineTraining(message);
+    }
     closeDialog();
 }
 

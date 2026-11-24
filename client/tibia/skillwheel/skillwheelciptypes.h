@@ -6,6 +6,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QByteArray>
 #include <QObject>
 #include <QPointer>
@@ -98,8 +100,8 @@ public:
                                       std::shared_ptr<cyclopedia::TCharacterInfoStorage> characterInfoStorage,
                                       std::shared_ptr<game::TPlayerData> playerData);
 
-    /// Host: the client's storage is handed over again when the session becomes
-    /// current (TSkillWheelManager::connectToGameSession).
+    /// Host: replaces the storage the handler fills (the session makes it
+    /// and hands it in at construction; nothing calls this today).
     void setSkillWheelStorage(TSkillWheelStorage* storage);
 
     /// SkillWheel: without a wheel the no-wheel or preview message; otherwise the gem inventory, the
@@ -117,17 +119,23 @@ public:
     /// (1), reshape one mod (2), lock or unlock (3), enhance a fragment mod
     /// grade (4) and attempt a reshape (5: the server rolls the new mod).
     /// The wheel of a player.
-    static void requestSkillWheel(uint32_t playerId);
+    void requestSkillWheel(uint32_t playerId);
     /// The character's wheel through the cyclopedia character info (the character info dialog).
     static void requestCharacterSkillWheel(uint32_t characterId);
     /// The 36 slice points and the eight vessels' gems (-1 empty).
-    static void saveSkillWheel(const TWheel& wheel);
+    void saveSkillWheel(const TWheel& wheel);
     static void dismantleGem(int gemId);
     static void revealGem(int quality);
     static void reshapeGem(int gemId, int modIndex);
     static void attemptReshapeGem(int gemId, int modIndex);
     static void toggleGemLock(int gemId);
     static void enhanceModGrade(int modType, int modId);
+
+Q_SIGNALS:
+    void sendRequestSkillWheel(const ::tibia::protobuf::protocol::GameclientMessageRequestSkillWheel& RequestSkillWheelMessage);
+    void sendRequestSkillWheelViaCyclopedia(const ::tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo& OpenCyclopediaCharacterInfoMessage);
+    void sendApplySkillWheel(const ::tibia::protobuf::protocol::GameclientMessageApplySkillWheel& ApplySkillWheelMessage);
+    void sendGemAtelierAction(const ::tibia::protobuf::protocol::GameclientMessageGemAtelier& GemAtelierMessage);
 
 private:
     QPointer<TSkillWheelStorage> m_storage;

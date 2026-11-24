@@ -2,8 +2,9 @@
 
 namespace tibia::skillwheel {
 
-TGemAtelierReshapeModDialogController::TGemAtelierReshapeModDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("GemAtelierGemReshapeDialog.qml"), parent)
+TGemAtelierReshapeModDialogController::TGemAtelierReshapeModDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                             QObject* parent)
+    : TDialogController(QStringLiteral("GemAtelierGemReshapeDialog.qml"), engine, dialogParentItem, parent)
 {}
 
 TGemAtelierReshapeModDialogController::~TGemAtelierReshapeModDialogController()

@@ -50,9 +50,11 @@ public:
 
 } // namespace
 
-TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject* parent)
+TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(config::TClientOptions* ClientOptions,
+                                                                         QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                                                         QObject* parent)
     : cip::tibia::gamewindow::TFriendsAccountSearchPageController(parent)
-    , m_characterInfo(new TCharacterInfoDialogController(this))
+    , m_characterInfo(new TCharacterInfoDialogController(ClientOptions, Engine, DialogParentItem, this))
 {
     m_characterInfoDialogController = m_characterInfo;
     connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TFriendsAccountSearchPageController::publishGameAction);

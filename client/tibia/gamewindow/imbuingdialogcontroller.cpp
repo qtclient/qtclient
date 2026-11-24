@@ -560,15 +560,15 @@ void TImbuingDialogController::updateImbuedItem()
             break;
         case TImbuingStorage::MODE_ITEM:
             if (const std::optional<uint8_t> tier = m_storage->itemTier())
-                m_imbuedItemInstance = TAppearanceInstanceFactory::createUpgradeableObject(m_storage->itemTypeId(), *tier);
+                m_imbuedItemInstance = m_pAppearanceInstanceFactory->createUpgradeableObject(m_storage->itemTypeId(), *tier);
             else
-                m_imbuedItemInstance = TAppearanceInstanceFactory::createObject(m_storage->itemTypeId());
+                m_imbuedItemInstance = m_pAppearanceInstanceFactory->createObject(m_storage->itemTypeId());
             // An item without imbuement slots, or fewer than the index, starts at the first.
             if (imbuementSlotCount(m_storage->itemTypeId()) <= m_selectedImbuementSlotIndex)
                 m_selectedImbuementSlotIndex = 0;
             break;
         case TImbuingStorage::MODE_SCROLL:
-            m_imbuedItemInstance = TAppearanceInstanceFactory::createObject(BlankImbuementScrollTypeId);
+            m_imbuedItemInstance = m_pAppearanceInstanceFactory->createObject(BlankImbuementScrollTypeId);
             m_selectedImbuementSlotIndex = 0;
             break;
         default:
@@ -694,7 +694,7 @@ void TImbuingDialogController::selectImbuement(const uint32_t imbuementId)
                                      [&source](const TImbuementSource& o) { return o.objectTypeId == source.objectTypeId; });
         const uint ownedCount = it != owned.end() ? it->count : 0;
         astralSources.append(new imbuing::TQmlAstralSource(source.name, source.count, ownedCount,
-                                                           appearances::TAppearanceInstanceFactory::createObject(source.objectTypeId)));
+                                                           m_pAppearanceInstanceFactory->createObject(source.objectTypeId)));
     }
     replaceObject(m_selectedImbuement, new imbuing::TQmlImbuementData(*imbuement, astralSources, enough, this));
 }

@@ -4,6 +4,7 @@
 #include "highlighttimer.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
+#include "input/gameactiondispatch.h"
 #include "news/newsentrymodels.h"
 #include "news/newsstorage.h"
 
@@ -14,12 +15,32 @@
 #include <QTimer>
 #include <QVector>
 
+#include <QUrl>
+
+#include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace authentication {
+class TAuthenticationProcessController;
+}
+namespace config {
+class TClientOptions;
+}
+namespace game {
+class IGameSession;
+}
 namespace news {
+class TNewsProtocolMessageHandler;
 class TNewsRequestUploader;
 class TNewsViewsUploader;
+}
+namespace shared {
+class IClockService;
+class TTibiaFileSystemHelper;
 }
 }
 
@@ -34,11 +55,23 @@ class TNewsDialogController final : public TDialogController<cip::tibia::gamewin
 {
     Q_OBJECT
 public:
-    explicit TNewsDialogController(news::TNewsStorage* storage, QObject* parent = nullptr);
+    /// CIP: made by the client with the client services URL, its news storage,
+    /// the client options, the authentication process controller, the file
+    /// system helper, the clock, the engine and the dialog parent item. The
+    /// dialog makes its own news request uploader (it fills the storage) and
+    /// news views uploader.
+    TNewsDialogController(const QUrl& ClientServicesUrl, std::shared_ptr<news::TNewsStorage> NewsStorage,
+                          config::TClientOptions* ClientOptions,
+                          std::shared_ptr<authentication::TAuthenticationProcessController> AuthenticationProcessController,
+                          std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                          std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine,
+                          QQuickItem* DialogParentItem, QObject* parent = nullptr);
     /// CIP: the entry list is emptied.
     ~TNewsDialogController() override;
 
-    void setNewsUploaders(news::TNewsRequestUploader* uploader, news::TNewsViewsUploader* viewsUploader);
+    /// CIP: closes the dialog, keeps the session, hands the news storage to the
+    /// session's news protocol handler and asks the news uploader for an update.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP: OPEN_NEWS_DIALOG (an entry id in parameter selects that entry),
     /// OPEN_NEWS_CATEGORY (the category in parameter) and REFRESH_COMPENDIUM_NEWS.
@@ -74,14 +107,29 @@ private:
     void setEntries(const std::vector<news::TNewsEntry>& entries);
     void resetCategoryAndSelection();
 
-    QPointer<news::TNewsStorage> m_storage;
-    QPointer<news::TNewsRequestUploader> m_uploader;
-    QPointer<news::TNewsViewsUploader> m_viewsUploader;
+    std::shared_ptr<game::IGameSession> m_pGameSession;
+    std::shared_ptr<news::TNewsStorage> m_storage;
+    std::shared_ptr<news::TNewsProtocolMessageHandler> m_pNewsProtocolMessageHandler;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<authentication::TAuthenticationProcessController> m_pAuthenticationProcessController;
+    std::shared_ptr<news::TNewsRequestUploader> m_uploader;
+    std::shared_ptr<news::TNewsViewsUploader> m_viewsUploader;
     /// The dialog's entry list over the client's news entry model.
     TNewsEntrySortProxyModel m_entries;
     int m_category = news::NEWS_CATEGORY_USEFUL_INFO;
     uint m_pendingEntry = 0;
     bool m_userChoseCategory = false;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// Button bar Compendium / News button (CIP: TNewsButtonController). A game

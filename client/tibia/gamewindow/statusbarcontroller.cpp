@@ -126,7 +126,8 @@ void TStatusBarController::connectToGameSession(const std::shared_ptr<game::IGam
             m_storage = configuration->statusbarStorage();
             if (m_storage)
                 m_gameSessionConnections.add(
-                    connect(m_storage, &game::TStatusbarStorage::changed, this, &TStatusBarController::onStatusbarOptionsChanged));
+                    connect(m_storage, &cip::tibia::config::ICharacterConfigurationBase::configurationChangedFromUserInput, this,
+                            &TStatusBarController::onStatusbarOptionsChanged));
             m_gameSessionConnections.add(connect(configuration.get(), &config::TCharacterConfigurationManager::configurationLoadedForCharacter,
                                                  this, &TStatusBarController::onStatusbarOptionsChanged));
         }

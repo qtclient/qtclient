@@ -50,7 +50,7 @@ void TGameWorldVolumeStorage::createStorages()
     // Host: the factory's instance tracker is process-wide.
     m_worldMapRenderProvider = std::make_shared<qmlcomponents::TWorldMapRenderProvider>(
         m_renderVolumeProvider, m_worldMapStorage, m_creatureStorage, m_ambientLightStorage, effectStorage,
-        m_clientOptions, appearances::TAppearanceInstanceFactory::instanceTracker());
+        m_clientOptions, m_appearanceInstanceFactory->instanceTracker());
 }
 
 std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> TGameWorldVolumeStorage::worldMapRenderProvider() const

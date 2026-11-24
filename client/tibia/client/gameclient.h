@@ -4,6 +4,7 @@
 #include "sessiondump/sessiondumpcatalogloader.h"
 
 #include "app/launcherenv.h"
+#include "assets/asset.h"
 #include "authentication/authenticationprocesscontroller.h"
 #include "client/gameclientbase.h"
 #include "authentication/loginrequestuploader.h"
@@ -94,9 +95,13 @@ class TWeaponProficiencyShapeDialogController;
 class TWeaponProficiencyShapeOptionsDialogController;
 }
 namespace shared {
+class TClipboardHelper;
 class TCrashReportSender;
 class TDownloadPool;
+class TReadOnlyMemoryBlob;
+class TTibiaClipboardHelper;
 class TTibiaFileSystemHelper;
+class TTibiaUrlTools;
 }
 }
 namespace tibia {
@@ -117,6 +122,7 @@ class ExtendedOpcodeRouter;
 }
 namespace input {
 class TGameActionMapper;
+class TKeyboardShortcutHandler;
 class TKeyboardStatusStorage;
 }
 }
@@ -164,6 +170,12 @@ namespace chat {
 class TChatProtocolMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
+}
+}
+namespace tibia {
+namespace news {
+class TNewsDiskIO;
+class TNewsStorage;
 }
 }
 namespace tibia {
@@ -243,6 +255,14 @@ public:
     /// handlers, connects them and (unless previewing) starts the session.
     /// False when a QML file does not load or the engine does not start.
     bool createGameWindow(const TGameWindowSetup& setup);
+    /// CIP: the application starts the client in `StartMode` (0: the game
+    /// window). The client initializes; unless the next start must patch, the
+    /// assets start loading and the game window shows once the appearances
+    /// arrived; otherwise the launcher patches the client. Host: `Setup` is
+    /// what qtclient's game window builder needs (CipSoft's client has it
+    /// from its construction); the preview builds it at once. False when
+    /// qtclient's engine does not start.
+    bool initializeWithStartMode(int StartMode, const TGameWindowSetup& Setup);
 
     /// Host: starts qtclient's engine (data directories, the frame options)
     /// the client's setup steps run on. False when it cannot start (no work dir).
@@ -293,6 +313,10 @@ public:
     chat::TTextStorage* textStorage() const;
     /// CIP +0x2c8: the client's white/blacklist (chat filter, map bubbles, the white/blacklist dialog).
     const std::shared_ptr<chat::TWhiteBlacklist>& whiteBlacklist() const { return m_pWhiteBlacklist; }
+    /// CIP +0x2b8: the client's news storage (the news dialog, the news widget
+    /// and the session's news protocol handler read it) and +0x2a8 its disk cache.
+    const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_pNewsStorage; }
+    const std::shared_ptr<news::TNewsDiskIO>& newsDiskIO() const { return m_pNewsDiskIO; }
         effects::TEffectStorage* effectStorage() const;
     /// Host shim until the game window's widgets connect to the session: the
     /// current session's sidebars.json, statusBarData.json and actionbars.json
@@ -478,6 +502,11 @@ public Q_SLOTS:
     /// follows its position; on the next event loop pass the connecting
     /// dialog closes and the game screen shows.
     void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);
+    /// CIP: once the appearances arrived the client stops listening and shows
+    /// the game window on the next event loop pass.
+    void onAssetFinishedLoading(tibia::assets::TAsset Asset, std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob> pData);
+    /// CIP: the mouse mapping follows the options' control and loot scheme.
+    void onControlOrLootSchemeOptionsChanged();
 
 public:
     /// CIP: the launcher found the package up to date (the application's
@@ -505,6 +534,22 @@ private:
     /// shown or kept for the game window) when it does not start or the
     /// package is up to date already (then the next start patches).
     bool startLauncherToPatchClientOrReportError();
+    /// CIP: the network timer (every 50 ms the current session processes
+    /// its network) and the single-shot timer that builds the game window
+    /// (createGameWindow) start. Only the game window start mode shows it.
+    void startNetworkTimerAndShowGameWindow();
+    /// CIP (initialize): the client's own objects before the game window:
+    /// the clipboard helpers and URL tools, the white/blacklist and the mouse
+    /// mapping that follows the control and loot scheme.
+    void initializeClientObjects();
+    /// The game window's keyboard shortcut handler (CIP +0x6f8, shared with
+    /// every session); null before the game window exists (in
+    /// gameclientgamewindow.cpp).
+    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler() const;
+    /// A new game session of type `Session` with the client's shared objects
+    /// (CipSoft's session factories).
+    template<typename Session>
+    std::shared_ptr<Session> createGameSession() const;
     /// The game window's controller; null before the game window exists
     /// (in gameclientgamewindow.cpp).
     gamewindow::TGameWindowController* gameWindowController() const;
@@ -648,12 +693,32 @@ private:
     /// on the next event loop pass (the session is not released inside its own
     /// signal).
     shared::TQtConnectionWrapper m_gameSessionDisconnected{ 1, true };
+    /// CIP +0x800 / +0x848: the current session's connected and
+    /// gameLoginSuccessful, once and on the next event loop pass.
+    shared::TQtConnectionWrapper m_gameSessionConnected{ 1, true };
+    shared::TQtConnectionWrapper m_gameSessionLoginSuccessful{ 1, true };
+    /// CIP +0x758: builds the game window on the next event loop pass.
+    QTimer m_showGameWindowTimer;
+    /// CIP +0x788: the current session's network every 50 ms.
+    QTimer m_networkTimer;
+    /// CIP +0xa70: how the application started the client (0: the game window).
+    int m_startMode = 0;
+    /// Host: what createGameWindow builds the game window with.
+    TGameWindowSetup m_gameWindowSetup;
+    /// CIP +0x6c8 / +0x6d8 / +0x6e8: the clipboard, the game's clipboard
+    /// writer and the URL tools (shared with every session).
+    std::shared_ptr<shared::TClipboardHelper> m_pClipboardHelper;
+    std::shared_ptr<shared::TTibiaClipboardHelper> m_pTibiaClipboardHelper;
+    std::shared_ptr<shared::TTibiaUrlTools> m_pTibiaUrlTools;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     /// Host shim: the character configuration storages the game window still
     /// owns; each new session's manager takes them.
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     /// The chat pane's ignore list, applied to each session's message handler.
     std::shared_ptr<chat::TWhiteBlacklist> m_pWhiteBlacklist;
+    /// CIP +0x2a8 / +0x2b8: the news cache on disk and the news storage (made in initialize()).
+    std::shared_ptr<news::TNewsDiskIO> m_pNewsDiskIO;
+    std::shared_ptr<news::TNewsStorage> m_pNewsStorage;
     /// CIP +0x298: the minimap marker game actions (delete marker).
     std::shared_ptr<minimap::TMinimapMarkerGameActionHandler> m_pMinimapMarkerGameActionHandler;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).

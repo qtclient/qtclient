@@ -1,6 +1,7 @@
 #include "speechbubbleoverlay.h"
 
 #include "chat/textoverlayrenderprovider.h"
+#include "game/gamesessionbase.h"
 #include "renderer/mapscale.h"
 #include "renderer/worldmaprenderprovider.h"
 
@@ -166,23 +167,33 @@ TSpeechBubbleOverlayQuickItem::TSpeechBubbleOverlayQuickItem(QQuickItem* parent)
 
 TSpeechBubbleOverlayQuickItem::~TSpeechBubbleOverlayQuickItem() = default;
 
-void TSpeechBubbleOverlayQuickItem::setSources(TWorldMapRenderProvider* provider,
-                                               std::shared_ptr<chat::TTextOverlayRenderProvider> textOverlays)
+void TSpeechBubbleOverlayQuickItem::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     disconnect(m_frameConnection);
-    m_provider = provider;
-    if (textOverlays != m_textOverlays) {
-        // A provider reports the on-screen lines that differ from hidden ones
-        // first: the lines start hidden.
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    std::shared_ptr<chat::TTextOverlayRenderProvider> textOverlays;
+    if (!session) {
+        m_worldMapCamera.reset();
+    } else {
+        m_worldMapCamera = session->worldMapCamera();
+        textOverlays = session->textOverlayRenderProvider();
+    }
+    if (textOverlays != m_textOverlayRenderProvider) {
+        // Host: a provider reports the on-screen lines that differ from hidden
+        // ones, so a new provider starts from hidden lines.
         for (TSpeechBubbleController* controller : m_fixed) {
             if (controller)
                 controller->setHidden(true);
         }
     }
-    m_textOverlays = std::move(textOverlays);
-    if (provider && m_textOverlays) {
+    m_textOverlayRenderProvider = std::move(textOverlays);
+    m_enabled = m_textOverlayRenderProvider && m_worldMapCamera;
+
+    // Host: the session's render provider places the bubbles and refreshes them every frame.
+    m_provider = session ? session->worldMapRenderProvider().get() : nullptr;
+    if (m_enabled && m_provider) {
         setup();
-        m_frameConnection = connect(provider, &Provider::overlaysAdvanced, this, &TSpeechBubbleOverlayQuickItem::triggerUpdate);
+        m_frameConnection = connect(m_provider.data(), &Provider::overlaysAdvanced, this, &TSpeechBubbleOverlayQuickItem::triggerUpdate);
     }
     triggerUpdate();
 }
@@ -255,7 +266,7 @@ void TSpeechBubbleOverlayQuickItem::placeAbove(TSpeechBubbleController& controll
 
 void TSpeechBubbleOverlayQuickItem::updateScreenOverlays()
 {
-    for (const chat::TTextOverlay& overlay : m_textOverlays->changedScreenOverlays()) {
+    for (const chat::TTextOverlay& overlay : m_textOverlayRenderProvider->changedScreenOverlays()) {
         if (overlay.type >= Status && overlay.type < FixedCount)
             m_fixed[overlay.type]->setText(overlay.visible, overlay.text, overlay.color, overlay.isHtml);
     }
@@ -278,12 +289,12 @@ void TSpeechBubbleOverlayQuickItem::updateWorldBubbles(std::vector<TSpeechBubble
 
 void TSpeechBubbleOverlayQuickItem::updateNpcBubbles()
 {
-    updateWorldBubbles(m_npcBubbles, m_textOverlays->npcOverlays());
+    updateWorldBubbles(m_npcBubbles, m_textOverlayRenderProvider->npcOverlays());
 }
 
 void TSpeechBubbleOverlayQuickItem::updateCreatureBubbles()
 {
-    updateWorldBubbles(m_creatureBubbles, m_textOverlays->creatureOverlays());
+    updateWorldBubbles(m_creatureBubbles, m_textOverlayRenderProvider->creatureOverlays());
 }
 
 void TSpeechBubbleOverlayQuickItem::layout()
@@ -326,7 +337,7 @@ void TSpeechBubbleOverlayQuickItem::triggerUpdate()
 {
     if (!m_fixed[Status])
         return;
-    if (!m_provider || !m_textOverlays || !m_provider->frame().valid) {
+    if (!m_provider || !m_enabled || !m_provider->frame().valid) {
         // The on-screen lines keep their state: the provider reports only
         // the lines that change.
         for (TSpeechBubbleController* controller : m_all)

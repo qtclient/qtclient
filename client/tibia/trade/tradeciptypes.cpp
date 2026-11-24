@@ -416,8 +416,11 @@ void TPlayerTradeGameActionHandler::handleTradeItemGameAction(const std::shared_
         return;
     }
     const int stackPosition = pAction->stackPosition();
-    protocol::gameclient::sendRequestTrade(pAction->position(), pAction->objectClientId(),
-                                           static_cast<uint8_t>(stackPosition < 0 ? 0 : stackPosition), pAction->targetCreatureId());
+    ::tibia::protobuf::protocol::GameclientMessageTradeObject message;
+    protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(),
+                                           pAction->position(), stackPosition < 0 ? 0 : stackPosition, pAction->objectClientId());
+    message.set_creature_id(pAction->targetCreatureId());
+    Q_EMIT sendTradeObject(message);
 }
 
 void TPlayerTradeGameActionHandler::handleTargetSelectedGameAction(const std::shared_ptr<const input::TGameActionTargetSelected>& pTarget)

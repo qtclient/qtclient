@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -99,6 +101,13 @@ public:
     /// Dying closes the dialog.
     void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& DeadMessage);
     void handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage);
+
+Q_SIGNALS:
+    void sendPickObjectToImbue(const ::tibia::protobuf::protocol::GameclientMessagePickObjectToImbue& PickObjectToImbueMessage);
+    void sendApplyImbuement(const ::tibia::protobuf::protocol::GameclientMessageApplyImbuement& ApplyImbuementMessage);
+    void sendApplyClearingCharm(const ::tibia::protobuf::protocol::GameclientMessageApplyClearingCharm& ApplyClearingCharmMessage);
+    void sendCloseImbuingDialog(const ::tibia::protobuf::protocol::GameclientMessageCloseImbuingDialog& CloseImbuingDialogMessage);
+    void sendTrackImbuementsMessage(const ::tibia::protobuf::protocol::GameclientMessageTrackImbuements& TrackImbuementsMessage);
 
 private:
     std::shared_ptr<TImbuingStorage> m_imbuingStorage;

@@ -2,6 +2,10 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
+#include <cstdint>
+
 #include <memory>
 
 namespace tibia::protobuf::protocol {
@@ -26,6 +30,14 @@ class TExaltationProtocolMessageHandler final : public cip::tibia::exaltation::T
 public:
     explicit TExaltationProtocolMessageHandler(std::shared_ptr<TExaltationStorage> exaltationStorage);
 
+    /// The forge's ExaltationAction requests (action 0 fusion, 1 transfer,
+    /// 2 dust to slivers, 3 slivers to cores, 4 dust limit increase).
+    void requestDustToSliversConversion();
+    void requestSliversToCoreConversion();
+    void requestDustLimitIncrease();
+    void requestFusion(uint32_t firstTypeId, uint32_t tier, uint32_t secondTypeId, bool improveChance, bool reduceTierLoss);
+    void requestConvergenceFusion(uint32_t firstTypeId, uint32_t tier, uint32_t secondTypeId);
+    void requestTransfer(uint32_t sourceTypeId, uint32_t tier, uint32_t targetTypeId, bool convergence);
     /// Asks for one page of the exaltation history.
     void requestHistoryPage(int page);
 
@@ -36,6 +48,10 @@ public:
     void handleExaltationHistoryMessage(const protobuf::protocol::GameserverMessageExaltationHistory& message);
     void handleExaltationResultMessage(const protobuf::protocol::GameserverMessageExaltationResult& message);
     void handleShowMessageDialogMessage(const protobuf::protocol::GameserverMessageShowMessageDialog& message);
+
+Q_SIGNALS:
+    void sendExaltationAction(const ::tibia::protobuf::protocol::GameclientMessageExaltationAction& ExaltationActionMessage);
+    void sendOpenExaltationHistory(const ::tibia::protobuf::protocol::GameclientMessageOpenExaltationHistory& OpenExaltationHistoryMessage);
 
 private:
     std::shared_ptr<TExaltationStorage> m_exaltationStorage;

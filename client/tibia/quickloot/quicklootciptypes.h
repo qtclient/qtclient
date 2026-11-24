@@ -9,12 +9,15 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <client/position.h>
 
 #include <QByteArray>
 #include <QObject>
 
 #include <cstdint>
+#include <memory>
 
 namespace tibia::protobuf::protocol {
 class GameserverMessageUpdateManagedContainers;
@@ -58,24 +61,29 @@ public:
     };
 
     /// Tells the server whether loot falls back to the main backpack.
-    static void setLootContainerFallback(bool useMainBackpack);
+    void setLootContainerFallback(bool useMainBackpack);
     /// Loots the object; with `allCorpsesInArea` a corpse on the map loots
     /// every corpse around it.
-    static void quickLoot(const Position& position, uint16_t objectId, int stackPosition, bool allCorpsesInArea);
+    void quickLoot(const Position& position, uint16_t objectId, int stackPosition, bool allCorpsesInArea);
     /// Loots every corpse around the player.
-    static void quickLootAreaAtPlayer();
+    void quickLootAreaAtPlayer();
     /// Sends the quick loot list of `listType` (0 black-, 1 whitelist), the
     /// object type ids in ascending order.
-    static void sendQuickLootBlackWhitelist(int listType, const std::set<uint16_t>& objectTypeIds);
+    void setQuickLootBlackWhitelist(int listType, const std::set<uint16_t>& objectTypeIds);
     /// One ManagedContainer action for an object category; select actions
     /// carry the chosen container.
-    static void sendManagedContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
-                                     int stackPosition = 0);
+    void manageContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
+                         int stackPosition = 0);
 
 public Q_SLOTS:
     /// Once the character's configuration is loaded: sends its active quick
     /// loot list.
     void onQuickLootBlackWhitelistConfigurationChanged();
+
+Q_SIGNALS:
+    void sendQuickLoot(const ::tibia::protobuf::protocol::GameclientMessageQuickLoot& QuickLootMessage);
+    void sendManagedContainer(const ::tibia::protobuf::protocol::GameclientMessageManagedContainer& ManagedContainerMessage);
+    void sendQuickLootBlackWhitelist(const ::tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist& QuickLootBlackWhitelistMessage);
 
 private:
     TManagedContainerStorage* m_storage;
@@ -88,7 +96,9 @@ class TQuickLootGameActionHandler final : public cip::tibia::quickloot::TQuickLo
 {
     Q_OBJECT
 public:
-    explicit TQuickLootGameActionHandler(QObject* parent = nullptr);
+    /// The requests go through the session's managed containers protocol message handler.
+    explicit TQuickLootGameActionHandler(std::shared_ptr<TManagedContainersProtocolMessageHandler> protocolMessageHandler,
+                                         QObject* parent = nullptr);
     ~TQuickLootGameActionHandler() override;
 
     bool handleGameAction(const input::IGameAction& action);
@@ -96,6 +106,8 @@ public:
 private:
     /// A full list refuses the object with a status line.
     void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
+
+    std::shared_ptr<TManagedContainersProtocolMessageHandler> m_protocolMessageHandler;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

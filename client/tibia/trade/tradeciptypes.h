@@ -60,6 +60,9 @@ public:
     /// Ingress: applies the protobuf message the queue built for `opcode`.
     void handleCharacterTradeConfigurationMessage(const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& message);
 
+Q_SIGNALS:
+    void sendCharacterTradeConfigurationAction(const ::tibia::protobuf::protocol::GameclientMessageCharacterTradeConfigurationAction& CharacterTradeConfigurationActionMessage);
+
 private:
     TCharacterTradeStorage* m_storage;
 };
@@ -199,6 +202,7 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    void sendTradeObject(const ::tibia::protobuf::protocol::GameclientMessageTradeObject& TradeObjectMessage);
 
 private:
     void handleTradeItemGameAction(const std::shared_ptr<const input::TGameActionPlayerTradeItem>& pAction);

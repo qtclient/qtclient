@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <memory>
 
 namespace tibia::protobuf::protocol {
@@ -45,6 +47,9 @@ public:
     void requestFreezeAndShowBestiaryMonsters(int preyId);
     void selectMonsterFromBestiary(int preyId, int raceId);
     void setAutomaticExtendType(int preyId, int option);
+
+Q_SIGNALS:
+    void sendPreyAction(const ::tibia::protobuf::protocol::GameclientMessagePreyAction& PreyActionMessage);
 
 private:
     std::shared_ptr<TPreyStorage> m_preyStorage;

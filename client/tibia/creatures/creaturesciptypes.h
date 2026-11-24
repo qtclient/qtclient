@@ -20,6 +20,9 @@ namespace tibia {
 namespace exivaoptions {
 class TExivaOptionsStorage;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace worldmap {
 class TWorldMapStorage;
 }
@@ -195,12 +198,15 @@ public:
                                                 bool groupsHidden) const;
     /// Premium players' group actions: add, and remove / edit an editable group.
     ::tibia::input::TGameActionList groupGameActions(const QString& groupName) const;
+    /// The session's premium time storage: only premium players get group actions.
+    void setPremiumTimeStorage(std::shared_ptr<::tibia::game::TPremiumTimeStorage> premiumTimeStorage);
     /// The session's EWorldType (exiva whitelist entries on optional PvP, 1).
     void setWorldType(int worldType);
 
 private:
     TVipStorage* m_storage;
     ::tibia::exivaoptions::TExivaOptionsStorage* m_exivaOptions;
+    std::shared_ptr<::tibia::game::TPremiumTimeStorage> m_premiumTimeStorage;
     int m_worldType = -1;
 };
 

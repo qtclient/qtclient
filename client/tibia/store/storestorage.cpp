@@ -104,11 +104,6 @@ int gender(const uint32_t sex)
     return sex == TStoreVisualisation::FEMALE ? TStoreVisualisation::FEMALE : TStoreVisualisation::MALE;
 }
 
-void sendMessage(std::unique_ptr<GameclientMessage> message)
-{
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
 }
 
 bool balanceDiffers(const std::optional<TStoreBalance>& a, const std::optional<TStoreBalance>& b)
@@ -436,15 +431,15 @@ void TStoreProtocolMessageHandler::requestStoreCategories()
 {
     if (m_storage)
         m_storage->clearCategories();
-    sendMessage(tibia::protocol::newGameclientMessage(250));
+    Q_EMIT sendRequestStoreCategories(GameclientMessageRequestStoreCategories());
 }
 
 void TStoreProtocolMessageHandler::openStore(const TStoreOpenParameters& parameters)
 {
     if (m_storage && !m_storage->categoriesLoaded())
         requestStoreCategories();
-    auto message = tibia::protocol::newGameclientMessage(251);
-    auto* request = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    GameclientMessageRequestStoreOffers message;
+    GameclientMessageRequestStoreOffers* request = &message;
     request->set_request_type(static_cast<uint32_t>(openActionEnum(parameters.openAction)));
     request->set_sort_order(static_cast<uint32_t>(sortOrderEnum(static_cast<uint32_t>(parameters.sortOrder))));
     request->set_service_type(static_cast<uint32_t>(serviceTypeEnum(static_cast<uint32_t>(parameters.serviceType))));
@@ -459,7 +454,7 @@ void TStoreProtocolMessageHandler::openStore(const TStoreOpenParameters& paramet
         case OPEN_SEARCH: request->set_search_text(parameters.category.toStdString()); break;
         default: break;
     }
-    sendMessage(std::move(message));
+    Q_EMIT sendRequestStoreOffers(message);
     if (parameters.openAction == OPEN_SEARCH) {
         if (m_storage)
             m_storage->setSearchText(QString(parameters.category));
@@ -469,96 +464,91 @@ void TStoreProtocolMessageHandler::openStore(const TStoreOpenParameters& paramet
 
 namespace {
 
-void sendBuyStoreOffer(const TOfferID offerId, const uint32_t action, const QString* name, const std::optional<uint32_t> type,
-                       const bool buyWithCosmeticTokens)
+GameclientMessageBuyStoreOffer buyStoreOfferMessage(const TOfferID offerId, const uint32_t action, const QString* name,
+                                                    const std::optional<uint32_t> type, const bool buyWithCosmeticTokens)
 {
-    auto message = tibia::protocol::newGameclientMessage(252);
-    auto* buy = message->MutableExtension(GameclientMessageBuyStoreOffer::gameclient_message_buy_store_offer);
-    buy->set_offer_id(offerId);
-    buy->set_action(action);
+    GameclientMessageBuyStoreOffer buy;
+    buy.set_offer_id(offerId);
+    buy.set_action(action);
     if (name)
-        buy->set_name(name->toStdString());
+        buy.set_name(name->toStdString());
     if (type)
-        buy->set_type(*type);
-    buy->set_extra_flag(buyWithCosmeticTokens);
-    sendMessage(std::move(message));
+        buy.set_type(*type);
+    buy.set_extra_flag(buyWithCosmeticTokens);
+    return buy;
 }
 
 }
 
 void TStoreProtocolMessageHandler::buyOffer(const TOfferID offerId, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 0, nullptr, std::nullopt, buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 0, nullptr, std::nullopt, buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::buyOfferWithNewCharacterName(const TOfferID offerId, const QString& name, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 1, &name, std::nullopt, buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 1, &name, std::nullopt, buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::buyOfferWithNewWorld(const TOfferID offerId, const QString& world, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 2, &world, std::nullopt, buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 2, &world, std::nullopt, buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::buyOfferWithNewMainCharacter(const TOfferID offerId, const QString& character,
                                                                 const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 4, &character, std::nullopt, buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 4, &character, std::nullopt, buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::buyOfferWithoutConfirmation(const TOfferID offerId, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 6, nullptr, std::nullopt, buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 6, nullptr, std::nullopt, buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::buyHireling(const TOfferID offerId, const QString& name, const int sex, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 3, &name, static_cast<uint32_t>(sexEnum(static_cast<uint32_t>(sex))), buyWithCosmeticTokens);
+    Q_EMIT sendBuyStoreOffer(buyStoreOfferMessage(offerId, 3, &name, static_cast<uint32_t>(sexEnum(static_cast<uint32_t>(sex))), buyWithCosmeticTokens));
 }
 
 void TStoreProtocolMessageHandler::openTransactionHistory(const uint32_t entriesPerPage)
 {
-    auto message = tibia::protocol::newGameclientMessage(253);
-    message->MutableExtension(GameclientMessageOpenTransactionHistory::gameclient_message_open_transaction_history)
-        ->set_entries_per_page(entriesPerPage);
-    sendMessage(std::move(message));
+    GameclientMessageOpenTransactionHistory message;
+    message.set_entries_per_page(entriesPerPage);
+    Q_EMIT sendOpenTransactionHistory(message);
     if (m_storage)
         m_storage->setTransactionHistory({});
 }
 
 void TStoreProtocolMessageHandler::requestTransactionHistoryPage(const uint32_t page, const uint32_t entriesPerPage)
 {
-    auto message = tibia::protocol::newGameclientMessage(254);
-    auto* request = message->MutableExtension(GameclientMessageGetTransactionHistory::gameclient_message_get_transaction_history);
-    request->set_page(page);
-    request->set_entries_per_page(entriesPerPage);
-    sendMessage(std::move(message));
+    GameclientMessageGetTransactionHistory message;
+    message.set_page(page);
+    message.set_entries_per_page(entriesPerPage);
+    Q_EMIT sendGetTransactionHistory(message);
 }
 
 void TStoreProtocolMessageHandler::transferCredits(const QString& recipient, const TStoreCredits amount)
 {
-    auto message = tibia::protocol::newGameclientMessage(239);
-    auto* transfer = message->MutableExtension(GameclientMessageTransferCurrency::gameclient_message_transfer_currency);
-    transfer->set_recipient(recipient.toStdString());
-    transfer->set_amount(static_cast<uint32_t>(amount));
-    sendMessage(std::move(message));
+    GameclientMessageTransferCurrency message;
+    message.set_recipient(recipient.toStdString());
+    message.set_amount(static_cast<uint32_t>(amount));
+    Q_EMIT sendTransferCurrency(message);
 }
 
 void TStoreProtocolMessageHandler::requestOfferDescription(const TOfferID offerId)
 {
-    auto message = tibia::protocol::newGameclientMessage(232);
-    message->MutableExtension(GameclientMessageGetOfferDescription::gameclient_message_get_offer_description)->set_offer_id(offerId);
-    sendMessage(std::move(message));
+    GameclientMessageGetOfferDescription message;
+    message.set_offer_id(offerId);
+    Q_EMIT sendGetOfferDescription(message);
 }
 
 namespace {
 
-GameclientMessageStoreEvent* storeEvent(std::unique_ptr<GameclientMessage>& message, const uint32_t eventType)
+GameclientMessageStoreEvent storeEvent(const uint32_t eventType)
 {
-    message = tibia::protocol::newGameclientMessage(233);
-    auto* event = message->MutableExtension(GameclientMessageStoreEvent::gameclient_message_store_event);
-    event->set_event_type(eventType);
+    GameclientMessageStoreEvent event;
+    event.set_event_type(eventType);
     return event;
 }
 
@@ -566,38 +556,37 @@ GameclientMessageStoreEvent* storeEvent(std::unique_ptr<GameclientMessage>& mess
 
 void TStoreProtocolMessageHandler::sendStoreEventOfferViewed(const TOfferID offerId)
 {
-    std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 0)->set_value(offerId);
-    sendMessage(std::move(message));
+    GameclientMessageStoreEvent message = storeEvent(0);
+    message.set_value(offerId);
+    Q_EMIT sendStoreEvent(message);
 }
 
 void TStoreProtocolMessageHandler::sendStoreEventFilterTag(const QString& filterTag)
 {
-    std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 1)->set_text(filterTag.toStdString());
-    sendMessage(std::move(message));
+    GameclientMessageStoreEvent message = storeEvent(1);
+    message.set_text(filterTag.toStdString());
+    Q_EMIT sendStoreEvent(message);
 }
 
 void TStoreProtocolMessageHandler::sendStoreEventSortOrder(const int sortOrder)
 {
-    std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 2)->set_value(static_cast<uint32_t>(sortOrderEnum(static_cast<uint32_t>(sortOrder))));
-    sendMessage(std::move(message));
+    GameclientMessageStoreEvent message = storeEvent(2);
+    message.set_value(static_cast<uint32_t>(sortOrderEnum(static_cast<uint32_t>(sortOrder))));
+    Q_EMIT sendStoreEvent(message);
 }
 
 void TStoreProtocolMessageHandler::sendStoreEventVisitDuration(const uint32_t seconds)
 {
-    std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 3)->set_value(seconds);
-    sendMessage(std::move(message));
+    GameclientMessageStoreEvent message = storeEvent(3);
+    message.set_value(seconds);
+    Q_EMIT sendStoreEvent(message);
 }
 
 void TStoreProtocolMessageHandler::requestTransactionDetails(const uint32_t transactionId)
 {
-    auto message = tibia::protocol::newGameclientMessage(201);
-    message->MutableExtension(GameclientMessageGetTransactionDetails::gameclient_message_get_transaction_details)
-        ->set_transaction_id(transactionId);
-    sendMessage(std::move(message));
+    GameclientMessageGetTransactionDetails message;
+    message.set_transaction_id(transactionId);
+    Q_EMIT sendRequestTransactionDetails(message);
 }
 
 bool TStoreProtocolMessageHandler::searchRefreshPending() const

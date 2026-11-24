@@ -81,6 +81,7 @@ qtclient_add_port_test(client_experiencecalculator_tests
 qtclient_add_port_test(client_phaseanimator_tests
     phaseanimator_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
 )
 qtclient_add_port_test(client_movementpathplanner_tests
     movementpathplanner_test.cpp
@@ -712,4 +713,10 @@ qtclient_add_port_test(client_slidingfpscounter_tests
 qtclient_add_port_test(client_proficiencyshapeoptions_tests
     proficiencyshapeoptions_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/proficiency/proficiencycatalogue.cpp
+)
+# Wave 16: TAnimator's process-wide random number generator.
+qtclient_add_port_test(client_animatorrandomsource_tests
+    animatorrandomsource_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
 )

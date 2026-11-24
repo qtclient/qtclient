@@ -17,7 +17,13 @@
 #include <variant>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace input {
+class TGameActionMapper;
+}
 namespace game {
 class IGameSession;
 }
@@ -166,7 +172,10 @@ class TCyclopediaMapDialogController final : public cip::tibia::gamewindow::TCyc
 {
     Q_OBJECT
 public:
-    explicit TCyclopediaMapDialogController(QObject* parent = nullptr);
+    /// CIP: made by the cyclopedia with the game action mapper, the engine and
+    /// the dialog parent item (the confirmation box opens there).
+    TCyclopediaMapDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper, QQmlEngine* Engine,
+                                   QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TCyclopediaMapDialogController() override;
 
     /// The session's map storage, the character's map configuration (its
@@ -289,8 +298,10 @@ private:
     std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_configuration;
     std::shared_ptr<cyclopedia::TCyclopediaMapStorage> m_storage;
     std::vector<QMetaObject::Connection> m_sessionConnections;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     TMessageDialogController* m_confirmDialog;
     cyclopedia::TCyclopediaMapGameActionProvider m_provider;
+    QQmlEngine* m_pEngine = nullptr;
     QPointer<qmlcomponents::TMinimapRendererQuickItem> m_renderer;
     /// What the confirmation is for: 0 a viewpoint reset, 1 a donation.
     int m_confirmType = 0;

@@ -9,6 +9,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 #include <QString>
 
@@ -185,13 +187,17 @@ private:
     bool m_dailyRewardReadyToPickUp = false;
 };
 
+class TDailyRewardProtocolMessageHandler;
+
 /// The reward wall's game actions 238, 243 and 244 (CIP:
 /// dailyreward::TDailyRewardGameActionHandler).
 class TDailyRewardGameActionHandler final : public cip::tibia::dailyreward::TDailyRewardGameActionHandler
 {
     Q_OBJECT
 public:
-    explicit TDailyRewardGameActionHandler(TDailyRewardStorage* storage, QObject* parent = nullptr);
+    /// The requests go through the session's daily reward protocol message handler.
+    TDailyRewardGameActionHandler(std::shared_ptr<TDailyRewardProtocolMessageHandler> protocolMessageHandler, TDailyRewardStorage* storage,
+                                  QObject* parent = nullptr);
     ~TDailyRewardGameActionHandler() override;
 
     bool handleGameAction(const input::IGameAction& action);
@@ -202,6 +208,7 @@ public Q_SLOTS:
     void handleCollectFixedItemsDailyRewardGameAction() override;
 
 private:
+    std::shared_ptr<TDailyRewardProtocolMessageHandler> m_protocolMessageHandler;
     TDailyRewardStorage* m_storage;
 
 public Q_SLOTS:
@@ -243,6 +250,17 @@ public:
     void handleDailyRewardCollectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState& message);
     /// Message dialog type 40 says the daily rewards are disabled.
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
+
+    /// The reward wall's requests: open the wall, the history, and collect
+    /// the fixed items (from the shrine or with an Instant Reward Access).
+    void requestOpenRewardWall();
+    void requestDailyRewardHistory();
+    void collectDailyReward(bool fromShrine);
+
+Q_SIGNALS:
+    void sendOpenRewardWall(const ::tibia::protobuf::protocol::GameclientMessageOpenRewardWall& OpenRewardWallMessage);
+    void sendDailyRewardHistory(const ::tibia::protobuf::protocol::GameclientMessageDailyRewardHistory& DailyRewardHistoryMessage);
+    void sendCollectDailyReward(const ::tibia::protobuf::protocol::GameclientMessageCollectDailyReward& CollectDailyRewardMessage);
 
 private:
     TDailyRewardStorage* m_storage;

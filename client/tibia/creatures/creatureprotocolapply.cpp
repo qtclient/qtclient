@@ -206,7 +206,7 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
             target.setMounted(false);
         } else {
             target.setMountAppearance(
-                appearances::TAppearanceInstanceFactory::createOutfitFromProtobuf(c.mount(), target.patternX()));
+                appearances::TAppearanceInstanceFactory::installed()->createOutfitFromProtobuf(c.mount(), target.patternX()));
             target.setMounted(true);
         }
         storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);

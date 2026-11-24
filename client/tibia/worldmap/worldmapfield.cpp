@@ -553,14 +553,21 @@ bool TWorldMapField::hasUnpassableObject() const
     return false;
 }
 
-Light TWorldMapField::light() const
+std::optional<uint8_t> TWorldMapField::minimapColor() const
 {
-    // The light of the highest object that shines.
     for (auto it = m_stack.rbegin(); it != m_stack.rend(); ++it) {
-        if (const TAppearanceType* type = entryThingType(*it); type && type->getLight().intensity != 0)
-            return type->getLight();
+        if (const TAppearanceType* type = entryThingType(*it); type && type->hasMiniMapColor())
+            return static_cast<uint8_t>(type->getMinimapColor());
     }
-    return {};
+    return std::nullopt;
+}
+
+bool TWorldMapField::hasAvoidedObjectOrCreature() const
+{
+    const std::vector<TStackView> view = stackView();
+    if (std::ranges::any_of(view, [](const TStackView& entry) { return entry.type && entry.type->isNotPathable(); }))
+        return true;
+    return std::ranges::any_of(view, [](const TStackView& entry) { return entry.creatureId != 0; });
 }
 
 void TWorldMapField::updateElevation()

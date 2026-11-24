@@ -4,6 +4,7 @@
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "container/containerslotinformation.h"
+#include "game/blessingsprotocolmessagehandler.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
@@ -22,6 +23,7 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <utility>
+#include <protocol.pb.h>
 
 namespace tibia::gamewindow {
 
@@ -498,7 +500,11 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::IGame
 
 void TPlayerInventoryAndStatusController::onBlessingsButtonClicked()
 {
-    tibia::game::requestBless();
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (!session)
+        return;
+    Q_EMIT session->blessingsProtocolMessageHandler()->sendBlessingsDialog(
+        ::tibia::protobuf::protocol::GameclientMessageBlessingsDialog());
 }
 
 void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()

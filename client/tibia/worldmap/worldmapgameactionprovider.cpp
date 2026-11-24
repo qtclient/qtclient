@@ -160,8 +160,10 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     append(result, lootList);
     append(result, quickLootList);
 
-    // Last, the field's minimap marker: edit or delete the one there, or create one.
-    if (minimap::TMinimapMarkerStorage* markers = minimap::TMinimapMarkerStorage::active()) {
+    // Last, the field's minimap marker: edit or delete the one there, or create
+    // one. Host: until the session hands its marker storage over, the active one.
+    if (minimap::TMinimapMarkerStorage* markers =
+            m_minimapMarkerStorage ? m_minimapMarkerStorage.get() : minimap::TMinimapMarkerStorage::active()) {
         if (const minimap::TMinimapMarkerPtr marker = markers->markerAt(TWorldMapCoordinate(pick.position))) {
             result.push_back(std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(
                 input::TMinimapMarkerData{ pick.position, marker->icon, marker->description }));

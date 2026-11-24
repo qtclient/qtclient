@@ -1,7 +1,7 @@
 #include "gameactionmapper.h"
 
 #include <algorithm>
-#include <span>
+#include <iterator>
 #include <stdexcept>
 
 namespace tibia::input {
@@ -16,8 +16,8 @@ constexpr uint32_t AnyModifiers = Shift | Ctrl | Alt;
 using Rule = TGameActionMapper::TRule;
 using A = EGameAction;
 
-// Rules in file order (CIP: classic, legacy,
-// smart). Context 0 applies to every context. Buttons: 1 left,
+// The three schemes' tables in their static data order (classic, legacy,
+// left smart click). Context 0 applies to every context. Buttons: 1 left,
 // 2 right, 4 middle.
 const Rule ClassicRules[] = {
     { 0, 1, 0, { A::SET_PLAYER_MOVEMENT_INTENT } },
@@ -107,17 +107,6 @@ const Rule SmartRules[] = {
     { 10, 2, 0, { A::CONTEXT_MENU } },
 };
 
-/// The table of `controlScheme` (CIP: the scheme -> rules map's at()).
-std::span<const Rule> rulesOf(const int controlScheme)
-{
-    switch (controlScheme) {
-    case TGameActionMapper::ClassicControlScheme: return ClassicRules;
-    case TGameActionMapper::LegacyControlScheme: return LegacyRules;
-    case TGameActionMapper::LeftSmartClickControlScheme: return SmartRules;
-    default: throw std::out_of_range("map::at:  key not found");
-    }
-}
-
 std::vector<Rule>::iterator findRule(std::vector<Rule>& rules, const int context, const int button, const uint32_t modifiers)
 {
     return std::find_if(rules.begin(), rules.end(), [&](const Rule& rule) {
@@ -150,23 +139,35 @@ int cipKeyboardModifiers(const int modifiers)
 
 TGameActionMapper::TGameActionMapper(const int controlScheme, const int lootScheme)
 {
+    addControlScheme(ClassicControlScheme, std::vector<Rule>(std::begin(ClassicRules), std::end(ClassicRules)));
+    addControlScheme(LegacyControlScheme, std::vector<Rule>(std::begin(LegacyRules), std::end(LegacyRules)));
+    addControlScheme(LeftSmartClickControlScheme, std::vector<Rule>(std::begin(SmartRules), std::end(SmartRules)));
     setControlScheme(controlScheme);
     setLootScheme(lootScheme);
 }
 
+void TGameActionMapper::addControlScheme(const int controlScheme, std::vector<TRule> rules)
+{
+    m_controlSchemes.try_emplace(controlScheme, std::move(rules));
+    if (!m_rules.empty())
+        return;
+    m_controlScheme = controlScheme;
+    m_rules = m_controlSchemes.at(controlScheme);
+}
+
+/// The scheme is stored first; a scheme without a table throws
+/// std::out_of_range (map::at).
 void TGameActionMapper::setControlScheme(const int controlScheme)
 {
-    const std::span<const Rule> rules = rulesOf(controlScheme);
     m_controlScheme = controlScheme;
-    m_rules.assign(rules.begin(), rules.end());
+    m_rules = m_controlSchemes.at(controlScheme);
 }
 
 void TGameActionMapper::setLootScheme(const int lootScheme)
 {
     if (m_controlScheme != ClassicControlScheme)
         return;
-    const std::span<const Rule> classic = rulesOf(ClassicControlScheme);
-    std::vector<Rule> rules(classic.begin(), classic.end());
+    std::vector<Rule> rules = m_controlSchemes.at(ClassicControlScheme);
     if (lootScheme == LootRight) {
         // Right click: quick loot right after use.
         if (const auto right = findRule(rules, 0, 2, 0); right != rules.end()) {

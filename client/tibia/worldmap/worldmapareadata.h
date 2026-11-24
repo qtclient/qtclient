@@ -56,6 +56,9 @@ struct TMinimapTileMapAreaData
     float scale = 1.0f;
     int width = 0;
     int height = 0;
+    /// The tile image drawn (TMinimapTileSpritesheetIdentifier::EImage); the
+    /// cyclopedia map's tiles show the colour image (0).
+    int imageKind = 0;
 };
 
 /// A minimap flag (CIP: TMinimapMarkerWorldMapAreaData).

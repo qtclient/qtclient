@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "qtconnectionmanager.h"
 #include "skillwheel/gematelierreshapemoddialogcontroller.h"
 #include "skillwheel/skillwheelmodels.h"
 
@@ -9,9 +10,14 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
 #include <optional>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia::game {
+class IGameSession;
 class TPremiumTimeStorage;
 }
 
@@ -79,11 +85,12 @@ class TSkillWheelPresetManagmentDialogController final
 {
     Q_OBJECT
 public:
-    explicit TSkillWheelPresetManagmentDialogController(QObject* parent = nullptr);
+    TSkillWheelPresetManagmentDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TSkillWheelPresetManagmentDialogController() override;
 
-    /// CIP: the game session the presets belong to (null without one).
-    void setSkillWheelStorage(TSkillWheelStorage* storage);
+    /// CIP: the game session the presets belong to (null without one); the presets are its skill
+    /// wheel storage's.
+    void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The dialog opens again for `presetName` in `mode`: the new name starts as the trimmed preset
     /// name, the import string empty.
     void open(const QString& presetName, EManageMode mode);
@@ -107,6 +114,8 @@ private:
     void copyPreset();
     void importPreset();
 
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's skill wheel storage (null without a session).
     TSkillWheelStorage* m_storage = nullptr;
     /// CIP: the info that an imported code is of an older format.
     gamewindow::TMessageDialogController* m_message;
@@ -119,8 +128,15 @@ class TSkillWheelPageController final : public cip::tibia::gamewindow::TSkillWhe
 {
     Q_OBJECT
 public:
-    explicit TSkillWheelPageController(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    /// CIP: `plannerUrl` is the planner page the export code is appended to (the client's
+    /// wheelOfDestinyPlannerDirectUrl setting); the message boxes and the preset management dialog
+    /// are made with `engine` in `dialogParentItem`.
+    TSkillWheelPageController(const QString& plannerUrl, QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TSkillWheelPageController() override;
+
+    /// CIP: the page follows the session's skill wheel storage (its configuration manager's); the
+    /// preset management dialog gets the session; the page is refreshed.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
 
     int totalSkillPoints() const override { return m_storage->totalPoints(); }
     int regularSkillPoints() const override { return m_storage->regularPoints(); }
@@ -133,9 +149,9 @@ public:
     bool hasShrinesOfInsightBonusPoints() const override { return m_storage->hasShrinesOfInsightPoints(); }
     cip::tibia::qmlcomponents::enums::EVocation vocation() const override;
     bool isWheelDirty() const override { return m_storage->isCurrentSkillWheelChanged(); }
-    bool canBeDecreased() const override { return m_storage->changeState() == 1; }
+    bool canBeDecreased() const override { return m_storage && m_storage->changeState() == 1; }
     bool canBeIncreased() const override { return m_storage->changeState() == 1 || m_storage->changeState() == 2; }
-    bool isLocalPlayer() const override { return m_storage->isOwnCharacter(); }
+    bool isLocalPlayer() const override { return m_storage && m_storage->isOwnCharacter(); }
     /// A wheel without any points (the preview of the own vocation).
     bool isPreview() const override { return totalSkillPoints() == 0; }
     QString playerName() const override { return m_storage->playerName(); }
@@ -218,7 +234,10 @@ private:
     void changePoints(int slot, int delta);
     static int stepSize(int modifiers);
 
-    TSkillWheelStorage* m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's skill wheel storage (null without a session).
+    TSkillWheelStorage* m_storage = nullptr;
     TPerkInfoModel* m_small;
     TPerkInfoModel* m_large;
     TPerkInfoModel* m_medium;
@@ -252,7 +271,12 @@ class TGemAtelierPageController final : public cip::tibia::gamewindow::TGemAteli
 {
     Q_OBJECT
 public:
-    explicit TGemAtelierPageController(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    /// CIP: the dismantle question and the reshape dialog are made with `engine` in `dialogParentItem`.
+    TGemAtelierPageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
+
+    /// CIP: the reshape dialog and the dismantle question close; the page follows the session's
+    /// skill wheel storage.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
 
     int totalVesselCount() const override { return VesselCount; }
     int activeVesselCount() const override;
@@ -316,7 +340,10 @@ private:
     int m_dismantleGemId = 0;
     void updateSockets();
 
-    TSkillWheelStorage* m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's skill wheel storage (null without a session).
+    TSkillWheelStorage* m_storage = nullptr;
     TInventoryGemListModel* m_list;
     TInventoryGemSortFilterProxyModel* m_filter;
     TPaginationProxyModel* m_pages;
@@ -333,10 +360,15 @@ class TFragmentWorkshopPageController final : public cip::tibia::gamewindow::TFr
 {
     Q_OBJECT
 public:
-    explicit TFragmentWorkshopPageController(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    /// CIP: the page's message box is made with `engine` in `dialogParentItem` (CipSoft's workshop
+    /// only ever closes it).
+    TFragmentWorkshopPageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
+
+    /// CIP: the message box closes; the page follows the session's skill wheel storage.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
 
     int modCount() const override { return m_storage ? static_cast<int>(m_storage->modList().size()) : 0; }
-    bool canBeChanged() const override { return m_storage->changeState() == 1; }
+    bool canBeChanged() const override { return m_storage && m_storage->changeState() == 1; }
     int bonusBaseStats() const override;
     int bonusPromotionPoints() const override;
     void setFilterMods(int v) override;
@@ -349,12 +381,20 @@ public:
     int getFragmentCostsForGrade(int modGrade) override { return fragmentCost(modGrade); }
 
     void onModsChanged();
+    /// CIP: the page's message box closes (the skill wheel dialog showing or closing).
+    void closeMessageDialog();
+    /// The list learns the current wheel and the grades (with a current wheel).
+    void updateConfiguration();
     /// The skill wheel dialog closed: back to the first page, filters, selection and pending
     /// selection cleared.
     void clearData();
 
 private:
-    TSkillWheelStorage* m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's skill wheel storage (null without a session).
+    TSkillWheelStorage* m_storage = nullptr;
+    gamewindow::TMessageDialogController* m_message;
     TModListModel* m_list;
     TModListSortFilterProxyModel* m_filter;
     TPaginationProxyModel* m_pages;
@@ -368,11 +408,13 @@ class TSkillWheelDialogController final : public gamewindow::TDialogController<c
 {
     Q_OBJECT
 public:
-    explicit TSkillWheelDialogController(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    /// CIP: the wheel page (with the planner url), the gem atelier, the fragment workshop and the
+    /// message box are made with `engine` in `dialogParentItem`.
+    TSkillWheelDialogController(const QString& plannerUrl, QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TSkillWheelDialogController() override;
 
-    /// The game session changed: the dialog closes.
-    void connectToGameSession();
+    /// CIP: the dialog closes, each page follows the session, the dialog keeps it.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
     /// CIP: the skill wheel actions open the dialog at a tab, ask about a missing wheel, or select a
     /// gem or mod; asking for the own wheel ends the skipped open after a save.
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
@@ -390,7 +432,6 @@ public:
     void closeDialog() override;
     void requestSkillWheelPreview() override;
 
-    void onPremiumChanged() { Q_EMIT premiumStatusChanged(); }
     /// CIP: the client's premium time; a change of it is the dialog's
     /// premium status change.
     void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
@@ -409,8 +450,9 @@ private:
     void onRequestShowFragmentWorkshop(std::optional<int> ModId, std::optional<bool> IsBasicMod);
     void skipNextOpenForOwnPlayer();
     void clearSkipNextOpenForOwnPlayer();
+    /// The session's skill wheel storage (null without a session).
+    TSkillWheelStorage* skillWheelStorage() const;
 
-    TSkillWheelStorage* m_storage;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     TSkillWheelPageController* m_page;
     TGemAtelierPageController* m_atelier;
@@ -420,6 +462,7 @@ private:
     /// CIP: after a save of the own wheel, its open action does not show the dialog (for a second).
     QTimer m_skipNextOpenForOwnPlayerTimer;
     bool m_skipNextOpenForOwnPlayer = false;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

@@ -22,9 +22,13 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace appearances {
+class TAppearancesManager;
+}
 namespace qmlcomponents {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
@@ -51,9 +55,19 @@ public:
     /// CIP: the process-wide service, created (without parent) on first use.
     static TAppearanceTypeHelperQmlService* instance();
 
+    /// CIP: the appearances the names and ids are looked up in (the game
+    /// client's). Host: without them the process-wide appearances.
+    void setAppearancesManager(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager)
+    {
+        m_pAppearancesManager = std::move(AppearancesManager);
+    }
+
     Q_INVOKABLE QString getObjectAppearanceTypeNameForID(int ID) override;
     Q_INVOKABLE QString getObjectAppearanceTypeDescriptionForID(int ID) override;
     Q_INVOKABLE int getObjectAppearanceTypeIDByName(const QString& Name) override;
+
+private:
+    std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
 };
 
 /// QML singleton ColorHelper — outfit HSV palette, RGB 6³, health, named colors.

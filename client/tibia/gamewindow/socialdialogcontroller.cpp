@@ -17,7 +17,7 @@ TSocialDialogController::TSocialDialogController(config::TClientOptions* ClientO
     : TDialogController(QStringLiteral("SocialDialog.qml"), engine, dialogParentItem, parent)
     , m_friends(new TFriendsFriendListPageController(this))
     , m_invites(new TFriendsInvitesPageController(this))
-    , m_search(new TFriendsAccountSearchPageController(this))
+    , m_search(new TFriendsAccountSearchPageController(ClientOptions, engine, dialogParentItem, this))
     , m_badges(new TFriendsBadgesPageController(this))
     , m_config(new TFriendsConfigurationPageController(this))
     , m_join(new TTeamJoinPageController(this))
@@ -25,9 +25,7 @@ TSocialDialogController::TSocialDialogController(config::TClientOptions* ClientO
     , m_errorDialog(new TMessageDialogController(engine, dialogParentItem, this))
 {
     // Host: the pages do not take CipSoft's arguments yet (the friend list and
-    // the team assemble page get the engine and the dialog parent item, the
-    // account search page the client options as well).
-    Q_UNUSED(ClientOptions);
+    // the team assemble page get the engine and the dialog parent item).
     m_friendListController = m_friends;
     m_invitesController = m_invites;
     m_accountSearchController = m_search;

@@ -3,12 +3,14 @@
 #include "game/blessingdialogdata.h"
 
 #include <cip_gen.h>
+#include <protocol.pb.h>
 
 #include <cstdint>
 
 namespace tibia {
 namespace protobuf {
 namespace protocol {
+class GameclientMessageBlessingsDialog;
 class GameserverMessageBlessingsDialog;
 }
 }
@@ -29,6 +31,7 @@ public Q_SLOTS:
     void handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& BlessingsDialogMessage);
 
 Q_SIGNALS:
+    void sendBlessingsDialog(const ::tibia::protobuf::protocol::GameclientMessageBlessingsDialog& BlessingsDialogMessage);
     void requestBlessingsDialog(const ::tibia::game::TBlessingDialogData& BlessingDialogData);
 };
 

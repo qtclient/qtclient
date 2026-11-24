@@ -22,7 +22,10 @@ TAboutDialogController::TAboutDialogController(QObject* parent)
 
 QString TAboutDialogController::clientType() const
 {
-    return QCoreApplication::applicationName();
+    // The client type is a build-flavour constant: test-server builds show
+    // aboutdialog_clientype_testserver, release builds the regular type. qtclient
+    // ships as a release build.
+    return qtTrId("aboutdialog_clientype_regular");
 }
 
 QString TAboutDialogController::operatingSystemName() const

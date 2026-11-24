@@ -139,6 +139,8 @@ struct RaceType
     /// Bestiary difficulty 0..5 (bosses: 6) and occurrence 0..3.
     uint8_t difficulty{ 0 };
     uint8_t occurrence{ 0 };
+    /// Static data monster field 7 (the bounty task picker offers only monsters with it).
+    bool flag7{ false };
 };
 
 /// CIP staticdata MonsterClass (the bestiary's classes).

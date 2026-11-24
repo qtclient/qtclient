@@ -1,7 +1,9 @@
 #include "client/gameclientbase.h"
 
+#include "animation/phaseanimator.h"
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
+#include "app/clientoptions.h"
 #include "appearances/genericstorage.h"
 #include "assets/assetasyncloader.h"
 #include "assets/assetfilesystemhelper.h"
@@ -15,7 +17,11 @@
 #include "game/gameactionrouter.h"
 #include "game/passiveabilityinfostorage.h"
 #include "game/traderstorage.h"
+#include "imageproviders/imagestripimageprovider.h"
 #include "proficiency/proficiencystorage.h"
+#include "qmlcomponents/qmlcomponentsciptypes.h"
+#include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "minimap/minimapdiskio.h"
 #include "minimap/minimapmanager.h"
@@ -42,6 +48,7 @@
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 #include "filesystemhelper.h"
+#include "randomnumbergenerator.h"
 
 #include <QDebug>
 #include <QDir>
@@ -70,7 +77,7 @@ TGameClientBase::TGameClientBase(QQmlEngine* Engine,
                                  std::shared_ptr<config::TTibiaConfig> TibiaConfig)
     : m_pEngine(Engine)
     , m_pTibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
-    , m_pClientOptions(ClientOptions)
+    , m_pClientOptions(ClientOptions, [](config::TClientOptions*) {})
     , m_pTibiaConfig(TibiaConfig ? std::move(TibiaConfig) : config::processTibiaConfig())
     , m_pAppearancesManager(std::make_shared<appearances::TAppearancesManager>())
     , m_pCyclopediaMapStaticDataStorage(std::make_shared<cyclopedia::TCyclopediaMapStaticDataStorage>())
@@ -100,6 +107,7 @@ TGameClientBase::~TGameClientBase()
     spells::TSpellInfoStorage::setInstance(nullptr);
     game::TPassiveAbilityInfoStorage::setInstance(nullptr);
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(nullptr);
+    appearances::TAppearanceInstanceFactory::install(nullptr);
     appearances::TAppearancesManager::setInstance(nullptr);
 }
 
@@ -179,6 +187,12 @@ void TGameClientBase::initializeStorages()
     m_pMinimapMarkerStorage = std::make_shared<minimap::TMinimapMarkerStorage>();
     m_pMinimapTileManagerDiskIO = std::make_shared<minimap::TMinimapDiskIOAsync>(tibiaFileSystemHelper());
     m_pMinimapTileManager = std::make_shared<minimap::TMinimapTileManager>(m_pMinimapTileManagerDiskIO, m_pMinimapTileStorage);
+    // CIP: the animators draw their random phase durations from the
+    // process-wide random number generator.
+    animation::TAnimator::setRandomNumberGenerator(shared::TRandomNumberGenerator::instance());
+    // CIP: the engine's image providers (the HUD flags and the other image
+    // strips).
+    imageproviders::registerImageProviders(m_pEngine);
     // Host: the code that still reaches the markers through these finds them.
     minimap::TMinimapMarkerStorage::setActive(m_pMinimapMarkerStorage.get());
     m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(m_pMinimapMarkerStorage.get());
@@ -277,6 +291,7 @@ void TGameClientBase::initializeSpriteResolver()
 void TGameClientBase::initializeAppearanceInstanceFactory()
 {
     m_pAppearanceInstanceFactory = std::make_shared<appearances::TAppearanceInstanceFactory>(m_pAppearancesManager);
+    appearances::TAppearanceInstanceFactory::install(m_pAppearanceInstanceFactory);
     const std::shared_ptr<appearances::TAppearanceInstanceTracker> tracker = m_pAppearanceInstanceFactory->instanceTracker();
     QObject::connect(tracker.get(), &appearances::TAppearanceInstanceTracker::loadSpritesheetWithID,
                      spritesheetManager().get(), &sprites::TSpritesheetManager::getSpritesheet);
@@ -293,9 +308,15 @@ void TGameClientBase::onAssetsError() {}
 
 void TGameClientBase::initializeQmlContext()
 {
+    // CIP: the process-wide mouse cursor controller (with the client options)
+    // and text copy controller, both root context properties. Host: qtclient's
+    // cursor reads the options as the host's option JSON.
+    gamewindow::TMouseCursorController::createInstance(m_pEngine, app::ClientOptions::load().options());
+    gamewindow::TTextCopyController::createInstance(m_pEngine);
     m_pStoreAndResourceBalanceHelperController = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
-    m_pEngine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"),
-                                                 m_pStoreAndResourceBalanceHelperController.get());
+    m_pStoreAndResourceBalanceHelperController->registerInRootContext(m_pEngine->rootContext());
+    // CIP: the Appearance type helper reads the client's appearances.
+    qmlcomponents::TAppearanceTypeHelperQmlService::instance()->setAppearancesManager(appearancesManager());
 }
 
 void TGameClientBase::initializeAssets()
@@ -332,6 +353,10 @@ void TGameClientBase::initializeAssets()
     QObject::connect(manager, &assets::TAssetManager::error, manager, [this] { onAssetsError(); });
     QObject::connect(handler, &assets::TAssetHandler::newAssetDataToLoad, manager,
                      &assets::TAssetManager::onNewAdditionalAssetToLoad);
+    // CIP: new sound metadata reaches the sound manager (when the sound system is up).
+    if (m_pSoundMetadataManager && m_pSoundManager)
+        QObject::connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_pSoundManager.get(),
+                         &sound::TSoundManager::onSoundMetadataChanged);
     QObject::connect(spritesheetManager().get(), &sprites::TSpritesheetManager::spritesheetMissing, m_pAssetAsyncLoader.get(),
                      &assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::QueuedConnection);
     // Host: the Cyclopedia map's process-wide fallback storage asks this loader.

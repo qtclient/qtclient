@@ -10,6 +10,7 @@
 #include "client/statictext.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace tibia {
@@ -170,8 +171,12 @@ public:
     uint8_t objectElevation() const { return m_objectElevation; }
     /// The field blocks sight (updated with the stack).
     bool blocksSight() const { return m_blocksSight; }
-    /// The light of the highest shining object; intensity 0 without one.
-    Light light() const;
+    /// The automap colour of the highest object that has one; none without one.
+    /// Host: the colour is the automap palette index qtclient's types carry.
+    std::optional<uint8_t> minimapColor() const;
+    /// The path finder keeps off the field: an object to avoid lies on it, or
+    /// else a creature stands on it.
+    bool hasAvoidedObjectOrCreature() const;
     /// A type and creature id per stack position (flag scans).
     struct TStackView
     {

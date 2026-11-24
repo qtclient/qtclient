@@ -98,7 +98,13 @@ class TTextCopyController final : public cip::tibia::gamewindow::TTextCopyContro
 {
     Q_OBJECT
 public:
-    explicit TTextCopyController(QQmlEngine* engine);
+    explicit TTextCopyController(QObject* parent = nullptr);
+
+    /// CIP: makes the process-wide controller (a new one replaces the old)
+    /// and offers it to the engine's QML as `tibiaTextCopyController`.
+    /// Host: it goes with the engine (Qt objects must not outlive the
+    /// application).
+    static void createInstance(QQmlEngine* Engine);
 
     void cutFromTextInputQmlItemIfPossible(QObject* pTextInput) override;
     void copyFromTextInputQmlItemIfPossible(QObject* pTextInput) override;

@@ -11,6 +11,8 @@
 #include <QImageReader>
 #include <QTimer>
 
+#include <stdexcept>
+
 namespace tibia::imageproviders {
 
 namespace {
@@ -41,6 +43,25 @@ private:
     QImage m_image;
 };
 
+}
+
+TImagestrip::TImagestrip(const QImage& image)
+    : m_cellWidth(image.height())
+    , m_cellHeight(image.height())
+    , m_image(image)
+{
+    // The image is there already: nothing is read later.
+    std::call_once(m_loaded, [] {});
+}
+
+TImagestrip::TImagestrip(const QImage& image, const int frameWidth)
+    : m_cellWidth(frameWidth)
+    , m_cellHeight(image.height())
+    , m_image(image)
+{
+    std::call_once(m_loaded, [] {});
+    if (frameWidth < 1)
+        throw std::invalid_argument("Parameter Width must be positive");
 }
 
 void TImagestrip::load() const

@@ -454,6 +454,9 @@ private:
     client::TGameClient& m_gameClient;
     bool m_channelListRequested = false;
     bool m_channelsFromConfigOpened = false;
+    /// CIP: the chat input history, at most m_maxChatInputHistoryLength lines
+    /// (the client's maxChatInputHistoryLength setting, given at creation).
+    qsizetype m_maxChatInputHistoryLength = 0;
     QStringList m_history;
     qsizetype m_historyIndex = 0;
     QPointer<TNpcDialogController> m_npcDialog;

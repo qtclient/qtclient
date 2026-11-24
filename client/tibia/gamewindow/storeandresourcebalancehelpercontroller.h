@@ -8,6 +8,8 @@
 #include <memory>
 #include <optional>
 
+class QQmlContext;
+
 namespace tibia {
 namespace game {
 class IGameSession;
@@ -27,16 +29,15 @@ class TStoreAndResourceBalanceHelperController final : public cip::tibia::gamewi
 public:
     explicit TStoreAndResourceBalanceHelperController(QObject* parent = nullptr);
 
+    /// CIP: offers this controller to QML as `storeAndResourceBalanceHelper`.
+    void registerInRootContext(QQmlContext* RootContext);
+
     /// The bank and the carried gold pay for it.
     Q_INVOKABLE bool canAffordWithTotalGoldBalance(int Price) override;
 
     /// Follows the session's storages and reads every balance (no session:
     /// nothing changes).
     void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
-
-    /// Host: CipSoft reaches the skill wheel storage through the session;
-    /// qtclient's belongs to the skill wheel manager.
-    void setSkillWheelStorage(skillwheel::TSkillWheelStorage* storage) { m_skillWheelStorage = storage; }
 
     qulonglong totalGoldBalance() const override;
     QString totalGoldBalanceString() const override;
@@ -59,6 +60,7 @@ private:
     shared::TQtConnectionManager m_gameSessionConnections;
     /// The store balance the shown balance object was made from.
     std::optional<store::TStoreBalance> m_storeBalanceValue;
+    /// The session's skill wheel storage (its configuration manager's; null without a session).
     skillwheel::TSkillWheelStorage* m_skillWheelStorage = nullptr;
 };
 

@@ -17,6 +17,7 @@
 #include "game/currentgamesession.h"
 #include "config/characterconfigurationmanager.h"
 #include "input/gameactionhandlers.h"
+#include "protocol/clientmessages.h"
 
 namespace tibia::quickloot {
 
@@ -29,7 +30,11 @@ bool isObjectCategory(const uint32_t category) { return category - 1u < 31u; }
 
 void TManagedContainersProtocolMessageHandler::setLootContainerFallback(const bool useMainBackpack)
 {
-    tibia::game::openContainerQuickLoot(3, 0, {}, 0, 0, useMainBackpack);
+    ::tibia::protobuf::protocol::GameclientMessageManagedContainer message;
+    message.set_action(3);
+    message.set_category(0);
+    message.set_use_main_as_fallback(useMainBackpack);
+    Q_EMIT sendManagedContainer(message);
 }
 
 void TManagedContainersProtocolMessageHandler::quickLoot(const Position& position, const uint16_t objectId, const int stackPosition,
@@ -37,27 +42,45 @@ void TManagedContainersProtocolMessageHandler::quickLoot(const Position& positio
 {
     // Looting a corpse on the map loots every corpse around it when the option asks for it.
     const bool onMap = position.x != 0xFFFF;
-    tibia::game::sendQuickLootAt(onMap && allCorpsesInArea ? 1 : 0, position, objectId, stackPosition);
+    ::tibia::protobuf::protocol::GameclientMessageQuickLoot message;
+    message.set_variant(onMap && allCorpsesInArea ? 1 : 0);
+    auto* object = message.mutable_object();
+    protocol::gameclient::setClassicObject(object->mutable_object_position(), object->mutable_object_identifier(), position,
+                                           std::max(0, stackPosition), objectId);
+    Q_EMIT sendQuickLoot(message);
 }
 
-void TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist(const int listType, const std::set<uint16_t>& objectTypeIds)
+void TManagedContainersProtocolMessageHandler::setQuickLootBlackWhitelist(const int listType, const std::set<uint16_t>& objectTypeIds)
 {
     if (static_cast<unsigned>(listType) >= 2)
         throw std::runtime_error("unhandled enum value");
-    const std::vector<uint16_t> items(objectTypeIds.begin(), objectTypeIds.end());
-    tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(listType), static_cast<uint16_t>(items.size()), items);
+    ::tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist message;
+    message.set_filter(static_cast<uint32_t>(listType));
+    for (const uint16_t objectTypeId : objectTypeIds)
+        message.add_object_ids(objectTypeId);
+    Q_EMIT sendQuickLootBlackWhitelist(message);
 }
 
-void TManagedContainersProtocolMessageHandler::quickLootAreaAtPlayer() { tibia::game::sendQuickLootAt(2, Position(0, 0, 0), 0, 0); }
+void TManagedContainersProtocolMessageHandler::quickLootAreaAtPlayer()
+{
+    ::tibia::protobuf::protocol::GameclientMessageQuickLoot message;
+    message.set_variant(2);
+    Q_EMIT sendQuickLoot(message);
+}
 
-void TManagedContainersProtocolMessageHandler::sendManagedContainer(const EManagedContainerAction action, const int category,
-                                                                    const Position& position, const uint16_t objectId,
-                                                                    const int stackPosition)
+void TManagedContainersProtocolMessageHandler::manageContainer(const EManagedContainerAction action, const int category,
+                                                               const Position& position, const uint16_t objectId, const int stackPosition)
 {
     if (!isObjectCategory(static_cast<uint32_t>(category)))
         return;
-    tibia::game::openContainerQuickLoot(static_cast<uint8_t>(action), static_cast<uint8_t>(category), position, objectId,
-                                        static_cast<uint8_t>(std::max(0, stackPosition)), false);
+    ::tibia::protobuf::protocol::GameclientMessageManagedContainer message;
+    message.set_action(action);
+    message.set_category(static_cast<uint32_t>(category));
+    if (action == SelectLootContainer || action == SelectObtainContainer)
+        protocol::gameclient::setClassicObject(message.mutable_object_position(), message.mutable_object_identifier(), position,
+                                               std::max(0, stackPosition), objectId);
+    message.set_use_main_as_fallback(false);
+    Q_EMIT sendManagedContainer(message);
 }
 
 namespace {
@@ -81,8 +104,10 @@ bool quickLootAllCorpsesInArea()
 
 }
 
-TQuickLootGameActionHandler::TQuickLootGameActionHandler(QObject* parent)
+TQuickLootGameActionHandler::TQuickLootGameActionHandler(std::shared_ptr<TManagedContainersProtocolMessageHandler> protocolMessageHandler,
+                                                         QObject* parent)
     : cip::tibia::quickloot::TQuickLootGameActionHandler(parent)
+    , m_protocolMessageHandler(std::move(protocolMessageHandler))
 {
     for (const A type : QuickLootActions)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
@@ -98,18 +123,19 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
     switch (pGameAction.gameActionType()) {
     case A::QUICK_LOOT:
         if (const auto* loot = input::gameActionAs<input::TGameActionQuickLoot>(&pGameAction))
-            P::quickLoot(loot->position(), loot->objectClientId(), loot->stackPosition(), quickLootAllCorpsesInArea());
+            m_protocolMessageHandler->quickLoot(loot->position(), loot->objectClientId(), loot->stackPosition(), quickLootAllCorpsesInArea());
         return true;
     case A::QUICK_LOOT_AREA_AT_PLAYER:
-        P::quickLootAreaAtPlayer();
+        m_protocolMessageHandler->quickLootAreaAtPlayer();
         return true;
     case A::LOOT_CONTAINER_SELECT:
     case A::OBTAIN_CONTAINER_SELECT:
         if (const auto* select = input::gameActionAs<input::TGameActionSelectManagedContainer>(&pGameAction)) {
             const input::TObjectGameActionContext& container = select->container();
-            P::sendManagedContainer(pGameAction.gameActionType() == A::LOOT_CONTAINER_SELECT ? P::SelectLootContainer
-                                                                                              : P::SelectObtainContainer,
-                                    select->category(), container.position(), container.objectClientId(), container.stackPosition());
+            m_protocolMessageHandler->manageContainer(pGameAction.gameActionType() == A::LOOT_CONTAINER_SELECT ? P::SelectLootContainer
+                                                                                                                : P::SelectObtainContainer,
+                                                      select->category(), container.position(), container.objectClientId(),
+                                                      container.stackPosition());
         }
         return true;
     case A::LOOT_CONTAINER_CLEAR:
@@ -118,16 +144,16 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
     case A::OBTAIN_CONTAINER_OPEN:
         if (const auto* managed = input::gameActionAs<input::TGameActionManagedContainer>(&pGameAction)) {
             const A type = pGameAction.gameActionType();
-            P::sendManagedContainer(type == A::LOOT_CONTAINER_CLEAR   ? P::ClearLootContainer
-                                    : type == A::LOOT_CONTAINER_OPEN  ? P::OpenLootContainer
-                                    : type == A::OBTAIN_CONTAINER_CLEAR ? P::ClearObtainContainer
-                                                                        : P::OpenObtainContainer,
-                                    managed->category());
+            m_protocolMessageHandler->manageContainer(type == A::LOOT_CONTAINER_CLEAR     ? P::ClearLootContainer
+                                                      : type == A::LOOT_CONTAINER_OPEN    ? P::OpenLootContainer
+                                                      : type == A::OBTAIN_CONTAINER_CLEAR ? P::ClearObtainContainer
+                                                                                          : P::OpenObtainContainer,
+                                                      managed->category());
         }
         return true;
     case A::LOOT_CONTAINER_FALLBACK:
         if (const auto* fallback = input::gameActionAs<input::TGameActionSetLootContainerFallback>(&pGameAction))
-            P::setLootContainerFallback(fallback->useMainContainerAsFallback());
+            m_protocolMessageHandler->setLootContainerFallback(fallback->useMainContainerAsFallback());
         return true;
     case A::LOOT_ADD_TO_BLACKWHITELIST:
         if (listStatus)
@@ -179,7 +205,7 @@ void TManagedContainersProtocolMessageHandler::onQuickLootBlackWhitelistConfigur
     // window has one (a replay without it has no list to send).
     if (!list)
         return;
-    sendQuickLootBlackWhitelist(list->listType(), list->list(list->listType()));
+    setQuickLootBlackWhitelist(list->listType(), list->list(list->listType()));
 }
 
 void TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)

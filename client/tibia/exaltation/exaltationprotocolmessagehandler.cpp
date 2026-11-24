@@ -104,9 +104,72 @@ TExaltationProtocolMessageHandler::TExaltationProtocolMessageHandler(std::shared
 {
 }
 
+namespace {
+
+protobuf::protocol::GameclientMessageExaltationAction exaltationAction(const uint32_t action)
+{
+    protobuf::protocol::GameclientMessageExaltationAction message;
+    message.set_action(action);
+    return message;
+}
+
+}
+
+void TExaltationProtocolMessageHandler::requestDustToSliversConversion()
+{
+    Q_EMIT sendExaltationAction(exaltationAction(2));
+}
+
+void TExaltationProtocolMessageHandler::requestSliversToCoreConversion()
+{
+    Q_EMIT sendExaltationAction(exaltationAction(3));
+}
+
+void TExaltationProtocolMessageHandler::requestDustLimitIncrease()
+{
+    Q_EMIT sendExaltationAction(exaltationAction(4));
+}
+
+void TExaltationProtocolMessageHandler::requestFusion(const uint32_t firstTypeId, const uint32_t tier, const uint32_t secondTypeId,
+                                                      const bool improveChance, const bool reduceTierLoss)
+{
+    auto message = exaltationAction(0);
+    message.set_convergence(false);
+    message.set_first_object_id(firstTypeId);
+    message.set_tier(tier);
+    message.set_second_object_id(secondTypeId);
+    message.set_improve_chance(improveChance);
+    message.set_reduce_tier_loss(reduceTierLoss);
+    Q_EMIT sendExaltationAction(message);
+}
+
+void TExaltationProtocolMessageHandler::requestConvergenceFusion(const uint32_t firstTypeId, const uint32_t tier, const uint32_t secondTypeId)
+{
+    auto message = exaltationAction(0);
+    message.set_first_object_id(firstTypeId);
+    message.set_tier(tier);
+    message.set_second_object_id(secondTypeId);
+    message.set_convergence(true);
+    Q_EMIT sendExaltationAction(message);
+}
+
+void TExaltationProtocolMessageHandler::requestTransfer(const uint32_t sourceTypeId, const uint32_t tier, const uint32_t targetTypeId,
+                                                        const bool convergence)
+{
+    auto message = exaltationAction(1);
+    message.set_first_object_id(sourceTypeId);
+    message.set_tier(tier);
+    message.set_second_object_id(targetTypeId);
+    message.set_convergence(convergence);
+    Q_EMIT sendExaltationAction(message);
+}
+
 void TExaltationProtocolMessageHandler::requestHistoryPage(const int page)
 {
-    tibia::game::sendForgeBrowseHistoryRequest(static_cast<uint16_t>(page));
+    protobuf::protocol::GameclientMessageOpenExaltationHistory message;
+    message.set_page(static_cast<uint32_t>(page));
+    message.set_entries_per_page(9);
+    Q_EMIT sendOpenExaltationHistory(message);
 }
 
 /// Dust, slivers and cores (resource types 70 to 72), as 16 bits.

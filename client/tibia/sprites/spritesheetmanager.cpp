@@ -2,16 +2,25 @@
 
 #include "sprites/spritesheetdecompressor.h"
 #include "sprites/spritesheetdecompressorsynchronous.h"
+#include "readonlymemoryblob.h"
 
 #include <QMutexLocker>
 
 namespace tibia::sprites {
+
+void registerSpritesheetMetaTypes()
+{
+    qRegisterMetaType<TSpritesheetID>("TSpritesheetID");
+    qRegisterMetaType<TSpritesheetPointer>("TSpritesheetPointer");
+    qRegisterMetaType<TCompressedSpritesheetPointer>("TCompressedSpritesheetPointer");
+}
 
 TSpritesheetManager::TSpritesheetManager(std::shared_ptr<TSpritesheetDecompressor> decompressor,
                                          std::shared_ptr<TSpritesheetCache> cache)
     : m_decompressor(std::move(decompressor))
     , m_cache(std::move(cache))
 {
+    registerSpritesheetMetaTypes();
     connect(m_decompressor.get(), &TSpritesheetDecompressor::decompressingSpritesheetFinished, this,
             &TSpritesheetManager::onDecompressingSpritesheetFinished);
 }

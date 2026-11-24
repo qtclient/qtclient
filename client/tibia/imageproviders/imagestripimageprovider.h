@@ -18,9 +18,18 @@ namespace imageproviders {
 class TImagestrip
 {
 public:
+    /// Host: the strip of an image file, read on first use (cell width 0:
+    /// square cells).
     explicit TImagestrip(QString file, int cellWidth = 0) : m_file(std::move(file)), m_cellWidth(cellWidth) {}
+    /// CIP: a strip of square cells, as high as `image`.
+    explicit TImagestrip(const QImage& image);
+    /// CIP: a strip of cells `frameWidth` wide and as high as `image`.
+    /// Throws std::invalid_argument when `frameWidth` is not positive.
+    TImagestrip(const QImage& image, int frameWidth);
 
     QImage cell(const QString& id) const;
+    /// CIP: the number of whole cells in the strip (0 without a cell width).
+    /// Host: an animated image has one cell per frame.
     int cellCount() const;
 
 private:

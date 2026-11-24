@@ -4,6 +4,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QString>
 
 #include <memory>
@@ -41,7 +43,10 @@ public:
     void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
 
     /// The six flags and the whitelist changes go to the server.
-    virtual void sendSetExivaOptions(const TExivaOptionsStorage::Options& options, const WhitelistChanges& changes) const;
+    virtual void setExivaOptions(const TExivaOptionsStorage::Options& options, const WhitelistChanges& changes);
+
+Q_SIGNALS:
+    void sendSetExivaOptions(const ::tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions& UpdateExivaMessage);
 
 private:
     std::shared_ptr<TExivaOptionsStorage> m_storage;

@@ -16,8 +16,15 @@ namespace tibia {
 namespace effects {
 class TNumericalEffectRenderProvider;
 }
+namespace game {
+class IGameSession;
+}
 namespace renderer {
 class TRenderVolumeProvider;
+class TWorldMapCamera;
+}
+namespace worldmap {
+class TWorldMapStorage;
 }
 }
 
@@ -61,10 +68,13 @@ public:
     explicit TNumericalEffectOverlayQuickItem(QQuickItem* parent = nullptr);
     ~TNumericalEffectOverlayQuickItem() override;
 
-    /// The pane's render provider (frame and pixels), the session's
-    /// numerical effect render provider and its render volume provider.
-    void setSources(TWorldMapRenderProvider* provider, std::shared_ptr<effects::TNumericalEffectRenderProvider> numericalEffects,
-                    std::shared_ptr<renderer::TRenderVolumeProvider> renderVolume);
+    /// The session's render volume provider, world map camera, numerical
+    /// effect render provider and world map storage (all unset without a
+    /// session), and a new NumericalEffectsTemplate.qml component; an invalid
+    /// template throws. The overlay is enabled when all four are set.
+    /// Host: the session's render provider supplies the frame and pixels and
+    /// drives the per-frame update.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
@@ -85,11 +95,14 @@ private:
     void remove(Field& field);
     void clear();
 
-    QPointer<TWorldMapRenderProvider> m_provider;
+    std::unique_ptr<QQmlComponent> m_component;
+    bool m_enabled = false;
     std::shared_ptr<effects::TNumericalEffectRenderProvider> m_numericalEffectRenderProvider;
     std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
+    std::shared_ptr<renderer::TWorldMapCamera> m_worldMapCamera;
+    std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
+    QPointer<TWorldMapRenderProvider> m_provider;
     QMetaObject::Connection m_frameConnection;
-    QQmlComponent* m_component = nullptr;
     std::vector<Field> m_fields;
 };
 

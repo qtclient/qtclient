@@ -68,7 +68,7 @@ std::shared_ptr<appearances::TEffectInstance> makeEffect(const uint16_t effectId
     const uint16_t drawId = game::resolveEffectId(effectId);
     if (!game::isValidDatId(drawId, ThingCategoryEffect))
         return nullptr;
-    auto effect = appearances::TAppearanceInstanceFactory::createFieldEffect(drawId, field, source, now);
+    auto effect = appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(drawId, field, source, now);
     if (const auto* variant = game::findEffectVariant(effectId)) {
         effect->setUnderCreatures(variant->underCreatures);
         effect->setVariantId(effectId);
@@ -114,7 +114,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
             const auto id = static_cast<uint16_t>(entry.appearance_id());
             if (!visible(entry.source()) || !game::isValidDatId(id, ThingCategoryMissile))
                 break;
-            map->addMissileAppearance(appearances::TAppearanceInstanceFactory::createMissile(
+            map->addMissileAppearance(appearances::TAppearanceInstanceFactory::installed()->createMissile(
                 id, at, positionOf(entry.destination()), static_cast<uint8_t>(entry.source()), now));
             break;
         }

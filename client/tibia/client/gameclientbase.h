@@ -130,7 +130,11 @@ public:
     /// Where the client's data files live. Throws std::logic_error without one.
     std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper() const;
     /// The client options the client was made with.
-    config::TClientOptions* clientOptions() const { return m_pClientOptions; }
+    config::TClientOptions* clientOptions() const { return m_pClientOptions.get(); }
+    /// CIP: the client options as the client holds them, for the objects
+    /// that keep them (the game sessions). Host: the options are the
+    /// process-wide config object, which this pointer does not own.
+    std::shared_ptr<config::TClientOptions> sharedClientOptions() const { return m_pClientOptions; }
     /// CIP: the client settings (config.ini) the client was made with.
     std::shared_ptr<config::TTibiaConfig> tibiaConfig() const { return m_pTibiaConfig; }
     /// Throws std::logic_error before it exists.
@@ -226,7 +230,8 @@ protected:
     /// spritesheet manager (the cache size from the Resources directory's
     /// client settings), the asset file system helper, the trader storage, the resource sprites manager,
     /// the minimap tile and marker storages and the minimap tile manager
-    /// (with a disk of its own). Host: the sprite system draws from the
+    /// (with a disk of its own); the animators get the process-wide random
+    /// number generator and the engine gets its image providers. Host: the sprite system draws from the
     /// client's spritesheet manager while the client exists; qtclient makes the
     /// appearances, the Cyclopedia map's static data and the game action
     /// router with the client, because the game window's controllers use them
@@ -257,10 +262,9 @@ protected:
     /// CIP slot: the assets could not be loaded. The base ignores it.
     virtual void onAssetsError();
     /// CIP: what the QML engine's root context offers the client's QML: the
-    /// store balance helper (`storeAndResourceBalanceHelper`). Host: the mouse
-    /// cursor and text copy controllers CipSoft makes here come with the
-    /// engine (app::createEngine); the Appearance type helper reads the
-    /// appearances through their instance().
+    /// process-wide mouse cursor and text copy controllers, the store balance
+    /// helper (`storeAndResourceBalanceHelper`); the Appearance type helper
+    /// gets the client's appearances.
     virtual void initializeQmlContext();
     /// CIP: the asset loader and the asset manager, the asset handler with the
     /// spritesheet manager, appearances, sound metadata and sound manager,
@@ -268,8 +272,12 @@ protected:
     /// Cyclopedia map's static data. The manager hands the spritesheet
     /// metadata and every loaded asset to the handler and reports completion
     /// and errors to this client; the handler's requests go back to the
-    /// manager; a spritesheet missing from the cache is loaded first.
-    /// TGameClient starts the loading.
+    /// manager; new sound metadata reaches the sound manager; a spritesheet
+    /// missing from the cache is loaded first. TGameClient starts the
+    /// loading. Host: the Cyclopedia map's static data is made with the
+    /// client (the character selection preview), and TGameClient connects it
+    /// to `mainWindowInitialized` (its moc signal); the asset manager reads the
+    /// asset file system helper's directory.
     virtual void initializeAssets();
     /// CIP: the sprite texture provider manager the renderers draw from, the
     /// root context's `SpriteTextureProviderManager`. Host: qtclient's
@@ -297,8 +305,9 @@ protected:
     QQuickWindow* m_pMainWindow = nullptr;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_pTibiaFileSystemHelper;
     /// Host: qtclient's client options are the process-wide config object
-    /// (CipSoft shares them between the application and the client).
-    config::TClientOptions* m_pClientOptions = nullptr;
+    /// (CipSoft shares them between the application and the client); the
+    /// client does not own them.
+    std::shared_ptr<config::TClientOptions> m_pClientOptions;
     std::shared_ptr<config::TTibiaConfig> m_pTibiaConfig;
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
@@ -336,8 +345,6 @@ protected:
     QPointer<worldmap::TWorldmapProtocolMessageHandler> m_pMinimapWorldmapProtocolHandler;
     /// CIP: started by a marker change; its timeout writes the markers.
     QTimer m_minimapMarkerStorageTimer;
-    /// Host: why the appearances could not be loaded; empty when they were.
-    QString m_assetLoadError;
 };
 
 }

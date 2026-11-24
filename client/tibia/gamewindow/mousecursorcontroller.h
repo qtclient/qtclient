@@ -11,6 +11,8 @@
 #include <array>
 #include <vector>
 
+class QQmlEngine;
+
 namespace tibia {
 namespace gamewindow {
 
@@ -62,6 +64,13 @@ public:
 
     /// The controller exposed to QML as tibiaMouseCursorController, if any.
     static TMouseCursorController* instance();
+
+    /// CIP: makes the process-wide controller (a new one replaces the old)
+    /// and offers it to the engine's QML as `tibiaMouseCursorController`.
+    /// Host: the options are the host's option JSON (CipSoft: the client
+    /// options), and the controller goes with the engine (Qt objects must
+    /// not outlive the application).
+    static void createInstance(QQmlEngine* Engine, const QJsonObject& Options);
 
     /// The region the mouse entered last and has not left, 0 for none.
     int topRegion() const { return m_regions.isEmpty() ? 0 : m_regions.last(); }

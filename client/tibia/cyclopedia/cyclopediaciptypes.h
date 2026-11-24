@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <client/outfit.h>
 #include <client/staticdata.h>
 
@@ -70,6 +72,9 @@ public:
     /// any other the bosstiary's. The raw rows also go out as
     /// "onParseCyclopediaTracker" for packs.
     void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
+
+Q_SIGNALS:
+    void sendTrackBestiaryRace(const ::tibia::protobuf::protocol::GameclientMessageTrackBestiaryRace& TrackBestiaryRaceMessage);
 
 private:
     std::shared_ptr<TCreatureTrackerStorage> m_pCreatureTrackerStorage;

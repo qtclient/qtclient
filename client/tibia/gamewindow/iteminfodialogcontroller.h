@@ -10,11 +10,18 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace tibia {
+namespace appearances {
+class TAppearancesManager;
+}
+namespace config {
+class TClientOptions;
+}
 namespace analysers {
 class TAnalyserStorages;
 class TItemPriceStorage;
@@ -49,7 +56,11 @@ class TItemInfoDialogController final : public cip::tibia::gamewindow::TItemInfo
 {
     Q_OBJECT
 public:
-    explicit TItemInfoDialogController(QObject* parent = nullptr);
+    /// CIP: made by the cyclopedia with the appearances manager (its
+    /// cyclopedia object types fill the list) and the client options (the
+    /// list model's).
+    TItemInfoDialogController(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                              config::TClientOptions* ClientOptions, QObject* parent = nullptr);
     ~TItemInfoDialogController() override;
 
     /// The session's premium state (none: a free account).
@@ -152,8 +163,7 @@ private:
     /// itemTracking arrives with the game session; the page is built earlier.
     void ensureItemTrackingConnection();
 
-    /// The item classes of the forge data, sorted.
-    std::vector<int> m_classifications;
+    std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     bool m_entriesBuilt = false;
     bool m_shown = false;

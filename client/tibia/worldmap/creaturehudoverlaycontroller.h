@@ -13,8 +13,14 @@ class QQmlComponent;
 class QQuickItem;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace qmlcomponents {
 class TWorldMapRenderProvider;
+}
+namespace renderer {
+class TWorldMapCamera;
 }
 }
 
@@ -23,6 +29,7 @@ namespace worldmap {
 
 class TCreatureHUDController;
 class TCreatureHUDRenderProvider;
+class TWorldMapViewport;
 
 /// Keeps one TCreatureHUDController per creature the HUD render provider
 /// lists, and drops the controllers of creatures it no longer lists (CIP:
@@ -36,10 +43,10 @@ public:
     explicit TCreatureHUDOverlayController(QQuickItem* parentItem, QObject* parent = nullptr);
     ~TCreatureHUDOverlayController() override;
 
-    /// The session's HUD records, and the world map frame that places them
-    /// on the overlay; refreshes on every frame of the world map.
-    void setRenderProviders(std::shared_ptr<TCreatureHUDRenderProvider> renderProvider,
-                            qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider);
+    /// Takes the session's HUD render provider, viewport and camera and makes
+    /// the CreatureHUD.qml component once; a null session drops them and the
+    /// HUDs. Refreshes on every frame of the world map.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     void refreshCreatureHUDs() override;
@@ -47,8 +54,10 @@ public Q_SLOTS:
 
 private:
     std::shared_ptr<TCreatureHUDRenderProvider> m_renderProvider;
-    /// Stands in for CipSoft's camera viewport: the frame's camera and scale
-    /// map the HUD anchors onto the overlay.
+    std::shared_ptr<TWorldMapViewport> m_viewport;
+    std::shared_ptr<renderer::TWorldMapCamera> m_camera;
+    /// Host frame source: refreshCreatureHUDs maps the HUD anchors with the
+    /// world map frame's camera and scale, not m_viewport / m_camera.
     QPointer<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     QPointer<QQuickItem> m_parentItem;
     std::unordered_map<uint32_t, std::shared_ptr<TCreatureHUDController>> m_controllers;

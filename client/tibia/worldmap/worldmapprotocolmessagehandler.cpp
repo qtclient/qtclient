@@ -52,7 +52,7 @@ appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject
         return creature->placeholderAppearance();
     }
     // Any other object is made by the instance factory at the current time.
-    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::createFromProtobuf(
+    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::installed()->createFromProtobuf(
         object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     // Host: qtclient's factory takes no coordinate; an object drawn by its
     // field's pattern takes it from the coordinate here.

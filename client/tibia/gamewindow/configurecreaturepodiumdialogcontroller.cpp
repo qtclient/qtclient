@@ -1,5 +1,8 @@
 #include "configurecreaturepodiumdialogcontroller.h"
 #include "config/clientoptions.h"
+#include "game/configurecreaturepodiumdata.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -195,25 +198,43 @@ TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogControll
     m_selectedIndex = -1;
 }
 
-void TConfigureCreaturePodiumDialogController::open(const Outfit& selected, const uint16_t selectedRace, const bool bossPodium,
-                                                    const std::vector<RaceRow>& races, const Position& pos,
-                                                    const uint16_t itemId, const uint8_t stackpos,
-                                                    const bool podiumVisible, const bool monsterVisible,
-                                                    const uint8_t direction)
+void TConfigureCreaturePodiumDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    Q_UNUSED(bossPodium);
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    m_pGameSession = GameSession;
+    m_pOutfitDialogStorage.reset();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_pGameSession.get());
+    if (!session)
+        return;
+    if (const auto& player = session->playerProtocolMessageHandler()) {
+        m_sessionConnections.push_back(connect(player.get(), &game::TPlayerProtocolMessageHandler::showConfigureCreaturePodiumDialog,
+                                               this, &TConfigureCreaturePodiumDialogController::open));
+    }
+    m_pOutfitDialogStorage = session->outfitDialogStorage();
+}
+
+void TConfigureCreaturePodiumDialogController::open()
+{
+    m_pData = m_pOutfitDialogStorage ? m_pOutfitDialogStorage->configureCreaturePodiumData() : nullptr;
+    if (!m_pData)
+        return;
+    const game::TConfigureCreaturePodiumData& data = *m_pData;
+    const Outfit& selected = data.selectedOutfit;
+    const uint16_t selectedRace = data.selectedRace;
     m_selected = selected;
-    m_position = pos;
-    m_stackpos = stackpos;
+    m_position = data.position;
+    m_stackpos = data.stackPosition;
     // A podium without a creature shows the creature view.
-    m_showOutfit = lookOf(selected) == 0 ? true : monsterVisible;
-    m_showSocket = podiumVisible;
-    m_direction = lookDirectionFromProtocol(direction);
-    m_socketTypeID = itemId;
+    m_showOutfit = lookOf(selected) == 0 ? true : data.monsterVisible;
+    m_showSocket = data.podiumVisible;
+    m_direction = lookDirectionFromProtocol(data.direction);
+    m_socketTypeID = data.objectId;
 
     QList<TBossSkinModel::Entry> entries;
-    entries.reserve(static_cast<qsizetype>(races.size()));
-    for (const auto& [raceId, name, outfit] : races)
+    entries.reserve(static_cast<qsizetype>(data.races.size()));
+    for (const auto& [raceId, name, outfit] : data.races)
         entries.append(entryFromRace(raceId, name, outfit));
     setPreset(selected);
 

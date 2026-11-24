@@ -561,6 +561,13 @@ bool TDelayedEffectInstance::isFinished() const
     return m_effect->isFinished();
 }
 
+TTutorialFieldEffectInstance::TTutorialFieldEffectInstance(TAppearanceType* type)
+    : TEffectInstance(type)
+{
+    if (m_spriteSequence && m_spriteSequence->animator())
+        m_spriteSequence->animator()->setAlwaysLoop(true);
+}
+
 const animation::TAnimator* TEffectInstance::animator() const
 {
     return m_spriteSequence ? m_spriteSequence->animator().get() : nullptr;
@@ -684,7 +691,7 @@ template <class T, class... Args>
 std::shared_ptr<T> TAppearanceInstanceFactory::makeTracked(TAppearanceType* type, Args&&... args)
 {
     // The tracker counts the instance until its last owner lets it go.
-    const std::shared_ptr<TAppearanceInstanceTracker> tracker = instanceTracker();
+    const std::shared_ptr<TAppearanceInstanceTracker> tracker = m_instanceTracker;
     T* instance = new T(type, std::forward<Args>(args)...);
     if (!type)
         return std::shared_ptr<T>(instance);
@@ -709,57 +716,94 @@ namespace {
 /// kinds are exclusive and the first one the object belongs to decides
 /// (liquid, cumulative, container, show-off socket, upgradeable, wearout,
 /// expire, deco item kit, then a plain object).
-TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, const uint32_t liquidType, const uint8_t tier)
+TAppearanceInstancePtr createItem(TAppearanceInstanceFactory& factory, const TAppearancesManager& manager,
+                                  TAppearanceType* type, const uint16_t count, const uint32_t liquidType, const uint8_t tier)
 {
     const uint16_t id = type->getId();
-    const auto& special = TAppearancesManager::instance().specialAppearancesForProtocolParsing();
+    const auto& special = manager.specialAppearancesForProtocolParsing();
     if (special.isLiquid(id))
-        return TAppearanceInstanceFactory::createLiquidObject(id, liquidType);
+        return factory.createLiquidObject(id, liquidType);
     if (special.isCumulative(id))
-        return TAppearanceInstanceFactory::createCumulativeObject(id, static_cast<uint8_t>(count));
+        return factory.createCumulativeObject(id, static_cast<uint8_t>(count));
     if (special.isContainer(id))
-        return TAppearanceInstanceFactory::makeTracked<TContainerObjectAppearanceInstance>(type);
+        return factory.makeTracked<TContainerObjectAppearanceInstance>(type);
     if (special.isShowOffSocket(id))
-        return TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance>(type, true, nullptr, nullptr);
+        return factory.makeTracked<TShowOffSocketAppearanceInstance>(type, true, nullptr, nullptr);
     if (special.isUpgradeable(id))
-        return TAppearanceInstanceFactory::createUpgradeableObject(id, tier);
+        return factory.createUpgradeableObject(id, tier);
     if (special.isWearOut(id))
-        return TAppearanceInstanceFactory::createWearoutObject(type, 0, false);
+        return factory.createWearoutObject(type, 0, false);
     if (special.isExpire(id) || special.isExpireStop(id))
-        return TAppearanceInstanceFactory::createExpireObject(type, 0, false, false);
+        return factory.createExpireObject(type, 0, false, false);
     if (special.isDecoKit(id))
-        return TAppearanceInstanceFactory::createDecoItemKitObject(id, 0);
-    return TAppearanceInstanceFactory::createObject(type);
+        return factory.createDecoItemKitObject(id, 0);
+    return factory.createObject(type);
 }
 
 } // namespace
 
-TAppearanceType* TAppearanceInstanceFactory::dummyAppearanceType(const ThingCategory category)
+namespace {
+
+std::shared_ptr<TAppearanceInstanceFactory>& installedFactory()
 {
-    // One dummy per category: a type without flags whose only frame group is an
-    // empty initial one.
-    static std::map<ThingCategory, TAppearanceType> dummies = [] {
-        std::map<ThingCategory, TAppearanceType> types;
-        for (const ThingCategory key : { ThingCategoryItem, ThingCategoryCreature, ThingCategoryEffect, ThingCategoryMissile }) {
-            TAppearanceType dummy;
-            dummy.addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
-            types.emplace(key, std::move(dummy));
-        }
-        return types;
-    }();
-    return &dummies.at(category);
+    static std::shared_ptr<TAppearanceInstanceFactory> factory;
+    return factory;
 }
 
-TAppearanceType* TAppearanceInstanceFactory::appearanceType(const ThingCategory category, const uint16_t id)
+} // namespace
+
+TAppearanceInstanceFactory::TAppearanceInstanceFactory(std::shared_ptr<TAppearancesManager> AppearancesManager)
+    : m_pAppearancesManager(AppearancesManager
+                                ? std::move(AppearancesManager)
+                                // Host: a factory made without a manager uses the process-wide one.
+                                : std::shared_ptr<TAppearancesManager>(&TAppearancesManager::instance(),
+                                                                       [](TAppearancesManager*) {}))
+    , m_dummyAppearanceTypes(makeDummyAppearanceTypes())
+    , m_instanceTracker(std::make_shared<TAppearanceInstanceTracker>(m_pAppearancesManager->spritesheetMapping()))
 {
-    if (TAppearanceType* type = TAppearancesManager::instance().getRawThingType(id, category))
+}
+
+TAppearanceInstanceFactory::~TAppearanceInstanceFactory() = default;
+
+const std::shared_ptr<TAppearanceInstanceFactory>& TAppearanceInstanceFactory::installed()
+{
+    std::shared_ptr<TAppearanceInstanceFactory>& factory = installedFactory();
+    if (!factory)
+        factory = std::make_shared<TAppearanceInstanceFactory>(nullptr);
+    return factory;
+}
+
+void TAppearanceInstanceFactory::install(std::shared_ptr<TAppearanceInstanceFactory> factory)
+{
+    installedFactory() = std::move(factory);
+}
+
+std::map<ThingCategory, std::unique_ptr<TAppearanceType>> TAppearanceInstanceFactory::makeDummyAppearanceTypes()
+{
+    std::map<ThingCategory, std::unique_ptr<TAppearanceType>> types;
+    for (const ThingCategory key : { ThingCategoryItem, ThingCategoryCreature, ThingCategoryEffect, ThingCategoryMissile }) {
+        auto dummy = std::make_unique<TAppearanceType>();
+        dummy->addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
+        types.emplace(key, std::move(dummy));
+    }
+    return types;
+}
+
+TAppearanceType* TAppearanceInstanceFactory::dummyAppearanceType(const ThingCategory category) const
+{
+    return m_dummyAppearanceTypes.at(category).get();
+}
+
+TAppearanceType* TAppearanceInstanceFactory::appearanceType(const ThingCategory category, const uint16_t id) const
+{
+    if (TAppearanceType* type = m_pAppearancesManager->getRawThingType(id, category))
         return type;
     return dummyAppearanceType(category);
 }
 
-bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category, const uint16_t id)
+bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category, const uint16_t id) const
 {
-    return TAppearancesManager::instance().hasAppearanceType(category, id);
+    return m_pAppearancesManager->hasAppearanceType(category, id);
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
@@ -775,7 +819,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType
         case ThingCategoryMissile:
             return makeTracked<TMissileEffectInstance>(type);
         case ThingCategoryItem:
-            return createItem(type, 0, 0, 0);
+            return createItem(*this, *m_pAppearancesManager, type, 0, 0, 0);
         default:
             return makeTracked<TWorldMapAppearanceInstance>(type);
     }
@@ -1013,9 +1057,9 @@ std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createPla
     return createPlainOutfit(appearanceType(ThingCategoryCreature, id), direction);
 }
 
-std::shared_ptr<TAppearanceInstanceTracker> TAppearanceInstanceFactory::instanceTracker()
+std::shared_ptr<TAppearanceInstanceTracker> TAppearanceInstanceFactory::instanceTracker() const
 {
-    return TAppearancesManager::instance().sharedTracker();
+    return m_instanceTracker;
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanceType* type, const uint16_t count,
@@ -1024,7 +1068,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanc
 {
     if (!type || type->isNull() || type->getCategory() != ThingCategoryItem)
         return fromThingType(type);
-    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType, tier);
+    const auto instance = createItem(*this, *m_pAppearancesManager, type, count, fluid != 0 ? fluid : subType, tier);
     applyProtocolObjectState(instance, count, subType, tier, hangSide);
     return instance;
 }
@@ -1032,7 +1076,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanc
 std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
                                                                                                     const Position& field)
 {
-    TAppearanceType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
+    TAppearanceType* type = m_pAppearancesManager->getRawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
     auto effect = makeTracked<TTutorialFieldEffectInstance>(type);
     effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     return effect;
@@ -1041,7 +1085,7 @@ std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::create
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, TAppearanceType* type)
 {
     if (!type)
-        type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
+        type = m_pAppearancesManager->getRawThingType(outfit.getId(), outfit.getCategory());
     if (outfit.isItem())
         return makeTracked<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())

@@ -16,9 +16,13 @@ namespace tibia::prey {
 
 namespace {
 
-void sendPreyAction(const int preyId, const uint8_t action, const int value)
+/// A PreyAction of one slot.
+::tibia::protobuf::protocol::GameclientMessagePreyAction preyActionMessage(const int preyId, const uint32_t action)
 {
-    tibia::game::preyAction(static_cast<uint8_t>(preyId), action, static_cast<uint16_t>(value));
+    ::tibia::protobuf::protocol::GameclientMessagePreyAction message;
+    message.set_slot(static_cast<uint32_t>(preyId));
+    message.set_action(action);
+    return message;
 }
 
 /// A monster is its name and its outfit.
@@ -44,34 +48,42 @@ TPreyProtocolMessageHandler::TPreyProtocolMessageHandler(std::shared_ptr<TPreySt
 
 void TPreyProtocolMessageHandler::requestListReroll(const int preyId)
 {
-    sendPreyAction(preyId, 0, 0);
+    Q_EMIT sendPreyAction(preyActionMessage(preyId, 0));
 }
 
 void TPreyProtocolMessageHandler::requestBonusReroll(const int preyId)
 {
-    sendPreyAction(preyId, 1, 0);
+    Q_EMIT sendPreyAction(preyActionMessage(preyId, 1));
 }
 
 void TPreyProtocolMessageHandler::selectMonsterFromList(const int preyId, const int index)
 {
-    sendPreyAction(preyId, 2, index);
+    auto message = preyActionMessage(preyId, 2);
+    message.set_index(static_cast<uint32_t>(index));
+    Q_EMIT sendPreyAction(message);
 }
 
 void TPreyProtocolMessageHandler::requestFreezeAndShowBestiaryMonsters(const int preyId)
 {
-    sendPreyAction(preyId, 3, 0);
+    Q_EMIT sendPreyAction(preyActionMessage(preyId, 3));
 }
 
 void TPreyProtocolMessageHandler::selectMonsterFromBestiary(const int preyId, const int raceId)
 {
-    sendPreyAction(preyId, 4, raceId);
+    auto message = preyActionMessage(preyId, 4);
+    message.set_race_id(static_cast<uint32_t>(raceId));
+    Q_EMIT sendPreyAction(message);
 }
 
 void TPreyProtocolMessageHandler::setAutomaticExtendType(const int preyId, const int option)
 {
     if (static_cast<unsigned>(option) >= 3)
         throw std::invalid_argument("Invalid enum value");
-    sendPreyAction(preyId, 5, option);
+    // CipSoft's message has a fifth field for the option; qtclient's schema
+    // carries it in the index (the writer sends the index for action 5).
+    auto message = preyActionMessage(preyId, 5);
+    message.set_index(static_cast<uint32_t>(option));
+    Q_EMIT sendPreyAction(message);
 }
 
 void TPreyProtocolMessageHandler::handlePreyTimeLeftMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyTimeLeft& message)

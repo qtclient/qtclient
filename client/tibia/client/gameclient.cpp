@@ -21,6 +21,10 @@
 #include "proficiency/proficiencyciptypes.h"
 #include "prey/preyciptypes.h"
 #include "news/newsstorage.h"
+#include "analysers/itempricestorage.h"
+#include "proficiency/proficiencystorage.h"
+#include "shared/tibiaclipboardhelper.h"
+#include "shared/tibiaurltools.h"
 
 #include <algorithm>
 #include "network/networkciptypes.h"
@@ -222,19 +226,36 @@ void setSessionInstances(game::TGameSessionBase* session)
 /// Set while the client shuts down: a released session is deleted at once.
 bool g_releaseGameSessionsNow = false;
 
-/// A new game session. Released inside one of its own signals (it disconnected),
-/// it is deleted once control is back in the event loop.
-template<typename Session>
-std::shared_ptr<Session> createGameSession()
+/// Host: an object the client does not own, for a session that keeps it.
+template<typename T>
+std::shared_ptr<T> notOwned(T* object)
 {
-    return std::shared_ptr<Session>(new Session(), [](Session* session) {
-        if (g_releaseGameSessionsNow)
-            delete session;
-        else
-            session->deleteLater();
-    });
+    return std::shared_ptr<T>(object, [](T*) {});
 }
 
+}
+
+/// CIP: every session gets the client's file system helper, appearances,
+/// instance factory, options, clipboard writer, URL tools, clock, item
+/// prices, sound controller, keyboard shortcut handler and the spell,
+/// passive ability and proficiency storages. Host: the clock is the process
+/// clock and the item prices are the process-wide storage. Released inside
+/// one of its own signals (it disconnected), the session is deleted once
+/// control is back in the event loop.
+template<typename Session>
+std::shared_ptr<Session> TGameClient::createGameSession() const
+{
+    auto* session = new Session(tibiaFileSystemHelper(), appearancesManager(), appearanceInstanceFactory(),
+                                sharedClientOptions(), m_pTibiaClipboardHelper, m_pTibiaUrlTools,
+                                shared::TClockService::process(), notOwned(analysers::TItemPriceStorage::instance()),
+                                soundController(), keyboardShortcutHandler(), spellInfoStorage(),
+                                passiveAbilityInfoStorage(), proficiencyStorage());
+    return std::shared_ptr<Session>(session, [](Session* gameSession) {
+        if (g_releaseGameSessionsNow)
+            delete gameSession;
+        else
+            gameSession->deleteLater();
+    });
 }
 
 namespace {
@@ -371,13 +392,6 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);
     connect(soundHelper, &qmlcomponents::TSoundHelperService::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
-    // CIP: the current session's disconnect reaches the client once, after its signal returned.
-    m_gameSessionDisconnected.setAsyncDelay(1);
-    m_gameSessionDisconnected.setOnlyFirstSignal(true);
-    connect(&m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionDisconnected);
-    connect(
-        &m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, &m_gameSessionDisconnected,
-        [this] { Q_EMIT currentGamesessionDisconnected(m_currentGameSession); }, Qt::DirectConnection);
     m_gameHost = new GameHostImpl(this);
     // Pack ABI: the packs' "main window initialized" is the world entry.
     connect(this, &TGameClient::worldEntered, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
@@ -425,13 +439,17 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
 
 
 
-    // CIP: the frame rate limit's timer and the timer of a window that shows
-    // no frames both prepare the next frame.
-    m_frameLimitTimer.setTimerType(Qt::PreciseTimer);
-    m_frameLimitTimer.setSingleShot(true);
-    connect(&m_frameLimitTimer, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
-    m_idleTick.setSingleShot(true);
-    connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
+    // CIP: the game window is built on the next event loop pass once the
+    // timer starts. Host: the builder is qtclient's createGameWindow; a game
+    // window that cannot be built ends the client.
+    m_showGameWindowTimer.setInterval(0);
+    m_showGameWindowTimer.setSingleShot(true);
+    connect(&m_showGameWindowTimer, &QTimer::timeout, this, [this] {
+        if (!createGameWindow(m_gameWindowSetup)) {
+            qCritical().noquote() << "The game window could not be built.";
+            QCoreApplication::exit(1);
+        }
+    });
 }
 
 void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
@@ -638,11 +656,6 @@ void TGameClient::emitMainWindowInitialized()
 void TGameClient::start()
 {
     // Custom effects / xBRZ register via product modpack (mods::bootstrapAll).
-    if (!m_assetLoadError.isEmpty()) {
-        fail(m_assetLoadError);
-        return;
-    }
-
     if (!m_options.replay.isEmpty()) {
         const QFileInfo file(m_options.replay);
         if (!file.isFile()) {
@@ -1156,17 +1169,25 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     if (type != EType::Gameserver)
         return;
     setCurrentGameSession(nullptr);
-    // CIP: a crash report from now on names the character and its world.
-    if (const auto* gameserver = dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(metaInfo.get()))
+    // CIP: a crash report from now on names the character and its world, and
+    // the item prices are the world's.
+    if (const auto* gameserver = dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(metaInfo.get())) {
         setCharacterCrashReportAnnotations(gameserver->loginData.characterName, gameserver->loginData.worldName);
+        analysers::TItemPriceStorage::instance()->setWorldName(gameserver->loginData.worldName);
+    }
     const auto live = createGameSession<game::TGameserverGameSession>();
     live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
     live->initialize(metaInfo);
     setCurrentGameSession(live);
-    // CIP: the walk keys reach the live session.
+    // CIP: the session's target selection, character selection, login advice
+    // and login error requests, and the walk keys during the session.
+    connect(live.get(), &game::IGameSession::startTargetSelection, this, &TGameClient::onStartTargetSelection);
+    connect(live.get(), &game::IGameSession::showCharacterSelectionDialog, this,
+            &TGameClient::onShowCharacterSelectionDialogRequested);
+    connect(live.get(), &game::IGameSession::gameLoginAdviceMessage, this, &TGameClient::onGameSessionLoginAdvice);
+    connect(live.get(), &game::IGameSession::gameLoginErrorMessage, this, &TGameClient::onGameSessionLoginError);
     if (input::TKeyboardStatusStorage* keyboardStatus = keyboardStatusStorage())
-        connect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged,
-                Qt::UniqueConnection);
+        connect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged);
     live->connectToGameserver();
     live->startSession();
 }
@@ -1175,13 +1196,6 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    // CIP: the session's connection, login and character selection requests.
-    connect(current, &game::IGameSession::connected, this, &TGameClient::onGameSessionConnected);
-    connect(current, &game::IGameSession::gameLoginSuccessful, this, &TGameClient::onGameSessionLoginSuccessful);
-    connect(current, &game::IGameSession::showCharacterSelectionDialog, this,
-            &TGameClient::onShowCharacterSelectionDialogRequested);
-    connect(current, &game::IGameSession::gameLoginAdviceMessage, this, &TGameClient::onGameSessionLoginAdvice);
-    connect(current, &game::IGameSession::gameLoginErrorMessage, this, &TGameClient::onGameSessionLoginError);
     if (auto* base = dynamic_cast<game::TGameSessionBase*>(current))
         connect(base->genericGameActionHandler().get(), &input::TGenericGameActionHandler::sendQuitGame, this,
                 [this] { requestLogoutOrShowStartScreen(nullptr); });
@@ -1208,12 +1222,19 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
             unlinkGameActionRouters(*m_pGameActionRouter, *previous);
         disconnect(m_currentGameSession.get(), nullptr, this, nullptr);
         m_gameSessionDisconnected.disconnectAll();
+        m_gameSessionLoginSuccessful.disconnectAll();
+        m_gameSessionConnected.disconnectAll();
+        // CIP: the previous session ends now and lets go of the client's
+        // minimap storages and white/blacklist.
+        m_currentGameSession->disconnectNow();
+        if (previous) {
+            previous->setMinimapStorages(nullptr, nullptr, nullptr);
+            previous->setWhiteBlacklist(nullptr);
+        }
         // A retired session no longer follows the game's notifications.
         disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
         // The session's minimap feed.
         setMinimapWorldmapProtocolHandler(nullptr);
-        if (previous)
-            previous->setWhiteBlacklist(nullptr);
         // Host shim: the classes' instance() stop resolving to this session.
         setSessionInstances(nullptr);
         // Pack-facing accessors stop resolving to the retired session.
@@ -1234,21 +1255,30 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
     m_currentGameSession = GameSession;
     // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
     game::setCurrentGameSession(m_currentGameSession);
-    if (!m_currentGameSession)
-        return;
-    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
-        linkGameActionRouters(*m_pGameActionRouter, *current);
-        current->setWhiteBlacklist(m_pWhiteBlacklist.get());
-        // CIP: the session gets the client's minimap storages (session v14).
-        current->setMinimapStorages(minimapTileStorage(), minimapMarkerStorage(), cyclopediaMapStaticDataStorage());
+    if (m_currentGameSession) {
+        // CIP: the routers link, the session gets the client's
+        // white/blacklist and minimap storages, the minimap reads its world
+        // map, and the client follows its player, connection, game login and
+        // disconnect.
+        if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
+            linkGameActionRouters(*m_pGameActionRouter, *current);
+            current->setWhiteBlacklist(m_pWhiteBlacklist.get());
+            current->setMinimapStorages(minimapTileStorage(), minimapMarkerStorage(), cyclopediaMapStaticDataStorage());
+        }
+        setMinimapWorldmapProtocolHandler(worldmapProtocol());
+        connectToCurrentGameSession();
+        connect(m_currentGameSession.get(), &game::IGameSession::playerCreatureAddedToCreatureStorage, this,
+                &TGameClient::onPlayerCreatureAddedToCreatureStorage);
+        m_gameSessionConnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connected);
+        m_gameSessionLoginSuccessful.connectTo(m_currentGameSession.get(), &game::IGameSession::gameLoginSuccessful);
+        m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::disconnected);
+        m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connectionError);
+        m_gameSessionLoginSuccessful.resetEmitCount();
+        m_gameSessionConnected.resetEmitCount();
+        m_gameSessionDisconnected.resetEmitCount();
     }
-    setMinimapWorldmapProtocolHandler(worldmapProtocol());
-    connectToCurrentGameSession();
-    connect(m_currentGameSession.get(), &game::IGameSession::playerCreatureAddedToCreatureStorage, this,
-            &TGameClient::onPlayerCreatureAddedToCreatureStorage);
-    m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::disconnected);
-    m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connectionError);
-    m_gameSessionDisconnected.resetEmitCount();
+    // CIP: the proficiency storage starts over with every session.
+    proficiencyStorage()->clear();
 }
 
 game::TGameserverGameSession* TGameClient::session() const
@@ -1451,24 +1481,116 @@ void TGameClient::TDurationStatistics::add(const qint64 Duration)
 void TGameClient::initialize()
 {
     ::tibia::client::TGameClientBase::initialize();
-    // CIP: the client's white/blacklist.
-    m_pWhiteBlacklist = std::make_shared<chat::TWhiteBlacklist>(clientOptions());
-    m_pWhiteBlacklist->loadFromOptions();
-    // CIP: the marker game actions reach the client's marker storage.
+    // CIP: the marker game actions reach the client's marker storage. Host:
+    // qtclient's handler takes the client router's actions here.
     m_pMinimapMarkerGameActionHandler = std::make_shared<minimap::TMinimapMarkerGameActionHandler>(minimapMarkerStorage());
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
             m_pMinimapMarkerGameActionHandler.get(), &minimap::TMinimapMarkerGameActionHandler::handleGameAction);
     // CIP: the marker file is read once the minimap is up.
     minimapTileDiskIO()->loadMinimapMarkerFileContentFromDiskIfPossible();
-    // CIP: the assets start loading once the client is initialized.
-    assetManager()->startLoading();
-    // Host: createGameWindow builds the game window right after this and
-    // reads the appearances there (CIP continues from onAssetFinishedLoading
-    // once the appearances have arrived), so wait for them. The rest of the
-    // assets keeps loading in the background.
-    QString error;
-    if (!assetManager()->waitForAppearances(&error))
-        m_assetLoadError = error;
+    // CIP: the news storage over the client's clock and its disk cache: the
+    // storage asks the cache to save, the cache hands back what it loaded,
+    // and the cached news load now.
+    m_pNewsStorage = std::make_shared<news::TNewsStorage>(shared::TClockService::process());
+    m_pNewsDiskIO = std::make_shared<news::TNewsDiskIOAsync>(tibiaFileSystemHelper());
+    connect(m_pNewsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_pNewsDiskIO.get(),
+            &news::TNewsDiskIO::saveNewsDataToDisk);
+    connect(m_pNewsDiskIO.get(), &news::TNewsDiskIO::loadingNewsDataSucceeded, m_pNewsStorage.get(),
+            &news::TNewsStorage::loadFromDisk);
+    m_pNewsDiskIO->loadNewsDataFromDiskIfPossible();
+    initializeClientObjects();
+    // CIP: the frame rate limit's timer and the timer of a window that shows
+    // no frames both prepare the next frame.
+    m_frameLimitTimer.setTimerType(Qt::PreciseTimer);
+    m_frameLimitTimer.setSingleShot(true);
+    connect(&m_frameLimitTimer, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
+    m_idleTick.setSingleShot(true);
+    connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::onBeforeRenderFrameMainThread);
+    // CIP: the current session's disconnect, connection and game login reach
+    // the client once, after their signal returned; the disconnect is
+    // announced right after the client handled it.
+    m_gameSessionDisconnected.setAsyncDelay(1);
+    m_gameSessionDisconnected.setOnlyFirstSignal(true);
+    connect(&m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionDisconnected);
+    connect(
+        &m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, &m_gameSessionDisconnected,
+        [this] { Q_EMIT currentGamesessionDisconnected(m_currentGameSession); }, Qt::DirectConnection);
+    connect(&m_gameSessionConnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionConnected);
+    connect(&m_gameSessionLoginSuccessful, &shared::TQtConnectionWrapper::signal, this,
+            &TGameClient::onGameSessionLoginSuccessful);
+}
+
+void TGameClient::initializeClientObjects()
+{
+    // CIP: the clipboard, the URL tools and the game's clipboard writer over both.
+    m_pClipboardHelper = std::make_shared<shared::TClipboardHelper>();
+    m_pTibiaUrlTools = std::make_shared<shared::TTibiaUrlTools>();
+    m_pTibiaClipboardHelper = std::make_shared<shared::TTibiaClipboardHelper>(m_pClipboardHelper, m_pTibiaUrlTools);
+    // CIP: the client's white/blacklist.
+    m_pWhiteBlacklist = std::make_shared<chat::TWhiteBlacklist>(clientOptions());
+    m_pWhiteBlacklist->loadFromOptions();
+    // CIP: the client's mouse mapping with the three control schemes' tables,
+    // following the options' control and loot scheme from now on.
+    m_pGameActionMapper = std::make_shared<input::TGameActionMapper>();
+    connect(clientOptions(), &config::TClientOptions::controlOrLootSchemeOptionsChanged, this,
+            &TGameClient::onControlOrLootSchemeOptionsChanged);
+    onControlOrLootSchemeOptionsChanged();
+}
+
+void TGameClient::onControlOrLootSchemeOptionsChanged()
+{
+    m_pGameActionMapper->setControlScheme(clientOptions()->controlScheme());
+    m_pGameActionMapper->setLootScheme(clientOptions()->lootScheme());
+}
+
+bool TGameClient::initializeWithStartMode(const int StartMode, const TGameWindowSetup& Setup)
+{
+    m_startMode = StartMode;
+    m_gameWindowSetup = Setup;
+    // Host: the preview runs no engine and has no assets to wait for.
+    if (Setup.preview)
+        return createGameWindow(Setup);
+    // Host: the QML engine, the options of this run and qtclient's engine
+    // come before the client's setup steps.
+    m_pEngine = Setup.engine;
+    m_options = Setup.options;
+    if (!startEngine(Setup.argv0, Setup.workDir))
+        return false;
+    initialize();
+    setMainWindow(Setup.window);
+    if (!shared::TTibiaFileSystemHelper::hasForcePatchMarker()) {
+        assetManager()->startLoading();
+        connect(assetManager().get(), &assets::TAssetManager::assetDataAccessible, this, &TGameClient::onAssetFinishedLoading);
+    } else if (startLauncherToPatchClientOrReportError()) {
+        Q_EMIT clientReadyToClose();
+    }
+    return true;
+}
+
+void TGameClient::onAssetFinishedLoading(const assets::TAsset Asset, std::shared_ptr<shared::TReadOnlyMemoryBlob> pData)
+{
+    Q_UNUSED(pData);
+    if (Asset.type() != assets::TAsset::Appearances)
+        return;
+    disconnect(assetManager().get(), &assets::TAssetManager::assetDataAccessible, this, &TGameClient::onAssetFinishedLoading);
+    QTimer::singleShot(0, this, &TGameClient::startNetworkTimerAndShowGameWindow);
+}
+
+void TGameClient::startNetworkTimerAndShowGameWindow()
+{
+    m_networkTimer.setTimerType(Qt::PreciseTimer);
+    m_networkTimer.start();
+    m_networkTimer.setInterval(50);
+    connect(
+        &m_networkTimer, &QTimer::timeout, &m_networkTimer,
+        [this] {
+            if (m_currentGameSession)
+                m_currentGameSession->processNetwork();
+        },
+        Qt::DirectConnection);
+    if (m_startMode != 0)
+        throw std::logic_error("can't happen");
+    m_showGameWindowTimer.start();
 }
 
 void TGameClient::initializeSound()
@@ -1476,11 +1598,8 @@ void TGameClient::initializeSound()
     ::tibia::client::TGameClientBase::initializeSound();
     if (!m_pSoundController)
         return;
-    // CipSoft connects the sound metadata with the sound manager while it
-    // sets up the assets; qtclient's assets read the sound bank through the
-    // sound controller's instance(), so both are in place before them.
-    connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_pSoundManager.get(),
-            &sound::TSoundManager::onSoundMetadataChanged);
+    // Host: qtclient's assets read the sound bank through the sound
+    // controller's instance(), so it is in place before them.
     sound::TSoundController::setInstance(m_pSoundController.get());
     // Out of the game the title music plays once the sound bank is known.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
@@ -1698,14 +1817,11 @@ void TGameClient::onAssetsError()
 void TGameClient::saveClientState()
 {
     minimapTileStorage()->saveAllTilesToDisk();
-    gamewindow::TGameWindowController* const controller = gameWindowController();
-    // Host: the news storage and its disk writer belong to the game window
-    // controller (CipSoft's client owns them).
-    if (controller)
-        controller->newsStorage()->saveToDisk();
+    if (m_pNewsStorage)
+        m_pNewsStorage->saveToDisk();
     minimapTileDiskIO()->waitForDone();
-    if (controller)
-        controller->newsDiskIO()->waitForFinished();
+    if (m_pNewsDiskIO)
+        m_pNewsDiskIO->waitForFinished();
 }
 
 bool TGameClient::startLauncherOrReportError()
@@ -1733,9 +1849,9 @@ bool TGameClient::startLauncherToPatchClientOrReportError()
         Q_EMIT showErrorAsPopupAndCriticalLog(qtTrId("launcher_start_pointless_due_to_files_uptodate"));
         return false;
     }
-    // CIP: the game window shows the error once it is made. Host: the
-    // application builds qtclient's game window (createGameWindow).
+    // CIP: the game window shows the error once it is made, and it is made now.
     m_pendingErrorMessage = qtTrId("launcher_start_pointless_due_to_files_uptodate");
+    startNetworkTimerAndShowGameWindow();
     return false;
 }
 

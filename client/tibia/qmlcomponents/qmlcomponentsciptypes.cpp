@@ -135,7 +135,9 @@ QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeDescriptionForID
 int TAppearanceTypeHelperQmlService::getObjectAppearanceTypeIDByName(const QString& Name)
 {
     int found = 0;
-    tibia::appearances::TAppearancesManager::instance().forEachAppearanceType([&](const TAppearanceType& type) {
+    tibia::appearances::TAppearancesManager& appearances =
+        m_pAppearancesManager ? *m_pAppearancesManager : tibia::appearances::TAppearancesManager::instance();
+    appearances.forEachAppearanceType([&](const TAppearanceType& type) {
         if (!type.isItem() || type.name().compare(Name, Qt::CaseInsensitive) != 0)
             return true;
         found = static_cast<int>(type.getId());

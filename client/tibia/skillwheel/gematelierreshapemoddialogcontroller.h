@@ -18,7 +18,7 @@ class TGemAtelierReshapeModDialogController final
 {
     Q_OBJECT
 public:
-    explicit TGemAtelierReshapeModDialogController(QObject* parent = nullptr);
+    TGemAtelierReshapeModDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TGemAtelierReshapeModDialogController() override;
 
     QObject* currentMod() const override { return m_current.get(); }

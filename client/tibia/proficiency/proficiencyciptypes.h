@@ -6,6 +6,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 
 #include <memory>
@@ -50,6 +52,10 @@ public:
     void handleWeaponProficiencyNotificationMessage(const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiencyNotification& message);
     /// The lunar ascension orbs' balance.
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
+
+Q_SIGNALS:
+    void sendWeaponProficiencyCommand(const ::tibia::protobuf::protocol::GameclientMessageWeaponProficiencyCommand& WeaponProficiencyCommandMessage);
+    void sendInspectObject(const ::tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage);
 
 private:
     TProficiencyStorage* m_storage = nullptr;

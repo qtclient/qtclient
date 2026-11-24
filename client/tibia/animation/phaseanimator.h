@@ -4,7 +4,12 @@
 
 #include <QtGlobal>
 
+#include <memory>
 #include <unordered_map>
+
+namespace tibia::shared {
+class TRandomNumberGenerator;
+}
 
 namespace tibia::animation {
 
@@ -27,8 +32,13 @@ public:
     qint64 nextPhaseMs() const { return m_nextPhaseMs; }
     const TAnimationInfo& info() const { return m_info; }
 
-    /// The duration of `phase`: its minimum when fixed, else random within its range.
+    /// The duration of `phase`: its minimum when fixed, else random within its
+    /// range from the animators' random number generator.
     static qint64 phaseDuration(const TAnimationInfo& info, int phase);
+    /// The random number generator every animator draws its phase durations
+    /// from (the client hands over the process-wide one). Host: without one the
+    /// process-wide generator is used.
+    static void setRandomNumberGenerator(std::shared_ptr<shared::TRandomNumberGenerator> generator);
 
 private:
     int m_phase = 0;

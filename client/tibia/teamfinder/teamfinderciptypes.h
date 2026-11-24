@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QByteArray>
 #include <QDateTime>
 #include <QObject>
@@ -154,6 +156,10 @@ public:
     void requestTeamList();
     void joinTeam(uint16_t TeamID);
     void leaveTeam(uint16_t TeamID);
+
+Q_SIGNALS:
+    void sendTeamFinderAssembleTeam(const ::tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam& TeamFinderAssembleTeamMessage);
+    void sendTeamFinderJoinTeam(const ::tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam& TeamFinderJoinTeamMessage);
 
 private:
     TTeamFinderStorage* m_storage = nullptr;

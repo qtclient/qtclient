@@ -4,6 +4,7 @@
 #include "skillwheel/skillwheelciptypes.h"
 
 #include "cyclopedia/characterinfostorage.h"
+#include "game/blessingsprotocolmessagehandler.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 #include "game/selectoutfitdialogdata.h"
@@ -32,6 +33,8 @@
 
 #include <QAbstractListModel>
 #include <QKeySequence>
+
+#include <stdexcept>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -73,7 +76,9 @@ tibia::client::CyclopediaCharacterInfoType_t protocolType(const int dataType)
         case T::Inspection: return tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION;
         case T::Badges: return tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES;
         case T::Titles: return tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES;
-        default: return tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION;
+        case T::BaseInformation: return tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION;
+        case 14: return tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL;
+        default: throw std::runtime_error("unhandled enum value");
     }
 }
 
@@ -361,9 +366,23 @@ private:
 
 bool TCharacterInfoDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
+TCharacterInfoDialogController::TCharacterInfoDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                                               QQuickItem* DialogParentItem, QObject* parent)
+    : cip::tibia::gamewindow::TCharacterInfoDialogController(parent)
+    , m_pClientOptions(ClientOptions)
+    , m_errorMessage(new TMessageDialogController(Engine, DialogParentItem, this))
+{
+    initialize();
+}
+
 TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCharacterInfoDialogController(parent)
     , m_errorMessage(new TMessageDialogController(this))
+{
+    initialize();
+}
+
+void TCharacterInfoDialogController::initialize()
 {
     m_achievementsController = new TAchievementInfoController(this);
     m_errorMessage->setCloseOnButtonClicked(true);
@@ -599,7 +618,14 @@ void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
     Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_CYCLOPEDIA));
 }
 
-void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::requestBless(); }
+void TCharacterInfoDialogController::openBlessingsDialog()
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    Q_EMIT session->blessingsProtocolMessageHandler()->sendBlessingsDialog(
+        ::tibia::protobuf::protocol::GameclientMessageBlessingsDialog());
+}
 
 void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 {

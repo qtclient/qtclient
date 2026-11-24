@@ -246,7 +246,7 @@ public:
             // The bestiary loot entry carries only the object's type: its
             // instance is the plain object of that type.
             const appearances::TAppearanceInstancePtr instance =
-                item.itemId != 0 ? appearances::TAppearanceInstanceFactory::createObject(item.itemId) : nullptr;
+                item.itemId != 0 ? appearances::TAppearanceInstanceFactory::installed()->createObject(item.itemId) : nullptr;
             m_lootItems.append(new TQmlLoot(item.itemId, qstr(item.name), item.amount, item.specialEvent != 0, instance));
         }
         while (m_lootItems.size() % PageSize != 0)

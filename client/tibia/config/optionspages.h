@@ -27,7 +27,19 @@ class TRecordKeyboardShortcutDialogController;
 namespace game {
 class IGameSession;
 }
+namespace appearances {
+class TAppearanceInstanceFactory;
 }
+namespace input {
+class TEventFilterManager;
+}
+namespace spells {
+class TSpellInfoStorage;
+}
+}
+
+class QQmlEngine;
+class QQuickItem;
 
 namespace tibia {
 namespace config {
@@ -395,11 +407,15 @@ class THotkeysOptionsPage final : public cip::tibia::config::THotkeysQMLOptionsP
 {
     Q_OBJECT
 public:
-    /// The page with its dialogs: the preset name prompt, the remove preset
-    /// confirmation (closes on any button), the spell, object and text assign
-    /// dialogs (none names an action bar button; the object dialog's game
-    /// actions are the page's) and the key recorder.
-    explicit THotkeysOptionsPage(QObject* parent = nullptr);
+    /// The page with its dialogs (on `Engine` under `DialogParentItem`): the
+    /// preset name prompt, the remove preset confirmation (closes on any
+    /// button), the spell, object and text assign dialogs (none names an
+    /// action bar button; the object dialog's game actions are the page's) and
+    /// the key recorder. Spells are looked up in `SpellInfoStorage`, object
+    /// pictures made by `AppearanceInstanceFactory`.
+    THotkeysOptionsPage(QQmlEngine* Engine, QQuickItem* DialogParentItem, spells::TSpellInfoStorage* SpellInfoStorage,
+                        input::TEventFilterManager* EventFilterManager,
+                        std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory, QObject* parent = nullptr);
     ~THotkeysOptionsPage() override;
 
     void setHotkeyMode(EHotkeyMode mode);
@@ -478,6 +494,10 @@ private:
     void openPresetDialog(EPresetTextMode mode, const QString& caption, const QString& description, const QString& text);
     QString currentSetName() const { return m_options.currentHotkeySetName; }
 
+    QQmlEngine* m_pEngine;
+    QQuickItem* m_pDialogParentItem;
+    spells::TSpellInfoStorage* m_pSpellInfoStorage;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
     std::unique_ptr<gamewindow::TGenericEnterTextDialogController> m_enterTextDialog;
     std::unique_ptr<gamewindow::TMessageDialogController> m_messageDialog;
     std::unique_ptr<gamewindow::TAssignSpellActionDialogController> m_assignSpellDialog;

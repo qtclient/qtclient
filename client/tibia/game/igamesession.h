@@ -37,6 +37,9 @@ public:
     /// Ends the session's connection or playback now; the session then
     /// reports disconnected.
     virtual void disconnectNow() = 0;
+    /// CIP v51: the session reads and handles what arrived from the network
+    /// (the game client's network timer calls it every 50 ms). The base has none.
+    virtual void processNetwork() { }
     /// The clock the session's frames run on: the next frame's predicted
     /// time is read from it.
     virtual std::shared_ptr<shared::IClockService> clockService() const = 0;

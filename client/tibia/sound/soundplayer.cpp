@@ -1,5 +1,7 @@
 #include "sound/soundplayer.h"
 
+#include <QDebug>
+
 #include <algorithm>
 
 namespace tibia::sound {
@@ -43,13 +45,20 @@ void TSoundPlayer::applySound()
         if (!m_waitingForData && m_source.status() == TAudioSource::EStatus::Playing)
             m_source.stop();
         const TPlayableSoundData* data = m_sound->data();
+        // Every data alternative counts as opened, also a stream that failed to load.
         bool opened = false;
-        if (const auto* file = std::get_if<TSoundFile>(data))
-            opened = m_source.openFile(file->virtualPath);
-        else if (const auto* bytes = std::get_if<QByteArray>(data))
-            opened = m_source.openMemory(*bytes);
-        else if (const auto* buffer = std::get_if<TSoundBuffer>(data))
-            opened = m_source.openBuffer(*buffer);
+        if (const auto* file = std::get_if<TSoundFile>(data)) {
+            if (!m_source.openFile(file->virtualPath))
+                qDebug() << "Can't load sound stream" << m_sound->soundId() << "from" << m_sound->metadata().fileName;
+            opened = true;
+        } else if (const auto* bytes = std::get_if<QByteArray>(data)) {
+            if (!m_source.openMemory(*bytes))
+                qDebug() << "Can't load sound stream" << m_sound->soundId() << "from memory";
+            opened = true;
+        } else if (const auto* buffer = std::get_if<TSoundBuffer>(data)) {
+            m_source.openBuffer(*buffer);
+            opened = true;
+        }
         if (opened) {
             m_source.setLooping(m_looping);
             updateVolume();

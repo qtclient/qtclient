@@ -85,19 +85,16 @@ QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<
     return rows;
 }
 
-/// The monster races the preferred-monster picker offers (no bosses).
-std::vector<uint16_t> pickableRaceIds()
+/// The monster races the preferred-monster picker offers, in static data
+/// order: monsters with both static data flags (6 and 7) whose bestiary
+/// difficulty is 2..5.
+std::vector<uint16_t> bountyMonsterRaceIds()
 {
-    const auto& races = tibia::game::getAllRaces();
     std::vector<uint16_t> raceIds;
-    raceIds.reserve(races.size());
-    for (const auto& race : races) {
-        if (race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
-            continue;
-        raceIds.emplace_back(static_cast<uint16_t>(race.raceId));
+    for (const RaceType& race : tibia::game::getAllRaces()) {
+        if (race.category != 0 && race.flag7 && race.difficulty >= 2 && race.difficulty <= 5)
+            raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }
-    std::sort(raceIds.begin(), raceIds.end());
-    raceIds.erase(std::unique(raceIds.begin(), raceIds.end()), raceIds.end());
     return raceIds;
 }
 
@@ -106,7 +103,7 @@ std::vector<uint16_t> pickableRaceIds()
 TBountyTasksController::TBountyTasksController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TBountyTasksController(parent)
     , m_tasksModel(new taskboard::TBountyTasksListModel(this))
-    , m_monsterFilter(new taskboard::TMonsterListModelSortFilterProxy({}, this))
+    , m_monsterFilter(new taskboard::TMonsterListModelSortFilterProxy(bountyMonsterRaceIds(), this))
     , m_preferredModel(new taskboard::TBountyTasksPreferredMonsterListModel(this))
     , m_rerollConfirmation(engine, dialogParentItem)
 {
@@ -182,8 +179,9 @@ void TBountyTasksController::onBountyTaskDataReceived(const taskboard::TBountyTa
     QVector<taskboard::PreferredMonsterSlotRow> slotRows = preferredSlotRows(data.preferredMonsterSlots, clearCost);
     m_preferredModel->setClearCost(clearCost);
     m_preferredModel->setRows(std::move(slotRows));
-    // Host: the race list the picker filters (CipSoft builds it once with the proxy).
-    m_monsterFilter->monsterListFilterModel()->setRaceIds(pickableRaceIds());
+    // Host: the static data can load after the controller is made, so the
+    // picker's races are built again here (CipSoft builds them once, with the proxy).
+    m_monsterFilter->monsterListFilterModel()->setRaceIds(bountyMonsterRaceIds());
     m_monsterFilter->setExcludedRaceIds(assignedRaceIds(data.preferredMonsterSlots));
     // The bounty data answers the pending request; its difficulty and elite
     // mode become the selection.

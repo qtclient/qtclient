@@ -17,8 +17,9 @@
 namespace tibia {
 namespace minimap {
 
-/// What the minimap records of one field (CIP: the world field's minimap data).
-struct TMinimapFieldData
+/// What the minimap records of one field. The defaults are an unknown field's:
+/// no colour, no ground, impassable and avoided.
+struct TMinimapDataOfOneField
 {
     /// Automap palette index; 0 when no object has an automap colour.
     uint8_t color = 0;
@@ -27,7 +28,7 @@ struct TMinimapFieldData
     bool blocked = true;
     /// The planner keeps off the field: a creature or an object to avoid on
     /// it, or a walk state other than free.
-    bool avoid = false;
+    bool avoid = true;
 };
 
 /// The fields the client knows (CIP: the world storage the minimap reads).
@@ -37,7 +38,7 @@ public:
     virtual ~IMinimapWorld() = default;
     /// Whether the server described the field.
     virtual bool isKnown(const Position& coord) const = 0;
-    virtual TMinimapFieldData fieldData(const Position& coord) const = 0;
+    virtual TMinimapDataOfOneField fieldData(const Position& coord) const = 0;
     /// Calls `visit` for every known field of floor `z`.
     virtual void forEachKnownField(int z, const std::function<void(const Position&)>& visit) const = 0;
     /// The world area projected onto floor `z`, in fields.
@@ -70,7 +71,7 @@ public:
     void onFieldChanged(const Position& coord);
     /// Records the world's data of the field (the defaults without one).
     void updateField(const Position& coord);
-    void setField(const Position& coord, const TMinimapFieldData& field);
+    void setField(const Position& coord, const TMinimapDataOfOneField& field);
 
     /// Writes and drops loaded tiles away from the area, and loads its tiles.
     void setVisibleArea(const Position& topLeft, const QSize& size);

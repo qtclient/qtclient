@@ -67,7 +67,9 @@ std::vector<std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>>
 TAppearanceInstanceSpriteSequence::phaseSprites(const TAppearanceTypeSpriteInfo& spritesInfo, const TAppearancePattern& pattern,
                                                 const int layer)
 {
-    static const auto invalid = std::make_shared<const sprites::TSpriteFromSpritesheetInfo>();
+    // A missing sprite: sprite 0 of no spritesheet, an empty cell, not opaque.
+    static const auto invalid =
+        std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(0, QString::fromUtf8(""), QRect(), false);
     std::vector<std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>> sprites;
     const auto& ids = spritesInfo.spriteIds();
     const uint32_t frame = spritesInfo.patternWidth() * spritesInfo.patternHeight() * spritesInfo.patternDepth() * spritesInfo.layers();

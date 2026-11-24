@@ -8,7 +8,6 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/npcdialogcontroller.h"
-#include "mods/registry.h"
 #include "input/eventfiltermanager.h"
 #include "input/inputciptypes.h"
 #include "input/crosshairgameactionhandlers.h"
@@ -1044,6 +1043,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     , m_mapper(config::controlSchemeForListModelIndex(
           app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0)))
     , m_gameClient(gameClient)
+    , m_maxChatInputHistoryLength(chat::chatSetting(QStringLiteral("maxChatInputHistoryLength"), 1000, 1))
 {
     own(this);
     own(&m_primary);
@@ -1192,13 +1192,17 @@ void TChatController::openChannelsFromConfig()
 {
     m_channelsFromConfigOpened = true;
     const QJsonObject chatOptions = app::ClientOptions::load().root().value(QLatin1String("chatOptions")).toObject();
-    // product (game_chat): one join per login-sync tick, under the server's packets-per-second limit.
+    // CIP: OPEN_CHAT_CHANNEL for every stored server channel, then for the loot
+    // channel when it was open.
     for (const QJsonValue& id : chatOptions.value(QLatin1String("openChannels")).toArray()) {
-        const auto channelId = static_cast<uint16_t>(id.toInt());
-        tibia::mods::enqueueLoginSync([channelId] { tibia::game::joinChannel(channelId); });
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChatChannel>(
+            A::OPEN_CHAT_CHANNEL, std::make_shared<const TChatChannelIdentifier>(TChatChannelIdentifier::channel(
+                                      static_cast<uint16_t>(id.toInt()), QStringLiteral("Channel to open")))));
     }
-    if (chatOptions.value(QLatin1String("lootChannelOpen")).toBool(true) && m_chatChannelStorage)
-        m_chatChannelStorage->open({ TChatChannelIdentifier::Loot }, false, false);
+    if (chatOptions.value(QLatin1String("lootChannelOpen")).toBool(true)) {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChatChannel>(
+            A::OPEN_CHAT_CHANNEL, std::make_shared<const TChatChannelIdentifier>(TChatChannelIdentifier{ TChatChannelIdentifier::Loot })));
+    }
 }
 
 void TChatController::onChannelAdded(chat::TChatChannel* channel, bool)
@@ -1622,11 +1626,10 @@ QString TChatController::getNewerChatInputHistoryEntry()
 
 void TChatController::addEntryToChatInputHistory(const QString& chatInputText)
 {
-    static const qsizetype maxHistory = chat::chatSetting(QStringLiteral("maxChatInputHistoryLength"), 1000, 1);
     if (chatInputText.isEmpty())
         return;
     // A full history drops its oldest line first; a repeat of the newest line is not stored again.
-    if (m_history.size() >= maxHistory)
+    if (m_history.size() >= m_maxChatInputHistoryLength)
         m_history.removeFirst();
     if (m_history.isEmpty() || m_history.constLast() != chatInputText)
         m_history.append(chatInputText);

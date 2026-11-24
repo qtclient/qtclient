@@ -741,10 +741,10 @@ void TCyclopediaProtocolMessageHandler::handleItemWastedMessage(const ::tibia::p
 {
     using ::tibia::appearances::TAppearanceInstanceFactory;
     const auto objectId = static_cast<uint16_t>(message.object_id());
-    const TAppearanceType* type = TAppearanceInstanceFactory::appearanceType(ThingCategoryItem, objectId);
+    const TAppearanceType* type = TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, objectId);
     const ::tibia::appearances::TAppearanceInstancePtr instance = type && type->isStackable()
-        ? ::tibia::appearances::TAppearanceInstancePtr(TAppearanceInstanceFactory::createCumulativeObject(objectId, 1))
-        : TAppearanceInstanceFactory::createObject(objectId);
+        ? ::tibia::appearances::TAppearanceInstancePtr(TAppearanceInstanceFactory::installed()->createCumulativeObject(objectId, 1))
+        : TAppearanceInstanceFactory::installed()->createObject(objectId);
     m_storages.gainWaste->addWaste(objectId, 1, analysers::TAnalyserStorages::nowMs(), instance);
 }
 
@@ -753,7 +753,7 @@ void TCyclopediaProtocolMessageHandler::handleItemLootedMessage(const ::tibia::p
     const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(message.item());
     const quint32 count = slot.stackable ? std::max<quint32>(1, slot.count) : 1;
     m_storages.gainWaste->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs(),
-                                  ::tibia::appearances::TAppearanceInstanceFactory::createObject(
+                                  ::tibia::appearances::TAppearanceInstanceFactory::installed()->createObject(
                                       ::tibia::protocol::TObjectData::fromProtocolInventoryItem(message.item())));
 }
 

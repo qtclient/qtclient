@@ -39,13 +39,6 @@ class TShowOffRequestUploader;
 }
 }
 namespace tibia {
-namespace news {
-class TEventsUploader;
-class TNewsDiskIO;
-class TNewsRequestUploader;
-class TNewsStorage;
-class TNewsViewsUploader;
-}
 namespace shared {
 class IClockService;
 class TTibiaFileSystemHelper;
@@ -55,17 +48,15 @@ class TTibiaFileSystemHelper;
 namespace tibia {
 namespace gamewindow {
 
-class TCalendarDialogController;
-class TNewsButtonController;
-class TNewsDialogController;
 class TStatusBarController;
 
 /// gamewindow.qml's controller (CIP: TGameWindowController, metacall
 /// ). Without launcher SSO / --account the start-screen login
 /// mask is shown (`isAuthenticated` false); otherwise the launcher (or CLI)
 /// authenticates and the character list opens. Start-screen HTTP services
-/// (boosted creature, event schedule, live info / cacheinfo, news, showoff) are
-/// requested via CIP uploaders against /clientservices/clientservices.php.
+/// (boosted creature, live info / cacheinfo, showoff) are requested via CIP
+/// uploaders against /clientservices/clientservices.php; the client's events
+/// uploader answers onEventScheduleUpdated.
 class TGameWindowController final : public cip::tibia::gamewindow::TGameWindowController
 {
     Q_OBJECT
@@ -86,12 +77,6 @@ public:
     /// CIP: hands the session to the status bar controller (the game window
     /// controller's own, made with the client options).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-    /// The client's news storage (the news dialog, the news button and the
-    /// session's news protocol handler read it).
-    const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_newsStorage; }
-    /// The news cache's disk writer (the client waits for it before closing).
-    const std::shared_ptr<news::TNewsDiskIO>& newsDiskIO() const { return m_newsDiskIO; }
 
     /// gamewindow.qml's item, once it is shown: applies the option-driven game
     /// window state now and again on every option change.
@@ -189,6 +174,9 @@ public:
     void onHintDownloadFailed(const QUrl& url);
     /// CIP: after the server save the preview moves on to the new day.
     void onEventsSchedulePreviewUpdateTimerTimeout() override;
+    /// CIP slot (the client connects its events uploader's updated): today's
+    /// events and the next starting ones, with their tooltips.
+    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
 
     /// Graphics-engine restart and other intentional process exits. The window
     /// close that follows must not ask Exit / Logout / Cancel.
@@ -212,8 +200,6 @@ private:
     void onLiveInformationReceived();
     void onShowOffReceived();
     void clearEventModels();
-    /// Today's events and the next starting ones, with their tooltips.
-    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void syncAnthemButton();
 
     std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
@@ -236,25 +222,9 @@ private:
     bool m_beforeServerSave = true;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
     std::shared_ptr<shared::IClockService> m_pClockService;
-    std::shared_ptr<news::TNewsStorage> m_newsStorage;
-    std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;
-    std::unique_ptr<news::TEventsStorage> m_eventsStorage;
     std::unique_ptr<game::TBoostedCreatureRequestUploader> m_boostedUploader;
     std::unique_ptr<game::TLiveInformationRequestUploader> m_liveInfoUploader;
     std::unique_ptr<game::TShowOffRequestUploader> m_showOffUploader;
-    std::shared_ptr<news::TEventsUploader> m_eventsUploader;
-    std::unique_ptr<news::TNewsRequestUploader> m_newsUploader;
-    std::unique_ptr<news::TNewsViewsUploader> m_newsViewsUploader;
-    std::unique_ptr<TNewsDialogController> m_newsDialog;
-    std::unique_ptr<TCalendarDialogController> m_calendarDialog;
-
-public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

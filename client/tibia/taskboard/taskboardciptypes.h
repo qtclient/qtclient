@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 
 #include <cstdint>
@@ -57,6 +59,8 @@ public:
     static void assignAvoidedMonster(int slotIndex, int raceId);
 
 Q_SIGNALS:
+    void sendTaskboardCommand(const ::tibia::protobuf::protocol::GameclientMessageTaskboard& TaskboardMessage);
+    void sendFightMonsterInSoulPitCommand(const ::tibia::protobuf::protocol::GameclientMessageSoulSealsFightMonster& SoulSealsFightMonsterMessage);
     void openSoulSealsDialog(const std::vector<uint16_t>& AnimusMasteryRaceIds);
 
 private:

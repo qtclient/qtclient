@@ -346,7 +346,7 @@ void TCreature::updateCoveredField()
 void TCreature::rebuildOutfitAppearance()
 {
     TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
-    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
+    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::installed()->fromOutfit(m_outfit, type);
     if (appearance)
         appearance->linkCreature(m_creatureId);
     setOutfitAppearance(appearance);

@@ -120,18 +120,14 @@ void TStatusbarStorage::resetConfiguration()
 
 void TStatusbarStorage::setPosition(const int position)
 {
-    if (position == m_position || position < Off || position > Right)
-        return;
     m_position = position;
-    modified();
+    Q_EMIT configurationChangedFromUserInput();
 }
 
 void TStatusbarStorage::setStyle(const int style)
 {
-    if (style == m_style || style < Default || style > Parallel)
-        return;
     m_style = style;
-    modified();
+    Q_EMIT configurationChangedFromUserInput();
 }
 
 void TStatusbarStorage::setShown(const Entry entry, const bool shown)

@@ -3,14 +3,11 @@
 #include "platform/platform.h"
 
 #include "clientoptions.h"
-#include "gamewindow/gamewindowciptypes.h"
-#include "gamewindow/mousecursorcontroller.h"
 #include "mods/modloader.h"
 #include "mods/registry.h"
 #include "overrideinterceptor.h"
 #include "packqmlinterceptor.h"
 #include "qmldisk.h"
-#include "imageproviders/imagestripimageprovider.h"
 #ifdef TIBIA_WITH_GAMECORE
 #include "client/gameapplication.h"
 #include "shared/dynamicresourceshelper.h"
@@ -389,11 +386,9 @@ std::unique_ptr<QQmlEngine> createEngine()
     engine->addUrlInterceptor(new PackQmlInterceptor());
     for (const QString& path : tibia::platform::extraQmlPluginPaths())
         engine->addPluginPath(path);
-    imageproviders::registerImageProviders(engine.get());
-
-    auto* cursor = new gamewindow::TMouseCursorController(ClientOptions::load().options(), engine.get());
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaMouseCursorController"), cursor);
-    new gamewindow::TTextCopyController(engine.get());
+    // CIP: the image providers and the mouse cursor and text copy controllers
+    // come with the game client (TGameClientBase::initializeStorages /
+    // initializeQmlContext); the client-less shell makes them in main.
     // Root context objects CIP's components test for null before use.
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaContextMenuController"),
                                               QVariant::fromValue<QObject*>(nullptr));

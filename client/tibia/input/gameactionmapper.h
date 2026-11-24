@@ -7,15 +7,17 @@
 #include <Qt>
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 namespace tibia {
 namespace input {
 
 /// Picks the action a mouse click runs from the candidates under the mouse
-/// (CIP: TGameActionMapper). The rules come from the control scheme's table
-/// (setControlScheme); under the classic scheme the loot scheme rewrites them
-/// (setLootScheme). Control schemes (clientOptions controlScheme): 1 classic,
+/// (CIP: TGameActionMapper). It keeps a rule table per control scheme
+/// (addControlScheme); the active rules are a copy of the current scheme's
+/// table (setControlScheme), which the loot scheme rewrites under the classic
+/// scheme (setLootScheme). Control schemes (clientOptions controlScheme): 1 classic,
 /// 2 legacy, 3 left smart click. Loot schemes (clientOptions lootScheme):
 /// 0 right, 1 shift+right, 2 left.
 class TGameActionMapper : public ::tibia::CipTyped
@@ -35,8 +37,10 @@ public:
     static constexpr int LootShiftRight = 1;
     static constexpr int LootLeft = 2;
 
-    /// Host: the mapping of `controlScheme` with `lootScheme` applied (the
-    /// client's two setters in order); the defaults are classic and right.
+    /// Host: CipSoft's client adds the three schemes' tables to its mapper
+    /// (classic, legacy, left smart click) and then applies the options' control
+    /// and loot schemes; this constructor does the same for `controlScheme` and
+    /// `lootScheme` (defaults classic and right).
     explicit TGameActionMapper(int controlScheme = ClassicControlScheme, int lootScheme = LootRight);
 
     int controlScheme() const { return m_controlScheme; }
@@ -66,9 +70,15 @@ public:
         std::vector<EGameAction> types;
     };
 
+    /// Adds `rules` as the table of `controlScheme` (a scheme that has a table
+    /// keeps it). While the mapper has no active rules, the scheme becomes the
+    /// current one and its table the active rules.
+    void addControlScheme(int controlScheme, std::vector<TRule> rules);
+
 private:
     int m_controlScheme = 0;
     std::vector<TRule> m_rules;
+    std::map<int, std::vector<TRule>> m_controlSchemes;
 };
 
 }

@@ -77,8 +77,8 @@ inline std::shared_ptr<appearances::TOutfitAppearanceInstance> TSessiondumpHints
     look.setFeet(outfit.detail);
     look.setAddons(uint8_t((outfit.addon1 ? 1 : 0) | (outfit.addon2 ? 2 : 0)));
     using appearances::TAppearanceInstanceFactory;
-    return TAppearanceInstanceFactory::createOutfit(
-        TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, outfit.lookType), look, 0);
+    return TAppearanceInstanceFactory::installed()->createOutfit(
+        TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, outfit.lookType), look, 0);
 }
 
 }

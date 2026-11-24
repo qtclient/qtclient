@@ -73,7 +73,7 @@ void TExivaOptionsGameActionHandler::toggleAllowEveryone()
 {
     TExivaOptionsStorage::Options options = storedOptions();
     options.allowAll = !options.allowAll;
-    m_protocolMessageHandler->sendSetExivaOptions(options, {});
+    m_protocolMessageHandler->setExivaOptions(options, {});
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(
         qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false"),
         chat::systemWhite()));
@@ -89,21 +89,21 @@ void TExivaOptionsGameActionHandler::updateOptions(const input::TGameActionUpdat
     changes.removedCharacters = difference(characters, whitelists.characters);
     changes.addedGuilds = difference(whitelists.guilds, guilds);
     changes.removedGuilds = difference(guilds, whitelists.guilds);
-    m_protocolMessageHandler->sendSetExivaOptions(action.options(), changes);
+    m_protocolMessageHandler->setExivaOptions(action.options(), changes);
 }
 
 void TExivaOptionsGameActionHandler::addCharacterToWhitelist(const QString& name)
 {
     TExivaOptionsProtocolMessageHandler::WhitelistChanges changes;
     changes.addedCharacters.push_back(name);
-    m_protocolMessageHandler->sendSetExivaOptions(storedOptions(), changes);
+    m_protocolMessageHandler->setExivaOptions(storedOptions(), changes);
 }
 
 void TExivaOptionsGameActionHandler::removeCharacterFromWhitelist(const QString& name)
 {
     TExivaOptionsProtocolMessageHandler::WhitelistChanges changes;
     changes.removedCharacters.push_back(name);
-    m_protocolMessageHandler->sendSetExivaOptions(storedOptions(), changes);
+    m_protocolMessageHandler->setExivaOptions(storedOptions(), changes);
 }
 
 }

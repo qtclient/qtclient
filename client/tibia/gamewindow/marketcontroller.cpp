@@ -4,6 +4,7 @@
 #include "analysers/itempricestorage.h"
 #include "container/containerciptypes.h"
 #include "game/gamesessionbase.h"
+#include "gamewindow/appearancetypefilterselection.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -461,33 +462,16 @@ bool TMarketController::showLockerOnly() const
 
 QStringList TMarketController::availableClassifications() const
 {
-    if (!m_enableTierAndClassificationSelection)
-        return { QString() };
-    QStringList classifications{ qtTrId("market_filter_class_all"), qtTrId("market_filter_class_none") };
-    if (m_storage) {
-        for (const auto& entry : m_storage->classificationTiers())
-            classifications << qtTrId("market_filter_class").arg(entry.first);
-    }
-    return classifications;
+    return classificationFilterEntries(m_enableTierAndClassificationSelection,
+                                       dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()));
 }
 
 QStringList TMarketController::availableTiers() const
 {
-    if (!m_enableTierSelection || !m_storage)
-        return { QString() };
-    QStringList tiers;
-    const TAppearanceTypeFilter filter = currentFilter();
-    if (filter.classificationMode == 2) {
-        std::set<int> allTiers;
-        for (const auto& [classification, classTiers] : m_storage->classificationTiers())
-            allTiers.insert(classTiers.begin(), classTiers.end());
-        for (const int tier : allTiers)
-            tiers << qtTrId("market_filter_tier").arg(tier);
-    } else if (filter.classificationMode == 3) {
-        for (const int tier : m_storage->classificationTiers().at(filter.classification))
-            tiers << qtTrId("market_filter_tier").arg(tier);
-    }
-    return tiers;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return tierFilterEntries(m_enableTierSelection, session,
+                             classificationFilterSelection(m_enableTierAndClassificationSelection, session,
+                                                           m_indexOfSelectedClassification));
 }
 
 void TMarketController::setEnableTierSelection(const bool v)
@@ -551,53 +535,18 @@ void TMarketController::rebuildEntries()
 
 bool TMarketController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_proxy.model().size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_proxy.model().entry(row);
-        if (entry.classification == 0)
-            continue;
-        if (category == TAppearanceTypeListModelSortFilterProxy::AllCategories || entry.marketCategory == category)
-            return true;
-        if (category == TAppearanceTypeListModelSortFilterProxy::AllWeaponsCategory
-            && TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(entry.marketCategory))
-            return true;
-    }
-    return false;
+    return categoryHasClassifiedTypes(m_proxy, category);
 }
 
 TAppearanceTypeFilter TMarketController::currentFilter() const
 {
-    TAppearanceTypeFilter filter;
-    if (!m_enableTierAndClassificationSelection)
-        return filter;
-    std::vector<int> classes;
-    std::set<int> allTiers;
-    if (m_storage) {
-        for (const auto& [classification, tiers] : m_storage->classificationTiers()) {
-            classes.push_back(classification);
-            allTiers.insert(tiers.begin(), tiers.end());
-        }
-    }
-    if (m_indexOfSelectedClassification == 1) {
-        filter.classificationMode = 1;
-    } else if (m_indexOfSelectedClassification == 0) {
-        filter.classificationMode = 2;
-    } else if (m_indexOfSelectedClassification >= 2 && m_indexOfSelectedClassification - 2 < static_cast<int>(classes.size())) {
-        filter.classificationMode = 3;
-        filter.classification = classes[m_indexOfSelectedClassification - 2];
-    }
-
-    std::vector<int> tiers;
-    if (filter.classificationMode == 2) {
-        tiers.assign(allTiers.begin(), allTiers.end());
-    } else if (filter.classificationMode == 3 && m_storage) {
-        tiers = m_storage->classificationTiers().at(filter.classification);
-    }
-    if ((filter.classificationMode == 2 || filter.classificationMode == 3) && m_indexOfSelectedTier >= 0
-        && m_indexOfSelectedTier < static_cast<int>(tiers.size())) {
-        filter.tierMode = 3;
-        filter.tier = tiers[m_indexOfSelectedTier];
-    }
-    return filter;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const TAppearanceTypeFilterSelection classification =
+        classificationFilterSelection(m_enableTierAndClassificationSelection, session, m_indexOfSelectedClassification);
+    const TAppearanceTypeFilterSelection tier =
+        tierFilterSelection(m_enableTierAndClassificationSelection, session, classification, m_indexOfSelectedTier);
+    // The four buttons are set by the proxy's setCategoryFilter / setNameFilter overloads.
+    return appearanceTypeFilter(false, false, false, false, classification, tier);
 }
 
 void TMarketController::applyFilter(const QString& nameFilter, const bool filterByLevel, const bool filterByVocation, const bool oneHand,
@@ -629,8 +578,14 @@ void TMarketController::reselect()
 {
     m_proxy.applyFilterNow();
     int row = -1;
-    if (m_selectedType != 0)
-        row = m_proxy.rowOf(m_selectedType, selectedTier());
+    if (m_selectedType != 0) {
+        for (int candidate = 0; candidate < m_proxy.rowCount(); ++candidate) {
+            if (displayTypeIdAt(m_proxy, candidate) == m_selectedType && m_proxy.tierAt(candidate) == selectedTier()) {
+                row = candidate;
+                break;
+            }
+        }
+    }
     if (row == -1)
         onMarketCategoryItemSelected(0, 0);
     Q_EMIT itemListSelectionRequest(row);

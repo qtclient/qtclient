@@ -14,18 +14,13 @@
 #include "game/liveinformationrequestuploader.h"
 #include "game/showoffrequestuploader.h"
 #include "cyclopedia/cyclopediaciptypes.h"
-#include "gamewindow/calendardialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
-#include "gamewindow/newsdialogcontroller.h"
 #include "gamewindow/statusbarcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include "news/eventqmlentry.h"
 #include "news/eventsuploader.h"
-#include "news/newsdiskio.h"
-#include "news/newsrequestuploader.h"
-#include "news/newsstorage.h"
 #include "clockservice.h"
 #include "jsondocumenthttppostsender.h"
 #include "shared/tibiafilesystemhelper.h"
@@ -155,9 +150,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     , m_hintsUrl(HintsUrl)
     , m_fileSystemHelper(std::move(TibiaFileSystemHelper))
     , m_pClockService(std::move(ClockService))
-    , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
-    , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
-    , m_eventsStorage(std::make_unique<news::TEventsStorage>())
     // CIP: the live information and boosted creature uploaders ask the
     // client services URL, each with its own sender.
     , m_boostedUploader(std::make_unique<game::TBoostedCreatureRequestUploader>(
@@ -165,8 +157,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     , m_liveInfoUploader(std::make_unique<game::TLiveInformationRequestUploader>(
           ClientServicesUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper, m_pClockService))
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
-    , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
-    , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
     // CIP: the status bar controller's game actions are the game window controller's.
     m_statusBarController = m_pStatusBarController.get();
@@ -175,14 +165,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
             &TGameWindowController::onBoostedCreatureReceived);
     connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
             &TGameWindowController::onLiveInformationReceived);
-    connect(m_newsDialog.get(), &TNewsDialogController::publishGameAction, this, &TGameWindowController::publishGameAction);
-    // CIP (TGameClient): the storage saves through the disk cache and starts
-    // from what it holds.
-    connect(m_newsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_newsDiskIO.get(),
-            &news::TNewsDiskIO::saveNewsDataToDisk);
-    connect(m_newsDiskIO.get(), &news::TNewsDiskIO::loadingNewsDataSucceeded, m_newsStorage.get(),
-            &news::TNewsStorage::loadFromDisk);
-    m_newsDiskIO->loadNewsDataFromDiskIfPossible();
     // CIP launcher authenticates before the game window; local client-start
     // shows the login mask until setAuthenticated(true).
     m_isAuthenticated = false;
@@ -230,14 +212,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     connect(&m_eventsSchedulePreviewTimer, &QTimer::timeout, this,
             &TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout);
     m_eventsSchedulePreviewTimer.start();
-
-    for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
-        m_gameActions.on(type, [this](const input::IGameAction& action) {
-            if (m_newsDialog)
-                m_newsDialog->handleGameAction(action);
-            return true;
-        });
-    }
 }
 
 TGameWindowController::~TGameWindowController()
@@ -309,57 +283,26 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
     const QUrl service = url.isEmpty() ? QUrl() : url;
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
-    // CIP builds the client services uploaders with their URL.
-    // One sender per uploader. Sharing a single TJsonDocumentHttpPostSender
-    // fans every reply to every uploader (news saw newsviewed failures as its
-    // own; a throw in any onFinished killed application.exec on WASM).
-    m_eventsUploader = news::TEventsUploader::create(service, m_fileSystemHelper, shared::TClockService::process());
-    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
-            &news::TEventsStorage::onEventsUpdated);
-    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, [this](const std::vector<news::TEventInformation>& events) {
-        onEventScheduleUpdated(events);
-        if (m_calendarDialog)
-            m_calendarDialog->setEvents(m_eventsStorage->events());
-    });
-    m_newsUploader = std::make_unique<news::TNewsRequestUploader>(
-        service, m_newsStorage, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
-        shared::TClockService::process());
-    connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
-            &TNewsDialogController::onNewsQueryFailed);
-    m_newsViewsUploader = std::make_unique<news::TNewsViewsUploader>(
-        service, std::make_shared<shared::TJsonDocumentHttpPostSender>());
-    m_newsDialog->setNewsUploaders(m_newsUploader.get(), m_newsViewsUploader.get());
     requestStartScreenServices();
 }
 
 void TGameWindowController::requestStartScreenServices()
 {
     // CipSoft GameWindowController starts these on the start screen (boosted /
-    // calendar / live info / showoff); news is the same multiplex (`type:"news"`).
+    // live info / showoff); the client's events uploader follows
+    // startScreenNowDisplayed.
     loadHints();
     // Browser: iPhone Safari jetsams when login chrome fetches boosted/showoff/events
     // on a fresh Module. Defer multiplex until account login (setAuthenticated).
     if (!tibia::platform::kStartScreenServicesBeforeLogin)
         return;
-    if (m_liveInfoUploader)
-        m_liveInfoUploader->requestUpdateAndStartTimer(600000);
-    if (m_eventsUploader)
-        m_eventsUploader->requestUpdate();
-    if (m_newsUploader)
-        m_newsUploader->requestUpdate();
-    if (m_boostedUploader)
-        m_boostedUploader->requestUpdate();
-    m_showOffUploader->requestUpdate();
+    requestDeferredStartScreenServices();
 }
 
 void TGameWindowController::requestDeferredStartScreenServices()
 {
     if (m_liveInfoUploader)
         m_liveInfoUploader->requestUpdateAndStartTimer(600000);
-    if (m_eventsUploader)
-        m_eventsUploader->requestUpdate();
-    if (m_newsUploader)
-        m_newsUploader->requestUpdate();
     if (m_boostedUploader)
         m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
@@ -807,13 +750,6 @@ void TGameWindowController::optionsPressed()
 {
     auto action = std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0);
     Q_EMIT publishGameAction(action);
-}
-
-void TGameWindowController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-{
-    m_gameActions.handle(pGameAction);
-    if (m_calendarDialog)
-        m_calendarDialog->handleGameAction(pGameAction);
 }
 
 }

@@ -470,7 +470,7 @@ void TAppearanceInstanceRenderer::addOutfit(const TOutfitAppearanceInstanceQmlTy
     if (!type)
         return;
     const appearances::TAppearanceInstancePtr appearance =
-        appearances::TAppearanceInstanceFactory::fromThingType(type);
+        appearances::TAppearanceInstanceFactory::installed()->fromThingType(type);
     if (appearance)
         type = appearance->thingType();
     if (!type)
@@ -485,7 +485,7 @@ void TAppearanceInstanceRenderer::addOutfit(const TOutfitAppearanceInstanceQmlTy
                                                            static_cast<uint8_t>(colors >> 16),
                                                            static_cast<uint8_t>(colors >> 24), instance.firstAddOn(),
                                                            instance.secondAddOn() };
-    const auto outfit = appearances::TAppearanceInstanceFactory::createCustomizableOutfit(type, direction, customization);
+    const auto outfit = appearances::TAppearanceInstanceFactory::installed()->createCustomizableOutfit(type, direction, customization);
     if (!outfit)
         return;
     outfit->setPatterns(direction, direction, zPattern, true);
@@ -499,7 +499,7 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
     if (!type)
         return;
     const appearances::TAppearanceInstancePtr appearance =
-        appearances::TAppearanceInstanceFactory::fromThingType(type);
+        appearances::TAppearanceInstanceFactory::installed()->fromThingType(type);
     if (appearance)
         type = appearance->thingType();
     if (!type)

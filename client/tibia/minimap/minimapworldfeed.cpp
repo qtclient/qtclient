@@ -1,21 +1,12 @@
 #include "minimapworldfeed.h"
 
-#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/mapsession.h>
-#include "appearances/appearanceinstance.h"
 
 #include <algorithm>
-#include <ranges>
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
 namespace tibia::minimap {
-
-namespace {
-
-constexpr int MaxCost = 250;
-
-}
 
 TMinimapWorldFeed::TMinimapWorldFeed(TMinimapTileStorage& storage)
     : m_storage(storage)
@@ -34,45 +25,11 @@ bool TMinimapWorldFeed::isKnown(const Position& coord) const
     return tile && !tile->isEmpty();
 }
 
-// CIP: the field's minimap data , objects in field order.
-TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
+// The world storage's minimap data of the field (its defaults without one).
+TMinimapDataOfOneField TMinimapWorldFeed::fieldData(const Position& coord) const
 {
-    TMinimapFieldData data;
-    tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coord);
-    if (!tile)
-        return data;
-    const auto& appearances = tile->appearances();
-
-    // The topmost object with an automap colour .
-    data.color = 0;
-    for (const auto& appearance : std::views::reverse(appearances)) {
-        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
-        if (type && type->hasMiniMapColor()) {
-            data.color = static_cast<uint8_t>(type->getMinimapColor());
-            break;
-        }
-    }
-
-    // The first object with a bank , 0xff without one; at most 250.
-    int cost = 0xff;
-    for (const auto& appearance : appearances) {
-        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
-        if (type && type->isGround()) {
-            cost = type->getGroundSpeed();
-            break;
-        }
-    }
-    data.cost = static_cast<uint8_t>(std::min(cost, MaxCost));
-
-    // Any unpassable object that is not a creature .
-    data.blocked = std::ranges::any_of(appearances, [](const appearances::TAppearanceInstancePtr& appearance) {
-        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
-        return type && type->getCategory() != ThingCategoryCreature && type->isNotWalkable();
-    });
-
-    // A walk state other than free, an object to avoid or a creature.
-    data.avoid = tile->walkState() != 0 || !tile->isPathable() || tile->hasCreatures();
-    return data;
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->minimapDataOfField(
+        tibia::worldmap::TWorldMapCoordinate(coord));
 }
 
 void TMinimapWorldFeed::forEachKnownField(const int z, const std::function<void(const Position&)>& visit) const

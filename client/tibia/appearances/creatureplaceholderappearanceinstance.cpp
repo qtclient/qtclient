@@ -5,8 +5,27 @@
 
 namespace tibia::appearances {
 
+namespace {
+
+/// Every placeholder's type: outfit 99 with one empty frame group (the
+/// creature draws itself; the type is never looked up).
+TAppearanceType* placeholderAppearanceType()
+{
+    static TAppearanceType type = [] {
+        TAppearanceType placeholder;
+        placeholder.setCategory(EAppearanceCategory::Outfit);
+        placeholder.setId(99);
+        placeholder.addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
+        placeholder.completeFrameGroups();
+        return placeholder;
+    }();
+    return &type;
+}
+
+} // namespace
+
 TCreaturePlaceholderAppearanceInstance::TCreaturePlaceholderAppearanceInstance(std::weak_ptr<creatures::TCreature> creature)
-    : TAppearanceInstance(TAppearanceInstanceFactory::dummyAppearanceType(ThingCategoryCreature), 0)
+    : TAppearanceInstance(placeholderAppearanceType(), 0)
     , m_creature(std::move(creature))
 {
 }
@@ -41,7 +60,7 @@ worldmap::TWorldMapSubfieldExtent TCreaturePlaceholderAppearanceInstance::creatu
     worldmap::TWorldMapSubfieldExtent mount{ 0, 0, 0 };
     if (creature->isMounted()) {
         const TAppearanceType* type =
-            TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, creature->outfit().getMount());
+            TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, creature->outfit().getMount());
         mount = { type->getDisplacementX(), type->getDisplacementY(), 0 };
     }
     worldmap::TWorldMapSubfieldExtent outfit{ 0, 0, 0 };
@@ -63,6 +82,46 @@ bool TCreaturePlaceholderAppearanceInstance::showsMovingSprite() const
     if (creature->isMoving() || (m_lastUpdateMs <= m_lastMovingMs + 75 && m_holdsMovementIntent))
         return !m_movingSpriteSuppressed;
     return false;
+}
+
+void TCreaturePlaceholderAppearanceInstance::appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate,
+                                                               renderer::TRenderInfoList& infos) const
+{
+    const std::shared_ptr<creatures::TCreature> creature = this->creature();
+    if (!creature)
+        return;
+    const creatures::TCreatureMovementTween& tween = creature->movementTween();
+    worldmap::TWorldMapCoordinate field = coordinate + tween.coveredFieldOffset();
+    worldmap::TWorldMapSubfieldExtent offset = tween.drawOffset();
+    if (offset.width > 0) {
+        offset.width -= 32;
+        field.x += 1;
+    }
+    if (offset.height > 0) {
+        offset.height -= 32;
+        field.y += 1;
+    }
+    if (creature->hasMarks()) {
+        infos.push_back({ .type = m_type,
+                          .spriteInfo = std::make_shared<TCreatureMarkAppearanceInstanceSpriteInfo>(creature->shownMarks()),
+                          .coordinate = field, .displacement = creatureDisplacement(), .movementOffset = offset,
+                          .kind = renderer::TRenderInfo::Self, .isCreature = true });
+    }
+    const bool moving = showsMovingSprite();
+    if (creature->isMounted()) {
+        if (const std::shared_ptr<TOutfitAppearanceInstance> mount = creature->mountAppearance()) {
+            infos.push_back({ .type = m_type, .spriteInfo = moving ? mount->movingSpriteInfo() : mount->idleSpriteInfo(),
+                              .coordinate = field, .displacement = creatureDisplacement(), .movementOffset = offset,
+                              .kind = renderer::TRenderInfo::FigureMount, .isCreature = true });
+        }
+    }
+    // Host: qtclient's creature keeps its outfit as a plain instance; only an
+    // outfit instance has idle and moving sprites.
+    if (const auto outfit = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(creature->outfitAppearance())) {
+        infos.push_back({ .type = m_type, .spriteInfo = moving ? outfit->movingSpriteInfo() : outfit->idleSpriteInfo(),
+                          .coordinate = field, .displacement = creatureDisplacement(), .movementOffset = offset,
+                          .kind = renderer::TRenderInfo::FigureOutfit, .isCreature = true });
+    }
 }
 
 } // namespace tibia::appearances

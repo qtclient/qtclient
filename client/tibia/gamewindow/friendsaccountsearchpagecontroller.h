@@ -13,7 +13,13 @@
 #include <QObject>
 #include <QString>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 }
@@ -31,7 +37,10 @@ class TFriendsAccountSearchPageController final : public cip::tibia::gamewindow:
 {
     Q_OBJECT
 public:
-    explicit TFriendsAccountSearchPageController(QObject* parent = nullptr);
+    /// CIP: made by the social dialog with the client options, the engine and
+    /// the dialog parent item (its character info page takes them).
+    TFriendsAccountSearchPageController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                        QQuickItem* DialogParentItem, QObject* parent = nullptr);
     /// CIP v12: the page reads the session's friends storages while shown.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 

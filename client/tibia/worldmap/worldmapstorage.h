@@ -16,6 +16,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -28,6 +29,10 @@ class IClockService;
 }
 namespace input {
 class TLocationWorldMapCoordinateWithStackPositionContext;
+}
+namespace minimap {
+struct TMinimapDataOfOneField;
+class TWaypointSectors;
 }
 namespace worldmap {
 
@@ -150,10 +155,16 @@ public:
     void notifyCoordinateChanged(const Position& position);
     /// The storage keeps the fields of the visible area around `center` (the
     /// view's centre) and drops every other field; storedVolumeHasChanged when
-    /// the volume moved.
+    /// the volume moved. Host: the live session's storage places its volume
+    /// through the session state's aware range.
     void setStoredVolume(const Position& center);
-    /// Current aware-range cuboid (central ± AwareRange), widened by the
-    /// stored-volume margins, for storedVolumeHasChanged.
+    /// The storage keeps the fields inside `volume` (widened by the stored-volume
+    /// margins when `withMargins`) and drops every other field;
+    /// storedVolumeHasChanged when the volume changed. From then on fields are
+    /// created and stored inside this volume only.
+    void setStoredVolume(const TShearedWorldMapCuboid& volume, bool withMargins);
+    /// The stored volume: the volume set, or the aware-range cuboid (central ±
+    /// AwareRange) widened by the stored-volume margins.
     TShearedWorldMapCuboid storedVolume() const;
     /// CIP v38: the stored volume reaches `left` fields further west and
     /// `right` further east than the aware range (0 unless set).
@@ -168,6 +179,22 @@ public:
         m_storedVolumeMarginTop = top;
         m_storedVolumeMarginBottom = bottom;
     }
+
+    /// The minimap data of the field at `coordinate`; the data of an unknown,
+    /// impassable and avoided field when the storage holds none.
+    minimap::TMinimapDataOfOneField minimapDataOfField(const TWorldMapCoordinate& coordinate) const;
+    /// The minimap data of every stored field of floor `z`.
+    std::map<TWorldMapCoordinate, minimap::TMinimapDataOfOneField> minimapDataOfFloor(int z) const;
+    /// The waypoint costs of the stored fields on `start`'s floor: each field with
+    /// a ground speed whose objects do not block movement costs its ground speed;
+    /// a field the path finder keeps off (an object to avoid or a creature) is
+    /// left out unless it is `start` or `goal`.
+    std::shared_ptr<minimap::TWaypointSectors> waypointCostMap(const TWorldMapCoordinate& start,
+                                                               const TWorldMapCoordinate& goal) const;
+    /// Fills `data` from `field`: its automap colour, its ground speed (at most
+    /// 250), whether an unpassable object lies on it and whether the path finder
+    /// keeps off it (a walk state other than free, an object to avoid or a creature).
+    void fillMinimapData(const TWorldMapField& field, minimap::TMinimapDataOfOneField& data) const;
 
     /// Dynamic overlay peels (qtclient-bridge dual-write).
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
@@ -184,6 +211,9 @@ Q_SIGNALS:
 private:
     /// A field's objects changed: its coordinate's information did.
     void fieldAppearanceInstancesChanged(const TWorldMapField* field);
+    /// `position` lies in the stored volume (the session state's aware range
+    /// while no volume was set).
+    bool isInStoredVolume(const Position& position) const;
 
     std::map<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>> m_fields;
     TWorldMapSessionState m_sessionState;
@@ -196,6 +226,9 @@ private:
     int m_storedVolumeMarginRight = 0;
     int m_storedVolumeMarginTop = 0;
     int m_storedVolumeMarginBottom = 0;
+    /// The volume setStoredVolume(volume, withMargins) set; unset for the live
+    /// session's storage.
+    std::optional<TShearedWorldMapCuboid> m_storedVolume;
 };
 
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).

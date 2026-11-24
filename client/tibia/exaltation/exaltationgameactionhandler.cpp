@@ -4,8 +4,6 @@
 #include "exaltation/exaltationprotocolmessagehandler.h"
 #include "exaltation/exaltationstorage.h"
 
-#include <tibia/game/gamesession_forward.h>
-
 #include <utility>
 
 namespace tibia::exaltation {
@@ -45,24 +43,21 @@ void TExaltationGameActionHandler::handleExaltationForgeDialogClosedGameAction()
     m_exaltationStorage->reset();
 }
 
-// Host: the protocol message handler's forge senders are qtclient's
-// tibia::game::forgeRequest.
 void TExaltationGameActionHandler::handleExaltationForgeFusionGameAction(const input::TGameActionExaltationForgeFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.typeId(), action.tier(), action.resourceTypeId(),
-                              action.successRateIncreased(), action.tierLossReduced());
+    m_protocolMessageHandler->requestFusion(action.typeId(), action.tier(), action.resourceTypeId(), action.successRateIncreased(),
+                                            action.tierLossReduced());
 }
 
 void TExaltationGameActionHandler::handleExaltationForgeConvergenceFusionGameAction(
     const input::TGameActionExaltationForgeConvergenceFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.typeId(), action.tier(), action.resourceTypeId());
+    m_protocolMessageHandler->requestConvergenceFusion(action.typeId(), action.tier(), action.resourceTypeId());
 }
 
 void TExaltationGameActionHandler::handleExaltationForgeTransferGameAction(const input::TGameActionExaltationForgeTransfer& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.convergence(), action.sourceTypeId(), action.tier(),
-                              action.targetTypeId());
+    m_protocolMessageHandler->requestTransfer(action.sourceTypeId(), action.tier(), action.targetTypeId(), action.convergence());
 }
 
 void TExaltationGameActionHandler::handleExaltationForgeHistoryNextPageGameAction()

@@ -18,6 +18,9 @@ namespace tibia {
 namespace cyclopedia {
 class TCyclopediaMapStaticDataStorage;
 }
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TVocationSelectionDialogController;
@@ -34,15 +37,12 @@ public:
                                   std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> CyclopediaMapStaticDataStorage,
                                   QObject* parent = nullptr);
 
-    /// Show a hint from a SHOW_TUTORIAL_HINT / ADD_HINT_AT_TUTORIAL_MARKER action.
-    void showHint(const QString& caption, const QString& imagePath, const QString& buttonText,
-                  int markerId = 0, bool bevel = true);
-    /// Apply CIP caption-banner layout (no text caption; crest header + image CTA).
-    void showBannerHint(const QString& captionImagePath, const QString& imagePath, const QString& buttonText,
-                        int markerId = 0, bool bevel = true);
-    /// Map a GameserverTutorialHint / SHOW_TUTORIAL_HINT id to dialog assets.
-    /// Returns false when the id is unknown (caller may open vocation UI for id 2).
-    bool showHintById(int hintId);
+    /// CIP: the dialog keeps the game session.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
+    /// CIP: a GUI tutorial marker on the hint dialog becomes the dialog's marker; a tutorial hint
+    /// (other than 2, the vocation selection's) fills the dialog, which is shown when the hint has a
+    /// caption (or caption image) and an image and its id is 1..14.
+    void handleGameAction(const input::IGameActionPtr& pGameAction);
 
     Q_INVOKABLE void requestClose() override;
     Q_INVOKABLE QQuickItem* mapWindowPane() override;
@@ -56,14 +56,19 @@ public:
     void closeDialog();
 
 private:
+    /// CIP: the hint's caption (or caption and background banners), image, map image, button text
+    /// and bevel frame; an unknown hint leaves them empty.
+    void setTutorialHint(int TutorialHintId);
+
     QPointer<QQuickItem> m_mapWindowPane;
     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_cyclopediaMapStaticDataStorage;
     /// The hint shown (CONFIRM_TUTORIAL_HINT carries it).
     int m_tutorialHintId = 0;
-    void emitDisplay();
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
-/// Owns tutorial hint + vocation-selection dialogs and wires tutorial game actions.
+/// Host: owns the tutorial hint and vocation selection dialogs (CipSoft: the game client's) and the
+/// tutorial marker / finished-tutorial glue of the router's actions.
 class TTutorialShell final : public QObject
 {
     Q_OBJECT
@@ -78,9 +83,6 @@ public:
     TTutorialHintDialogController* hint() const { return m_hint; }
     TVocationSelectionDialogController* vocation() const { return m_vocation; }
 
-    /// GameserverTutorialHint (0xDC) / sessiondump SHOW_TUTORIAL_HINT id.
-    void handleTutorialHintId(int hintId);
-
 Q_SIGNALS:
     /// Tutorial cinematic should end (FINISHED_TUTORIAL / sessiondump end cue).
     void tutorialFinished();
@@ -88,15 +90,11 @@ Q_SIGNALS:
 private:
     TTutorialHintDialogController* m_hint = nullptr;
     TVocationSelectionDialogController* m_vocation = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
+    /// The router's game actions: the hint and vocation selection dialogs get each (CIP: both are
+    /// connected to publishGameActionInternal), then the markers and the finished tutorial.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     ::tibia::input::TGameActionDispatch m_gameActions;

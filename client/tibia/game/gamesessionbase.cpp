@@ -1,6 +1,8 @@
 #include "game/gamesessionbase.h"
 #include "appearances/appearanceinstance.h"
+#include "clockservice.h"
 #include "iclockservice.h"
+#include "game/passiveabilityinfostorage.h"
 
 #include "game/gamesession.h"
 #include "game/gamesessionmetainfo.h"
@@ -77,6 +79,7 @@
 #include "store/storestorage.h"
 #include "store/storegameactionhandler.h"
 #include "skillwheel/skillwheelciptypes.h"
+#include "skillwheel/skillwheelstorage.h"
 #include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
@@ -151,9 +154,27 @@ qint64 TGameSessionBase::nowMillis() const
     return clockService()->nowMillis();
 }
 
+namespace {
+
+/// A process-wide object handed to the session without passing ownership.
+template<typename T>
+std::shared_ptr<T> notOwned(T* object)
+{
+    return std::shared_ptr<T>(object, [](T*) {});
+}
+
+}
+
+/// Host: a session built without a game client takes the process-wide
+/// objects (the same ones qtclient's game client shares).
 TGameSessionBase::TGameSessionBase(QObject* parent)
-    : TGameSessionBase(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-                       nullptr, nullptr, parent)
+    : TGameSessionBase(nullptr, nullptr, appearances::TAppearanceInstanceFactory::installed(),
+                       notOwned(config::TClientOptions::instance()),
+                       std::make_shared<shared::TTibiaClipboardHelper>(std::make_shared<shared::TClipboardHelper>(),
+                                                                       std::make_shared<shared::TTibiaUrlTools>()),
+                       nullptr, shared::TClockService::process(), notOwned(analysers::TItemPriceStorage::instance()),
+                       notOwned(sound::TSoundController::instance()), nullptr, spells::TSpellInfoStorage::instance(),
+                       TPassiveAbilityInfoStorage::instance(), nullptr, parent)
 {
 }
 
@@ -210,7 +231,7 @@ void TGameSessionBase::createStorages()
 {
     if (!m_metaInfo)
         throw std::runtime_error("TGameSessionMetaInfo is not set");
-    m_worldMapStorage = std::make_shared<worldmap::TWorldMapStorage>(m_creatureMovementSpeedCalculator.get());
+    m_worldMapStorage = std::make_shared<worldmap::TWorldMapStorage>(m_creatureMovementSpeedCalculator, clockService());
     m_ambientLightStorage = std::make_shared<worldmap::TAmbientLightStorage>();
     m_creatureStorage = std::make_shared<creatures::TCreatureStorage>();
     m_effectStorage = std::make_shared<effects::TEffectStorage>();
@@ -227,7 +248,7 @@ void TGameSessionBase::createStorages()
     m_unjustifiedPointsStorage = std::make_shared<creatures::TUnjustifiedPointsStorage>();
     m_preyStorage = std::make_shared<prey::TPreyStorage>();
     // The storages the character configuration manager saves with the character.
-    analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance();
+    analysers::TItemPriceStorage* itemPrices = m_itemPriceStorage.get();
     m_progressStorage = std::make_shared<analysers::TProgressStorage>();
     m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices);
     // The drop tracker announces on the session's status line and follows the premium state.
@@ -239,9 +260,9 @@ void TGameSessionBase::createStorages()
     m_quickLootBlackWhitelistStorage = std::make_shared<quickloot::TQuickLootBlackWhitelistStorage>();
     m_huntingSessionStorage = std::make_shared<analysers::THuntingSessionStorage>(m_progressStorage.get());
     m_cyclopediaMapCharacterConfigurationStorage = std::make_shared<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>();
-    // Host: the skill wheel storage is still the game client's; it hands it in
-    // with setCharacterConfigurationStorages.
     config::TCharacterConfigurationManager::TStorages characterConfiguration = m_characterConfigurationStorages;
+    m_skillWheelStorage = std::make_shared<skillwheel::TSkillWheelStorage>();
+    characterConfiguration.skillWheel = m_skillWheelStorage.get();
     characterConfiguration.quickLootBlackWhitelist = m_quickLootBlackWhitelistStorage.get();
     characterConfiguration.itemTracking = m_itemTrackingStorage.get();
     characterConfiguration.gainWaste = m_gainWasteStorage.get();
@@ -293,7 +314,7 @@ void TGameSessionBase::createStorages()
     // The session keeps as many sounds as the sound system's settings allow;
     // 100 without a sound system.
     int maxSoundCount = 100;
-    if (sound::TSoundController* controller = sound::TSoundController::instance()) {
+    if (sound::TSoundController* controller = m_soundController.get()) {
         if (const std::shared_ptr<sound::TSoundConfiguration>& configuration = controller->configuration())
             maxSoundCount = configuration->settings().maxGameSessionSoundCount;
     }
@@ -327,16 +348,13 @@ void TGameSessionBase::createProtocolMessageHandlers()
             &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
     m_playerProtocolMessageHandler = std::make_shared<TPlayerProtocolMessageHandler>(
         m_playerData, m_playerSkillStats, m_creatureStorage, m_cooldownStorage, m_outfitDialogStorage,
-        spells::TSpellInfoStorage::instance(), clockService(),
-        config::TClientOptions::instance()->boolOption(cip::EClientOption::inspectPlayerAllowAllEnabled));
-    // CipSoft hands the session's appearance instance factory (a session ctor argument); the
-    // session has none of its own yet, and qtclient's factory makes its instances from the
-    // global appearance types.
-    m_gameProtocolMessageHandler = std::make_shared<TGameProtocolMessageHandler>(
-        m_creatureMovementSpeedCalculator, std::make_shared<appearances::TAppearanceInstanceFactory>(nullptr), clockService());
+        m_spellInfoStorage, clockService(),
+        m_clientOptions->boolOption(cip::EClientOption::inspectPlayerAllowAllEnabled));
+    m_gameProtocolMessageHandler =
+        std::make_shared<TGameProtocolMessageHandler>(m_creatureMovementSpeedCalculator, m_appearanceInstanceFactory, clockService());
     // The sound messages have a handler only when the client plays sound.
-    if (sound::TSoundController::instance())
-        m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>(sound::TSoundController::instance());
+    if (m_soundController)
+        m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>(m_soundController.get());
     m_spellBookProtocolMessageHandler = std::make_shared<TSpellBookProtocolMessageHandler>();
     // Every WorldEntered message: the session announces the world entered.
     connect(m_playerProtocolMessageHandler.get(), &TPlayerProtocolMessageHandler::worldEntered, this, &IGameSession::worldEntered);
@@ -406,10 +424,11 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_bossBestiaryProtocolMessageHandler =
         std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
     m_exaltationProtocolMessageHandler = std::make_shared<exaltation::TExaltationProtocolMessageHandler>(m_exaltationStorage);
-    m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
+    m_gatherAllProtocolMessageHandler =
+        std::make_shared<input::TGatherAllProtocolMessageHandler>(std::make_shared<protocol::TGameActionContextHelper>());
     m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>(
-        m_characterConfigurationStorages.skillWheel, m_creatureStorage, m_characterInfoStorage, m_playerData);
-    m_spellsProtocolMessageHandler = std::make_shared<spells::TSpellsProtocolMessageHandler>(spells::TSpellInfoStorage::instance());
+        m_skillWheelStorage.get(), m_creatureStorage, m_characterInfoStorage, m_playerData);
+    m_spellsProtocolMessageHandler = std::make_shared<spells::TSpellsProtocolMessageHandler>(m_spellInfoStorage);
     // The proficiency handler is made in connectProtocolMessageHandlers (host:
     // the proficiency storage it fills is the game window's).
     m_taskboardProtocolMessageHandler = std::make_unique<taskboard::TTaskboardProtocolMessageHandler>(
@@ -440,11 +459,9 @@ void TGameSessionBase::createRenderProviders()
     m_nextFrameUpdater = std::make_shared<renderer::TNextFrameUpdater>(
         m_worldMapStorage, m_effectStorage, m_textStorage, m_cooldownStorage, m_ambientLightStorage, m_itemTrackingStorage,
         m_gainWasteStorage, m_impactStorage, m_damageInputStorage, m_progressStorage, m_huntingSessionStorage, m_soundStorage);
-    // Host: the client options are the process-wide ones (not owned here).
     m_worldMapRenderProvider = std::make_shared<qmlcomponents::TWorldMapRenderProvider>(
-        m_renderVolumeProvider, m_worldMapStorage, m_creatureStorage, m_ambientLightStorage, m_effectStorage,
-        std::shared_ptr<config::TClientOptions>(config::TClientOptions::instance(), [](config::TClientOptions*) {}),
-        appearances::TAppearanceInstanceFactory::instanceTracker());
+        m_renderVolumeProvider, m_worldMapStorage, m_creatureStorage, m_ambientLightStorage, m_effectStorage, m_clientOptions,
+        m_appearanceInstanceFactory->instanceTracker());
     // The view the map handler centres; the picker reads the player's floor from it.
     m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
     m_worldMapRenderProvider->setRenderVolumeProvider(m_renderVolumeProvider);
@@ -452,13 +469,11 @@ void TGameSessionBase::createRenderProviders()
         std::make_shared<worldmap::TWorldMapPicker>(m_renderVolumeProvider, m_worldMapRenderProvider, m_worldMapStorage);
     m_numericalEffectRenderProvider = std::make_shared<effects::TNumericalEffectRenderProvider>(m_effectStorage, m_worldMapStorage);
     m_creatureHUDRenderProvider = std::make_shared<worldmap::TCreatureHUDRenderProvider>(
-        m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData,
-        config::TClientOptions::instance());
+        m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData, m_clientOptions.get());
     m_textOverlayRenderProvider = std::make_shared<chat::TTextOverlayRenderProvider>(m_textStorage);
-    m_containerRenderProvider =
-        std::make_shared<container::TContainerRenderProvider>(m_containerStorage, config::TClientOptions::instance());
-    m_battleListRenderProvider = std::make_shared<creatures::TBattleListRenderProvider>(
-        m_creatureStorage, m_worldMapViewport, m_playerData, config::TClientOptions::instance());
+    m_containerRenderProvider = std::make_shared<container::TContainerRenderProvider>(m_containerStorage, m_clientOptions.get());
+    m_battleListRenderProvider = std::make_shared<creatures::TBattleListRenderProvider>(m_creatureStorage, m_worldMapViewport,
+                                                                                        m_playerData, m_clientOptions.get());
     // The pack's status lines (TGameMessageHandler) write into the session's texts.
     m_gameMessageHandler = std::make_shared<chat::TGameMessageHandler>(*m_textStorage);
     m_gameMessageHandler->setOptions(app::ClientOptions::load().options());
@@ -467,7 +482,7 @@ void TGameSessionBase::createRenderProviders()
 /// CIP: the session's sound pieces, only when the client has a sound controller.
 void TGameSessionBase::createSoundProviders()
 {
-    if (sound::TSoundController* controller = sound::TSoundController::instance()) {
+    if (sound::TSoundController* controller = m_soundController.get()) {
         m_objectSoundController =
             std::make_shared<sound::TObjectSoundController>(m_worldMapRenderProvider, controller->metadata());
         m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
@@ -481,7 +496,7 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
         std::make_shared<input::TGenericChatGameActionProvider>(m_chatChannelStorage.get(), m_vipStorage.get());
     m_partyGameActionProvider = std::make_shared<creatures::TPartyGameActionProvider>(m_creatureStorage, m_playerData);
     m_inspectPlayerGameActionProvider =
-        std::make_shared<creatures::TInspectPlayerGameActionProvider>(m_creatureStorage, config::TClientOptions::instance());
+        std::make_shared<creatures::TInspectPlayerGameActionProvider>(m_creatureStorage, m_clientOptions.get());
     m_genericObjectGameActionProvider = std::make_shared<input::TGenericObjectGameActionProvider>(
         m_creatureStorage, m_genericChatGameActionProvider, m_partyGameActionProvider, m_inspectPlayerGameActionProvider,
         m_quickLootBlackWhitelistStorage);
@@ -501,10 +516,7 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
         m_chatGameActionProvider = std::make_shared<chat::TChatGameActionProvider>(
             *m_chatChannelStorage,
             [genericChat](input::TGameActionList& actions, const QString& name) { genericChat->appendGameActions(actions, name); },
-            [] {
-                const config::TClientOptions* options = config::TClientOptions::instance();
-                return options && options->boolOption(config::EClientOption::consoleShowJoinLeaveMessages);
-            });
+            [options = m_clientOptions] { return options->boolOption(config::EClientOption::consoleShowJoinLeaveMessages); });
     }
     m_vipWidgetGameActionProvider =
         std::make_shared<creatures::TVipWidgetGameActionProvider>(m_vipStorage.get(), m_exivaOptionsStorage.get());
@@ -513,17 +525,14 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>();
     connect(m_genericGameActionHandler.get(), &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
             &IGameSession::showCharacterSelectionDialog);
-    // Host: CipSoft hands the handler the game client's clipboard helper.
-    m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>(
-        m_creatureStorage, std::make_shared<shared::TTibiaClipboardHelper>(std::make_shared<shared::TClipboardHelper>(),
-                                                                           std::make_shared<shared::TTibiaUrlTools>()));
+    m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>(m_creatureStorage, m_clipboardHelper);
     m_playerGameActionHandler = std::make_shared<TPlayerGameActionHandler>(m_creatureStorage, m_playerData);
     m_containerGameActionHandler = std::make_shared<container::TContainerGameActionHandler>(m_containerStorage, m_objectCountStorage);
     m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>(m_gameActionContextHelper);
     m_useWithGameActionHandler = std::make_shared<input::TUseWithGameActionHandler>(m_gameActionContextHelper);
     m_crossHairSpellGameActionHandler = std::make_shared<input::TCrossHairSpellGameActionHandler>();
     m_chatGameActionHandler =
-        std::make_shared<chat::TChatGameActionHandler>(m_chatChannelStorage, m_textStorage, spells::TSpellInfoStorage::instance());
+        std::make_shared<chat::TChatGameActionHandler>(m_chatChannelStorage, m_textStorage, m_spellInfoStorage);
     m_vipGameActionHandler = std::make_shared<creatures::TVipGameActionHandler>(m_vipStorage.get());
     m_playerTradeGameActionHandler = std::make_shared<trade::TPlayerTradeGameActionHandler>(m_creatureStorage.get());
     m_storeGameActionHandler = std::make_shared<store::TStoreGameActionHandler>(m_storeProtocolMessageHandler);
@@ -531,9 +540,10 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_battleListGameActionHandler = std::make_shared<gamewindow::TBattleListGameActionHandler>(
         m_characterConfigurationManager ? m_characterConfigurationManager->sidebarOptions() : nullptr, m_creatureStorage,
         m_battleListRenderProvider);
-    m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardStorage.get());
+    m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardProtocolMessageHandler,
+                                                                                                  m_dailyRewardStorage.get());
     m_questLogGameActionHandler = std::make_shared<questlog::TQuestLogGameActionHandler>(m_questLogStorage);
-    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>();
+    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>(m_managedContainersProtocolMessageHandler);
     m_exivaOptionsGameActionHandler =
         std::make_shared<exivaoptions::TExivaOptionsGameActionHandler>(m_exivaOptionsProtocolMessageHandler, m_exivaOptionsStorage);
     m_marketGameActionHandler = std::make_shared<market::TMarketGameActionHandler>(m_marketProtocolMessageHandler);
@@ -546,7 +556,7 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
             &skillwheel::TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage);
     // Host: the action bar's handler (the game client's in CipSoft).
     m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
-        spells::TSpellInfoStorage::instance(), m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage,
+        m_spellInfoStorage, m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage,
         clockService());
 }
 
@@ -692,6 +702,8 @@ void TGameSessionBase::setMinimapStorages(std::shared_ptr<minimap::TMinimapTileS
     // Without a marker storage the minimap protocol message handler goes; with
     // one the session makes it over the session clock, linked from the queue's
     // Cyclopedia map data.
+    if (m_worldMapGameActionProvider)
+        m_worldMapGameActionProvider->setMinimapMarkerStorage(markerStorage);
     m_minimapProtocolMessageHandler.reset();
     if (!markerStorage || !m_protocolMessageQueue)
         return;

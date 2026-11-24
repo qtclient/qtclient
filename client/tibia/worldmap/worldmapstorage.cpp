@@ -1,10 +1,13 @@
 #include "worldmap/worldmapstorage.h"
 
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <typeinfo>
 
 #include "worldmap/worldmapfield.h"
+#include "minimap/minimaptilestorage.h"
+#include "minimap/waypointsectors.h"
 #include "input/gameactioncontext.h"
 
 #include "creatures/creaturestorage.h"
@@ -155,7 +158,7 @@ TWorldMapField* TWorldMapStorage::getOrCreateField(const Position& position)
     const TWorldMapCoordinate coordinate(position);
     if (const auto it = m_fields.find(coordinate); it != m_fields.end())
         return it->second.get();
-    if (!m_sessionState.isAwareOfPosition(position))
+    if (!isInStoredVolume(position))
         return nullptr;
     // Deleted from the event loop: callers may still hold the raw field in the
     // update that drops it.
@@ -199,7 +202,7 @@ std::vector<std::shared_ptr<creatures::TCreature>> TWorldMapStorage::creaturesIn
 
 void TWorldMapStorage::setField(const TWorldMapCoordinate& coordinate, std::shared_ptr<TWorldMapField> field)
 {
-    if (!m_sessionState.isAwareOfPosition(coordinate.toPosition()))
+    if (!isInStoredVolume(coordinate.toPosition()))
         return;
     if (const auto stored = m_fields.find(coordinate); stored != m_fields.end())
         disconnect(stored->second.get(), &TWorldMapField::appearanceInstancesChanged, this,
@@ -260,6 +263,8 @@ void TWorldMapStorage::notifyCoordinateChanged(const Position& position)
 
 TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
 {
+    if (m_storedVolume)
+        return *m_storedVolume;
     const Position center = m_sessionState.getCentralPosition();
     const AwareRange range = m_sessionState.getAwareRange();
     // The session places the volume (CipSoft's setStoredVolume always widens
@@ -280,6 +285,92 @@ void TWorldMapStorage::setStoredVolume(const Position& center)
     m_sessionState.setCentralPosition(center);
     if (!(storedVolume() == previous))
         Q_EMIT storedVolumeHasChanged(storedVolume());
+}
+
+void TWorldMapStorage::setStoredVolume(const TShearedWorldMapCuboid& volume, const bool withMargins)
+{
+    TShearedWorldMapCuboid stored = volume;
+    if (withMargins) {
+        const TWorldMapCoordinate origin(volume.origin.x - m_storedVolumeMarginLeft,
+                                         volume.origin.y - m_storedVolumeMarginTop, volume.origin.z);
+        const TWorldMapExtent extent(volume.extent.width + m_storedVolumeMarginLeft + m_storedVolumeMarginRight,
+                                     volume.extent.height + m_storedVolumeMarginTop + m_storedVolumeMarginBottom,
+                                     volume.extent.depth);
+        stored = TShearedWorldMapCuboid(origin, extent, volume.shearFloor);
+    }
+    const bool changed = !(storedVolume() == stored);
+    m_storedVolume = stored;
+    if (changed)
+        Q_EMIT storedVolumeHasChanged(stored);
+    removeFieldsOutsideStoredVolume([this](const Position& position) { return isInStoredVolume(position); },
+                                    [](const Position&) {});
+}
+
+bool TWorldMapStorage::isInStoredVolume(const Position& position) const
+{
+    if (m_storedVolume)
+        return m_storedVolume->contains(TWorldMapCoordinate(position));
+    return m_sessionState.isAwareOfPosition(position);
+}
+
+namespace {
+
+/// The minimap data of a field the storage does not hold: no colour, no
+/// ground, impassable and avoided.
+minimap::TMinimapDataOfOneField unknownFieldMinimapData()
+{
+    minimap::TMinimapDataOfOneField data;
+    data.color = 0;
+    data.cost = 0xfe;
+    data.blocked = true;
+    data.avoid = true;
+    return data;
+}
+
+}
+
+minimap::TMinimapDataOfOneField TWorldMapStorage::minimapDataOfField(const TWorldMapCoordinate& coordinate) const
+{
+    minimap::TMinimapDataOfOneField data = unknownFieldMinimapData();
+    if (const std::shared_ptr<TWorldMapField> stored = field(coordinate))
+        fillMinimapData(*stored, data);
+    return data;
+}
+
+std::map<TWorldMapCoordinate, minimap::TMinimapDataOfOneField> TWorldMapStorage::minimapDataOfFloor(const int z) const
+{
+    std::map<TWorldMapCoordinate, minimap::TMinimapDataOfOneField> floor;
+    for (const auto& [coordinate, stored] : m_fields) {
+        if (coordinate.z != z)
+            continue;
+        const auto entry = floor.try_emplace(coordinate, unknownFieldMinimapData()).first;
+        fillMinimapData(*stored, entry->second);
+    }
+    return floor;
+}
+
+std::shared_ptr<minimap::TWaypointSectors> TWorldMapStorage::waypointCostMap(const TWorldMapCoordinate& start,
+                                                                             const TWorldMapCoordinate& goal) const
+{
+    auto costs = std::make_shared<minimap::TWaypointSectors>();
+    for (const auto& [coordinate, stored] : m_fields) {
+        if (coordinate.z != start.z)
+            continue;
+        const auto cost = static_cast<uint8_t>(stored->movementGroundSpeed());
+        if (cost == 0 || stored->blocksMovement())
+            continue;
+        if (!stored->hasAvoidedObjectOrCreature() || coordinate == start || coordinate == goal)
+            costs->setCost(coordinate.toPosition(), cost);
+    }
+    return costs;
+}
+
+void TWorldMapStorage::fillMinimapData(const TWorldMapField& field, minimap::TMinimapDataOfOneField& data) const
+{
+    data.color = field.minimapColor().value_or(0);
+    data.cost = static_cast<uint8_t>(std::min(field.movementGroundSpeed(), 250));
+    data.blocked = field.hasUnpassableObject();
+    data.avoid = field.walkState() != 0 || field.hasAvoidedObjectOrCreature();
 }
 
 void TWorldMapStorage::addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)

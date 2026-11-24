@@ -50,9 +50,22 @@ SoftHook gameHook(const char* field, F&& f)
 
 }
 
-TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
-    : TGameSessionBase(parent)
-    , m_sessiondumpProgressClock(std::make_shared<sessiondump::TSessiondumpProgressClockService>(shared::TClockService::process()))
+TSessiondumpGameSession::TSessiondumpGameSession(
+    std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+    std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+    std::shared_ptr<config::TClientOptions> clientOptions, std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+    std::shared_ptr<shared::TTibiaUrlTools> urlTools, std::shared_ptr<shared::IClockService> clientClockService,
+    std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage, std::shared_ptr<sound::TSoundController> soundController,
+    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler, spells::TSpellInfoStorage* spellInfoStorage,
+    TPassiveAbilityInfoStorage* passiveAbilityInfoStorage, proficiency::TProficiencyStorage* proficiencyStorage,
+    QObject* parent)
+    : TGameSessionBase(std::move(tibiaFileSystemHelper), std::move(appearancesManager), std::move(appearanceInstanceFactory),
+                       std::move(clientOptions), std::move(clipboardHelper), std::move(urlTools),
+                       std::move(clientClockService), std::move(itemPriceStorage), std::move(soundController),
+                       std::move(keyboardShortcutHandler), spellInfoStorage, passiveAbilityInfoStorage, proficiencyStorage,
+                       parent)
+    , m_sessiondumpProgressClock(std::make_shared<sessiondump::TSessiondumpProgressClockService>(TGameSessionBase::clientClockService()))
 {
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);

@@ -10,6 +10,7 @@
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "gamewindow/appearancetypefilterselection.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
 #include "gamewindow/marketcontroller.h"
@@ -103,48 +104,6 @@ std::vector<TAppearanceTypeEntry> searchEntries()
     return entries;
 }
 
-/// The classification drop-down's selection (CIP): 0 off, 1 "none", 2
-/// "all", 3 the classification of row `index` - 2.
-std::pair<int, int> classificationSelection(const bool enabled, const int index)
-{
-    if (!enabled)
-        return { 0, 0 };
-    int mode = 0;
-    if (index == 1)
-        mode = 1;
-    if (index == 0)
-        mode = 2;
-    if (exaltation::TExaltationStorage* exaltation = exaltationStorage(); exaltation && index > 1) {
-        const std::vector<uint8_t> classes = exaltation->classifications();
-        if (index - 2 < static_cast<int>(classes.size()))
-            return { 3, classes[static_cast<size_t>(index - 2)] };
-    }
-    return { mode, 0 };
-}
-
-/// The tiers the tier drop-down offers for a classification selection.
-std::vector<uint8_t> selectableTiers(const std::pair<int, int>& classification)
-{
-    exaltation::TExaltationStorage* exaltation = exaltationStorage();
-    if (!exaltation)
-        return {};
-    if (classification.first == 3)
-        return exaltation->tiers(static_cast<uint8_t>(classification.second));
-    if (classification.first == 2)
-        return exaltation->allTiers();
-    return {};
-}
-
-/// The tier drop-down's selection (CIP): 3 with the tier of row `index`, else 0.
-std::pair<int, int> tierSelection(const bool enabled, const std::pair<int, int>& classification, const int index)
-{
-    if (!enabled || (classification.first != 2 && classification.first != 3))
-        return { 0, 0 };
-    const std::vector<uint8_t> tiers = selectableTiers(classification);
-    if (index < 0 || index >= static_cast<int>(tiers.size()))
-        return { 0, 0 };
-    return { 3, tiers[static_cast<size_t>(index)] };
-}
 
 }
 
@@ -347,27 +306,14 @@ void TDepotSearchWidgetController::setIndexOfSelectedNPC(const int index)
 
 QStringList TDepotSearchWidgetController::availableClassifications() const
 {
-    QStringList classes;
-    exaltation::TExaltationStorage* exaltation = exaltationStorage();
-    if (!m_enableTierAndClassificationSelection || !m_session || !exaltation)
-        return { QString() };
-    classes << qtTrId("market_filter_class_all") << qtTrId("market_filter_class_none");
-    for (const uint8_t classification : exaltation->classifications())
-        classes << qtTrId("market_filter_class").arg(classification);
-    return classes;
+    return classificationFilterEntries(m_enableTierAndClassificationSelection, m_session);
 }
 
 QStringList TDepotSearchWidgetController::availableTiers() const
 {
-    if (!m_enableTierSelection || !m_session)
-        return { QString() };
-    QStringList tiers;
-    for (const uint8_t tier :
-         selectableTiers(classificationSelection(m_enableTierAndClassificationSelection, m_indexOfSelectedClassification)))
-        tiers << qtTrId("market_filter_tier").arg(tier);
-    if (tiers.isEmpty())
-        tiers << QString();
-    return tiers;
+    return tierFilterEntries(m_enableTierSelection, m_session,
+                             classificationFilterSelection(m_enableTierAndClassificationSelection, m_session,
+                                                           m_indexOfSelectedClassification));
 }
 
 // CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
@@ -403,17 +349,7 @@ void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction 
 
 bool TDepotSearchWidgetController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_searchProxy.model().size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_searchProxy.model().entry(row);
-        if (entry.classification == 0)
-            continue;
-        if (category == AllCategories || entry.marketCategory == category)
-            return true;
-        if (category == TAppearanceTypeListModelSortFilterProxy::AllWeaponsCategory
-            && TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(entry.marketCategory))
-            return true;
-    }
-    return false;
+    return categoryHasClassifiedTypes(m_searchProxy, category);
 }
 
 int TDepotSearchWidgetController::categoryIndex(const int identifier) const
@@ -461,12 +397,14 @@ TAppearanceTypeFilter TDepotSearchWidgetController::currentFilter(const bool fil
     filter.filterByVocation = filterByVocation;
     filter.onlyOneHandWeapons = oneHand;
     filter.onlyTwoHandWeapons = twoHand;
-    const auto classification = classificationSelection(m_enableTierAndClassificationSelection, m_indexOfSelectedClassification);
-    filter.classificationMode = classification.first;
-    filter.classification = classification.second;
-    const auto tier = tierSelection(m_enableTierSelection, classification, m_indexOfSelectedTier);
-    filter.tierMode = tier.first;
-    filter.tier = tier.second;
+    const TAppearanceTypeFilterSelection classification =
+        classificationFilterSelection(m_enableTierAndClassificationSelection, m_session, m_indexOfSelectedClassification);
+    filter.classificationMode = classification.mode;
+    filter.classification = classification.value;
+    const TAppearanceTypeFilterSelection tier =
+        tierFilterSelection(m_enableTierAndClassificationSelection, m_session, classification, m_indexOfSelectedTier);
+    filter.tierMode = tier.mode;
+    filter.tier = tier.value;
     // The NPC drop-down: row 0 is "all", the others the NPCs that buy the type.
     if (m_indexOfSelectedNPC > 0) {
         filter.imbuementMode = 3;
@@ -523,7 +461,7 @@ void TDepotSearchWidgetController::onClassificationFilterWasSelected(const int S
                                                                     const bool ShowLockerOnly)
 {
     setIndexOfSelectedClassification(SelectedIndex);
-    const int mode = classificationSelection(m_enableTierAndClassificationSelection, m_indexOfSelectedClassification).first;
+    const int mode = classificationFilterSelection(m_enableTierAndClassificationSelection, m_session, m_indexOfSelectedClassification).mode;
     const bool tiered = mode == 2 || mode == 3;
     setEnableTierSelection(tiered);
     Q_EMIT availableTiersChanged();

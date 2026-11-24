@@ -18,6 +18,7 @@
 #include <tibia/game/gamesession_forward.h>
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
+#include "protocol/gameactioncontexthelper.h"
 #include "trade/npctradestorage.h"
 #include "trade/tradeciptypes.h"
 #include "input/gameactionhandlers.h"
@@ -31,6 +32,9 @@
 #include <QQmlEngine>
 #include <QKeyEvent>
 #include <QMetaObject>
+#include <protocol.pb.h>
+
+#include <memory>
 #include <QMouseEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -165,11 +169,19 @@ TWhiteBlacklistQmlEntry::TWhiteBlacklistQmlEntry(QString name, const bool perman
     setPermanently(permanently);
 }
 
-/// Registers itself in the engine's root context.
-TTextCopyController::TTextCopyController(QQmlEngine* engine)
-    : cip::tibia::gamewindow::TTextCopyController(engine)
+TTextCopyController::TTextCopyController(QObject* parent)
+    : cip::tibia::gamewindow::TTextCopyController(parent)
 {
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), this);
+}
+
+void TTextCopyController::createInstance(QQmlEngine* Engine)
+{
+    static std::shared_ptr<TTextCopyController> instance;
+    auto* controller = new TTextCopyController();
+    Engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), controller);
+    instance.reset(controller);
+    // Host: released with the engine, before the application goes.
+    QObject::connect(Engine, &QObject::destroyed, [] { instance.reset(); });
 }
 
 /// Cuts the selection of a QML text input with normal echo that is not read
@@ -754,9 +766,14 @@ void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGam
             session->playerTradeProtocolMessageHandler()->lookTrade(trade->index(), trade->side());
         return;
     }
-    // CIP: an InspectObject (type 0) whose ObjectPosition the TGameActionContextHelper fills from the location.
-    if (inspect->position().isValid())
-        tibia::game::inspectionNormalObject(location);
+    // CIP: an InspectObject (type 0) whose ObjectPosition the TGameActionContextHelper fills from the location,
+    // sent by the session's game protocol message handler.
+    if (inspect->position().isValid()) {
+        ::tibia::protobuf::protocol::GameclientMessageInspectObject message;
+        message.set_inspection_type(0);
+        protocol::TGameActionContextHelper().fillObjectPosition(location, message.mutable_object_position());
+        Q_EMIT session->gameProtocolMessageHandler()->sendInspectObject(message);
+    }
 }
 
 TInspectObjectDialogController* TInspectObjectDialogController::instance()

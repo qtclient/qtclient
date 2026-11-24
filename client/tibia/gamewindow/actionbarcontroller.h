@@ -22,6 +22,9 @@ class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
 namespace chat {
 class TChatModeManager;
 }
@@ -234,6 +237,8 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> m_objectInfoStorage;
     std::shared_ptr<container::TInventoryContainer> m_inventory;
+    /// The session's appearance instance factory, handed to the object dialog.
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
     std::shared_ptr<game::TPlayerData> m_playerData;
     QPointer<config::TActionBarOptions> m_actionBarOptions;
     std::vector<TActionButtonController*> m_buttons;

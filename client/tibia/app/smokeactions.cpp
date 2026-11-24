@@ -1,6 +1,8 @@
 #include "app/smokeactions.h"
 
 #include "game/gameactionrouter.h"
+#include "input/gameaction.h"
+#include "store/storestorage.h"
 
 #include <QDebug>
 #include <QMetaEnum>
@@ -77,6 +79,11 @@ void TSmokeActions::runStep(const std::size_t index)
         const EGameAction action = m_steps[index].action;
         if (action == EGameAction::CONFIRM_TUTORIAL_HINT) {
             confirmShownHint();
+        } else if (action == EGameAction::OPEN_STORE) {
+            // The store opens on its premium page (the analysers' store button).
+            qInfo().noquote() << "smoke: game action OPEN_STORE (premium page)";
+            publish(std::make_shared<input::TGameActionOpenStore>(
+                store::TStoreOpenParameters{ .openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0 }));
         } else {
             qInfo().noquote() << "smoke: game action" << QMetaEnum::fromType<EGameAction>().valueToKey(int(action));
             publish(std::make_shared<input::gameactions::TGameActionSimple>(action));

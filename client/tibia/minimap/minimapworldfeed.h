@@ -17,7 +17,7 @@ public:
     ~TMinimapWorldFeed() override;
 
     bool isKnown(const Position& coord) const override;
-    TMinimapFieldData fieldData(const Position& coord) const override;
+    TMinimapDataOfOneField fieldData(const Position& coord) const override;
     void forEachKnownField(int z, const std::function<void(const Position&)>& visit) const override;
     QRect areaOn(int z) const override;
 

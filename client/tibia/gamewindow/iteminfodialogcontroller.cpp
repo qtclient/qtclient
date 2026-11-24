@@ -1,6 +1,7 @@
 #include "iteminfodialogcontroller.h"
 #include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
+#include "gamewindow/appearancetypefilterselection.h"
 
 #include "game/gameciptypes.h"
 
@@ -133,9 +134,11 @@ TItemInspectData::TItemInspectData(const QString& name, const uint16_t typeId,
     m_objectInformation += QStringLiteral("</table>");
 }
 
-TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
+TItemInfoDialogController::TItemInfoDialogController(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                                                     config::TClientOptions* ClientOptions, QObject* parent)
     : cip::tibia::gamewindow::TItemInfoDialogController(parent)
-    , m_proxy(false, true, false, nullptr)
+    , m_pAppearancesManager(std::move(AppearancesManager))
+    , m_proxy(false, true, false, ClientOptions)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
     buildCategories();
@@ -162,14 +165,7 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
             Q_EMIT premiumTimeChanged();
         });
     }
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
-        if (!data)
-            return std::any{};
-        std::set<int> classes;
-        for (const ForgeClassTierPrices& classPrices : data->classPrices)
-            classes.insert(classPrices.classId);
-        m_classifications.assign(classes.begin(), classes.end());
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args&) {
         if (m_enableTierAndClassificationSelection)
             updateAvailableClassifications();
         return std::any{};
@@ -243,8 +239,10 @@ TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const TAppearanc
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
-    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes())
-        entries.push_back(cyclopediaEntry(type));
+    if (m_pAppearancesManager) {
+        for (const TAppearanceTypePtr& type : m_pAppearancesManager->getCyclopediaObjectTypes())
+            entries.push_back(cyclopediaEntry(type));
+    }
     m_proxy.resetTypes(entries);
     m_entriesBuilt = true;
     setEnableTier(false);
@@ -252,46 +250,20 @@ void TItemInfoDialogController::rebuildEntries()
 
 bool TItemInfoDialogController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_proxy.model().size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_proxy.model().entry(row);
-        if (entry.classification == 0)
-            continue;
-        if (category == Proxy::AllCategories || entry.marketCategory == category)
-            return true;
-        if (category == Proxy::AllWeaponsCategory && Proxy::isHandWeaponCategory(entry.marketCategory))
-            return true;
-    }
-    return false;
+    return categoryHasClassifiedTypes(m_proxy, category);
 }
 
 TAppearanceTypeFilter TItemInfoDialogController::currentFilter() const
 {
-    TAppearanceTypeFilter filter;
-    if (!m_enableTierAndClassificationSelection)
-        return filter;
-    const std::vector<int>& classes = m_classifications;
-    if (m_indexOfSelectedClassification == 1) {
-        filter.classificationMode = 1;
-    } else if (m_indexOfSelectedClassification == 0) {
-        filter.classificationMode = 2;
-    } else if (m_indexOfSelectedClassification >= 2 && m_indexOfSelectedClassification - 2 < static_cast<int>(classes.size())) {
-        filter.classificationMode = 3;
-        filter.classification = classes[m_indexOfSelectedClassification - 2];
-    }
-    return filter;
+    const TAppearanceTypeFilterSelection classification = classificationFilterSelection(
+        m_enableTierAndClassificationSelection, game::currentGameSession(), m_indexOfSelectedClassification);
+    // The four buttons are set by the proxy's setCategoryFilter / setNameFilter overloads; no tier drop-down here.
+    return appearanceTypeFilter(false, false, false, false, classification, {});
 }
 
 void TItemInfoDialogController::updateAvailableClassifications()
 {
-    QStringList classes;
-    if (!m_enableTierAndClassificationSelection) {
-        classes << QString();
-    } else {
-        classes << qtTrId("market_filter_class_all") << qtTrId("market_filter_class_none");
-        for (const int classification : m_classifications)
-            classes << qtTrId("market_filter_class").arg(classification);
-    }
-    m_availableClassifications = classes;
+    m_availableClassifications = classificationFilterEntries(m_enableTierAndClassificationSelection, game::currentGameSession());
     Q_EMIT availableClassificationsChanged();
 }
 
@@ -686,7 +658,7 @@ void TItemInfoDialogController::restoreContext(const TCyclopediaDialogContext& C
         return;
     m_proxy.applyFilterNow();
     for (int row = 0; row < m_proxy.rowCount(); ++row) {
-        if (m_proxy.typeIdAt(row) == context.typeId) {
+        if (displayTypeIdAt(m_proxy, row) == context.typeId) {
             Q_EMIT itemListSelectionRequest(row);
             return;
         }

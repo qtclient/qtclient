@@ -158,9 +158,12 @@ void TCyclopediaMapSelectionInfoPassage::setPassageData(const Values& values)
         occurrences->deleteLater();
 }
 
-TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
+TCyclopediaMapDialogController::TCyclopediaMapDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                                               QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapDialogController(parent)
-    , m_confirmDialog(new TMessageDialogController(this))
+    , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_confirmDialog(new TMessageDialogController(Engine, DialogParentItem, this))
+    , m_pEngine(Engine)
 {
     // Tip ICyclopediaMapSelectionInfo twin (selectionType).
     (void)tipICyclopediaMapSelectionInfo();

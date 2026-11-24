@@ -6,6 +6,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -98,6 +100,9 @@ public:
 
     /// The requested highscore page replaces the storage's state.
     void handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& message);
+
+Q_SIGNALS:
+    void sendHighscoresMessage(const ::tibia::protobuf::protocol::GameclientMessageHighscores& HighscoresMessage);
 
 private:
     std::shared_ptr<THighscoresStorage> m_pHighscoresStorage;

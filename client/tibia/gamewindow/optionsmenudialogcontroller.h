@@ -199,8 +199,8 @@ private:
     std::shared_ptr<minimap::TMinimapDiskIOAsync> m_pMinimapTileDiskIO;
     /// Saved to disk before the minimap export.
     std::shared_ptr<minimap::TMinimapTileStorage> m_pMinimapTileStorage;
-    /// CipSoft hands these to its hotkeys page (key recording, the action
-    /// icons, the spell list).
+    /// Handed to the hotkeys page (key recording, the action icons, the spell
+    /// list).
     input::TEventFilterManager* m_pEventFilterManager;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
     spells::TSpellInfoStorage* m_pSpellInfoStorage;

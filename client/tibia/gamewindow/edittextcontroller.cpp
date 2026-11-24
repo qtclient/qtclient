@@ -10,6 +10,8 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
+#include <protocol.pb.h>
+
 namespace tibia::gamewindow {
 
 namespace {
@@ -131,18 +133,32 @@ void TEditTextController::showReadOnlyText(const QString& DialogCaption, const Q
 void TEditTextController::submitNewText(const QString& NewText)
 {
     dialog()->close();
-    if (!tibia::game::isOnline())
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
         return;
+    game::TEditTextProtocolMessageHandler* handler = session->editTextProtocolMessageHandler().get();
     switch (m_mode) {
-        case EMode::ItemText:
-            tibia::game::editText(m_id, NewText.toStdString());
+        case EMode::ItemText: {
+            ::tibia::protobuf::protocol::GameclientMessageEditText message;
+            message.set_window_id(m_id);
+            message.set_text(NewText.toStdString());
+            Q_EMIT handler->sendEditText(message);
             break;
-        case EMode::EditList:
-            tibia::game::editList(m_id, m_doorId, NewText.toStdString());
+        }
+        case EMode::EditList: {
+            ::tibia::protobuf::protocol::GameclientMessageEditList message;
+            message.set_window_id(m_id);
+            message.set_text(NewText.toStdString());
+            message.set_list_type(m_doorId);
+            Q_EMIT handler->sendEditList(message);
             break;
-        case EMode::GuildMessage:
-            tibia::game::editGuildMessage(NewText.toStdString());
+        }
+        case EMode::GuildMessage: {
+            ::tibia::protobuf::protocol::GameclientMessageEditGuildMessage message;
+            message.set_text(NewText.toStdString());
+            Q_EMIT handler->sendEditGuildMessage(message);
             break;
+        }
     }
 }
 

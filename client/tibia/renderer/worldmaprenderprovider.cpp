@@ -8,7 +8,9 @@
 #include "appearances/spriteinfo.h"
 #include "renderer/spritetextureprovider.h"
 #include "appearances/worldmaphighlightbaseplate.h"
+#include "app/bootstrap.h"
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "mods/registry.h"
 #include "mods/weather_driver.h"
 #include "mods/worldview.h"
@@ -266,7 +268,7 @@ worldmap::TAmbientLightStorage* TWorldMapRenderProvider::ambientLightStorage() c
 
 std::shared_ptr<appearances::TAppearanceInstanceTracker> TWorldMapRenderProvider::instanceTracker() const
 {
-    return m_instanceTracker ? m_instanceTracker : appearances::TAppearanceInstanceFactory::instanceTracker();
+    return m_instanceTracker ? m_instanceTracker : appearances::TAppearanceInstanceFactory::installed()->instanceTracker();
 }
 
 void TWorldMapRenderProvider::setVisibleFields(const int width, const int height)
@@ -550,14 +552,10 @@ bool TWorldMapRenderProvider::build()
     }
     m_firstFloor = first;
     m_lastFloor = last;
-    // Nothing is drawn from an empty render volume or one that reaches below
-    // the origin (host: the frame is cleared; CipSoft keeps the last one).
-    if (m_renderVolumeProvider && !isDrawableRenderVolume(m_renderVolumeProvider->renderVolume())) {
-        frame.sprites.clear();
-        frame.creatures.clear();
-        m_lights.clear();
-        return false;
-    }
+    // Nothing is built from an empty render volume or one that reaches below
+    // the origin: the last frame stays.
+    if (m_renderVolumeProvider && !isDrawableRenderVolume(m_renderVolumeProvider->renderVolume()))
+        return frame.valid;
 
     frame.highlightStrength = renderer::highlightStrength();
     m_attackTarget = tibia::game::attackingCreatureId();
@@ -861,15 +859,26 @@ void TWorldMapRenderProvider::buildLight()
 {
     updateWorldGeometry();
 
-    m_lightMap = buildLightMap(true);
-    m_lightUntinted = m_lightMap->toImage();
+    // Without light effects, or on the software graphics engine, the frame has
+    // no light map.
+    const bool lightEffectsEnabled = m_clientOptions
+        ? m_clientOptions->boolOption(config::EClientOption::lightEffectsEnabled)
+        : m_lightOptions.effectsEnabled;
+    if (lightEffectsEnabled && !app::isSoftwareGraphicsEngineActive())
+        m_lightMap = buildLightMap(true);
+    else
+        m_lightMap.reset();
+    m_lightUntinted = m_lightMap ? m_lightMap->toImage() : QImage();
     m_frame.light = m_lightUntinted;
     applyWeatherAmbientTint();
     if (m_lighting && m_lighting->enabled()) {
+        // Host (pack lighting): the raycast reads the floors' light even when
+        // the frame has no light map.
+        const QImage classic = m_lightMap ? m_lightUntinted : buildLightMap(true)->toImage();
         // Raycast samples the floors' light without the point lights.
-        m_lighting->setFieldAmbient(m_lights.empty() ? m_lightUntinted : buildLightMap(false)->toImage());
+        m_lighting->setFieldAmbient(m_lights.empty() ? classic : buildLightMap(false)->toImage());
         // Same grid the LightMap multiplies (post weather tint) — raycast open-floor SoT.
-        m_lighting->setFieldClassic(m_frame.light);
+        m_lighting->setFieldClassic(m_lightMap ? m_frame.light : classic);
     }
 }
 
@@ -1011,7 +1020,8 @@ constexpr std::array<uint8_t, 10> KindLayers{ 8, 0, 7, 6, 5, 3, 3, 2, 1, 0 };
 
 /// The kind of a thing's sprites, which picks their draw group and layer:
 /// missiles 0, effects 2 (top effects 1), top objects 3, creatures 4, bottom
-/// objects 7, clip 8, bank 9, other objects 6 (kinds 5 and 6 draw alike).
+/// objects 7, clip 8, bank 9, lying objects 5, other objects 6 (kinds 5 and 6
+/// draw alike).
 int objectLayer(const TAppearanceType& type, const bool creature)
 {
     if (type.isMissile())
@@ -1028,7 +1038,7 @@ int objectLayer(const TAppearanceType& type, const bool creature)
         return 8;
     if (type.isGround())
         return 9;
-    return 6;
+    return type.isLyingCorpse() ? 5 : 6;
 }
 
 uint8_t drawGroupOfKind(const int kind)

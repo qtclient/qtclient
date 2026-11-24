@@ -30,8 +30,8 @@ void TEffectGameActionHandler::handleGameAction(const input::IGameActionPtr& pGa
     const Position field = marker->position();
     if (!field.isValid())
         return;
-    m_storage.trackEffect(appearances::TAppearanceInstanceFactory::createTutorialFieldEffect(1, field));
-    m_storage.trackEffect(appearances::TAppearanceInstanceFactory::createTutorialFieldEffect(0, field));
+    m_storage.trackEffect(appearances::TAppearanceInstanceFactory::installed()->createTutorialFieldEffect(1, field));
+    m_storage.trackEffect(appearances::TAppearanceInstanceFactory::installed()->createTutorialFieldEffect(0, field));
 }
 
 }

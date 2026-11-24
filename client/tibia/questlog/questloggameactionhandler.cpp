@@ -41,7 +41,7 @@ void TQuestLogGameActionHandler::handleChangeQuesttrackerOptionsGameAction(const
         m_questLogStorage->setAutoTrackNewQuests(pGameAction.enabled());
     else if (pGameAction.option() == 1)
         m_questLogStorage->setAutoUntrackCompletedQuests(pGameAction.enabled());
-    sendTrackQuestFlags(trackedQuestFlagIds());
+    trackQuestFlags(trackedQuestFlagIds());
 }
 
 void TQuestLogGameActionHandler::handleChangeTrackedQuestFlagsGameAction(const input::TGameActionChangeTrackedQuestFlags& pGameAction)
@@ -57,7 +57,7 @@ void TQuestLogGameActionHandler::handleChangeTrackedQuestFlagsGameAction(const i
         else
             questFlagIds.erase(questFlagId);
     }
-    sendTrackQuestFlags(questFlagIds);
+    trackQuestFlags(questFlagIds);
 }
 
 std::set<TQuestFlagID> TQuestLogGameActionHandler::trackedQuestFlagIds() const
@@ -68,11 +68,14 @@ std::set<TQuestFlagID> TQuestLogGameActionHandler::trackedQuestFlagIds() const
     return questFlagIds;
 }
 
-void TQuestLogGameActionHandler::sendTrackQuestFlags(const std::set<TQuestFlagID>& questFlagIds) const
+void TQuestLogGameActionHandler::trackQuestFlags(const std::set<TQuestFlagID>& questFlagIds)
 {
-    const std::vector<uint16_t> missionIds(questFlagIds.begin(), questFlagIds.end());
-    tibia::game::sendRequestTrackerQuestLog(missionIds, m_questLogStorage->autoTrackNewQuests(),
-                                            m_questLogStorage->autoUntrackCompletedQuests());
+    ::tibia::protobuf::protocol::GameclientMessageTrackQuestFlags message;
+    for (const TQuestFlagID questFlagId : questFlagIds)
+        message.add_mission_ids(questFlagId);
+    message.set_auto_track_new_quests(m_questLogStorage->autoTrackNewQuests());
+    message.set_auto_untrack_completed_quests(m_questLogStorage->autoUntrackCompletedQuests());
+    Q_EMIT sendTrackQuestFlags(message);
 }
 
 }

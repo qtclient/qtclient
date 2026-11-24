@@ -1,7 +1,10 @@
 #include "worldmap/creaturehudoverlaycontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "renderer/mapscale.h"
+#include "renderer/worldmapcamera.h"
 #include "renderer/worldmaprenderprovider.h"
+#include "worldmap/worldmapviewport.h"
 #include "worldmap/creaturehudcontroller.h"
 #include "worldmap/creaturehudrenderprovider.h"
 
@@ -10,6 +13,8 @@
 #include <QQmlEngine>
 #include <QQmlIncubator>
 #include <QQuickItem>
+
+#include <stdexcept>
 
 namespace tibia::worldmap {
 
@@ -23,10 +28,6 @@ TCreatureHUDOverlayController::TCreatureHUDOverlayController(QQuickItem* parentI
     : cip::tibia::worldmap::TCreatureHUDOverlayController(parent)
     , m_parentItem(parentItem)
 {
-    if (QQmlEngine* engine = parentItem ? qmlEngine(parentItem) : nullptr) {
-        m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/CreatureHUD.qml")),
-                                        QQmlComponent::PreferSynchronous, this);
-    }
 }
 
 TCreatureHUDOverlayController::~TCreatureHUDOverlayController()
@@ -35,17 +36,37 @@ TCreatureHUDOverlayController::~TCreatureHUDOverlayController()
     m_controllers.clear();
 }
 
-void TCreatureHUDOverlayController::setRenderProviders(std::shared_ptr<TCreatureHUDRenderProvider> renderProvider,
-                                                       Provider* worldMapRenderProvider)
+void TCreatureHUDOverlayController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     disconnect(m_frameConnection);
-    m_renderProvider = std::move(renderProvider);
-    m_worldMapRenderProvider = worldMapRenderProvider;
-    if (worldMapRenderProvider) {
-        m_frameConnection = connect(worldMapRenderProvider, &Provider::overlaysAdvanced, this,
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (!session) {
+        m_renderProvider.reset();
+        m_viewport.reset();
+        m_camera.reset();
+        m_worldMapRenderProvider = nullptr;
+        refreshCreatureHUDs();
+        return;
+    }
+    m_renderProvider = session->creatureHUDRenderProvider();
+    m_viewport = session->worldMapViewport();
+    m_camera = session->worldMapCamera();
+    // Host: the HUDs follow the world map frame (see m_worldMapRenderProvider).
+    m_worldMapRenderProvider = session->worldMapRenderProvider().get();
+    if (m_worldMapRenderProvider) {
+        m_frameConnection = connect(m_worldMapRenderProvider.data(), &Provider::overlaysAdvanced, this,
                                     &TCreatureHUDOverlayController::update);
     }
-    refreshCreatureHUDs();
+    if (m_component)
+        return;
+    // Host: an item outside a QML engine (tests) has no component to make.
+    QQmlEngine* engine = m_parentItem ? qmlEngine(m_parentItem.data()) : nullptr;
+    if (!engine)
+        return;
+    m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/CreatureHUD.qml")),
+                                    QQmlComponent::PreferSynchronous, this);
+    if (m_component->isError())
+        throw std::runtime_error(m_component->errorString().toStdString());
 }
 
 void TCreatureHUDOverlayController::update()

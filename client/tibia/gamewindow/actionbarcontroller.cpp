@@ -486,6 +486,7 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
     m_gameLoginSuccessful = false;
     m_objectInfoStorage.reset();
     m_inventory.reset();
+    m_appearanceInstanceFactory.reset();
     m_playerData.reset();
     m_actionBarOptions = nullptr;
     m_gameSession = GameSession;
@@ -519,9 +520,11 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
         }
         m_gameSessionConnections.add(
             connect(m_gameSession.get(), &game::IGameSession::gameLoginSuccessful, this, &TActionBarController::onGameLoginSuccessful));
+        m_appearanceInstanceFactory = session->appearanceInstanceFactory();
         onObjectInfosChanged();
         onInventoryChanged();
         onEnableConditionsChanged();
+        m_objectDialog->setAppearanceInstanceFactory(m_appearanceInstanceFactory);
     }
     if (m_spellDialog)
         m_spellDialog->connectToGameSession(m_gameSession);
@@ -553,6 +556,17 @@ void TActionBarController::handleGameAction(const input::IGameActionPtr& pGameAc
     if (!pGameAction)
         return;
     switch (pGameAction->gameActionType()) {
+    case input::EGameAction::ADD_GUI_TUTORIAL_MARKER: {
+        // A marker on one of this bar's buttons.
+        const auto* add = input::gameActionAs<input::TGameActionAddGUITutorialMarker>(pGameAction);
+        const auto* button = add ? input::gameActionContextAs<input::TLocationActionButtonGameActionContext>(add->location()) : nullptr;
+        if (!button || int(button->bar()) != m_actionBarId)
+            return;
+        for (TActionButtonController* controller : m_buttons)
+            if (int(controller->actionButtonID()) == button->button())
+                controller->setTutorialMarkerID(add->markerId());
+        return;
+    }
     case input::EGameAction::REMOVE_ALL_TUTORIAL_MARKERS:
         for (TActionButtonController* button : m_buttons)
             button->setTutorialMarkerID(0);
@@ -928,29 +942,17 @@ void TActionBarController::onClearAction(const uint ButtonId, const int MultiAct
 
 void TActionBarController::onDropped(const uint ButtonId, const int MultiActionIndex)
 {
+    if (!m_gameSession)
+        return;
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
     const input::TMoveObjectPtr dropped = dnd->takeAction();
     if (!dropped)
         return;
-    const input::TObjectGameActionContext& move = dropped->context();
-    uint16_t typeId = move.objectClientId();
-    uint8_t tier = 0;
-    if (typeId != 0 && move.position().x == UINT16_MAX) {
-        if (move.position().y & 0x40) {
-            if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                if (const container::TStoredContainer* row = storage->containerAt(move.position().y & 0x3F))
-                    tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + move.stackPosition()).tier;
-            }
-        } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-            tier = inventory->slotAt(move.position().y).tier;
-        }
-    }
-    if (typeId == 0)
-        return;
     // Alt assigns the object with its default use; otherwise its dialog opens.
-    m_objectDialog->showDialogForObject(ButtonId, MultiActionIndex, typeId, tier, dnd->modifiers().testFlag(Qt::AltModifier));
+    m_objectDialog->showDialog(ButtonId, MultiActionIndex, objectContextWithTier(dropped->context()),
+                               dnd->modifiers().testFlag(Qt::AltModifier));
 }
 
 void TActionBarController::onSwapActions(const uint SourceActionBarId, const uint SourceButtonId, const int SourceMultiActionIndex,

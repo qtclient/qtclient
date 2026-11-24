@@ -210,6 +210,7 @@ class TQuestLogStorage;
 namespace skillwheel {
 class TSkillWheelGameActionHandler;
 class TSkillWheelProtocolMessageHandler;
+class TSkillWheelStorage;
 }
 namespace spells {
 class TSpellsProtocolMessageHandler;
@@ -296,8 +297,10 @@ class TGameSessionBase : public IGameSession
 {
     Q_OBJECT
 public:
+    /// Host: a session without a game client, over the process-wide objects.
     explicit TGameSessionBase(QObject* parent = nullptr);
-    /// The objects the game client shares with every session it builds.
+    /// The objects the game client shares with every session it builds; the
+    /// session's storages, handlers and providers are built over them.
     TGameSessionBase(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
                      std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
                      std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
@@ -664,6 +667,7 @@ public:
         return m_characterTradeProtocolMessageHandler;
     }
     const std::shared_ptr<chat::TChatGameActionHandler>& chatGameActionHandler() const { return m_chatGameActionHandler; }
+    const std::shared_ptr<questlog::TQuestLogGameActionHandler>& questLogGameActionHandler() const { return m_questLogGameActionHandler; }
     const std::shared_ptr<creatures::TVipGameActionHandler>& vipGameActionHandler() const { return m_vipGameActionHandler; }
     const std::shared_ptr<trade::TPlayerTradeGameActionHandler>& playerTradeGameActionHandler() const
     {
@@ -939,6 +943,7 @@ private:
     std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_quickLootBlackWhitelistStorage;
     std::shared_ptr<analysers::THuntingSessionStorage> m_huntingSessionStorage;
     std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_cyclopediaMapCharacterConfigurationStorage;
+    std::shared_ptr<skillwheel::TSkillWheelStorage> m_skillWheelStorage;
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
     std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;
     std::shared_ptr<cyclopedia::TMonsterBonusEffectStorage> m_monsterBonusEffectStorage;

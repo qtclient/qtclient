@@ -3,9 +3,11 @@
 #include "skillwheel/skillwheelciptypes.h"
 #include "skillwheel/skillwheelgameactions.h"
 
+#include "config/characterconfigurationmanager.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
-#include "game/gameciptypes.h"
 
 #include <QCollator>
 #include <string_view>
@@ -80,6 +82,18 @@ int statRank(const QString& label)
     if (label == basicStatName(12, true))
         return 2;
     return label == basicStatName(9, true) ? 3 : 99;
+}
+
+/// CIP: the session's configuration manager's skill wheel storage. Host: without a session (before
+/// the first login, at shutdown) an empty process-wide storage, so the pages' QML properties never
+/// read a null storage (the old host skill wheel manager owned one for the client's life).
+TSkillWheelStorage* sessionSkillWheelStorage(const std::shared_ptr<game::IGameSession>& session)
+{
+    static TSkillWheelStorage* const emptyStorage = new TSkillWheelStorage();
+    const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
+    TSkillWheelStorage* storage =
+        base && base->characterConfigurationManager() ? base->characterConfigurationManager()->skillWheelStorage() : nullptr;
+    return storage ? storage : emptyStorage;
 }
 
 int spentPoints(const std::array<int, SlotCount>& points) { return std::accumulate(points.begin(), points.end(), 0); }
@@ -193,9 +207,9 @@ QUrl TQmlSocketedGem::socketBezelSource() const
 // ---------------------------------------------------------------------------
 // Wheel page
 
-TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage, QObject* parent)
+TSkillWheelPageController::TSkillWheelPageController(const QString& plannerUrl, QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                     QObject* parent)
     : cip::tibia::gamewindow::TSkillWheelPageController(parent)
-    , m_storage(storage)
     , m_small(new TPerkInfoModel(this))
     , m_large(new TPerkInfoModel(this))
     , m_medium(new TPerkInfoModel(this))
@@ -206,11 +220,10 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     , m_hoveredTile(new cip::tibia::gamewindow::TTileInformation(this))
     , m_selectedLarge(new cip::tibia::gamewindow::TLargePerkInformation(this))
     , m_hoveredLarge(new cip::tibia::gamewindow::TLargePerkInformation(this))
-    , m_message(new TMessageDialogController(this))
-    , m_export(new TMessageDialogController(this))
-    , m_presetManagmentDialog(new TSkillWheelPresetManagmentDialogController(this))
-    // CIP literal; app::PortalUrls::installCipUrlHandler maps www.tibia.com to the portal.
-    , m_plannerUrl(QStringLiteral("https://www.tibia.com/community/?subtopic=wheelofdestinyplanner&code="))
+    , m_message(new TMessageDialogController(engine, dialogParentItem, this))
+    , m_export(new TMessageDialogController(engine, dialogParentItem, this))
+    , m_presetManagmentDialog(new TSkillWheelPresetManagmentDialogController(engine, dialogParentItem, this))
+    , m_plannerUrl(plannerUrl)
 {
     m_smallPerkSummaryModel = m_small;
     m_largePerkSummaryModel = m_large;
@@ -231,16 +244,27 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
             &TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked);
     connect(m_presetManagmentDialog, &TSkillWheelPresetManagmentDialogController::newPresetName, this,
             &TSkillWheelPageController::onNewPresetName);
+}
 
-    // CIP (the session's storage): the preset dialog works on the session's presets; a new server
-    // wheel changes the initial data; the server wheel, the current wheel and the mod grades refresh
-    // the page.
-    m_presetManagmentDialog->setSkillWheelStorage(m_storage);
-    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::initialDataChanged);
-    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, &TSkillWheelPageController::updatePresetsInfoModelIfNeeded);
+/// CIP: the session's storage replaces the previous one; the preset dialog works on the session's
+/// presets; a user change of the configuration updates the presets, a new server wheel changes the
+/// initial data, the server wheel, the current wheel and the mod grades refresh the page.
+void TSkillWheelPageController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_storage = nullptr;
+    m_gameSession = std::move(GameSession);
+    m_presetManagmentDialog->setGameSession(m_gameSession);
+    m_storage = sessionSkillWheelStorage(m_gameSession);
+    if (m_storage) {
+        const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+        add(connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this,
+                    &TSkillWheelPageController::updatePresetsInfoModelIfNeeded));
+        add(connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::initialDataChanged));
+        add(connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged));
+        add(connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged));
+        add(connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged));
+    }
     onWheelChanged();
     updatePresetsInfoModelIfNeeded();
 }
@@ -251,7 +275,7 @@ void TSkillWheelPageController::updatePresetsInfoModelIfNeeded()
 {
     std::vector<TPresetInfo> presets;
     int totalPoints = 0;
-    if (m_storage->isOwnCharacter() && m_storage->changeState() == 1) {
+    if (m_storage && m_storage->isOwnCharacter() && m_storage->changeState() == 1) {
         for (const auto& [name, wheel] : m_storage->presets())
             presets.push_back({ name, wheel });
         totalPoints = m_storage->regularPoints() + m_storage->extraPoints() + m_storage->modGradesPoints();
@@ -321,7 +345,8 @@ void TSkillWheelPageController::setCurrentPresetName(const QString& name)
 
 bool TSkillWheelPageController::hasOwnWheel() const
 {
-    return m_storage->isOwnCharacter() && totalSkillPoints() != 0 && m_storage->currentSkillWheel().has_value();
+    // Host: no storage before the page knows a session.
+    return m_storage && m_storage->isOwnCharacter() && totalSkillPoints() != 0 && m_storage->currentSkillWheel().has_value();
 }
 
 /// CIP: the selection goes; unless the show was asked to keep them, the presets are checked against
@@ -461,7 +486,7 @@ void TSkillWheelPageController::selectMatchingPreset()
 /// CIP: a preset waiting from a switch is selected without asking.
 void TSkillWheelPageController::selectPendingPreset()
 {
-    if (m_pendingPreset.isEmpty() || !m_storage->isOwnCharacter() || totalSkillPoints() == 0)
+    if (m_pendingPreset.isEmpty() || !m_storage || !m_storage->isOwnCharacter() || totalSkillPoints() == 0)
         return;
     selectPresetByName(m_pendingPreset, true);
     m_pendingPreset.clear();
@@ -497,7 +522,7 @@ void TSkillWheelPageController::updateParameters()
     for (QObject* o : oldCorners)
         o->deleteLater();
 
-    if (m_storage->hasData()) {
+    if (m_storage && m_storage->hasData()) {
         const TWheel& wheel = m_storage->currentWheel();
         const int voc = m_storage->vocationIndex();
         std::array<int, SlotCount> slots{};
@@ -533,6 +558,12 @@ void TSkillWheelPageController::updateParameters()
 /// perks, the vessels and everything. Without wheel data the first three are empty.
 void TSkillWheelPageController::updateSummaries()
 {
+    // Without a session's storage there is no wheel to sum up.
+    if (!m_storage) {
+        for (TPerkInfoModel* model : { m_small, m_large, m_medium, m_vessels, m_full })
+            model->setItems({});
+        return;
+    }
     const bool hasData = m_storage->hasData();
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
@@ -808,7 +839,7 @@ void TSkillWheelPageController::clearLargePerk(cip::tibia::gamewindow::TLargePer
 /// Without wheel data or a slice the information is cleared (CIP).
 void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformation* info, const int slot) const
 {
-    if (!m_storage->hasData() || slot < 0 || slot >= SlotCount) {
+    if ((!m_storage || !m_storage->hasData()) || slot < 0 || slot >= SlotCount) {
         clearTile(info);
         return;
     }
@@ -855,7 +886,7 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
 
 void TSkillWheelPageController::fillLargePerk(cip::tibia::gamewindow::TLargePerkInformation* info, const int domain) const
 {
-    if (!m_storage->hasData() || domain < 0 || domain >= DomainCount) {
+    if ((!m_storage || !m_storage->hasData()) || domain < 0 || domain >= DomainCount) {
         clearLargePerk(info);
         return;
     }
@@ -903,7 +934,7 @@ void TSkillWheelPageController::changePoints(const int slot, const int delta)
 /// CIP .
 void TSkillWheelPageController::addToSkill(const int GridTileQML, const int KeyboardModifiers)
 {
-    if (!m_storage->hasData() || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
+    if ((!m_storage || !m_storage->hasData()) || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
         || !canIncrease(m_storage->currentWheel().points, GridTileQML))
         return;
     const int amount = std::min(stepSize(KeyboardModifiers), std::max(0, m_storage->freePoints()));
@@ -913,7 +944,7 @@ void TSkillWheelPageController::addToSkill(const int GridTileQML, const int Keyb
 /// CIP .
 void TSkillWheelPageController::fillSkill(const int GridTileQML)
 {
-    if (!m_storage->hasData() || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
+    if ((!m_storage || !m_storage->hasData()) || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
         || !canIncrease(m_storage->currentWheel().points, GridTileQML))
         return;
     changePoints(GridTileQML, std::min(gridConfiguration().maxPoints(GridTileQML), std::max(0, m_storage->freePoints())));
@@ -922,7 +953,7 @@ void TSkillWheelPageController::fillSkill(const int GridTileQML)
 /// CIP .
 void TSkillWheelPageController::removeFromSkill(const int GridTileQML, const int KeyboardModifiers)
 {
-    if (!m_storage->hasData() || m_storage->changeState() != 1 || GridTileQML < 0 || GridTileQML >= SlotCount
+    if ((!m_storage || !m_storage->hasData()) || m_storage->changeState() != 1 || GridTileQML < 0 || GridTileQML >= SlotCount
         || !canDecrease(m_storage->currentWheel().points, GridTileQML))
         return;
     changePoints(GridTileQML, -std::min(stepSize(KeyboardModifiers), m_storage->currentWheel().points[GridTileQML]));
@@ -931,7 +962,7 @@ void TSkillWheelPageController::removeFromSkill(const int GridTileQML, const int
 /// CIP .
 void TSkillWheelPageController::clearSkill(const int GridTileQML)
 {
-    if (!m_storage->hasData() || m_storage->changeState() != 1 || GridTileQML < 0 || GridTileQML >= SlotCount
+    if ((!m_storage || !m_storage->hasData()) || m_storage->changeState() != 1 || GridTileQML < 0 || GridTileQML >= SlotCount
         || !canDecrease(m_storage->currentWheel().points, GridTileQML))
         return;
     changePoints(GridTileQML, -m_storage->currentWheel().points[GridTileQML]);
@@ -941,7 +972,7 @@ void TSkillWheelPageController::clearSkill(const int GridTileQML)
 /// otherwise empty the slice.
 void TSkillWheelPageController::onGridTileRightClicked(const int GridTileQML, const int KeyboardModifiers)
 {
-    if (!m_storage->hasData() || GridTileQML < 0 || GridTileQML >= SlotCount)
+    if ((!m_storage || !m_storage->hasData()) || GridTileQML < 0 || GridTileQML >= SlotCount)
         return;
     const auto& points = m_storage->currentWheel().points;
     const int current = points[GridTileQML];
@@ -1015,6 +1046,9 @@ void TSkillWheelPageController::showMessage(const EMessageMode mode, const QStri
 /// selected one.
 void TSkillWheelPageController::selectPresetByName(const QString& PresetName, const bool IgnoreChanges)
 {
+    // Host: no storage before the page knows a session.
+    if (!m_storage)
+        return;
     const std::optional<TWheel> wheel = m_storage->preset(PresetName);
     if (!m_storage->hasPreset(m_currentPresetName)) {
         if (!m_currentPresetName.isEmpty()) {
@@ -1091,7 +1125,7 @@ void TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked(
         requestCopyExportCodeToClipboard();
         return;
     }
-    if (ButtonIdentifier != Button::USER_DEFINED || !m_storage->hasData())
+    if (ButtonIdentifier != Button::USER_DEFINED || (!m_storage || !m_storage->hasData()))
         return;
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(m_plannerUrl + encodeWheelCode(m_storage->currentWheel())));
 }
@@ -1141,7 +1175,8 @@ void TSkillWheelPageController::onNewPresetName(const QString& PresetName)
 /// matching (then the pending) preset is selected again.
 void TSkillWheelPageController::clearData()
 {
-    m_storage->resetCurrentSkillWheel();
+    if (m_storage)
+        m_storage->resetCurrentSkillWheel();
     clearParameters();
     m_selectedSlot = m_hoveredSlot = -1;
     clearTile(m_selectedTile);
@@ -1245,14 +1280,13 @@ void TSkillWheelPageController::apply()
 // ---------------------------------------------------------------------------
 // Gem atelier
 
-TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage, QObject* parent)
+TGemAtelierPageController::TGemAtelierPageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TGemAtelierPageController(parent)
-    , m_storage(storage)
+    , m_dismantleConfirm(new gamewindow::TMessageDialogController(engine, dialogParentItem, this))
     , m_list(new TInventoryGemListModel(this))
     , m_filter(new TInventoryGemSortFilterProxyModel(m_list, this))
     , m_pages(new TPaginationProxyModel(15, this))
-    , m_dismantleConfirm(new gamewindow::TMessageDialogController(this))
-    , m_reshapeModDialog(new TGemAtelierReshapeModDialogController(this))
+    , m_reshapeModDialog(new TGemAtelierReshapeModDialogController(engine, dialogParentItem, this))
 {
     m_dismantleConfirm->setCloseOnButtonClicked(true);
     connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { TSkillWheelProtocolMessageHandler::dismantleGem(m_dismantleGemId); });
@@ -1262,19 +1296,36 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     m_revealLesserGemCost = revealCost(0);
     m_revealRegularGemCost = revealCost(1);
     m_revealGreaterGemCost = revealCost(2);
-    connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onGemsChanged);
-    connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TGemAtelierPageController::onWheelChanged);
-    for (const auto signal : { &TSkillWheelStorage::unrevealedGemsChanged, &TSkillWheelStorage::lesserFragmentsChanged,
-                               &TSkillWheelStorage::greaterFragmentsChanged })
-        connect(m_storage, signal, this, &TGemAtelierPageController::onResourcesChanged);
     // The gold the atelier costs is the bank balance and the carried gold.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this](qint64, qint64, const int type) {
         if (type == tibia::client::RESOURCE_BANK_BALANCE || type == tibia::client::RESOURCE_GOLD_EQUIPPED)
             onResourcesChanged();
     });
-    connect(m_storage, &TSkillWheelStorage::temporaryReshapedGemChanged, this, &TGemAtelierPageController::onTemporaryReshapedGemChanged);
-    connect(m_reshapeModDialog, &TGemAtelierReshapeModDialogController::confirmReshape, this, &TGemAtelierPageController::onConfirmReshape);
+}
+
+/// CIP: the reshape dialog and the dismantle question close, the session's storage replaces the
+/// previous one: the wheels, the gem inventory and the mod grades refresh the vessels and the list,
+/// the resources the reveal costs, a rolled reshape opens the reshape dialog; its confirmation
+/// reshapes. Then the page shows the storage's gems and wheels.
+void TGemAtelierPageController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    closeMessageDialog();
+    m_gameSession = std::move(GameSession);
+    m_gameSessionConnections.disconnectAll();
+    m_storage = sessionSkillWheelStorage(m_gameSession);
+    if (!m_storage)
+        return;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged));
+    add(connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged));
+    add(connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onGemsChanged));
+    add(connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onWheelChanged));
+    add(connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TGemAtelierPageController::onWheelChanged));
+    for (const auto signal : { &TSkillWheelStorage::unrevealedGemsChanged, &TSkillWheelStorage::lesserFragmentsChanged,
+                               &TSkillWheelStorage::greaterFragmentsChanged })
+        add(connect(m_storage, signal, this, &TGemAtelierPageController::onResourcesChanged));
+    add(connect(m_storage, &TSkillWheelStorage::temporaryReshapedGemChanged, this, &TGemAtelierPageController::onTemporaryReshapedGemChanged));
+    add(connect(m_reshapeModDialog, &TGemAtelierReshapeModDialogController::confirmReshape, this, &TGemAtelierPageController::onConfirmReshape));
     m_list->setGems(m_storage->gemInventory());
     m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
                              m_storage->supremeGrades());
@@ -1311,6 +1362,8 @@ void TGemAtelierPageController::onWheelChanged()
 /// CipSoft: eight quality-typed vessels unlocked by Gem Vessel perks.
 void TGemAtelierPageController::updateSockets()
 {
+    if (!m_storage)
+        return;
     for (int v = 0; v < VesselCount; ++v) {
         const TWheel& wheel = m_storage->currentWheel();
         const std::optional<TGem>& gem = wheel.vessels[v];
@@ -1534,13 +1587,14 @@ void TGemAtelierPageController::selectModInFragmentWorkshop(const int ModId, con
 // ---------------------------------------------------------------------------
 // Fragment workshop
 
-TFragmentWorkshopPageController::TFragmentWorkshopPageController(TSkillWheelStorage* storage, QObject* parent)
+TFragmentWorkshopPageController::TFragmentWorkshopPageController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TFragmentWorkshopPageController(parent)
-    , m_storage(storage)
+    , m_message(new gamewindow::TMessageDialogController(engine, dialogParentItem, this))
     , m_list(new TModListModel(this))
     , m_filter(new TModListSortFilterProxyModel(m_list, this))
     , m_pages(new TPaginationProxyModel(30, this))
 {
+    m_message->setCloseOnButtonClicked(true);
     m_pages->setSourceModel(m_filter);
     m_modList = m_pages;
     m_enhanceCostsFragmentsFirstGrade = fragmentCost(0);
@@ -1558,8 +1612,24 @@ TFragmentWorkshopPageController::TFragmentWorkshopPageController(TSkillWheelStor
             Q_EMIT filterChanged();
         }
     });
-    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TFragmentWorkshopPageController::onModsChanged);
-    connect(m_storage, &TSkillWheelStorage::modListChanged, this, &TFragmentWorkshopPageController::onModsChanged);
+}
+
+void TFragmentWorkshopPageController::closeMessageDialog() { m_message->dialog()->close(); }
+
+/// CIP: the message box closes, the session's storage replaces the previous one: its mod grades refresh the mods, a new
+/// server wheel the list's configuration (host: the storage's mod list also refreshes the mods).
+void TFragmentWorkshopPageController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    closeMessageDialog();
+    m_gameSession = std::move(GameSession);
+    m_gameSessionConnections.disconnectAll();
+    m_storage = sessionSkillWheelStorage(m_gameSession);
+    if (!m_storage)
+        return;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TFragmentWorkshopPageController::onModsChanged));
+    add(connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TFragmentWorkshopPageController::updateConfiguration));
+    add(connect(m_storage, &TSkillWheelStorage::modListChanged, this, &TFragmentWorkshopPageController::onModsChanged));
     onModsChanged();
 }
 
@@ -1601,13 +1671,22 @@ void TFragmentWorkshopPageController::onModsChanged()
     }
     const bool basic = selected ? selected->basic : m_pendingBasic;
     const int mod = selected ? selected->mod : m_pendingMod;
+    if (!m_storage)
+        return;
     m_list->setMods(m_storage->modList());
-    if (const auto configuration = m_storage->currentSkillWheel())
-        m_list->setConfiguration(*configuration, m_storage->basicGrades(), m_storage->supremeGrades());
+    updateConfiguration();
     if (mod >= 0)
         selectMod(basic, mod);
     m_filter->invalidateRows();
     Q_EMIT modGradesChanged();
+}
+
+void TFragmentWorkshopPageController::updateConfiguration()
+{
+    if (!m_storage)
+        return;
+    if (const auto configuration = m_storage->currentSkillWheel())
+        m_list->setConfiguration(*configuration, m_storage->basicGrades(), m_storage->supremeGrades());
 }
 
 void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int ModID)
@@ -1663,16 +1742,21 @@ bool isCurrentFormatWheelCode(const QString& code)
 
 }
 
-TSkillWheelPresetManagmentDialogController::TSkillWheelPresetManagmentDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("SkillWheelPresetManagmentDialog.qml"), parent)
-    , m_message(new TMessageDialogController(this))
+TSkillWheelPresetManagmentDialogController::TSkillWheelPresetManagmentDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                                       QObject* parent)
+    : TDialogController(QStringLiteral("SkillWheelPresetManagmentDialog.qml"), engine, dialogParentItem, parent)
+    , m_message(new TMessageDialogController(engine, dialogParentItem, this))
 {
     m_message->setCloseOnButtonClicked(true);
 }
 
 TSkillWheelPresetManagmentDialogController::~TSkillWheelPresetManagmentDialogController() { clear(); }
 
-void TSkillWheelPresetManagmentDialogController::setSkillWheelStorage(TSkillWheelStorage* storage) { m_storage = storage; }
+void TSkillWheelPresetManagmentDialogController::setGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    m_storage = sessionSkillWheelStorage(m_gameSession);
+}
 
 void TSkillWheelPresetManagmentDialogController::clear()
 {
@@ -1803,13 +1887,13 @@ void TSkillWheelPresetManagmentDialogController::onCloseClicked() { dialog()->cl
 // ---------------------------------------------------------------------------
 // Dialog
 
-TSkillWheelDialogController::TSkillWheelDialogController(TSkillWheelStorage* storage, QObject* parent)
-    : TDialogController(QStringLiteral("SkillWheelDialog.qml"), parent)
-    , m_storage(storage)
-    , m_page(new TSkillWheelPageController(storage, this))
-    , m_atelier(new TGemAtelierPageController(storage, this))
-    , m_workshop(new TFragmentWorkshopPageController(storage, this))
-    , m_message(new TMessageDialogController(this))
+TSkillWheelDialogController::TSkillWheelDialogController(const QString& plannerUrl, QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                         QObject* parent)
+    : TDialogController(QStringLiteral("SkillWheelDialog.qml"), engine, dialogParentItem, parent)
+    , m_page(new TSkillWheelPageController(plannerUrl, engine, dialogParentItem, this))
+    , m_atelier(new TGemAtelierPageController(engine, dialogParentItem, this))
+    , m_workshop(new TFragmentWorkshopPageController(engine, dialogParentItem, this))
+    , m_message(new TMessageDialogController(engine, dialogParentItem, this))
 {
     m_wheelPageController = m_page;
     m_gemAtelierPageController = m_atelier;
@@ -1835,15 +1919,25 @@ TSkillWheelDialogController::TSkillWheelDialogController(TSkillWheelStorage* sto
     });
 }
 
-/// CIP: the dialog closes and the skipped open ends (its owner deletes it before the storage).
+/// CIP: the dialog closes and the skipped open ends.
 TSkillWheelDialogController::~TSkillWheelDialogController()
 {
     closeDialog();
     clearSkipNextOpenForOwnPlayer();
 }
 
-/// CIP: a new session closes the dialog (the pages follow the session's storage).
-void TSkillWheelDialogController::connectToGameSession() { closeDialog(); }
+/// CIP: a new session closes the dialog; the wheel page, the gem atelier and the fragment workshop
+/// follow the session's skill wheel storage; the dialog keeps the session.
+void TSkillWheelDialogController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
+{
+    closeDialog();
+    m_page->connectToGameSession(GameSession);
+    m_atelier->connectToGameSession(GameSession);
+    m_workshop->connectToGameSession(GameSession);
+    m_gameSession = std::move(GameSession);
+}
+
+TSkillWheelStorage* TSkillWheelDialogController::skillWheelStorage() const { return sessionSkillWheelStorage(m_gameSession); }
 
 void TSkillWheelDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
 {
@@ -1900,6 +1994,7 @@ void TSkillWheelDialogController::showDialog()
     m_message->dialog()->close();
     m_page->closeMessages();
     m_atelier->closeMessageDialog();
+    m_workshop->closeMessageDialog();
     if (!dialog()->item()) {
         dialog()->create();
         dialog()->show();
@@ -1910,7 +2005,7 @@ void TSkillWheelDialogController::showDialog()
 /// after a save is skipped); the wheel tab takes the server wheel as the current one; then the tab.
 void TSkillWheelDialogController::openDialogTab(const EDialogTab tab)
 {
-    const bool skipped = m_skipNextOpenForOwnPlayer && m_storage->isOwnCharacter();
+    const bool skipped = m_skipNextOpenForOwnPlayer && skillWheelStorage()->isOwnCharacter();
     if (!skipped && !dialog()->isInStack()) {
         showDialog();
         m_page->clearSelection();
@@ -1955,6 +2050,7 @@ void TSkillWheelDialogController::closeDialog()
     m_message->dialog()->close();
     m_page->closeMessages();
     m_atelier->closeMessageDialog();
+    m_workshop->closeMessageDialog();
     if (m_dialogTab == Wheel)
         m_page->hideDialogTab();
     else if (m_dialogTab == GemAtelier)
@@ -1967,8 +2063,10 @@ void TSkillWheelDialogController::closeDialog()
     m_page->clearData();
     m_atelier->clearData();
     m_workshop->clearData();
-    m_storage->clearServerData();
-    m_storage->resetCurrentSkillWheel();
+    if (TSkillWheelStorage* storage = skillWheelStorage()) {
+        storage->clearServerData();
+        storage->resetCurrentSkillWheel();
+    }
 }
 
 /// CIP: unsaved changes are asked about by the page (closeConfirmed closes), else the dialog closes.
@@ -2024,7 +2122,7 @@ void TSkillWheelDialogController::requestSkillWheelPreview()
         name = QString::fromStdString(tibia::game::localPlayerName());
         vocation = tibia::game::localPlayerVocation() % 10;
     }
-    m_storage->setPreview(name, vocation);
+    skillWheelStorage()->setPreview(name, vocation);
     Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));
     for (const int resource : { 1, 0, 0x54, 0x55 })
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestResourceBalance>(resource));

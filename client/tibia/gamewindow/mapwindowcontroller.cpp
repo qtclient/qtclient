@@ -856,14 +856,13 @@ void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGam
     if (m_worldMap)
         m_worldMap->setRenderProvider(provider);
     if (m_lightMap)
-        m_lightMap->setRenderProvider(provider);
+        m_lightMap->connectToGameSession(GameSession);
     if (m_creatureHuds)
-        m_creatureHuds->setRenderProviders(session ? session->creatureHUDRenderProvider() : nullptr, provider);
+        m_creatureHuds->connectToGameSession(GameSession);
     if (m_speechBubbles)
-        m_speechBubbles->setSources(provider, session ? session->textOverlayRenderProvider() : nullptr);
+        m_speechBubbles->connectToGameSession(GameSession);
     if (m_numericalEffects)
-        m_numericalEffects->setSources(provider, session ? session->numericalEffectRenderProvider() : nullptr,
-                                       session ? session->renderVolumeProvider() : nullptr);
+        m_numericalEffects->connectToGameSession(GameSession);
     if (m_tutorialMarkers)
         m_tutorialMarkers->setSession(GameSession);
     if (!session) {

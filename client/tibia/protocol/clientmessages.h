@@ -21,7 +21,20 @@ namespace tibia::input {
 class IGameActionContext;
 }
 
+namespace tibia::protobuf::protocol {
+class ObjectIdentifier;
+class ObjectPosition;
+}
+
 namespace tibia::protocol::gameclient {
+
+/// A classic object (position, stack position, type) as the ObjectPosition and
+/// ObjectIdentifier of a client message (CipSoft's TGameActionContextHelper
+/// fills them from the location the classic position names). The identifier
+/// may be null.
+void setClassicObject(::tibia::protobuf::protocol::ObjectPosition* objectPosition,
+                      ::tibia::protobuf::protocol::ObjectIdentifier* objectIdentifier, const Position& position,
+                      int stackPosition, uint16_t typeId);
 
 /// Product transport (extended opcode), written outside the protocol queue.
 void sendExtendedOpcode(uint8_t opcode, const std::string& buffer);

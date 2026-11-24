@@ -4,7 +4,15 @@
 
 #include <QImage>
 
+#include <memory>
+
 namespace tibia {
+namespace game {
+class IGameSession;
+}
+namespace worldmap {
+class TWorldMapViewport;
+}
 namespace qmlcomponents {
 
 class TWorldMapRenderProvider;
@@ -18,8 +26,9 @@ class TLightmapPaintedItem : public cip::tibia::qmlcomponents::TLightmapPaintedI
 public:
     explicit TLightmapPaintedItem(QQuickItem* parent = nullptr);
 
-    /// Null shows full light. The provider must outlive the item or be unset first.
-    void setRenderProvider(TWorldMapRenderProvider* provider);
+    /// Takes the session's world map render provider and viewport; a null
+    /// session shows full light.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     void paint(QPainter*) override {}
 
@@ -29,7 +38,8 @@ protected:
 private:
     void takeFrame();
 
-    TWorldMapRenderProvider* m_provider = nullptr;
+    std::shared_ptr<TWorldMapRenderProvider> m_provider;
+    std::shared_ptr<worldmap::TWorldMapViewport> m_viewport;
     QMetaObject::Connection m_frameConnection;
     QImage m_image;
 };

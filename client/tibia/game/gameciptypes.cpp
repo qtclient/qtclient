@@ -576,15 +576,22 @@ void TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage(const G
     const auto outfitOf = [](const ::tibia::protobuf::protocol::ProtocolOutfit& look) {
         return look.look_type() == 0 && look.look_type_ex() == 0 ? Outfit{} : creatures::outfitFromProtocol(look, nullptr);
     };
-    std::vector<std::tuple<uint16_t, std::string, Outfit>> races;
+    auto data = std::make_shared<TConfigureCreaturePodiumData>();
+    data->selectedOutfit = outfitOf(m.outfit());
+    data->selectedRace = static_cast<uint16_t>(m.reserved());
+    data->bossPodium = m.boss_podium();
     for (const auto& race : m.races())
-        races.emplace_back(static_cast<uint16_t>(race.race_id()), race.name(), m.boss_podium() ? outfitOf(race.outfit()) : Outfit{});
-    const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()),
-                       static_cast<short>(m.position().z()));
-    tibia::game::notify("onConfigureCreaturePodium", outfitOf(m.outfit()), static_cast<uint8_t>(m.boss_podium() ? 1 : 0), races, pos,
-                        static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.stack_position()),
-                        static_cast<uint8_t>(m.podium_visible() ? 1 : 0), static_cast<uint8_t>(m.monster_visible() ? 1 : 0),
-                        static_cast<uint8_t>(m.direction()), static_cast<uint16_t>(m.reserved()));
+        data->races.emplace_back(static_cast<uint16_t>(race.race_id()), race.name(), m.boss_podium() ? outfitOf(race.outfit()) : Outfit{});
+    data->position = Position(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()),
+                              static_cast<short>(m.position().z()));
+    data->objectId = static_cast<uint16_t>(m.object_id());
+    data->stackPosition = static_cast<uint8_t>(m.stack_position());
+    data->podiumVisible = m.podium_visible();
+    data->monsterVisible = m.monster_visible();
+    data->direction = static_cast<uint8_t>(m.direction());
+    if (m_outfitDialogStorage)
+        m_outfitDialogStorage->setConfigureCreaturePodiumData(data);
+    Q_EMIT showConfigureCreaturePodiumDialog();
 }
 
 void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMessageSwitchPreset& m)
@@ -597,8 +604,6 @@ void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMe
         Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTryToSwitchHotkeySet>(
             QString::fromLatin1(kVocationHotkeySets[preset - 1]), true));
     }
-    // Host: the skill wheel follows the preset on the notify bus.
-    tibia::game::notify("onPreset", preset);
 }
 
 void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& m)

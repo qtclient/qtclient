@@ -79,7 +79,19 @@ class TGameserverGameSession final : public TGameSessionBase
 {
     Q_OBJECT
 public:
-    explicit TGameserverGameSession(QObject* parent = nullptr);
+    /// Built by the game client with the objects it shares with every session.
+    TGameserverGameSession(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
+                           std::shared_ptr<appearances::TAppearancesManager> appearancesManager,
+                           std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                           std::shared_ptr<config::TClientOptions> clientOptions,
+                           std::shared_ptr<shared::TTibiaClipboardHelper> clipboardHelper,
+                           std::shared_ptr<shared::TTibiaUrlTools> urlTools,
+                           std::shared_ptr<shared::IClockService> clientClockService,
+                           std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage,
+                           std::shared_ptr<sound::TSoundController> soundController,
+                           std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
+                           spells::TSpellInfoStorage* spellInfoStorage, TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
+                           proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent = nullptr);
     ~TGameserverGameSession() override;
 
     /// Builds the session from a TGameserverGameSessionMetaInfo: storages,
@@ -98,7 +110,7 @@ public:
     std::shared_ptr<shared::IClockService> clockService() const override;
     /// One network tick: the connections read what arrived and the dual
     /// connection checks for a state change.
-    void processNetwork();
+    void processNetwork() override;
     /// Which of the session's connections are in use.
     network::EConnectionsUsed connectionsUsed() const override;
     /// The connection's round trip time (the network quality handler's).
@@ -217,8 +229,6 @@ private:
     std::shared_ptr<sessiondump::TClientSessiondumpRecorder> m_sessiondumpRecorder;
     shared::TQtConnectionManager m_connectionManager;
     std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
-    /// Host: the network tick (CipSoft's game client runs processNetwork every tick).
-    QTimer m_networkTick;
     /// The player movement intent handler's timed callbacks (createPlayerMovementTimer).
     QTimer m_playerMovementTimer;
     /// Host: the classic session state's view of this session's connection.

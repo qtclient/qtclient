@@ -1,6 +1,7 @@
 #include "numericaleffectoverlay.h"
 
 #include "effects/numericaleffectrenderprovider.h"
+#include "game/gamesessionbase.h"
 #include "renderer/mapscale.h"
 #include "renderer/rendervolumeprovider.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -12,6 +13,8 @@
 #include <QQuickItem>
 
 #include <cmath>
+#include <stdexcept>
+
 #include "worldmap/worldmapstorage.h"
 
 namespace tibia::qmlcomponents {
@@ -58,25 +61,35 @@ void TNumericalEffectOverlayQuickItem::geometryChange(const QRectF& newGeometry,
     cip::tibia::qmlcomponents::TNumericalEffectOverlayQuickItem::geometryChange(newGeometry, oldGeometry);
 }
 
-void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provider,
-                                                  std::shared_ptr<effects::TNumericalEffectRenderProvider> numericalEffects,
-                                                  std::shared_ptr<renderer::TRenderVolumeProvider> renderVolume)
+void TNumericalEffectOverlayQuickItem::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     disconnect(m_frameConnection);
-    m_provider = provider;
-    m_numericalEffectRenderProvider = std::move(numericalEffects);
-    m_renderVolumeProvider = std::move(renderVolume);
-    if (!provider || !m_numericalEffectRenderProvider || !m_renderVolumeProvider) {
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (!session) {
+        m_renderVolumeProvider.reset();
+        m_worldMapCamera.reset();
+        m_numericalEffectRenderProvider.reset();
+        m_worldMapStorage.reset();
+    } else {
+        m_renderVolumeProvider = session->renderVolumeProvider();
+        m_worldMapCamera = session->worldMapCamera();
+        m_numericalEffectRenderProvider = session->numericalEffectRenderProvider();
+        m_worldMapStorage = session->worldMapStorage();
+        // Host: the template lives in the qmlcomponents module's resources.
+        m_component = std::make_unique<QQmlComponent>(qmlEngine(this),
+                                                      QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/NumericalEffectsTemplate.qml")));
+        if (m_component->isError())
+            throw std::runtime_error(m_component->errorString().toStdString());
+    }
+    m_enabled = m_worldMapStorage && m_numericalEffectRenderProvider && m_worldMapCamera && m_renderVolumeProvider;
+
+    // Host: the session's render provider places the numbers and advances them every frame.
+    m_provider = session ? session->worldMapRenderProvider().get() : nullptr;
+    if (!m_enabled || !m_provider) {
         clear();
         return;
     }
-    if (!m_component) {
-        if (QQmlEngine* engine = qmlEngine(this)) {
-            m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/NumericalEffectsTemplate.qml")),
-                                            QQmlComponent::PreferSynchronous, this);
-        }
-    }
-    m_frameConnection = connect(provider, &Provider::overlaysAdvanced, this, &TNumericalEffectOverlayQuickItem::update);
+    m_frameConnection = connect(m_provider.data(), &Provider::overlaysAdvanced, this, &TNumericalEffectOverlayQuickItem::update);
 }
 
 TNumericalEffectOverlayQuickItem::Field TNumericalEffectOverlayQuickItem::create(const Position& coordinate)
@@ -117,7 +130,7 @@ void TNumericalEffectOverlayQuickItem::clear()
 
 void TNumericalEffectOverlayQuickItem::update()
 {
-    if (!m_provider || !m_numericalEffectRenderProvider || !m_renderVolumeProvider)
+    if (!m_enabled || !m_component || !m_provider)
         return;
     const Provider::Frame& frame = m_provider->frame();
     if (!frame.valid) {
@@ -158,7 +171,7 @@ void TNumericalEffectOverlayQuickItem::update()
 
         // : (16, 8) into the field, lifted by its elevation.
         int elevation = 0;
-        if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coordinate))
+        if (const worldmap::TWorldMapField* tile = m_worldMapStorage->fieldAt(coordinate))
             elevation = tile->objectElevation();
         const QPoint camera = frame.camera;
         const QPoint pixel = m_provider->mapPixelOf(coordinate) + QPoint(16 - elevation, 8 - elevation) - camera;

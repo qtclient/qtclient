@@ -9,6 +9,9 @@
 #include "config/clientoptiondefaults.h"
 #include "config/configbackupreader.h"
 #include "config/hotkeyoptions.h"
+#include "game/currentgamesession.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/aboutdialogcontroller.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -29,6 +32,7 @@
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QUrl>
+#include <protocol.pb.h>
 
 #include <memory>
 #include <optional>
@@ -91,8 +95,6 @@ constexpr auto OptionsFile = "conf/clientoptions.json";
 constexpr auto ConfDirectory = "conf";
 constexpr auto CharacterDataDirectory = "characterdata";
 constexpr auto MinimapDirectory = "minimap";
-/// GameclientMessageSetClientOptions oneof case 1 .
-constexpr uint8_t TurnTowardsMoveDirectionOption = 1;
 
 QString dataDirectory()
 {
@@ -134,7 +136,8 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(
     m_gameplay = new config::TGameplayOptionsPage(config::gameplayBindings(), this);
     auto* graphics = new config::TGraphicsOptionsPage(this);
     auto* effects = new config::TEffectsOptionsPage(this);
-    m_hotkeys = new config::THotkeysOptionsPage(this);
+    m_hotkeys = new config::THotkeysOptionsPage(Engine, DialogParentItem, m_pSpellInfoStorage, m_pEventFilterManager,
+                                                m_pAppearanceInstanceFactory, this);
     connect(m_hotkeys, &config::THotkeysOptionsPage::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     m_controls = new config::TControlsOptionsPage(this);
     connect(m_controls, &config::TControlsOptionsPage::changed, this, &TOptionsMenuDialogController::onControlOptionsChanged);
@@ -445,7 +448,12 @@ void TOptionsMenuDialogController::clearMarkedActionBars()
 
 void TOptionsMenuDialogController::sendTurnTowardsMoveDirection(const bool enabled)
 {
-    tibia::game::setClientOption(TurnTowardsMoveDirectionOption, enabled);
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (!session)
+        return;
+    ::tibia::protobuf::protocol::GameclientMessageSetClientOptions message;
+    message.set_turn_towards_move_direction(enabled);
+    Q_EMIT session->gameProtocolMessageHandler()->sendSetClientOptions(message);
 }
 
 void TOptionsMenuDialogController::okButtonClicked()

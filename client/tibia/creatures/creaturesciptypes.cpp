@@ -2,6 +2,7 @@
 #include "colorhelper.h"
 #include "creatures/vipstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
+#include "game/gameciptypes.h"
 #include "input/gameactionhandlers.h"
 #include "protocol/clientmessages.h"
 #include <tibia/game/gamesession_forward.h>
@@ -141,7 +142,7 @@ void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creature
         const Position& from = player->position();
         const Position& at = creature->position();
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
-        const auto effect = appearances::TAppearanceInstanceFactory::createDirectionalFieldEffect(
+        const auto effect = appearances::TAppearanceInstanceFactory::installed()->createDirectionalFieldEffect(
             effectId, at, direction, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         tibia::worldmap::TWorldMapStorage::ensureStorage()->addEffectAppearance(effect, at);
         break;
@@ -611,10 +612,18 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
     return result;
 }
 
+void TVipWidgetGameActionProvider::setPremiumTimeStorage(std::shared_ptr<::tibia::game::TPremiumTimeStorage> premiumTimeStorage)
+{
+    m_premiumTimeStorage = std::move(premiumTimeStorage);
+}
+
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::groupGameActions(const QString& groupName) const
 {
     ::tibia::input::TGameActionList result;
-    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerIsPremium())
+    // Host: until the session hands its storage over, the live session's.
+    const ::tibia::game::TPremiumTimeStorage* premium =
+        m_premiumTimeStorage ? m_premiumTimeStorage.get() : ::tibia::game::TPremiumTimeStorage::liveInstance();
+    if (!premium || !premium->isPremium())
         return result;
     result.push_back(::tibia::input::makeGameAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
     if (groupName.isEmpty())

@@ -13,6 +13,15 @@
 #include <memory>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
+namespace shared {
+class TTibiaUrlTools;
+}
+namespace protocol {
+class TGameActionContextHelper;
+}
 namespace input {
 
 /// CIP input::TClipboardGameActionHandler: the copy actions. Text and chat
@@ -23,7 +32,11 @@ class TClipboardGameActionHandler final : public cip::tibia::input::TClipboardGa
 {
     Q_OBJECT
 public:
-    explicit TClipboardGameActionHandler(QObject* parent = nullptr);
+    /// The game's clipboard writer, the client options (the link copy warning)
+    /// and the URL tools (whether a text holds a link).
+    TClipboardGameActionHandler(std::shared_ptr<shared::TTibiaClipboardHelper> TibiaClipboardHelper,
+                                std::shared_ptr<config::TClientOptions> ClientOptions,
+                                std::shared_ptr<shared::TTibiaUrlTools> TibiaUrlTools, QObject* parent = nullptr);
     ~TClipboardGameActionHandler() override;
     TClipboardGameActionHandler(const TClipboardGameActionHandler&) = delete;
     TClipboardGameActionHandler& operator=(const TClipboardGameActionHandler&) = delete;
@@ -40,7 +53,9 @@ public Q_SLOTS:
     void handleCopyTrustedTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
 
 private:
-    std::shared_ptr<shared::TTibiaClipboardHelper> m_clipboardHelper;
+    std::shared_ptr<shared::TTibiaClipboardHelper> m_pTibiaClipboardHelper;
+    std::shared_ptr<config::TClientOptions> m_pClientOptions;
+    std::shared_ptr<shared::TTibiaUrlTools> m_pTibiaUrlTools;
 };
 
 /// CIP input::TGatherAllProtocolMessageHandler: sends the gather all request
@@ -49,13 +64,19 @@ class TGatherAllProtocolMessageHandler final : public cip::tibia::input::TGather
 {
     Q_OBJECT
 public:
-    explicit TGatherAllProtocolMessageHandler(QObject* parent = nullptr);
+    /// The converter that fills the message's object position and identifier.
+    explicit TGatherAllProtocolMessageHandler(std::shared_ptr<protocol::TGameActionContextHelper> GameActionContextHelper,
+                                              QObject* parent = nullptr);
+    ~TGatherAllProtocolMessageHandler() override;
 
     /// v12: the object's location (position and stack position) and type.
     void requestGatherAll(const TObjectGameActionContext& object);
 
 Q_SIGNALS:
     void sendGatherAll(const ::tibia::protobuf::protocol::GameclientMessageGatherAll& Message);
+
+private:
+    std::shared_ptr<protocol::TGameActionContextHelper> m_pGameActionContextHelper;
 };
 
 /// CIP input::TGatherAllGameActionHandler: GATHER_ALL goes to the gather all

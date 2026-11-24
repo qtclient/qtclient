@@ -67,9 +67,8 @@ TCreateMapTileScenegraphDrawCommandVisitor::operator()(const worldmap::TMapTileM
 std::optional<renderer::TScenegraphDrawCommand>
 TCreateMapTileScenegraphDrawCommandVisitor::operator()(const worldmap::TMinimapTileMapAreaData& data) const
 {
-    // Host: the piece carries no image kind; the tile's colour image is drawn.
-    return spriteCommand(std::make_unique<sprites::TMinimapTileSpritesheetIdentifier>(
-                             data.scale, data.origin.toPosition(), sprites::TMinimapTileSpritesheetIdentifier::ColorImage),
+    return spriteCommand(std::make_unique<sprites::TMinimapTileSpritesheetIdentifier>(data.scale, data.origin.toPosition(),
+                                                                                      data.imageKind),
                          toRectF(camera.projectedSubfieldRectangle(area)), smooth);
 }
 

@@ -4,6 +4,7 @@
 
 #include "chat/chatchannel.h"
 #include "config/sidebaroptions.h"
+#include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
@@ -168,10 +169,6 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
         connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetVisible, this, &TAnalyticsSelectorWidgetController::onWidgetVisible);
         connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetHidden, this, &TAnalyticsSelectorWidgetController::onWidgetHidden);
     }
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
-        Q_EMIT premiumTimeChanged();
-        return std::any{};
-    });
     widget()->createItem(QStringLiteral("AnalyticsSelectorWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TAnalyticsSelectorWidgetController::onWidgetQuickItemDestroyed);
@@ -179,8 +176,27 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
 
 void TAnalyticsSelectorWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
+    if (m_options)
+        disconnect(m_options, &config::TSidebarOptions::analyticsSelectorWidgetOptionsChanged, this,
+                   &TAnalyticsSelectorWidgetController::onWidgetOptionsChanged);
     m_options = options;
+    if (!m_options)
+        return;
+    connect(m_options, &config::TSidebarOptions::analyticsSelectorWidgetOptionsChanged, this,
+            &TAnalyticsSelectorWidgetController::onWidgetOptionsChanged);
     onWidgetOptionsChanged();
+}
+
+void TAnalyticsSelectorWidgetController::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TAnalyticsSelectorWidgetController::premiumTimeChanged);
+    m_premiumTimeStorage = premiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                &TAnalyticsSelectorWidgetController::premiumTimeChanged);
+    Q_EMIT premiumTimeChanged();
 }
 
 QQuickItem* TAnalyticsSelectorWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -1139,6 +1155,7 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     add<TAnalyticsSelectorWidgetController>(W::AnalyticsSelector, [this] {
         auto* controller = new TAnalyticsSelectorWidgetController(m_widgets, m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         return controller;
     });
     add<THuntingSessionWidgetController>(W::HuntingSessionAnalyser, [this]() -> THuntingSessionWidgetController* {

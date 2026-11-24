@@ -8,6 +8,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QByteArray>
 #include <QJsonObject>
 #include <QObject>
@@ -175,6 +177,10 @@ public:
     void handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message);
     /// The tracked quest flags; a full list also says whether more flags can be tracked.
     void handleTrackedQuestFlagsMessage(const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message);
+
+Q_SIGNALS:
+    void sendGetQuestLog(const ::tibia::protobuf::protocol::GameclientMessageGetQuestLog& GetQuestLogMessage);
+    void sendGetQuestLine(const ::tibia::protobuf::protocol::GameclientMessageGetQuestLine& GetQuestLineMessage);
 
 private:
     std::shared_ptr<shared::IClockService> m_clockService;

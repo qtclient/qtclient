@@ -5,6 +5,7 @@
 #include <deque>
 #include "client/gamecore.h"
 #include "config/icharacterconfiguration.h"
+#include "game/configurecreaturepodiumdata.h"
 #include "game/passiveabilityinfostorage.h"
 #include "gamewindow/inspectobjectdata.h"
 #include "shared/cip_typed.h"
@@ -74,6 +75,14 @@ class GameserverMessageSessionDumpStart;
 class GameserverMessageSessionEndInformation;
 class GameserverMessageShowMultiOfflineTrainingDialog;
 class GameclientMessageEnterWorld;
+class GameclientMessageAnswerModalDialog;
+class GameclientMessageEditGuildMessage;
+class GameclientMessageEditList;
+class GameclientMessageEditText;
+class GameclientMessageInspectObject;
+class GameclientMessageSetClientOptions;
+class GameclientMessageSetVocation;
+class GameclientMessageStartOfflineTraining;
 class GameclientMessageBossDifficultySelection;
 class GameclientMessageClientDetails;
 class GameclientMessageGoNorth;
@@ -205,6 +214,9 @@ public:
     void handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& message);
 
 Q_SIGNALS:
+    void sendEditText(const ::tibia::protobuf::protocol::GameclientMessageEditText& EditTextMessage);
+    void sendEditList(const ::tibia::protobuf::protocol::GameclientMessageEditList& EditListMessage);
+    void sendEditGuildMessage(const ::tibia::protobuf::protocol::GameclientMessageEditGuildMessage& EditGuildMessageMessage);
     /// CIP requestEditTextDialog: the text with its edit id, the item's type,
     /// the longest text allowed, its author and date and whether it was traded
     /// recently.
@@ -276,7 +288,11 @@ public:
 
 Q_SIGNALS:
     void sendEnterWorldMessage(const ::tibia::protobuf::protocol::GameclientMessageEnterWorld& EnterWorldMessage);
+    void sendInspectObject(const ::tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage);
     void sendClientDetails(const ::tibia::protobuf::protocol::GameclientMessageClientDetails& ClientDetailsMessage);
+    void sendSetClientOptions(const ::tibia::protobuf::protocol::GameclientMessageSetClientOptions& Message);
+    void sendSetVocation(const ::tibia::protobuf::protocol::GameclientMessageSetVocation& Message);
+    void sendStartOfflineTraining(const ::tibia::protobuf::protocol::GameclientMessageStartOfflineTraining& Message);
     /// CIP's ESessionEndInformation.
     void sessionEndInformation(int Reason);
     /// CIP's EDeathType (0 regular, 1 unfair, 2 adventurer's blessing, 3 no
@@ -314,6 +330,9 @@ public:
     /// character info's selection); the outfit dialog shows it.
     const std::shared_ptr<TSelectOutfitDialogData>& selectOutfitDialogData() const { return m_selectOutfitDialogData; }
     void setSelectOutfitDialogData(const std::shared_ptr<TSelectOutfitDialogData>& Data) { m_selectOutfitDialogData = Data; }
+    /// CIP: the last ConfigureCreaturePodium message's data (the podium dialog reads it).
+    const std::shared_ptr<const TConfigureCreaturePodiumData>& configureCreaturePodiumData() const { return m_configureCreaturePodiumData; }
+    void setConfigureCreaturePodiumData(const std::shared_ptr<const TConfigureCreaturePodiumData>& Data) { m_configureCreaturePodiumData = Data; }
 
     QString configurationName() const override;
     /// The two preset lists under "customiseCharacterPresets" and
@@ -337,6 +356,7 @@ public:
 
 private:
     std::shared_ptr<TSelectOutfitDialogData> m_selectOutfitDialogData;
+    std::shared_ptr<const TConfigureCreaturePodiumData> m_configureCreaturePodiumData;
     QJsonArray m_presets;
     QJsonArray m_showOffPresets;
 };
@@ -507,6 +527,9 @@ public:
     using cip::tibia::game::TServerModalDialogProtocolMessageHandler::TServerModalDialogProtocolMessageHandler;
 
     static void handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& message);
+
+Q_SIGNALS:
+    void sendAnswerModalDialog(const ::tibia::protobuf::protocol::GameclientMessageAnswerModalDialog& AnswerModalDialogMessage);
 };
 
 }

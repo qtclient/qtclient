@@ -25,7 +25,7 @@ namespace tibia::appearances {
 
 /// CIP appearances::TAppearancesManager: the appearance catalog (objects,
 /// outfits, effects, missiles) and the static data shipped with it, plus the
-/// appearance-instance tracker and storages.
+/// spritesheets of each type.
 class TAppearancesManager
 {
 public:
@@ -38,9 +38,6 @@ public:
     TAppearancesManager();
     ~TAppearancesManager();
 
-    /// Counts the live appearance instances (created with the appearances).
-    TAppearanceInstanceTracker& tracker();
-    const std::shared_ptr<TAppearanceInstanceTracker>& sharedTracker();
     /// The spritesheets of each appearance type, filled by postprocessAppearances.
     const std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping>& spritesheetMapping() const { return m_spritesheetMapping; }
 
@@ -150,7 +147,6 @@ private:
     void linkExpireCounterparts();
 
     std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping> m_spritesheetMapping;
-    std::shared_ptr<TAppearanceInstanceTracker> m_tracker;
 
     std::map<EAppearanceCategory, std::map<uint16_t, TAppearanceType>> m_appearanceTypes;
     RaceList m_monsterRaces;

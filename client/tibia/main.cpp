@@ -17,6 +17,11 @@
 #endif
 #include "controllers/characterselectioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
+#ifndef TIBIA_WITH_GAMECORE
+#include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/mousecursorcontroller.h"
+#include "imageproviders/imagestripimageprovider.h"
+#endif
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QCommandLineParser>
@@ -290,6 +295,13 @@ int main(int argc, char** argv)
     app::installUiFonts(dataDirs(parser.value(QStringLiteral("data"))));
 
     auto engine = app::createEngine();
+#ifndef TIBIA_WITH_GAMECORE
+    // Host: without a game client the shell makes what the client's setup
+    // would (the image providers, the mouse cursor and text copy controllers).
+    imageproviders::registerImageProviders(engine.get());
+    gamewindow::TMouseCursorController::createInstance(engine.get(), app::ClientOptions::load().options());
+    gamewindow::TTextCopyController::createInstance(engine.get());
+#endif
     // Neutral placeholders; packs replace via ModContext / suite wire.
     engine->rootContext()->setContextProperty(QStringLiteral("modOptions"), QVariant::fromValue<QObject*>(nullptr));
     engine->rootContext()->setContextProperty(QStringLiteral("modHudLayout"), QVariant::fromValue<QObject*>(nullptr));
@@ -369,7 +381,7 @@ int main(int argc, char** argv)
                 clientOptions.recordTo = qEnvironmentVariable("QTCLIENT_RECORD");
             clientOptions.replay = parser.value(QStringLiteral("replay"));
         }
-        return gameClient.createGameWindow(setup);
+        return gameClient.initializeWithStartMode(0, setup);
     };
     if (!application.showClientWindow(
             [&](QQuickWindow* clientWindow) { return setUpHostWindow(clientWindow, application.qmlEngine()); },

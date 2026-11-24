@@ -9,6 +9,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QObject>
 
 #include <cstdint>
@@ -56,6 +58,9 @@ public:
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& ShowMessageDialogMessage);
 
 Q_SIGNALS:
+    void sendEditBossSlot(const ::tibia::protobuf::protocol::GameclientMessageEditBossSlot& EditBossSlotMessage);
+    void sendOpenBossSlots(const ::tibia::protobuf::protocol::GameclientMessageOpenBossSlots& OpenBossSlotsMessage);
+    void sendOpenBosstiary(const ::tibia::protobuf::protocol::GameclientMessageOpenBosstiary& OpenBosstiaryMessage);
     void requestBosstiaryButtonHighlight(quint16 BossRaceID);
     void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 

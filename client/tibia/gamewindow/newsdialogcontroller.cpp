@@ -4,6 +4,9 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "game/gamesessionbase.h"
+#include "jsondocumenthttppostsender.h"
+#include "news/newsciptypes.h"
 #include "news/newsrequestuploader.h"
 #include "news/newsstorage.h"
 
@@ -38,15 +41,34 @@ const QString& contentStyle()
 
 }
 
-TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObject* parent)
-    : TDialogController(QStringLiteral("NewsDialog.qml"), parent)
-    , m_storage(storage)
+TNewsDialogController::TNewsDialogController(const QUrl& ClientServicesUrl, std::shared_ptr<news::TNewsStorage> NewsStorage,
+                                             config::TClientOptions* ClientOptions,
+                                             std::shared_ptr<authentication::TAuthenticationProcessController> AuthenticationProcessController,
+                                             std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                             std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine,
+                                             QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("NewsDialog.qml"), Engine, DialogParentItem, parent)
+    , m_storage(std::move(NewsStorage))
+    , m_pClientOptions(ClientOptions)
+    , m_pAuthenticationProcessController(std::move(AuthenticationProcessController))
+    , m_uploader(std::make_shared<news::TNewsRequestUploader>(ClientServicesUrl, m_storage,
+                                                              std::make_shared<shared::TJsonDocumentHttpPostSender>(),
+                                                              std::move(TibiaFileSystemHelper), std::move(ClockService)))
+    , m_viewsUploader(std::make_shared<news::TNewsViewsUploader>(ClientServicesUrl,
+                                                                 std::make_shared<shared::TJsonDocumentHttpPostSender>()))
     , m_entries(0, false)
 {
     m_entryModel = &m_entries;
     if (m_storage)
-        connect(m_storage, &news::TNewsStorage::contentsChanged, this, &TNewsDialogController::onNewsStorageContentsChanged);
+        connect(m_storage.get(), &news::TNewsStorage::contentsChanged, this, &TNewsDialogController::onNewsStorageContentsChanged);
+    connect(m_uploader.get(), &news::TNewsRequestUploader::newsQueryFailed, this, &TNewsDialogController::onNewsQueryFailed);
     onNewsStorageContentsChanged();
+    for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
+            handleGameAction(action);
+            return true;
+        });
+    }
 }
 
 TNewsDialogController::~TNewsDialogController()
@@ -54,10 +76,18 @@ TNewsDialogController::~TNewsDialogController()
     setEntries({});
 }
 
-void TNewsDialogController::setNewsUploaders(news::TNewsRequestUploader* uploader, news::TNewsViewsUploader* viewsUploader)
+void TNewsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_uploader = uploader;
-    m_viewsUploader = viewsUploader;
+    closeDialog();
+    m_pNewsProtocolMessageHandler.reset();
+    m_pGameSession = GameSession;
+    if (!m_pGameSession)
+        return;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_pGameSession.get()))
+        m_pNewsProtocolMessageHandler = session->newsProtocolMessageHandler();
+    if (m_pNewsProtocolMessageHandler)
+        m_pNewsProtocolMessageHandler->setNewsStorage(m_storage);
+    m_uploader->requestUpdate();
 }
 
 EDialogTab TNewsDialogController::dialogTab() const

@@ -91,7 +91,7 @@ void TMinimapTileStorage::markUnseen()
     if (!m_world)
         return;
     // CIP: black, impassable and not avoided.
-    static constexpr TMinimapFieldData Unseen{ .color = 0, .cost = 0xff, .blocked = true };
+    static constexpr TMinimapDataOfOneField Unseen{ .color = 0, .cost = 0xff, .blocked = true, .avoid = false };
     const QRect area = m_world->areaOn(m_playerZ);
     for (int x = 0; x < area.width(); ++x) {
         for (int y = 0; y < area.height(); ++y) {
@@ -116,7 +116,7 @@ void TMinimapTileStorage::updateField(const Position& coord)
         setField(coord, m_world->fieldData(coord));
 }
 
-void TMinimapTileStorage::setField(const Position& coord, const TMinimapFieldData& field)
+void TMinimapTileStorage::setField(const Position& coord, const TMinimapDataOfOneField& field)
 {
     const Position id = TMinimapTile::idOf(coord);
     ensureLoaded(id).setField(coord, field.color, field.cost, field.blocked);

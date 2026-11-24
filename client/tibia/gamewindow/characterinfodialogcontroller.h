@@ -13,7 +13,13 @@
 #include <set>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace cyclopedia {
 class TCharacterInfoStorage;
 }
@@ -53,7 +59,14 @@ public:
         Titles = 13,
     };
 
-    explicit TCharacterInfoDialogController(QObject* parent = nullptr);
+    /// CIP: made by the cyclopedia (and the friends account search page) with
+    /// the client options, the engine and the dialog parent item (the error
+    /// message box opens there).
+    TCharacterInfoDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                   QObject* parent = nullptr);
+    /// Host: the product pack's account search page makes the page without
+    /// CipSoft's arguments (the error box opens on the application's engine).
+    explicit TCharacterInfoDialogController(QObject* parent);
     ~TCharacterInfoDialogController() override;
     /// The client setting: smooth filtering of the outfit previews.
     bool clientSettingSmoothFiltering() const override;
@@ -149,6 +162,11 @@ private:
     void replace(QList<QObject*>& member, QList<QObject*> objects);
 
     std::vector<client::gamecore::Hook> m_hooks;
+    /// The constructors' common part (achievement info, error box wiring, the
+    /// QML carriers, the event hooks).
+    void initialize();
+
+    config::TClientOptions* m_pClientOptions = nullptr;
     TMessageDialogController* m_errorMessage;
     std::shared_ptr<game::IGameSession> m_gameSession;
     bool m_shown = false;

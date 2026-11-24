@@ -4,6 +4,8 @@
 
 #include <cip_gen.h>
 
+#include <protocol.pb.h>
+
 #include <QString>
 #include <QTimer>
 #include <QUrl>
@@ -452,6 +454,15 @@ Q_SIGNALS:
     void requestHirelingInputDialog(int OfferIDForHireling, bool BuyWithCosmeticTokens);
     void requestConfirmationDialog(int Offer, const QString& Message, bool BuyWithCosmeticTokens);
     void storeOfferDescriptionReceived(int OfferID, const QString& Description);
+    void sendRequestStoreCategories(const tibia::protobuf::protocol::GameclientMessageRequestStoreCategories& Message);
+    void sendRequestStoreOffers(const tibia::protobuf::protocol::GameclientMessageRequestStoreOffers& Message);
+    void sendBuyStoreOffer(const tibia::protobuf::protocol::GameclientMessageBuyStoreOffer& Message);
+    void sendOpenTransactionHistory(const tibia::protobuf::protocol::GameclientMessageOpenTransactionHistory& Message);
+    void sendGetTransactionHistory(const tibia::protobuf::protocol::GameclientMessageGetTransactionHistory& Message);
+    void sendTransferCurrency(const tibia::protobuf::protocol::GameclientMessageTransferCurrency& Message);
+    void sendStoreEvent(const tibia::protobuf::protocol::GameclientMessageStoreEvent& Message);
+    void sendGetOfferDescription(const tibia::protobuf::protocol::GameclientMessageGetOfferDescription& Message);
+    void sendRequestTransactionDetails(const tibia::protobuf::protocol::GameclientMessageGetTransactionDetails& Message);
 
 
 private:

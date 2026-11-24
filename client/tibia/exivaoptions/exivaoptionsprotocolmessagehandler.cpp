@@ -21,13 +21,10 @@ TExivaOptionsStorage::Names names(const google::protobuf::RepeatedPtrField<std::
     return result;
 }
 
-std::vector<std::string> wire(const std::vector<QString>& names)
+void addNames(google::protobuf::RepeatedPtrField<std::string>* field, const std::vector<QString>& names)
 {
-    std::vector<std::string> result;
-    result.reserve(names.size());
     for (const QString& name : names)
-        result.push_back(name.toStdString());
-    return result;
+        field->Add(name.toStdString());
 }
 
 }
@@ -56,11 +53,20 @@ void TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage(const 
     storage->removeFromGuildWhitelist(names(message.removed_guilds()));
 }
 
-void TExivaOptionsProtocolMessageHandler::sendSetExivaOptions(const TExivaOptionsStorage::Options& options, const WhitelistChanges& changes) const
+void TExivaOptionsProtocolMessageHandler::setExivaOptions(const TExivaOptionsStorage::Options& options, const WhitelistChanges& changes)
 {
-    tibia::game::sendExivaOptions(options.allowAll, options.allowOwnGuild, options.allowOwnParty, options.allowVipList, options.allowPlayerWhitelist,
-                                  options.allowGuildWhitelist, wire(changes.addedCharacters), wire(changes.removedCharacters),
-                                  wire(changes.addedGuilds), wire(changes.removedGuilds));
+    ::tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions message;
+    message.set_allow_all(options.allowAll);
+    message.set_allow_own_guild(options.allowOwnGuild);
+    message.set_allow_own_party(options.allowOwnParty);
+    message.set_allow_vip_list(options.allowVipList);
+    message.set_allow_player_whitelist(options.allowPlayerWhitelist);
+    message.set_allow_guild_whitelist(options.allowGuildWhitelist);
+    addNames(message.mutable_add_characters(), changes.addedCharacters);
+    addNames(message.mutable_remove_characters(), changes.removedCharacters);
+    addNames(message.mutable_add_guilds(), changes.addedGuilds);
+    addNames(message.mutable_remove_guilds(), changes.removedGuilds);
+    Q_EMIT sendSetExivaOptions(message);
 }
 
 }

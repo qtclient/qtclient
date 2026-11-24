@@ -31,6 +31,10 @@ void setCoordinate(ProtocolCoordinate* out, const Position& position)
     out->set_z(position.z);
 }
 
+}
+
+namespace tibia::protocol::gameclient {
+
 /// A classic object (position, stack position, type) as the ObjectPosition and
 /// ObjectIdentifier of a client message, written by CipSoft's
 /// TGameActionContextHelper from the location the classic position names. The
@@ -47,10 +51,6 @@ void setClassicObject(ObjectPosition* objectPosition, ObjectIdentifier* objectId
     if (objectIdentifier)
         objectIdentifier->set_type_id(typeId);
 }
-
-}
-
-namespace tibia::protocol::gameclient {
 
 void sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
 {
