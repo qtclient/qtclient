@@ -946,14 +946,4 @@ TChatTutorialMarkerRenderInfo::TChatTutorialMarkerRenderInfo(const int markerId,
     m_length = length;
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-    // Custom-ctor CIP types are constructed on live gamewindow controllers.
-}
-
 } // namespace tibia::gamewindow

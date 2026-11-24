@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <QString>
 
@@ -10,7 +9,7 @@ namespace shared {
 /// CIP `shared::TTibiaUrlTools`: the chat message text processor. Every talk
 /// and text message passes through process, so dotted host names cannot carry
 /// look-alike characters.
-class TTibiaUrlTools : public ::tibia::CipTyped
+class TTibiaUrlTools
 {
 public:
     /// Whether `text` holds a character outside the URL alphabet.

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 #include "worldmap/worldmapfield.h"
 
 #include <client/position.h>
@@ -60,7 +59,7 @@ struct TWorldMapPick
 };
 
 /// Resolves a map pixel of the last frame to fields, objects and creatures.
-class TWorldMapPicker : public ::tibia::CipTyped
+class TWorldMapPicker
 {
 public:
     /// The session's picker: the render volume provider (its viewport), the

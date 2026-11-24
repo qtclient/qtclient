@@ -66,7 +66,8 @@
 #include "bossbestiary/bossbestiaryciptypes.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "effects/effectprotocolmessagehandler.h"
-#include "exaltation/exaltationciptypes.h"
+#include "exaltation/exaltationgameactionhandler.h"
+#include "exaltation/exaltationprotocolmessagehandler.h"
 #include "exaltation/exaltationstorage.h"
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
@@ -81,8 +82,10 @@
 #include "skillwheel/skillwheelciptypes.h"
 #include "skillwheel/skillwheelstorage.h"
 #include "news/newsciptypes.h"
-#include "exivaoptions/exivaoptionsciptypes.h"
-#include "prey/preyciptypes.h"
+#include "exivaoptions/exivaoptionsgameactionhandler.h"
+#include "exivaoptions/exivaoptionsprotocolmessagehandler.h"
+#include "prey/preygameactionhandler.h"
+#include "prey/preyprotocolmessagehandler.h"
 #include "prey/preystorage.h"
 #include "gamewindow/preydialogcontroller.h"
 #include "proficiency/proficiencyciptypes.h"
@@ -948,7 +951,6 @@ void TGameSessionBase::connectProtocolMessageHandlers()
             // CipSoft's LoginSuccess carries the world type here, not an exiva flag; the
             // server checks the world's exiva restriction itself.
             tibia::game::setCanExivaOptions(true);
-            tibia::game::setServerBeat(static_cast<uint16_t>(message.beat_duration()));
             tibia::game::setCanReportBugs(false);
         });
         link(&Queue::receivedLoginSuccessMessage, game, &TGameProtocolMessageHandler::handleLoginSuccessMessage);
@@ -962,7 +964,6 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedWorldEnteredMessage, game, &TGameProtocolMessageHandler::handleWorldEnteredMessage);
         link(&Queue::receivedClientCheckMessage, game, &TGameProtocolMessageHandler::handleClientCheckMessage);
         link(&Queue::receivedShowMessageDialogMessage, game, &TGameProtocolMessageHandler::handleShowMessageDialogMessage);
-        link(&Queue::receivedSpellDataModificationMessage, game, &TGameProtocolMessageHandler::handleSpellDataModificationMessage);
     }
 
     // Host: the classic attack target follows the server's target.

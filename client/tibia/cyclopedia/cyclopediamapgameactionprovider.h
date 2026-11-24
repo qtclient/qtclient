@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "input/gameaction.h"
 
@@ -10,7 +9,7 @@ namespace cyclopedia {
 /// The actions a field of the Cyclopedia map offers (CIP:
 /// TCyclopediaMapGameActionProvider): those of a minimap field, but the walk
 /// goes to the field as drawn on the floor the map shows.
-class TCyclopediaMapGameActionProvider : public ::tibia::CipTyped
+class TCyclopediaMapGameActionProvider
 {
 public:
     /// A field without a marker: walk to the field sheared onto `floor` (also as

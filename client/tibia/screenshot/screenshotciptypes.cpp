@@ -65,15 +65,6 @@ QString eventName(const int event)
 
 TScreenshotManager* TScreenshotManager::s_instance = nullptr;
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TOutstandingScreenshot::TOutstandingScreenshot(const QSharedPointer<QQuickItemGrabResult>& grabResult, const int eventType)
     : m_id(s_nextOutstandingScreenshotId++)
     , m_grabResult(grabResult)

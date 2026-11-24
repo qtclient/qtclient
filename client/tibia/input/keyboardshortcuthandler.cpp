@@ -203,7 +203,6 @@ TKeyboardShortcutHandler::TKeyboardShortcutHandler(std::function<int()> chatMode
     , m_chatMode(std::move(chatMode))
     , m_pClockService(std::move(pClockService))
 {
-    ownProductSurface(this);
     config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
     connect(hotkeys, &config::THotkeyOptions::mappingsChanged, this, &TKeyboardShortcutHandler::onHotkeyOptionsChanged);
     connect(hotkeys, &config::THotkeyOptions::keysChanged, this, &TKeyboardShortcutHandler::onHotkeyOptionsChanged);

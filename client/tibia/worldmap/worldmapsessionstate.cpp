@@ -25,7 +25,6 @@
 #include "effects/effectstorage.h"
 #include "tibia/runtime/host.h"
 
-#include "client/animatedtext.h"
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
@@ -35,6 +34,7 @@
 #include "minimap/waypointcosts.h"
 
 #include <QThreadPool>
+#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/schedule/schedule.h>
 
@@ -242,12 +242,6 @@ void TWorldMapSessionState::cleanDynamicThings()
         for (const tibia::creatures::TCreatureID id : ids)
             storage->remove(id);
     }
-
-
-    for (auto& floor : m_floors)
-
-    cleanTexts();
-
 }
 
 void TWorldMapSessionState::setFieldObjects(const Position& pos,
@@ -364,79 +358,6 @@ void TWorldMapSessionState::addEffectAppearance(const tibia::appearances::TAppea
     }
 }
 
-void TWorldMapSessionState::addStaticText(const StaticTextPtr& txt, const Position& pos) {
-    if (tibia::game::isSceneFrozen() || !tibia::host::app().isDrawingTexts())
-        return;
-
-    tibia::schedule::post([=, this] {
-        for (const auto& other : m_staticTexts) {
-            // try to combine messages
-            if (other->getPosition() == pos && other->addMessage(txt->getName(), txt->getMessageMode(), txt->getFirstMessage())) {
-                return;
-            }
-        }
-
-        txt->setPosition(pos);
-        m_staticTexts.emplace_back(txt);
-    });
-}
-
-void TWorldMapSessionState::addAnimatedText(const AnimatedTextPtr& txt, const Position& pos) {
-    if (tibia::game::isSceneFrozen() || !tibia::host::app().isDrawingTexts())
-        return;
-
-    tibia::schedule::post([=, this] {
-        // this code will stack animated texts of the same color
-        AnimatedTextPtr prevAnimatedText;
-
-        bool merged = false;
-        for (const auto& other : m_animatedTexts) {
-            if (other->getPosition() == pos) {
-                prevAnimatedText = other;
-                if (other->merge(txt)) {
-                    merged = true;
-                    break;
-                }
-            }
-        }
-
-        if (!merged) {
-            if (prevAnimatedText) {
-                QPoint offset = prevAnimatedText->getOffset();
-                if (const float t = prevAnimatedText->getTimer().ticksElapsed();
-                    t < tibia::config::animatedTextDuration() / 4.0) { // didnt move 12 pixels
-                    const int32_t y = 12 - 48 * t / static_cast<float>(tibia::config::animatedTextDuration());
-                    offset += QPoint(0, y);
-                }
-                offset.ry() = std::min<int32_t>(offset.y(), 12);
-                txt->setOffset(offset);
-            }
-            m_animatedTexts.emplace_back(txt);
-        }
-
-        txt->setPosition(pos);
-        txt->onAppear();
-    });
-}
-
-bool TWorldMapSessionState::removeStaticText(const StaticTextPtr& txt) {
-    const auto it = std::ranges::find(m_staticTexts, txt);
-    if (it == m_staticTexts.end())
-        return false;
-
-    m_staticTexts.erase(it);
-    return true;
-}
-
-bool TWorldMapSessionState::removeAnimatedText(const AnimatedTextPtr& txt) {
-    const auto it = std::ranges::find(m_animatedTexts, txt);
-    if (it == m_animatedTexts.end())
-        return false;
-
-    m_animatedTexts.erase(it);
-    return true;
-}
-
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateTile(const Position& pos)
 {
     if (!pos.isMapPosition())
@@ -485,16 +406,6 @@ void TWorldMapSessionState::cleanTile(const Position& pos)
     } else {
         storage->notifyCoordinateChanged(pos);
     }
-
-    tibia::schedule::post([=, this] {
-        for (auto itt = m_staticTexts.begin(); itt != m_staticTexts.end();) {
-            const auto& staticText = *itt;
-            if (staticText->getPosition() == pos && staticText->getMessageMode() == tibia::client::MessageNone)
-                itt = m_staticTexts.erase(itt);
-            else
-                ++itt;
-        }
-    });
 }
 
 
@@ -623,17 +534,6 @@ void TWorldMapSessionState::removeUnawareThings()
     if (const uint32_t localId = tibia::game::localPlayerId();
         localId != 0 && !isAwareOfPosition(tibia::game::localPlayerPosition()))
         removeCreatureFromFields(localId);
-
-    tibia::schedule::post([=, this] {
-        // remove static texts from tiles that we are not aware anymore
-        for (auto it = m_staticTexts.begin(); it != m_staticTexts.end();) {
-            const auto& staticText = *it;
-            if (staticText->getMessageMode() == tibia::client::MessageNone && !isAwareOfPosition(staticText->getPosition()))
-                it = m_staticTexts.erase(it);
-            else
-                ++it;
-        }
-    });
 
     // The storage keeps the fields of the known area only: every field outside
     // it goes, and its coordinate is announced as changed.

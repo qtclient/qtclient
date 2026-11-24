@@ -6,7 +6,6 @@
 #include "input/gameactionptr.h"
 #include "trade/npctradestorage.h"
 #include "trade/playertradestorage.h"
-#include "shared/cip_typed.h"
 
 #include <client/outfit.h>
 #include <cip_gen.h>
@@ -45,9 +44,6 @@ class TGameActionPlayerTradeItem;
 class TGameActionTargetSelected;
 }
 namespace trade {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 class TCharacterTradeStorage;
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "input/gameaction.h"
 
@@ -28,7 +27,7 @@ class TWorldMapViewport;
 
 /// The actions offered at a point of the world map (CIP:
 /// TWorldMapGameActionProvider::v2,).
-class TWorldMapGameActionProvider : public ::tibia::CipTyped
+class TWorldMapGameActionProvider
 {
 public:
     TWorldMapGameActionProvider(const qmlcomponents::TWorldMapRenderProvider& provider,

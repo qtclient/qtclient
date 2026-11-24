@@ -22,10 +22,6 @@ namespace gamecore {
 /// Resources next to the binary) and starts the engine.
 bool init(const QString& argv0, const QString& workDir);
 void terminate();
-bool isRunning();
-/// True only if a caller still marks a forced exit. SIGINT and SIGTERM do not:
-/// they show the quit-game prompt instead of closing the window.
-bool isForceExit();
 /// Runs on the GUI thread when SIGINT or SIGTERM arrives. Show the quit-game
 /// prompt; do not quit the process from here.
 void setForceExitHandler(std::function<void()> handler);

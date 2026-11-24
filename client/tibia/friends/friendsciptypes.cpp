@@ -66,15 +66,6 @@ uint32_t friendGroupToProtocol(const int friendGroup)
     return static_cast<uint32_t>(friendGroup);
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TAccountBadge::TAccountBadge(const uint32_t id, const QString& name, QString description, const bool unlocked, const bool visible)
     : id(id)
     , name(QString(name).replace(QStringLiteral("Grade "), QStringLiteral("Grade&nbsp;")))

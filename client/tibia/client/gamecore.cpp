@@ -32,7 +32,6 @@ namespace tibia::client::gamecore {
 namespace {
 
 bool running = false;
-bool forceExit = false;
 volatile std::sig_atomic_t exitSignaled = 0;
 std::function<void()> forceExitHandler;
 
@@ -131,16 +130,6 @@ void terminate()
         tibia::game::hubDisconnectNow();
 
     g_client.terminate();
-}
-
-bool isRunning()
-{
-    return running;
-}
-
-bool isForceExit()
-{
-    return forceExit;
 }
 
 void setForceExitHandler(std::function<void()> handler)

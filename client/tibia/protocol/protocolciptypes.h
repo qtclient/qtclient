@@ -5,7 +5,6 @@
 
 #include "protocol/protocolmessagequeue.h"
 #include "worldmap/coordinates.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

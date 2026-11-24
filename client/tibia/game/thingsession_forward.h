@@ -48,11 +48,6 @@ inline uint16_t stampedLetterId()
     return tibia::appearances::TAppearancesManager::instance().getStampedLetterId();
 }
 
-inline uint32_t contentRevision()
-{
-    return tibia::appearances::TAppearancesManager::instance().getContentRevision();
-}
-
 inline auto assetIdentifier()
 {
     return tibia::appearances::TAppearancesManager::instance().getAssetIdentifier();

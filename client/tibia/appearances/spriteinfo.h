@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "sprites/spritefromspritesheetinfo.h"
 #include "sprites/spriteidentifier.h"
@@ -21,7 +20,7 @@ namespace appearances {
 /// What an instance draws for one animation phase (CIP
 /// appearances::IAppearanceInstanceSpriteInfo). Texture providers are asked
 /// for the sprite an info describes and cache it by hash() and equals().
-class TAppearanceInstanceSpriteInfo : public ::tibia::CipTyped, public sprites::ISpriteIdentifier
+class TAppearanceInstanceSpriteInfo : public sprites::ISpriteIdentifier
 {
 public:
     /// CIP v6: what kind of sprite info this is.

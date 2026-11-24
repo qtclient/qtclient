@@ -20,7 +20,6 @@
 #include <QByteArray>
 #include <limits>
 
-#include "tibia/runtime/host.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/creatures/attachedeffect.h>
 #include "input/gameaction.h"
@@ -120,11 +119,6 @@ uint32_t mapItemRevision()
     return itemRevision();
 }
 
-uint32_t mapDynamicRevision()
-{
-    return dynamicRevision();
-}
-
 int subscribeWorldTime(std::function<void(int, int)> listener)
 {
     return tibia::world::subscribeWorldTime(std::move(listener));
@@ -212,17 +206,6 @@ int clientRevision()
 {
     return gameSessionState().getClientVersion();
 }
-tibia::client::OperatingSystem_t clientOs()
-{
-    // The client speaks CipSoft NEW_* OS ids, so Crystal keeps the CIP wire.
-    if (tibia::host::app().getOs() == "windows")
-        return tibia::client::CLIENTOS_TIBIA_NEW_WINDOWS;
-
-    if (tibia::host::app().getOs() == "mac")
-        return tibia::client::CLIENTOS_TIBIA_NEW_MAC;
-
-    return tibia::client::CLIENTOS_TIBIA_NEW_LINUX;
-}
 
 void setProtocolVersion(const uint16_t version)
 {
@@ -286,11 +269,6 @@ uint32_t attackingCreatureId()
     return gameSessionState().getAttackingCreatureId();
 }
 
-uint32_t followingCreatureId()
-{
-    return gameSessionState().getFollowingCreatureId();
-}
-
 void setAttackingCreatureId(const uint32_t creatureId)
 {
     gameSessionState().setAttackingCreatureId(creatureId);
@@ -330,10 +308,6 @@ bool walk(const tibia::client::Direction direction)
     return gameSessionState().walk(direction);
 }
 
-void interruptAutoWalk()
-{
-    gameSessionState().interruptAutoWalk();
-}
 void safeLogout()
 {
     if (!isOnline())
@@ -351,26 +325,10 @@ void processWorldEntered()
 {
     tibia::game::TGameserverGameSession::wireProcessWorldEntered();
 }
-void processLoginError(const std::string_view error)
-{
-    tibia::game::TGameserverGameSession::wireProcessLoginError(error);
-}
-void processLoginAdvice(const std::string_view message)
-{
-    tibia::game::TGameserverGameSession::wireProcessLoginAdvice(message);
-}
-void processLoginWait(const std::string_view message, const uint8_t time)
-{
-    tibia::game::TGameserverGameSession::wireProcessLoginWait(message, time);
-}
 
 void processCharacterSwitch(std::string_view characterName)
 {
     gameSessionState().processCharacterSwitch(characterName);
-}
-void processPlayerHelpers(const uint16_t helpers)
-{
-    tibia::game::notify("onPlayerHelpersUpdate", helpers);
 }
 
 void processUpdateTarget(const uint32_t seq, const uint32_t targetId)
@@ -390,11 +348,6 @@ void processOpenContainer(uint8_t containerId, const ::tibia::container::TInvent
 {
     gameSessionState().processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, showSearch, containerSize, firstIndex);
 }
-void processCloseContainer(const uint8_t containerId)
-{
-    if (tibia::container::TContainerStorage* storage = currentContainerStorage())
-        storage->closeContainer(containerId);
-}
 
 void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot)
 {
@@ -410,33 +363,9 @@ void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibi
 {
     gameSessionState().processContainerRemoveItem(containerId, slot, lastItem);
 }
-void processUpdateNeeded(const std::string_view signature)
-{
-    tibia::game::notify("onUpdateNeeded", signature);
-}
-void processSessionDumpMarker(const std::string_view marker)
-{
-    tibia::game::notify("onSessionDumpMarker", std::string(marker));
-}
-void processWalkCancel(const tibia::client::Direction direction)
-{
-    tibia::game::localPlayerCancelWalk(direction);
-}
 void processTeamFinderList(const bool rateLimited, const std::vector<TeamFinderListEntry>& entries)
 {
     tibia::game::notify("onTeamFinderList", rateLimited, entries);
-}
-void processTutorialHint(const uint8_t id)
-{
-    tibia::game::notify("onTutorialHint", id);
-}
-void processAddAutomapFlag(const Position& pos, const uint8_t icon, const std::string_view message)
-{
-    tibia::game::notify("onAddAutomapFlag", pos, icon, message);
-}
-void processRemoveAutomapFlag(const Position& pos, const uint8_t icon, const std::string_view message)
-{
-    tibia::game::notify("onRemoveAutomapFlag", pos, icon, message);
 }
 
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
@@ -457,14 +386,6 @@ void processInspectionState(const uint32_t creatureId, const uint8_t state)
 {
     tibia::game::notify("onInspectionState", creatureId, state);
 }
-void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData)
-{
-    tibia::game::notify("onParseBestiaryRaces", bestiaryData);
-}
-void processParseBestiaryOverview(const std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data, const uint16_t animusMasteryPoints)
-{
-    tibia::game::notify("onParseBestiaryOverview", raceName, data, animusMasteryPoints);
-}
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data)
 {
     tibia::game::notify("onUpdateBestiaryMonsterData", data);
@@ -477,10 +398,6 @@ void processBosstiaryInfo(const std::vector<BosstiaryData>& boss)
 {
     tibia::game::notify("onParseSendBosstiary", boss);
 }
-void processBosstiarySlots(const BosstiarySlotsData& data)
-{
-    tibia::game::notify("onParseBosstiarySlots", data);
-}
 
 void requestBless()
 {
@@ -488,24 +405,6 @@ void requestBless()
         return;
     gameclient::sendRequestBless();
 }
-int openAt(const Position& position, const uint16_t itemId, const int stackPos, const int previousContainerId)
-{
-    if (!canPerformGameAction() || itemId == 0 || stackPos < 0)
-        return -1;
-
-    const int id = previousContainerId >= 0 ? previousContainerId : gameSessionState().findEmptyContainerId();
-    gameclient::sendUseItem(position, itemId, static_cast<uint8_t>(stackPos), id);
-
-    tibia::game::notify("onUse", position, itemId, stackPos, 0);
-
-    return id;
-}
-
-int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const int previousContainerId)
-{
-    return openAt(Position(pos.x, pos.y, static_cast<uint8_t>(pos.z)), itemId, stackPos, previousContainerId);
-}
-
 void partyJoin(const uint32_t creatureId)
 {
     if (!canPerformGameAction())
@@ -843,17 +742,15 @@ InventorySlotInfo localPlayerInventorySlot(const tibia::client::InventorySlot sl
     return info;
 }
 
-MapPos inventoryWireMapPos(const tibia::client::InventorySlot slot)
-{
-    return { UINT16_MAX, static_cast<int>(static_cast<uint16_t>(slot)), 0 };
-}
-
 void openLocalPlayerInventory(const tibia::client::InventorySlot slot)
 {
     const InventorySlotInfo item = localPlayerInventorySlot(slot);
-    if (item.empty)
+    if (item.empty || item.typeId == 0 || !canPerformGameAction())
         return;
-    openAt(inventoryWireMapPos(slot), item.typeId, 0);
+    // The inventory slot's wire position: Position(UINT16_MAX, slot, 0).
+    const Position position(UINT16_MAX, static_cast<uint16_t>(slot), 0);
+    gameclient::sendUseItem(position, item.typeId, 0, gameSessionState().findEmptyContainerId());
+    tibia::game::notify("onUse", position, item.typeId, 0, 0);
 }
 
 namespace {
@@ -875,11 +772,6 @@ bool localPlayerIsAutoWalking()
 {
     const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
     return intent && intent->hasGoal();
-}
-
-bool localPlayerHasAutoWalkDirs()
-{
-    return localPlayerIsAutoWalking();
 }
 
 bool localPlayerIsWalking()
@@ -919,26 +811,10 @@ void localPlayerHoldDirection(const tibia::client::Direction direction)
         intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentDirection>(static_cast<int>(direction)));
 }
 
-void localPlayerRotate(const tibia::client::Direction direction)
-{
-    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline() && direction <= tibia::client::West)
-        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentRotate>(static_cast<int>(direction)));
-}
-
 void localPlayerReleaseDirection()
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
         intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentStop>());
-}
-
-void localPlayerCancelWalk(const tibia::client::Direction direction)
-{
-    tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
-    if (!intent)
-        return;
-    const auto look = direction <= tibia::client::West ? static_cast<tibia::creatures::ECreatureLookDirection>(direction)
-                                                       : static_cast<tibia::creatures::ECreatureLookDirection>(localPlayerDirection());
-    intent->onCancelWalk(look);
 }
 
 uint8_t localPlayerBlessVisualState()

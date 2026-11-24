@@ -71,13 +71,6 @@ bool isWalkable(const MapPos pos, const bool ignoreCreatures)
     return false;
 }
 
-bool blocksWalk(const MapPos pos, const bool ignoreCreatures)
-{
-    if (const tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(toPosition(pos)))
-        return !tile->isWalkable(ignoreCreatures);
-    return false;
-}
-
 std::vector<uint32_t> walkingCreatureIds(const MapPos pos)
 {
     if (const tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(toPosition(pos)))
@@ -209,16 +202,6 @@ void findPathAsync(const MapPos from, const MapPos to, const std::function<void(
     sessionOverlay().findPathAsync(toPosition(from), toPosition(to), callback, pathMode);
 }
 
-void addMapObserver(::MapObserver* const observer)
-{
-    sessionOverlay().addObserver(observer);
-}
-
-void removeMapObserver(::MapObserver* const observer)
-{
-    sessionOverlay().removeObserver(observer);
-}
-
 void notifyCameraMove(const MapPoint offset)
 {
     sessionOverlay().notificateCameraMove(QPoint(offset.x, offset.y));
@@ -247,11 +230,6 @@ uint8_t lastAwareFloor()
 uint32_t itemRevision()
 {
     return sessionOverlay().getItemRevision();
-}
-
-uint32_t dynamicRevision()
-{
-    return sessionOverlay().getDynamicRevision();
 }
 
 bool isCompletelyCovered(const MapPos pos, bool& isLoading, const uint8_t firstFloor)

@@ -8,7 +8,6 @@
 #include "game/configurecreaturepodiumdata.h"
 #include "game/passiveabilityinfostorage.h"
 #include "gamewindow/inspectobjectdata.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 #include <client/staticdata.h>
@@ -68,7 +67,6 @@ class GameserverMessagePingBack;
 class GameserverMessageReadyForSecondaryConnection;
 class GameserverMessageSnapBack;
 class GameserverMessageCreatureSpeed;
-class GameserverMessageSpellDataModification;
 class GameserverMessageStop;
 class GameserverMessageSwitchPreset;
 class GameserverMessageUnlockedSpells;
@@ -143,9 +141,6 @@ class TCooldownStorage;
 class TPlayerData;
 class TPlayerSkillStats;
 class TSelectOutfitDialogData;
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// The window an object inspection list is for, as the server numbers it.
 enum EInspectionListWindow : int32_t
@@ -295,7 +290,6 @@ public:
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
     void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
-    void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 
 Q_SIGNALS:
     void sendEnterWorldMessage(const ::tibia::protobuf::protocol::GameclientMessageEnterWorld& EnterWorldMessage);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

@@ -141,7 +141,6 @@ void TStoreCategory::addSubcategory(TStoreCategory category)
 TStoreStorage::TStoreStorage(QObject* parent)
     : cip::tibia::store::TStoreStorage(parent)
 {
-    store::ownProductSurface(this);
     m_categoriesTimer.setSingleShot(true);
     connect(&m_categoriesTimer, &QTimer::timeout, this, &TStoreStorage::categoriesChanged);
 }

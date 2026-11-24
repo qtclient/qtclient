@@ -80,7 +80,6 @@ using ::tibia::protobuf::protocol::GameserverMessageEditText;
 using ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger;
 using ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog;
 using ::tibia::protobuf::protocol::GameserverMessageSnapBack;
-using ::tibia::protobuf::protocol::GameserverMessageSpellDataModification;
 using ::tibia::protobuf::protocol::GameserverMessageStop;
 using ::tibia::protobuf::protocol::GameserverMessageWorldEntered;
 using ::tibia::protobuf::protocol::GameclientMessageClientDetails;
@@ -273,7 +272,6 @@ void TGameProtocolMessageHandler::handleOutfitMemorialMessage(const GameserverMe
 void TGameProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& m)
 {
     const auto code = static_cast<uint8_t>(m.dialog_type());
-    tibia::game::notify("onServerError", code, m.message());
     tibia::game::TGameNotify::instance()->emitServerError(code, QString::fromStdString(m.message()));
 }
 
@@ -289,14 +287,6 @@ void TGameProtocolMessageHandler::handleClientCheckMessage(const GameserverMessa
 void TGameProtocolMessageHandler::handleWorldEnteredMessage(const GameserverMessageWorldEntered&)
 {
     processWorldEntered();
-}
-
-void TGameProtocolMessageHandler::handleSpellDataModificationMessage(const GameserverMessageSpellDataModification& m)
-{
-    // The first entry's spell and modification.
-    const uint16_t firstSpell = m.entries_size() > 0 ? uint16_t(m.entries(0).spell_id()) : 0;
-    const uint8_t firstFlags = m.entries_size() > 0 ? uint8_t(m.entries(0).mod()) : 0;
-    tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
 }
 
 TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(
@@ -345,7 +335,6 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
     }
     if (TPlayerData* data = m_playerData.get()) {
         const uint8_t oldVocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
-        const std::vector<uint16_t> oldSpells = data->spells();
         data->setVocation(static_cast<uint8_t>(message.vocation()));
         data->setHasReachedMain(message.reached_main());
         data->setPromoted(message.promoted());
@@ -357,8 +346,6 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
         const auto vocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
         if (oldVocation != vocation)
             tibia::game::notify("onVocationChange", vocation, oldVocation);
-        if (const std::vector<uint16_t> spells = data->spells(); spells != oldSpells)
-            tibia::game::notify("onSpellsChange", spells, oldSpells);
     }
     tibia::game::notify("onHasReachedMain", message.reached_main());
     // Product chrome gates on mainland and wants the classic promoted vocation id.
@@ -743,17 +730,6 @@ void TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage(const Gamese
     Q_EMIT showHirelingNameChangeConfiguration(m.creature_id(), m.object_id());
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    // The premium time storage is the game client's (TGameClient's client
-    // objects); each current session gets it through setPremiumTimeStorage.
-    (void)parent;
-}
-
 TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler(
     std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory, std::shared_ptr<shared::IClockService> clockService)
     : m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
@@ -851,7 +827,6 @@ void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
         m_premiumTimeStorage->setPremium(message.premium(), message.premium_until());
     if (wasPremium != message.premium())
         tibia::game::notify("onPremiumChange", message.premium());
-    tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
 }
 
 std::optional<uint8_t> TPremiumProtocolMessageHandler::premiumFeature(const uint32_t trigger)

@@ -360,15 +360,6 @@ void TQuestLogStorage::setPinned(const TQuestLineID questLineId, const bool pinn
     Q_EMIT configurationChangedFromUserInput();
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler(std::shared_ptr<TQuestLogStorage> questLogStorage,
                                                                  std::shared_ptr<shared::IClockService> clockService)
     : cip::tibia::questlog::TQuestLogProtocolMessageHandler(nullptr)

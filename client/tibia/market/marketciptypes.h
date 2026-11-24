@@ -3,7 +3,6 @@
 // CIP-named market surfaces (promoted from cipwire).
 
 #include "market/marketstorage.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

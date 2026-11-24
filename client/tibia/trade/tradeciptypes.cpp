@@ -290,15 +290,6 @@ void TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage(const ::tibia::
     m_storage.reset();
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TCharacterTradeProtocolMessageHandler::TCharacterTradeProtocolMessageHandler(TCharacterTradeStorage* storage, QObject* parent)
     : cip::tibia::trade::TCharacterTradeProtocolMessageHandler(parent)
     , m_storage(storage)

@@ -2,7 +2,6 @@
 
 // CIP-named skillwheel surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

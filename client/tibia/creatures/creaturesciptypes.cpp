@@ -33,14 +33,6 @@
 namespace tibia::creatures {
 
 namespace {
-struct CipTypedKeep {
-};
-CipTypedKeep& typedKeep()
-{
-    static CipTypedKeep keep;
-    return keep;
-}
-
 using ::tibia::protobuf::protocol::GameserverMessageCreatureData;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureHealth;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureLight;
@@ -337,16 +329,6 @@ void TCreatureProtocolMessageHandler::handleCreatureTypeMessage(const Gameserver
         if (message.has_master_id())
             creature->setMasterId(message.master_id());
     });
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)typedKeep();
-    (void)parent;
 }
 
 } // namespace tibia::creatures

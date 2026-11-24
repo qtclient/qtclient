@@ -33,9 +33,6 @@ class TTibiaFileSystemHelper;
 }
 namespace screenshot {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
 /// CIP `TOutstandingScreenshot`: a pending item grab; emits ready(id) once the
 /// grab result is ready. Ids come from a process-wide counter.
 class TOutstandingScreenshot final : public cip::tibia::screenshot::TOutstandingScreenshot

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/eventfilters.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -97,7 +96,7 @@ private:
 
 /// The parts of CIP's TDialogControllerBase a dialog controller overrides
 /// (its vtable slots 18 and 21 to 25).
-class TDialogHooks : public ::tibia::CipTyped
+class TDialogHooks
 {
 public:
     virtual ~TDialogHooks() = default;

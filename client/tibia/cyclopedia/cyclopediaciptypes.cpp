@@ -48,24 +48,6 @@ namespace {
 
 using Args = std::vector<std::any>;
 
-struct CipTypedKeep {
-};
-CipTypedKeep& typedKeep()
-{
-    static CipTypedKeep keep;
-    return keep;
-}
-
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)typedKeep();
-    (void)parent;
 }
 
 QString capitalizeWords(const QString& name)

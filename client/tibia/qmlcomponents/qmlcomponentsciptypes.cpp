@@ -52,15 +52,6 @@ TAppearanceType* objectType(const int id)
 
 } // namespace
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TOutfitQmlModel::TOutfitQmlModel(const uint16_t outfitId, const int head, const int torso, const int legs, const int detail,
                                  const bool firstAddOn, const bool secondAddOn, const bool isObjectOutfit, QObject* parent)
     : cip::tibia::qmlcomponents::TOutfitQmlModel(parent)

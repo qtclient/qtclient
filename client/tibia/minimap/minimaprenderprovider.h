@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "minimap/minimaptile.h"
 
@@ -16,7 +15,7 @@ class TMinimapVisibleArea;
 
 /// What the minimap item draws (CIP: TMinimapRenderProvider): the colour
 /// image of every stored tile overlapping the visible area.
-class TMinimapRenderProvider : public ::tibia::CipTyped
+class TMinimapRenderProvider
 {
 public:
     struct TileRenderInfo

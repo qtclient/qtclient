@@ -74,7 +74,6 @@ QRect opaqueLayoutBounds(TAppearanceType* type, const QPoint& fieldTopLeft, cons
 TObjectAppearanceInstanceInfoQmlType::TObjectAppearanceInstanceInfoQmlType(QObject* parent)
     : cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType(parent)
 {
-    qmlcomponents::ownProductSurface(this);
     m_cumulativeCount = 1;
 }
 

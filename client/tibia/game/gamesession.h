@@ -48,7 +48,6 @@ uint8_t worldLightIntensity();
 uint8_t worldLightColor();
 /// Map item revision for roof/geometry cache (`mapsession::itemRevision`).
 uint32_t mapItemRevision();
-uint32_t mapDynamicRevision();
 
 /// World-time / session-end hooks (`tibia::world::subscribe*` in `game/sessionhooks`).
 /// Header free of `world.h`.
@@ -82,11 +81,9 @@ uint8_t localPlayerVocation();
 uint8_t localPlayerShield();
 bool localPlayerHasReachedMain();
 bool localPlayerIsPremium();
-bool localPlayerIsMagicShieldVocation();
 uint8_t localPlayerHarmony();
 bool localPlayerIsSerene();
 uint64_t localPlayerResourceBalance(tibia::client::ResourceTypes_t type);
-bool localPlayerHasResourceBalance(tibia::client::ResourceTypes_t type);
 uint64_t localPlayerTotalMoney();
 uint32_t localPlayerFreeCapacity();
 /// The free capacity in hundredths of an oz, as the server sent it.
@@ -103,16 +100,13 @@ struct InventorySlotInfo {
     uint32_t charges{ 0 };
 };
 InventorySlotInfo localPlayerInventorySlot(tibia::client::InventorySlot slot);
-/// Open inventory container at `slot` via `openAt` when the slot is non-empty.
+/// Opens the inventory container at `slot` when the slot is non-empty.
 void openLocalPlayerInventory(tibia::client::InventorySlot slot);
-/// Wire form for inventory open/use: `Position(UINT16_MAX, slot, 0)` as `MapPos`.
-MapPos inventoryWireMapPos(tibia::client::InventorySlot slot);
 
 /// Walking goes through the movement intent handler.
 void localPlayerStopAutoWalk();
 /// A walk goal is live.
 bool localPlayerIsAutoWalking();
-bool localPlayerHasAutoWalkDirs();
 bool localPlayerIsWalking();
 /// A predicted step awaits the server.
 bool localPlayerIsPreWalking();
@@ -126,11 +120,6 @@ bool localPlayerAutoWalk(MapPos goal, bool retry = false,
 /// Held direction keys (keyboard walking).
 void localPlayerHoldDirection(tibia::client::Direction direction);
 void localPlayerReleaseDirection();
-void localPlayerRotate(tibia::client::Direction direction);
-/// Per-frame movement step.
-/// The server rejected a step; the player looks in `direction`.
-void localPlayerCancelWalk(tibia::client::Direction direction);
-/// The server asks to wait `ms` before the next step.
 
 /// Bless chrome (attention).
 uint8_t localPlayerBlessVisualState();
@@ -140,10 +129,7 @@ uint64_t localPlayerStates();
 uint8_t localPlayerSoul();
 uint16_t localPlayerMagicLevel();
 uint16_t localPlayerBaseMagicLevel();
-uint16_t localPlayerMagicLevelPercent();
-std::vector<uint16_t> localPlayerSpells();
 tibia::client::Direction localPlayerDirection();
-bool localPlayerIsSoftDead();
 /// Same floor, at most one field away.
 bool isOneStep(const Position& from, const Position& to);
 /// A floor change or a jump: the motion and the walk goal end.
@@ -155,7 +141,6 @@ uint8_t localPlayerSkull();
 uint16_t localPlayerBlessings();
 uint32_t localPlayerBaseCapacity();
 uint32_t localPlayerTotalCapacity();
-bool localPlayerHasEquippedItemId(uint16_t itemId, uint8_t tier = 0);
 bool localPlayerIsStoreExpBoostPurchasable();
 
 /// Instance channel / soft-death peels.
@@ -187,15 +172,6 @@ std::string characterName();
 int clientRevision();
 
 
-/// Login wire OS field (`OperatingSystem_t` as u16).
-tibia::client::OperatingSystem_t clientOs();
-
-
-
-
-
-
-
 
 void setProtocolVersion(const uint16_t version);
 
@@ -223,9 +199,6 @@ std::string formatCreatureName(const std::string_view name);
 uint32_t attackingCreatureId();
 
 
-uint32_t followingCreatureId();
-
-
 void setAttackingCreatureId(const uint32_t creatureId);
 
 
@@ -238,9 +211,6 @@ void turn(const tibia::client::Direction direction);
 bool walk(const tibia::client::Direction direction);
 
 
-void interruptAutoWalk();
-
-
 void safeLogout();
 
 
@@ -248,42 +218,26 @@ void safeLogout();
 /// Prefer over raw `g_game` in protocol translators.
 void processGameStart();
 void processWorldEntered();
-void processLoginError(std::string_view error);
-void processLoginAdvice(std::string_view message);
-void processLoginWait(std::string_view message, uint8_t time);
 
 /// Server message side effects — thin forwards until storages own the paths.
 void processCharacterSwitch(std::string_view characterName);
-void processPlayerHelpers(uint16_t helpers);
 void processUpdateTarget(uint32_t seq, uint32_t targetId);
 void processTeamFinderLeader(const TeamFinderLeaderData& data);
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                           std::string_view name, uint8_t capacity, bool hasParent,
                           const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked, bool hasPages,
                           bool showSearch, uint16_t containerSize, uint16_t firstIndex);
-void processCloseContainer(uint8_t containerId);
 void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot);
 void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& item);
 void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem);
-/// Server message side effects — thin hub forwards.
-void processUpdateNeeded(std::string_view signature);
-void processSessionDumpMarker(std::string_view marker);
-void processWalkCancel(tibia::client::Direction direction);
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
-void processTutorialHint(uint8_t id);
-void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
-void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processItemDetail(const ItemInspectionData& data);
 void processInspectionState(uint32_t creatureId, uint8_t state);
-void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData);
-void processParseBestiaryOverview(std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data,
-                                  uint16_t animusMasteryPoints);
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data);
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData);
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
-void processBosstiarySlots(const BosstiarySlotsData& data);
 
 
 
@@ -336,12 +290,6 @@ void requestBless();
 
 
 void partyJoin(const uint32_t creatureId);
-
-
-int openAt(const Position& position, const uint16_t itemId, const int stackPos, const int previousContainerId = -1);
-
-
-int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const int previousContainerId = -1);
 
 
 void openContainerQuickLoot(const uint8_t action, const uint8_t category, const Position& pos, const uint16_t itemId, const uint8_t stackpos, const bool useMainAsFallback);

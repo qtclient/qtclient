@@ -74,20 +74,12 @@ EndList& sessionEndListeners()
     return listeners;
 }
 
-int g_hour = 0;
-int g_minute = 0;
-
 }
 
 void setWorldTime(const int hour, const int minute)
 {
-    g_hour = hour;
-    g_minute = minute;
     worldTimeListeners().publish(hour, minute);
 }
-
-int worldHour() { return g_hour; }
-int worldMinute() { return g_minute; }
 
 int subscribeWorldTime(std::function<void(int, int)> listener)
 {

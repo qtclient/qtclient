@@ -124,13 +124,8 @@ public:
 
     // walk related
     bool walk(tibia::client::Direction direction);
-    void requestStop();
-    /// Drop the walk goal; sends Stop when a path was live.
-    void interruptAutoWalk();
 
     // item related (map/inventory by id + pos + stack — no ThingPtr play API)
-    void lookCreature(uint32_t creatureId, bool isBattleList = false);
-    /// Classic use-with: source + target are map (or inventory) object ids.
     /// Use item / inventory item on a creature by id (no Map Creature resolve).
     void useOnCreature(const TObjectReference& object, uint32_t creatureId);
     std::optional<TObjectReference> findItemInContainers(uint32_t itemId, int subType, uint8_t tier);
@@ -142,9 +137,7 @@ public:
 
     // attack/follow related (creature ids; wire already sends ids)
     void attack(uint32_t creatureId);
-    void cancelAttack() { attack(0); }
     void follow(uint32_t creatureId);
-    void cancelFollow() { follow(0); }
 
     // talk related
     // 15.25+ crosshair / needPosition spells: aim tile appended to the next say (>= 1530)
@@ -165,16 +158,12 @@ public:
     // channel related
 
     // party related
-    void sendPartyAnalyzerAction(uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items = {});
 
     // Team Finder (C 0x2C / 0x2D) — Crystal parseLeaderFinderWindow / parseMemberFinderWindow
 
     // Depot search (C 0x29 / 0x92–0x95)
 
     // outfit related
-    void changeOutfit(const Outfit& outfit);
-    /// changeOutfit with the outfit window's ride and random-mount choices.
-    void changeOutfitAndMount(const Outfit& outfit, bool mounted, bool randomMount);
 
 
     // vip related
@@ -206,15 +195,6 @@ public:
 
 
     void setProtocolVersion(uint16_t version);
-    int getProtocolVersion() { return m_protocolVersion; }
-
-    bool isUsingProtobuf() {
-#ifdef FRAMEWORK_PROTOBUF
-        return true;
-#else
-        return false;
-#endif
-    }
 
     void setClientVersion(uint16_t version);
     int getClientVersion() { return m_clientVersion; }
@@ -223,29 +203,20 @@ public:
     bool canPerformGameAction() const;
 
     bool isOnline() { return m_online; }
-    bool isLogging() { return !m_online && m_gameConnection; }
     bool isSwitchingCharacter() { return m_switchingCharacter; }
     bool isDead() { return m_dead; }
     bool isSceneFrozen() { return m_sceneFrozen; }
     void setSceneFrozen(bool frozen);
     bool isAttacking();
-    bool isFollowing();
     bool isConnectionOk();
-    auto mapUpdatedAt() const { return m_mapUpdatedAt; }
-    void resetMapUpdatedAt() { m_mapUpdatedAt = 0; }
 
-    int getRecivedPacketsCount() { return m_gameConnection ? m_gameConnection->receivedPackets() : 0; }
-    int getRecivedPacketsSize() { return m_gameConnection ? m_gameConnection->receivedBytes() : 0; }
     uint32_t getAttackingCreatureId() const { return m_attackingCreatureId; }
     uint32_t getFollowingCreatureId() const { return m_followingCreatureId; }
     // Local-only attack target (no ClientAttack packet). Used when the server AI
     // syncs the target via extended opcode (vanilla has no S→C set-attack).
     void setAttackingCreatureId(uint32_t creatureId);
-    void setServerBeat(const int beat) { m_serverBeat = beat; }
-    int getServerBeat() { return m_serverBeat; }
     void setCanReportBugs(const bool enable) { m_canReportBugs = enable; }
     void setCanExivaOptions(const bool enable) { m_CanExivaOptions = enable; }
-    bool canReportBugs() { return m_canReportBugs; }
     // the server's BugReportsAllowed state: 0 allowed, else the refusal reason; -1 before the server sent it
     void setBugReportState(const int state) { m_bugReportState = state; }
     int getBugReportState() const { return m_bugReportState; }
@@ -279,7 +250,6 @@ public:
     /// direction of movement.
 
     // imbuing related
-    void imbuementDurations(bool isOpen = false);
 
     // weapon proficiency related
 
@@ -298,9 +268,6 @@ public:
     /// C 0x81 with a JSON body (friends, invites, search, badges, settings).
     /// ChangeOutfit type 2 (CIP SET_SHOW_OFF_SOCKET_CONFIGURATION): podium look.
     /// ChangeOutfit type 3 (CIP SET_HIRELING_OUTFIT): hireling creature id.
-    void sendStoreEvent(uint8_t eventType = 0);
-    void sendClientCheck(const std::vector<uint8_t>& data = {});
-    void sendClientDetails(std::string_view details);
 
     //whell of destiny 
 
@@ -311,9 +278,6 @@ public:
         }
     }
 
-    auto getWalkMaxSteps() { return m_walkMaxSteps; }
-    void setWalkMaxSteps(uint8_t v) { m_walkMaxSteps = v; }
-
 public:
     void setFollowingCreatureId(uint32_t creatureId);
 
@@ -322,7 +286,6 @@ public:
     uint32_t m_followingCreatureId{ 0 };
     /// The game connection of the running session (null when offline).
     std::shared_ptr<tibia::network::TGameserverSessionNetwork> m_gameConnection;
-    tibia::shared::TFrameStopWatch m_dashTimer;
     tibia::schedule::TScheduledTaskPtr m_checkConnectionEvent;
 
     bool m_online{ false };
@@ -331,7 +294,6 @@ public:
     bool m_sceneFrozen{ false };
     bool m_expertPvpMode{ false };
     bool m_connectionFailWarned{ false };
-    bool m_scheduleLastWalk{ false };
     bool m_canReportBugs{ false };
     int m_bugReportState{ -1 };
     bool m_CanExivaOptions{ false };
@@ -342,15 +304,12 @@ public:
     uint16_t m_mapUpdatedAt{ 0 };
     std::pair<uint16_t, tibia::shared::TFrameStopWatch> m_mapUpdateTimer = { true, tibia::shared::TFrameStopWatch{} };
 
-    uint8_t m_walkMaxSteps{ 1 };
-    uint16_t m_serverBeat{ 50 };
     uint16_t m_protocolVersion{ 0 };
     uint16_t m_clientVersion{ 0 };
     uint32_t m_seq{ 0 };
 
     std::string m_characterName;
     std::string m_worldName;
-    std::string m_clientSignature;
 
 };
 

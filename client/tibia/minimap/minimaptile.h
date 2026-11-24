@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <vector>
 
@@ -23,7 +22,7 @@ inline uint64_t coordinateKey(const Position& p)
 
 /// 256x256 fields of one floor (CIP: TMinimapTile, vtable): the
 /// automap colours as palette indices and the waypoint costs, both Indexed8.
-class TMinimapTile : public ::tibia::CipTyped
+class TMinimapTile
 {
 public:
     static constexpr int Size = 256;

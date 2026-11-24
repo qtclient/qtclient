@@ -2,7 +2,6 @@
 
 #include "client/gamecore.h"
 #include "config/icharacterconfiguration.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -46,7 +45,7 @@ double adjustGraphMaxY(double currentMaxY, double maxValue);
 
 /// One of TProgressStorage's TExperienceChangeTracker (CIP ctor in): the session total
 /// and 4501 one-second bins, the newest last.
-class TExperienceChangeTracker : public ::tibia::CipTyped
+class TExperienceChangeTracker
 {
 public:
     static constexpr int BinCount = 4501;

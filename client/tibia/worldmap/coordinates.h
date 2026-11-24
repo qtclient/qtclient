@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <client/position.h>
 
@@ -16,7 +15,7 @@ namespace worldmap {
 
 /// Field coordinate (CIP: TWorldMapCoordinate; stack layout used by TLightMap::v7
 /// at — x/y as field indices, z as floor).
-class TWorldMapCoordinate : public ::tibia::CipTyped
+class TWorldMapCoordinate
 {
 public:
     int x = 0;
@@ -64,7 +63,7 @@ public:
 };
 
 /// Inclusive volume size in fields (CIP: TWorldMapExtent v0/v1 at).
-class TWorldMapExtent : public ::tibia::CipTyped
+class TWorldMapExtent
 {
 public:
     int width = 0;
@@ -126,7 +125,7 @@ inline TWorldMapCoordinate maximum(const TWorldMapCoordinate& a, const TWorldMap
 
 /// Sub-field (pixel) coordinate on the map plane (CIP: TWorldMapSubfieldCoordinate
 /// v0/v1 at ; QML twin is TWorldMapSubfieldCoordinateQmlType).
-class TWorldMapSubfieldCoordinate : public ::tibia::CipTyped
+class TWorldMapSubfieldCoordinate
 {
 public:
     int subfieldX = 0;
@@ -191,7 +190,7 @@ public:
 
 /// Size in subfields (CIP: TWorldMapSubfieldExtent). The third component is an
 /// elevation where one is carried (0 otherwise).
-class TWorldMapSubfieldExtent : public ::tibia::CipTyped
+class TWorldMapSubfieldExtent
 {
 public:
     int width = 0;
@@ -243,7 +242,7 @@ inline TWorldMapSubfieldCoordinate subfieldOfField(const TWorldMapCoordinate& fi
 
 /// A box of fields: its origin, the field past its far corner and its size
 /// (CIP: TWorldMapCuboid).
-class TWorldMapCuboid : public ::tibia::CipTyped
+class TWorldMapCuboid
 {
 public:
     TWorldMapCoordinate origin;

@@ -17,11 +17,6 @@
 namespace tibia::dailyreward {
 
 namespace {
-struct CipTypedKeep {
-    TDailyRewardPickItems tDailyRewardPickItems;
-};
-CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
-
 using A = input::EGameAction;
 
 } // namespace
@@ -31,16 +26,6 @@ int dailyRewardEnumValue(const uint32_t protocolValue)
     if (protocolValue > 2)
         throw std::invalid_argument("invalid enum value");
     return static_cast<int>(protocolValue);
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)typedKeep();
-    (void)parent;
 }
 
 // ---------------------------------------------------------------------------

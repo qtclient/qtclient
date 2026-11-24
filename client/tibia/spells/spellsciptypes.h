@@ -2,7 +2,6 @@
 
 // CIP-named spells surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -17,9 +16,6 @@ class GameserverMessageUnlockedSpells;
 
 namespace tibia {
 namespace spells {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 class TSpellInfoStorage;

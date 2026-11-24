@@ -5,7 +5,6 @@
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "chat/chatgameactionhandler.h"
-#include "client/animatedtext.h"
 #include "protocol/protocolciptypes.h"
 #include "config/clientoptiondefaults.h"
 #include "config/clientoptions.h"

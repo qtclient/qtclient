@@ -8,7 +8,8 @@
 
 #include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
-#include "prey/preyciptypes.h"
+#include "prey/preygameactionhandler.h"
+#include "prey/preyprotocolmessagehandler.h"
 
 #include <client/outfit.h>
 #include <tibia/assets/things.h>

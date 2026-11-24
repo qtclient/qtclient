@@ -4,7 +4,6 @@
 #include "appearances/appearanceinstancespritesequence.h"
 #include "appearances/genericstorage.h"
 #include "renderer/renderinfo.h"
-#include "shared/cip_typed.h"
 #include "tibia/client/outfit.h"
 #include "worldmap/coordinates.h"
 
@@ -66,7 +65,7 @@ void cumulativePilePattern(uint32_t index, int& patternX, int& patternY);
 int hookPattern(uint8_t hookState, uint8_t width);
 
 /// CIP appearances::TAppearanceInstance — thin view over a TAppearanceType record.
-class TAppearanceInstance : public ::tibia::CipTyped
+class TAppearanceInstance
 {
 public:
     /// An instance of `type` whose animation starts at `animationStartMs`.
@@ -642,7 +641,7 @@ private:
 };
 
 /// CIP appearances::TAppearanceInstanceFactory — pick concrete instance from TAppearanceType / outfit.
-class TAppearanceInstanceFactory final : public ::tibia::CipTyped
+class TAppearanceInstanceFactory final
 {
 public:
     /// The type of `id` in `category`, or the category's dummy type: no flags

@@ -14,8 +14,6 @@
 struct PathFindResult;
 using PathFindResult_ptr = std::shared_ptr<PathFindResult>;
 
-class MapObserver;
-
 namespace tibia {
 namespace minimap {
 class TWaypointCosts;
@@ -77,9 +75,6 @@ void canTravelPathAsync(MapPos from, MapPos to, const std::function<void(bool ok
 /// Null-safe `getTile(pos)->isWalkable(ignoreCreatures)` — false when tile missing.
 bool isWalkable(MapPos pos, bool ignoreCreatures = true);
 
-/// True only when the field exists and is not walkable. Missing field → false.
-bool blocksWalk(MapPos pos, bool ignoreCreatures = true);
-
 /// Empty when tile missing. Matches `TWorldMapField::walkingCreatureIds`.
 std::vector<uint32_t> walkingCreatureIds(MapPos pos);
 
@@ -131,9 +126,6 @@ struct MapPoint {
     int y = 0;
 };
 
-void addMapObserver(::MapObserver* observer);
-void removeMapObserver(::MapObserver* observer);
-
 void notifyCameraMove(MapPoint offset);
 
 void cleanMap();
@@ -143,7 +135,6 @@ uint8_t firstAwareFloor();
 uint8_t lastAwareFloor();
 
 uint32_t itemRevision();
-uint32_t dynamicRevision();
 
 bool isCompletelyCovered(MapPos pos, bool& isLoading, uint8_t firstFloor = 0);
 bool isCovered(MapPos pos, bool& isLoading, uint8_t firstFloor = 0);

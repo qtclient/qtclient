@@ -84,7 +84,6 @@ public:
 
     void clean();
     void cleanDynamicThings();
-    void cleanTexts() { m_animatedTexts.clear(); m_staticTexts.clear(); }
 
     // thing related
     /// The field at `pos` holds `objects` in their order (creatures are their
@@ -97,11 +96,6 @@ public:
     bool replaceObjectAt(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos, int stackPos);
     /// Takes the object at `stackPos` off the field at `pos`; null when none is there.
     tibia::appearances::TAppearanceInstancePtr removeObjectAt(const Position& pos, int stackPos);
-    void addStaticText(const StaticTextPtr& txt, const Position& pos);
-    bool removeStaticText(const StaticTextPtr& txt);
-
-    void addAnimatedText(const AnimatedTextPtr& txt, const Position& pos);
-    bool removeAnimatedText(const AnimatedTextPtr& txt);
     // field / tile related
     tibia::worldmap::TWorldMapField* getOrCreateTile(const Position& pos);
     /// Prefer `tibia::worldmap::fieldAt` at call sites (storage hash, then spatial fallback).
@@ -228,9 +222,6 @@ private:
     Position m_localPlayerLastField;
     bool m_localPlayerOffMap{ true };
     tibia::schedule::TScheduledTaskPtr m_localPlayerLeave;
-
-    std::vector<AnimatedTextPtr> m_animatedTexts;
-    std::vector<StaticTextPtr> m_staticTexts;
 
 
     uint16_t m_width{ 0 };

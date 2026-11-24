@@ -7,7 +7,6 @@
 #include "appearances/appearanceinstance.h"
 #include "client/declarations.h"
 #include "client/staticdata.h"
-#include "client/statictext.h"
 
 #include <memory>
 #include <optional>

@@ -136,37 +136,7 @@ authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGa
     return data;
 }
 
-void wireProcessLoginErrorImpl(const std::string_view error)
-{
-    tibia::game::notify("onLoginError", error);
-}
-
-void wireProcessLoginAdviceImpl(const std::string_view message)
-{
-    tibia::game::notify("onLoginAdvice", message);
-}
-
-void wireProcessLoginWaitImpl(const std::string_view message, const uint8_t time)
-{
-    tibia::game::notify("onLoginWait", message, time);
-}
-
 } // namespace
-
-void TGameserverGameSession::wireProcessLoginError(const std::string_view error)
-{
-    wireProcessLoginErrorImpl(error);
-}
-
-void TGameserverGameSession::wireProcessLoginAdvice(const std::string_view message)
-{
-    wireProcessLoginAdviceImpl(message);
-}
-
-void TGameserverGameSession::wireProcessLoginWait(const std::string_view message, const uint8_t time)
-{
-    wireProcessLoginWaitImpl(message, time);
-}
 
 void TGameserverGameSession::wireProcessWorldEntered()
 {

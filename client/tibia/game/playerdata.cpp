@@ -53,21 +53,6 @@ int skillTypeOf(const tibia::client::Skill skill)
     }
 }
 
-/// The client skill of a skill type (the reverse of skillTypeOf).
-std::optional<tibia::client::Skill> clientSkillOf(const int skillType)
-{
-    switch (skillType) {
-        case 15: return tibia::client::Fist;
-        case 12: return tibia::client::Club;
-        case 13: return tibia::client::Sword;
-        case 14: return tibia::client::Axe;
-        case 11: return tibia::client::Distance;
-        case 10: return tibia::client::Shielding;
-        case 16: return tibia::client::Fishing;
-        default: return std::nullopt;
-    }
-}
-
 /// The protocol's units of a skill: whole levels, the percent truncated or in
 /// hundredths.
 uint16_t wholeOf(const double value) { return static_cast<uint16_t>(value); }
@@ -538,7 +523,6 @@ void TPlayerData::updateHealth(const uint32_t health, const uint32_t maxHealth)
     setMaxHealth(static_cast<int>(maxHealth));
     if (oldHealth == health && oldMaxHealth == maxHealth)
         return;
-    notify("onHealthChange", health, maxHealth, oldHealth, oldMaxHealth);
     if (health == 0)
         tibia::game::localPlayerStopAutoWalk();
 }
@@ -555,12 +539,8 @@ void TPlayerData::updateMana(const uint32_t mana, const uint32_t maxMana)
 
 void TPlayerData::updateManaShield(const uint32_t manaShield, const uint32_t maxManaShield)
 {
-    const auto oldManaShield = static_cast<uint32_t>(m_manaShield);
-    const auto oldMaxManaShield = static_cast<uint32_t>(m_maxManaShield);
     setManaShield(static_cast<int>(manaShield));
     setMaxManaShield(static_cast<int>(maxManaShield));
-    if (oldManaShield != manaShield || oldMaxManaShield != maxManaShield)
-        notify("onManaShieldChange", manaShield, maxManaShield, oldManaShield, oldMaxManaShield);
 }
 
 void TPlayerData::updateLevel(const uint16_t level, const uint16_t levelPercent)
@@ -583,26 +563,17 @@ void TPlayerData::updateExperience(const uint64_t experience)
 
 void TPlayerData::updateStamina(const uint16_t stamina)
 {
-    const uint16_t oldStamina = this->stamina();
     setStaminaMinutes(stamina);
-    if (oldStamina != stamina)
-        notify("onStaminaChange", stamina, oldStamina);
 }
 
 void TPlayerData::updateHarmony(const uint8_t harmony)
 {
-    const uint8_t oldHarmony = m_harmony;
     setHarmony(harmony);
-    if (oldHarmony != harmony)
-        notify("onHarmonyChange", harmony, oldHarmony);
 }
 
 void TPlayerData::updateSerene(const bool serene)
 {
-    const bool oldSerene = m_serene;
     setSerene(serene);
-    if (oldSerene != serene)
-        notify("onSereneChange", serene, oldSerene);
 }
 
 void TPlayerData::updateFreeCapacity(const uint32_t hundredths)
@@ -635,10 +606,7 @@ void TPlayerData::updateBaseCapacity(const uint32_t baseCapacity)
 
 void TPlayerData::updateStoreExpBoostPurchasable(const bool purchasable)
 {
-    const bool old = m_storeXpBoostPurchasable;
     setStoreXpBoostPurchasable(purchasable);
-    if (old != purchasable)
-        notify("onStoreExpBoostPurchasableChange", purchasable);
 }
 
 void TPlayerData::setResourceBalance(const tibia::client::ResourceTypes_t type, const uint64_t value)
@@ -665,7 +633,6 @@ void TPlayerData::setResourceBalance(const tibia::client::ResourceTypes_t type, 
     m_reportedResourceTypes.insert(type);
     if (reported && value == oldBalance)
         return;
-    notify("onResourcesBalanceChange", value, oldBalance, type);
     TGameNotify::instance()->emitResourcesBalanceChanged(static_cast<qint64>(value), static_cast<qint64>(oldBalance),
                                                          static_cast<int>(type));
 }
@@ -753,24 +720,7 @@ uint16_t TPlayerData::skillPercentHundredths(const tibia::client::Skill skill) c
 void TPlayerData::updateSkill(const int skillType, const double level, const double baseLevel, const double loyalty,
                               const double percent)
 {
-    const TSkill old = skill(skillType);
     setSkill(skillType, level, baseLevel, loyalty, percent);
-    const bool levelChanged = wholeOf(old.level) != wholeOf(level) || wholeOf(old.percent) != wholeOf(percent);
-    const bool baseChanged = wholeOf(old.baseLevel) != wholeOf(baseLevel);
-    if (skillType == MagicLevelSkill) {
-        if (levelChanged)
-            notify("onMagicLevelChange", wholeOf(level), wholeOf(percent), wholeOf(old.level), wholeOf(old.percent));
-        if (baseChanged)
-            notify("onBaseMagicLevelChange", wholeOf(baseLevel), wholeOf(old.baseLevel));
-        return;
-    }
-    const std::optional<tibia::client::Skill> clientSkill = clientSkillOf(skillType);
-    if (!clientSkill)
-        return;
-    if (levelChanged)
-        notify("onSkillChange", *clientSkill, wholeOf(level), wholeOf(percent), wholeOf(old.level), wholeOf(old.percent));
-    if (baseChanged)
-        notify("onBaseSkillChange", *clientSkill, wholeOf(baseLevel), wholeOf(old.baseLevel));
 }
 
 void TPlayerData::setExperienceRate(const tibia::client::ExperienceRate_t type, const uint16_t value)
@@ -788,16 +738,11 @@ void TPlayerData::setExperienceRate(const tibia::client::ExperienceRate_t type, 
     if (rates == m_experienceGainRates)
         return;
     setExperienceGainRates(rates);
-    notify("onExperienceRateChange", type, value);
 }
 
 void TPlayerData::updateBaseSpeed(const uint16_t baseSpeed)
 {
-    const uint16_t oldBaseSpeed = m_speeds.baseSpeed;
     setBaseSpeed(baseSpeed);
-    if (oldBaseSpeed == baseSpeed)
-        return;
-    notify("onBaseSpeedChange", baseSpeed, oldBaseSpeed);
 }
 
 void TPlayerData::setRegenerationTime(const uint16_t regenerationTime)
@@ -810,10 +755,7 @@ void TPlayerData::setRegenerationTime(const uint16_t regenerationTime)
 
 void TPlayerData::setOfflineTrainingTime(const uint16_t offlineTrainingTime)
 {
-    const uint16_t oldOfflineTrainingTime = this->offlineTrainingTime();
     setOfflineTrainingMinutes(offlineTrainingTime);
-    if (oldOfflineTrainingTime != offlineTrainingTime)
-        notify("onOfflineTrainingChange", offlineTrainingTime, oldOfflineTrainingTime);
 }
 
 void TPlayerData::setStoreExpBoostTime(const uint16_t storeExpBoostTime)

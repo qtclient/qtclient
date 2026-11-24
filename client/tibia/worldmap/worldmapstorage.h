@@ -199,10 +199,6 @@ public:
     /// Dynamic overlay peels (qtclient-bridge dual-write).
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position);
-    void addStaticText(const StaticTextPtr& text, const Position& position);
-    bool removeStaticText(const StaticTextPtr& text);
-    void addAnimatedText(const AnimatedTextPtr& text, const Position& position);
-    bool removeAnimatedText(const AnimatedTextPtr& text);
 
 Q_SIGNALS:
     void informationAtWorldMapCoordinateHasChanged(TWorldMapCoordinate coordinate);

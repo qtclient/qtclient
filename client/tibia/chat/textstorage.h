@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <client/declarations.h>
 #include <client/position.h>
@@ -66,7 +65,7 @@ private:
 };
 
 /// Texts shown one after the other, each for its own time (CIP: chat::TFleetingTextQueue).
-class TFleetingTextQueue : public ::tibia::CipTyped
+class TFleetingTextQueue
 {
 public:
     virtual ~TFleetingTextQueue() = default;
@@ -149,7 +148,7 @@ private:
 
 /// A creature's recent lines at one place, said the same way (CIP:
 /// chat::TPersonalizedSpeechBubble).
-class TCreatureSpeechBubble : public ::tibia::CipTyped
+class TCreatureSpeechBubble
 {
 public:
     /// CIP's speech volume.
@@ -186,7 +185,7 @@ private:
 
 /// Everything written over the map (CIP: chat::TTextStorage): the status line,
 /// the look line, the centre and private message queues, and the speech bubbles.
-class TTextStorage : public ::tibia::CipTyped
+class TTextStorage
 {
 public:
     explicit TTextStorage(size_t maxCreatureBubbles = 10, size_t maxQueuedMessages = 9);

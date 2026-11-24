@@ -3,7 +3,6 @@
 // CIP-named reporting surfaces (promoted from cipwire).
 
 #include "reporting/reportingstorage.h"
-#include "shared/cip_typed.h"
 #include "client/position.h"
 
 #include <cip_gen.h>

@@ -9,15 +9,6 @@
 
 namespace tibia::spells {
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 TSpellsProtocolMessageHandler::TSpellsProtocolMessageHandler(TSpellInfoStorage* spellInfoStorage)
     : cip::tibia::spells::TSpellsProtocolMessageHandler(nullptr)
     , m_spellInfoStorage(spellInfoStorage)

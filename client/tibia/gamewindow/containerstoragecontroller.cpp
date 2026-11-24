@@ -28,7 +28,6 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* Sideba
     , m_clientOptions(ClientOptions)
     , m_parentItem(ParentItem)
 {
-    container::ownProductSurface(this);
     m_displayContainerAsynchronousTimer.setSingleShot(true);
     m_displayContainerAsynchronousTimer.setInterval(0);
     connect(&m_displayContainerAsynchronousTimer, &QTimer::timeout, this,

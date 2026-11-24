@@ -21,15 +21,6 @@ constexpr uint32_t LunarAscensionOrbsResource = 73;
 
 } // namespace
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 } // namespace tibia::proficiency
 
 namespace tibia::proficiency {

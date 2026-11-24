@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "gameaction.h"
 
@@ -20,7 +19,7 @@ namespace input {
 /// scheme (setLootScheme). Control schemes (clientOptions controlScheme): 1 classic,
 /// 2 legacy, 3 left smart click. Loot schemes (clientOptions lootScheme):
 /// 0 right, 1 shift+right, 2 left.
-class TGameActionMapper : public ::tibia::CipTyped
+class TGameActionMapper
 {
 public:
     /// Rule context of the world map (its rules apply to every context).

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include "config/configciptypes.h"
 #include "config/hotkeyoptions.h"
@@ -72,7 +71,7 @@ struct TOptionBinding
 /// What the options dialog drives on each page (CIP: TOptionPageQMLWrapperBase,
 /// vtable slot 12 load(const TClientOptions&) and slot 13 apply(TClientOptions*)).
 /// Pages hold pending values; nothing is written before apply.
-class TOptionsPage : public ::tibia::CipTyped
+class TOptionsPage
 {
 public:
     virtual ~TOptionsPage() = default;

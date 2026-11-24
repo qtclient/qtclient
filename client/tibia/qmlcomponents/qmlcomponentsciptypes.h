@@ -2,7 +2,6 @@
 
 // CIP-named qmlcomponents surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -31,19 +30,9 @@ class TAppearancesManager;
 }
 namespace qmlcomponents {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
 /// The bar colour of a health fraction (0..1).
 QColor colorForHealthPercent(float healthPercentNormalized);
 
-
-class TAppearanceInstanceInfoQmlType final : public cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType::TAppearanceInstanceInfoQmlType;
-};
 
 /// QML singleton AppearanceTypeHelper — item name / description / id lookup.
 class TAppearanceTypeHelperQmlService final : public cip::tibia::qmlcomponents::TAppearanceTypeHelperQmlService
@@ -109,12 +98,6 @@ public:
     /// Takes the other model's id, colours, addons and object flag; every
     /// field that differs emits outfitChanged.
     void copyFrom(const TOutfitQmlModel& Other);
-};
-
-class TQSGScenegraphDrawCommandsNode final : public ::tibia::CipTyped
-{
-public:
-    TQSGScenegraphDrawCommandsNode() = default;
 };
 
 /// Dynamic column list model for QML (tutorial loot table, etc.).
@@ -194,20 +177,6 @@ protected:
 
 private:
     void refreshCount();
-};
-
-class TScenegraphDrawCommandsRendererQuickItem final : public cip::tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem::TScenegraphDrawCommandsRendererQuickItem;
-};
-
-class TTargetSelectionQuickItem final : public cip::tibia::qmlcomponents::TTargetSelectionQuickItem
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TTargetSelectionQuickItem::TTargetSelectionQuickItem;
 };
 
 /// CIP QML type name (product camera type: `TWorldMapCamera` in minimaprendererquickitem.h).

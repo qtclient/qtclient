@@ -146,12 +146,8 @@ public:
                             std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
                             std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage) override;
 
-    /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
-    /// forwards here when a live session is registered; static fallbacks keep
-    /// sessiondump / headless paths working without `g_game` bodies in game.cpp.
-    static void wireProcessLoginError(std::string_view error);
-    static void wireProcessLoginAdvice(std::string_view message);
-    static void wireProcessLoginWait(std::string_view message, uint8_t time);
+    /// The world was entered: the enter notify, then the game start once per login
+    /// (`tibia::game::processWorldEntered`).
     static void wireProcessWorldEntered();
     /// Host: a death stops the own walk and freezes the scene.
     static void wireProcessDeath();

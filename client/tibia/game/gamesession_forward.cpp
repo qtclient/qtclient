@@ -54,25 +54,11 @@ cyclopedia::TCyclopediaProtocolMessageHandler* cyclopediaHandler()
 
 } // namespace
 
-void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendMarketAcceptOffer(timestamp, counter, amount);
-}
-
 void acceptTrade()
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendAcceptTrade();
-}
-
-void answerModalDialog(uint32_t dialog, uint8_t button, uint8_t choice)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendAnswerModalDialog(dialog, button, choice);
 }
 
 void applyImbuement(uint8_t slot, uint32_t imbuementId, bool protectionCharm)
@@ -86,60 +72,9 @@ void attack(uint32_t creatureId)
 {
     gameSessionState().attack(creatureId);
 }
-void browseField(const Position& position)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendBrowseField(position);
-}
-void browseMarket(const uint8_t browseId, const uint16_t browseType, const uint8_t tier)
-{
-    if (!canPerformGameAction()) {
-        return;
-    }
-
-    gameclient::sendMarketBrowse(browseId, browseType, tier);
-}
-void buyItem(const uint16_t typeId, const uint8_t countOrSubType, const uint16_t amount, const bool ignoreCapacity, const bool buyWithBackpack)
-{
-    if (!canPerformGameAction() || typeId == 0)
-        return;
-
-    gameclient::sendBuyItem(typeId, countOrSubType, amount, ignoreCapacity, buyWithBackpack);
-}
-
-void buyStoreOffer(const uint32_t offerId, const uint8_t action, const std::string_view& name, const uint8_t type, const std::string_view& location)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendBuyStoreOffer(offerId, action, name, type, location);
-}
-
 bool canPerformGameAction()
 {
     return gameSessionState().canPerformGameAction();
-}
-
-void cancelAttack()
-{
-    gameSessionState().cancelAttack();
-}
-
-void cancelFollow()
-{
-    gameSessionState().cancelFollow();
-}
-
-void cancelMarketOffer(uint32_t timestamp, uint16_t counter)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendMarketCancelOffer(timestamp, counter);
-}
-
-void changeOutfitAndMount(const Outfit& outfit, bool mounted, bool randomMount)
-{
-    gameSessionState().changeOutfitAndMount(outfit, mounted, randomMount);
 }
 
 void clearImbuement(uint8_t slot)
@@ -148,40 +83,11 @@ void clearImbuement(uint8_t slot)
         return;
     gameclient::sendClearImbuement(slot);
 }
-void closeById(const int containerId)
-{
-    if (!canPerformGameAction() || containerId < 0)
-        return;
-
-    gameclient::sendCloseContainer(static_cast<uint8_t>(containerId));
-}
-
 void closeImbuingWindow()
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendCloseImbuingWindow();
-}
-
-void closeNpcChannel()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendCloseNpcChannel();
-}
-
-void closeNpcTrade()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendCloseNpcTrade();
-}
-
-void configureShowOffSocket(const Position& pos, uint16_t itemId, uint8_t stackpos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendConfigureShowOffSocket(pos, itemId, stackpos);
 }
 
 void confirmCharacterTradeConfiguration(uint32_t price, uint32_t endTimestamp, const std::vector<std::tuple<uint16_t, uint8_t>>& items, const std::vector<std::tuple<uint16_t, uint8_t>>& storeItems, const std::vector<uint16_t>& highlights, bool createAuction)
@@ -192,25 +98,11 @@ void confirmCharacterTradeConfiguration(uint32_t price, uint32_t endTimestamp, c
                                                           storeItems, highlights);
 }
 
-void createMarketOffer(uint8_t type, uint16_t itemId, uint8_t itemTier, uint16_t amount, uint64_t price, uint8_t anonymous)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendMarketCreateOffer(type, itemId, itemTier, amount, price, anonymous);
-}
-
 void editGuildMessage(std::string_view text)
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendEditGuildMessage(text);
-}
-
-void editList(uint32_t id, uint8_t doorId, std::string_view text)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendEditList(id, doorId, text);
 }
 
 void editText(uint32_t id, std::string_view text)
@@ -233,47 +125,11 @@ void follow(uint32_t creatureId)
     gameSessionState().follow(creatureId);
 }
 
-void forgeRequest(tibia::client::ForgeAction_t actionType, bool convergence, uint16_t firstItemid, uint8_t firstItemTier, uint16_t secondItemId, bool improveChance, bool tierLoss)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendForgeRequest(actionType, convergence, firstItemid, firstItemTier, secondItemId, improveChance, tierLoss);
-}
-
-void gatherAll(const Position& pos, uint16_t itemId, uint8_t stackpos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendGatherAll(pos, itemId, stackpos);
-}
-
-void gemAction(uint8_t actionType, uint16_t param, uint8_t pos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendWheelGemAction(actionType, param, pos);
-}
-
-void inspectNpcTrade(const uint16_t typeId, const uint8_t count)
-{
-    if (!canPerformGameAction() || typeId == 0)
-        return;
-
-    gameclient::sendInspectNpcTrade(typeId, count);
-}
-
 void inspectTrade(bool counterOffer, uint8_t index)
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendInspectTrade(counterOffer, index);
-}
-
-void inspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendInspectionNormalObject(location);
 }
 
 void inspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount)
@@ -295,49 +151,6 @@ void inviteToOwnChannel(const std::string_view name)
     gameclient::sendInviteToOwnChannel(name);
 }
 
-bool isFollowing()
-{
-    return gameSessionState().isFollowing();
-}
-
-void joinChannel(uint16_t channelId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendJoinChannel(channelId);
-}
-
-void leaveChannel(uint16_t channelId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendLeaveChannel(channelId);
-}
-void leaveMarket()
-{
-    if (!canPerformGameAction())
-        return;
-
-    gameclient::sendMarketLeave();
-}
-
-void lookCreature(uint32_t creatureId, bool isBattleList)
-{
-    gameSessionState().lookCreature(creatureId, isBattleList);
-}
-void lookMapObject(const Position& position, const uint16_t itemId, const int stackPos)
-{
-    if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
-        return;
-    gameclient::sendLook(position, itemId, static_cast<uint8_t>(stackPos));
-}
-
-void openOwnChannel()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendOpenOwnChannel();
-}
 void openStore(uint8_t serviceType, std::string_view category)
 {
     if (!canPerformGameAction())
@@ -350,13 +163,6 @@ void openTransactionHistory(uint8_t entriesPerPage)
     if (!canPerformGameAction())
         return;
     gameclient::sendOpenTransactionHistory(entriesPerPage);
-}
-
-void partyDisband()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendDisbandParty();
 }
 
 void preyAction(uint8_t slot, uint8_t actionType, uint16_t index)
@@ -427,54 +233,11 @@ void requestBosstiaryInfo()
     gameclient::sendRequestBosstiaryInfo();
 }
 
-void requestChannels()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestChannels();
-}
-
 void requestCharacterTradeConfiguration(uint8_t action)
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendCharacterTradeConfigurationAction(action);
-}
-
-void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendGetRewardDaily(bonusShrine, items);
-}
-
-void requestGuildMessage()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendGetGuildMessage();
-}
-
-void requestItemInfo(const uint16_t typeId, const uint8_t subType, const uint8_t index)
-{
-    if (!canPerformGameAction() || typeId == 0)
-        return;
-
-    gameclient::sendRequestItemInfo(typeId, subType, index);
-}
-
-void requestOpenRewardHistory()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendOpenRewardHistory();
-}
-
-void requestOutfit()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestOutfit();
 }
 
 void requestQuestLine(uint16_t questId)
@@ -489,13 +252,6 @@ void requestQuestLog()
     if (!canPerformGameAction())
         return;
     gameclient::sendRequestQuestLog();
-}
-
-void requestResourceBalance(uint8_t resourceType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestResourceBalance(resourceType);
 }
 
 void requestSendBuyCharmRune(uint8_t runeId, uint8_t action, uint16_t raceId)
@@ -528,26 +284,6 @@ void requestSendCharacterInfo(uint32_t playerId, tibia::client::CyclopediaCharac
         handler->sendOpenCharacterInfo(playerId, characterInfoType);
 }
 
-void requestSendCyclopediaHouseAuction(tibia::client::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp, uint64_t bidValue, std::string_view name)
-{
-    if (!canPerformGameAction())
-        return;
-    auto* H = cyclopediaHandler();
-    if (!H)
-        return;
-    const QString text = QString::fromUtf8(name.data(), static_cast<qsizetype>(name.size()));
-    switch (type) {
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE: H->sendRequestTownHouses(text); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID: H->sendHouseBid(houseId, bidValue); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT: H->sendHouseMoveOut(houseId, timestamp); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER: H->sendHouseTransfer(houseId, timestamp, text, bidValue); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT: H->sendHouseCancelMoveOut(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER: H->sendHouseCancelTransfer(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER: H->sendHouseAcceptTransfer(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER: H->sendHouseRejectTransfer(houseId); break;
-    }
-}
-
 void requestSetCharacterTitle(uint8_t titleId)
 {
     if (!canPerformGameAction())
@@ -555,47 +291,11 @@ void requestSetCharacterTitle(uint8_t titleId)
     gameclient::sendFriendSystemAction(0x0E, titleId);
 }
 
-void requestStoreOffers(const std::string_view categoryName, const std::string_view subCategory, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestStoreOffers(categoryName, subCategory, sortOrder, serviceType);
-}
-
-void requestTradeAt(const Position& position, const uint16_t itemId, const int stackPos, const uint32_t creatureId)
-{
-    if (!canPerformGameAction() || itemId == 0 || stackPos < 0 || !creatureId)
-        return;
-
-    gameclient::sendRequestTrade(position, itemId, static_cast<uint8_t>(stackPos), creatureId);
-}
-
 void requestTransactionDetails(uint32_t transactionId)
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendGetTransactionDetails(transactionId);
-}
-
-void requestTransactionHistory(uint32_t page, uint32_t entriesPerPage)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestTransactionHistory(page, entriesPerPage);
-}
-
-void rotateMapObject(const Position& position, const uint16_t itemId, const int stackPos)
-{
-    if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
-        return;
-    gameclient::sendRotateItem(position, itemId, static_cast<uint8_t>(stackPos));
-}
-
-void seekInContainer(uint8_t containerId, uint16_t index)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendSeekInContainer(containerId, index);
 }
 
 void selectImbuementItem(uint16_t itemId, const Position& pos, uint8_t stackpos)
@@ -611,21 +311,6 @@ void selectImbuementScroll()
         return;
     gameclient::sendImbuementWindowAction(tibia::client::IMBUEMENT_WINDOW_SCROLL);
 }
-void sellItem(const uint16_t typeId, const uint8_t subType, const uint16_t amount, const bool ignoreEquipped)
-{
-    if (!canPerformGameAction() || typeId == 0)
-        return;
-
-    gameclient::sendSellItem(typeId, subType, amount, ignoreEquipped);
-}
-
-void sendContainerAction(uint8_t action, uint8_t containerId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendContainerAction(action, containerId);
-}
-
 void sendCyclopediaMapDonate(uint16_t areaId, uint32_t amount)
 {
     if (!canPerformGameAction())
@@ -649,24 +334,6 @@ void sendCyclopediaMapRequestArea(uint16_t subAreaId)
     if (auto* handler = cyclopediaHandler())
         handler->sendRequestMapArea(subAreaId);
 }
-void sendExivaOptions(const bool allowAll, const bool allowOwnGuild, const bool allowOwnParty, const bool allowVipList, const bool allowPlayerWhitelist, const bool allowGuildWhitelist, const std::vector<std::string>& characterWhiteList, const std::vector<std::string>& removeCharacter, const std::vector<std::string>& guildWhiteList, const std::vector<std::string>& removeGuild)
-{
-    if (!canPerformGameAction() || !canExivaOptions())
-        return;
-
-    gameclient::sendExivaRestrictions(
-        allowAll, allowOwnGuild, allowOwnParty, allowVipList,
-        allowPlayerWhitelist, allowGuildWhitelist,
-        characterWhiteList, removeCharacter, guildWhiteList, removeGuild);
-}
-
-void sendForgeBrowseHistoryRequest(uint16_t page)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendForgeBrowseHistoryRequest(page);
-}
-
 void sendOpenRewardWall()
 {
     if (!canPerformGameAction())
@@ -689,82 +356,6 @@ void sendPartyAnalyzerReset()
         handler->sendResetPartyHuntAnalyser();
 }
 
-void sendQuickLootAt(uint8_t variant, const Position& position, uint16_t itemId, int stackPos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendQuickLoot(variant, position, itemId, static_cast<uint8_t>(std::max(0, stackPos)));
-}
-
-void sendRequestStoreHome()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestStoreHome();
-}
-
-void sendRequestStoreOfferById(const uint32_t offerId, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestStoreOfferById(offerId, sortOrder, serviceType);
-}
-
-void sendRequestStorePremiumBoost()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestStorePremiumBoost();
-}
-
-void sendRequestStoreSearch(const std::string_view searchText, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestStoreSearch(searchText, sortOrder, serviceType);
-}
-void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, const bool autoTrackNewQuests, const bool autoUntrackCompletedQuests, const uint8_t extra)
-{
-    if (!canPerformGameAction()) {
-        return;
-    }
-
-    gameclient::sendRequestTrackerQuestLog(
-        missionIds,
-        autoTrackNewQuests,
-        autoUntrackCompletedQuests,
-        extra
-    );
-}
-
-void sendRequestUsefulThings(const uint8_t serviceType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRequestUsefulThings(serviceType);
-}
-
-void sendStartOfflineTraining(const uint8_t skillType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendStartOfflineTraining(skillType);
-}
-
-void sendTeleport(const Position& pos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendTeleport(pos);
-}
-
-void sendTutorialChangeVocation(uint8_t vocationClientId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendTutorialChangeVocation(vocationClientId);
-}
-
 void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId)
 {
     if (!canPerformGameAction())
@@ -784,13 +375,6 @@ void sendWeaponProficiencySlotAction(uint8_t actionType, uint16_t itemId, uint8_
     if (!canPerformGameAction())
         return;
     gameclient::sendWeaponProficiencySlotAction(actionType, itemId, level, perkPosition, offerIndex);
-}
-
-void setClientOption(uint8_t option, bool value)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendSetClientOptions(option, value);
 }
 
 void setCreaturePodiumConfiguration(uint32_t monsterRaceId, const Position& pos, uint16_t itemId, uint8_t stackpos, uint8_t direction, uint8_t podiumVisible, uint8_t monsterVisible)
@@ -830,62 +414,6 @@ void talkChannel(const tibia::client::MessageMode mode, const uint16_t channelId
 
     gameclient::sendTalk(mode, channelId, "", message);
 }
-void talkPrivate(const tibia::client::MessageMode mode, const std::string_view receiver, const std::string_view message)
-{
-    if (!canPerformGameAction() || receiver.empty() || message.empty())
-        return;
-
-    gameclient::sendTalk(mode, 0, receiver, message);
-}
-
-void transferCoins(std::string_view recipient, uint32_t amount)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendTransferCoins(recipient, amount);
-}
-void useInventoryItem(const uint16_t itemId)
-{
-    if (!canPerformGameAction() || !tibia::game::isValidDatId(itemId, ThingCategoryItem))
-        return;
-
-    const auto& pos = Position(0xFFFF, 0, 0); // means that is a item in inventory
-    gameclient::sendUseItem(pos, itemId, 0, gameSessionState().findEmptyContainerId());
-
-    tibia::game::notify("onUse", pos, itemId, 0, 0);
-}
-void useMapObjectOnCreature(const Position& from, const uint16_t fromId, const int fromStack, const uint32_t creatureId)
-{
-    if (!canPerformGameAction() || !from.isValid() || fromId == 0 || fromStack < 0 || !creatureId)
-        return;
-    gameclient::sendUseOnCreature(from, fromId, static_cast<uint8_t>(fromStack), creatureId);
-}
-void useWithMapObject(const Position& from, const uint16_t fromId, const int fromStack, const Position& to, const uint16_t toId, const int toStack)
-{
-    if (!canPerformGameAction() || !from.isValid() || fromId == 0 || fromStack < 0 || !to.isValid() || toId == 0
-        || toStack < 0)
-        return;
-    gameclient::sendUseItemWith(from, fromId, static_cast<uint8_t>(fromStack), to, toId,
-                                    static_cast<uint8_t>(toStack));
-    tibia::game::notify("onUseWith", from, fromId, to, fromStack);
-}
-void wrapMapObject(const Position& position, const uint16_t itemId, const int stackPos)
-{
-    if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
-        return;
-    gameclient::sendOnWrapItem(position, itemId, static_cast<uint8_t>(stackPos));
-}
-
-int getProtocolVersion()
-{
-    return gameSessionState().getProtocolVersion();
-}
-
-bool isUsingProtobuf()
-{
-    return gameSessionState().isUsingProtobuf();
-}
-
 int getPing()
 {
     // The live game server session's round trip time; -1 without one.
@@ -918,16 +446,6 @@ std::string getWorldName()
     return gameSessionState().getWorldName();
 }
 
-uint8_t getWalkMaxSteps()
-{
-    return gameSessionState().getWalkMaxSteps();
-}
-
-void setWalkMaxSteps(const uint8_t v)
-{
-    gameSessionState().setWalkMaxSteps(v);
-}
-
 int getBugReportState()
 {
     return gameSessionState().getBugReportState();
@@ -936,16 +454,6 @@ int getBugReportState()
 void setBugReportState(const int state)
 {
     gameSessionState().setBugReportState(state);
-}
-
-uint16_t getServerBeat()
-{
-    return gameSessionState().getServerBeat();
-}
-
-void setServerBeat(const uint16_t beat)
-{
-    gameSessionState().setServerBeat(beat);
 }
 
 void setExpertPvpMode(const bool enable)
@@ -978,19 +486,9 @@ uint8_t takeNextTalkAimMode()
     return gameSessionState().takeNextTalkAimMode();
 }
 
-void resetMapUpdatedAt()
-{
-    gameSessionState().resetMapUpdatedAt();
-}
-
 void updateMapLatency()
 {
     gameSessionState().updateMapLatency();
-}
-
-void requestStop()
-{
-    gameSessionState().requestStop();
 }
 
 } // namespace game

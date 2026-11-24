@@ -236,7 +236,7 @@ public:
 
     /// The session's prey storage, or null.
     prey::TPreyStorage* storage() const { return m_storage; }
-    /// The gold or wildcard balance changed (onResourcesBalanceChange).
+    /// The gold or wildcard balance changed (TGameNotify::resourcesBalanceChanged).
     void onBalanceChanged();
 
     int preyWildcards() const override;

@@ -268,9 +268,7 @@ public:
     /// `blessings`: the protocol's bit mask.
     void updateBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
     void updateSoul(uint8_t soul);
-    /// Stores a skill of the skills message through setSkill and fires
-    /// onMagicLevelChange / onBaseMagicLevelChange (magic level) or
-    /// onSkillChange / onBaseSkillChange (fighting skills, fishing).
+    /// Stores a skill of the skills message through setSkill.
     void updateSkill(int skillType, double level, double baseLevel, double loyalty, double percent);
     void setExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value);
     void updateBaseSpeed(uint16_t baseSpeed);

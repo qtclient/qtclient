@@ -4,7 +4,6 @@
 
 // CIP-named questlog surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -33,9 +32,6 @@ class IClockService;
 
 namespace tibia {
 namespace questlog {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 using TQuestLineID = int;

@@ -407,7 +407,6 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     , m_proxy(new TBattleListDataModelSortFilterProxy(this))
     , m_renameDialog(new TGenericEnterTextDialogController(this))
 {
-    creatures::ownProductSurface(this);
     m_renameDialog->setCaption(qtTrId("battlelist_rename"));
     m_renameDialog->setDescription(qtTrId("battlelist_rename_text"));
     m_renameDialog->setMaxInputLength(30);

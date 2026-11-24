@@ -314,16 +314,15 @@ if(TIBIA_WITH_GAMECORE)
   target_sources(tibia PRIVATE
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
-    shared/sharedciptypes.cpp shared/sharedciptypes.h
+    shared/sharedciptypes.h
     shared/iodevicereader.cpp shared/iodevicereader.h
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
     config/clientsettings.cpp config/clientsettings.h
     config/tibiaconfig.cpp config/tibiaconfig.h
     app/smokeactions.cpp app/smokeactions.h
-    config/configciptypes.cpp config/configciptypes.h
+    config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
-    sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
     sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
     sessiondump/sessiondumpasyncloaderprotocol.cpp
     sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
@@ -341,7 +340,6 @@ if(TIBIA_WITH_GAMECORE)
     sessiondump/sessiondumpreader.cpp sessiondump/sessiondumpreader.h
     sessiondump/sessiondumpreadersfactory.cpp sessiondump/sessiondumpreadersfactory.h
     sessiondump/sessiondumpprogressclockservice.cpp sessiondump/sessiondumpprogressclockservice.h
-    network/networkciptypes.cpp network/networkciptypes.h
     network/dualconnectionurlinfo.cpp network/dualconnectionurlinfo.h
     protocol/mapwire.cpp protocol/mapwire.h
     protocol/playerwire.cpp protocol/playerwire.h
@@ -364,11 +362,9 @@ if(TIBIA_WITH_GAMECORE)
     assets/assetfilesystemhelper.cpp assets/assetfilesystemhelper.h
     assets/assetasyncloader.cpp assets/assetasyncloader.h
     assets/assetasyncloaderworker.cpp assets/assetasyncloaderworker.h
-    assets/assetsciptypes.cpp assets/assetsciptypes.h
     assets/soundcatalog.cpp assets/soundcatalog.h
     assets/assetmanager.cpp assets/assetmanager.h
     assets/assethandler.cpp assets/assethandler.h
-    authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     authentication/emailcoderequestuploader.cpp authentication/emailcoderequestuploader.h
     authentication/loginconfirmationcoderequestuploader.cpp authentication/loginconfirmationcoderequestuploader.h
     authentication/authenticationandencryptioninfo.cpp authentication/authenticationandencryptioninfo.h
@@ -383,9 +379,7 @@ if(TIBIA_WITH_GAMECORE)
     taskboard/monsterlistmodelsortfilterproxy.cpp taskboard/monsterlistmodelsortfilterproxy.h
     taskboard/taskboardrewardlistmodel.cpp taskboard/taskboardrewardlistmodel.h
     news/newsciptypes.cpp news/newsciptypes.h
-    client/clientciptypes.cpp client/clientciptypes.h
     client/preventcloseeventfilter.cpp client/preventcloseeventfilter.h
-    common/commonciptypes.cpp common/commonciptypes.h
     common/plural.cpp common/plural.h
     common/pluralexception.h
     dailyreward/dailyrewardciptypes.cpp dailyreward/dailyrewardciptypes.h
@@ -404,12 +398,9 @@ if(TIBIA_WITH_GAMECORE)
     bossbestiary/bossbestiaryciptypes.cpp bossbestiary/bossbestiaryciptypes.h
     bossbestiary/bosstiarystorage.cpp bossbestiary/bosstiarystorage.h
     bossbestiary/bosstrackerstorage.cpp bossbestiary/bosstrackerstorage.h
-    exaltation/exaltationciptypes.cpp exaltation/exaltationciptypes.h
-    exivaoptions/exivaoptionsciptypes.cpp exivaoptions/exivaoptionsciptypes.h
     highscores/highscoresciptypes.cpp highscores/highscoresciptypes.h
     imbuing/imbuingciptypes.cpp imbuing/imbuingciptypes.h
     market/marketciptypes.cpp market/marketciptypes.h
-    prey/preyciptypes.cpp prey/preyciptypes.h
     prey/preydata.cpp prey/preydata.h
     prey/preystorage.cpp prey/preystorage.h
     prey/preyprotocolmessagehandler.cpp prey/preyprotocolmessagehandler.h
@@ -419,7 +410,6 @@ if(TIBIA_WITH_GAMECORE)
     screenshot/screenshotciptypes.cpp screenshot/screenshotciptypes.h
     spells/spellsciptypes.cpp spells/spellsciptypes.h
     proficiency/proficiencyciptypes.cpp proficiency/proficiencyciptypes.h
-    gameWidnow/gameWidnowciptypes.cpp gameWidnow/gameWidnowciptypes.h
     chat/chatchannel.cpp chat/chatchannel.h
     chat/chatmodemanager.cpp chat/chatmodemanager.h
     chat/chatprotocolmessagehandler.cpp chat/chatprotocolmessagehandler.h
@@ -444,7 +434,6 @@ if(TIBIA_WITH_GAMECORE)
     friends/friendsciptypes.cpp friends/friendsciptypes.h
     friends/friendlistmodels.cpp friends/friendlistmodels.h
     gamewindow/gamewindowciptypes.cpp gamewindow/gamewindowciptypes.h
-    gamewindow/anonymousciptypes.h
     gamewindow/remainingdialogs.cpp gamewindow/remainingdialogs.h
     gamewindow/gamesessiondisconnectreactioncontroller.cpp gamewindow/gamesessiondisconnectreactioncontroller.h
     gamewindow/whiteblacklistdialogcontroller.cpp gamewindow/whiteblacklistdialogcontroller.h
@@ -489,7 +478,6 @@ if(TIBIA_WITH_GAMECORE)
     game/playerdata.cpp game/playerdata.h
     game/playerskillstats.cpp game/playerskillstats.h
     game/tgamenotify.cpp game/tgamenotify.h
-    game/gameobject.cpp game/gameobject.h
     game/gamesession.cpp game/gamesession.h
     game/gamesession_localplayer_vitals.cpp
     game/gamesession_forward.cpp game/gamesession_forward.h
@@ -505,7 +493,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/actionbuttoncontroller.cpp gamewindow/actionbuttoncontroller.h
     gamewindow/assignactiondialogs.cpp gamewindow/assignactiondialogs.h
     input/keyboardshortcuthandler.cpp input/keyboardshortcuthandler.h
-    input/inputciptypes.cpp input/inputciptypes.h
+    input/inputciptypes.h
     input/playermovementintent.h
     input/clickareaeventfilter.cpp input/clickareaeventfilter.h
     input/eventfilters.cpp input/eventfilters.h
@@ -838,61 +826,11 @@ if(TIBIA_WITH_GAMECORE)
     sprites/resourcespritesmanager.cpp sprites/resourcespritesmanager.h
     sprites/qttextureatlastexturecreator.cpp sprites/qttextureatlastexturecreator.h
     sprites/spritesheetdecompressorconcurrentexception.h
-    shared/cip_typed.h
     shared/tibiaclipboardhelper.cpp shared/tibiaclipboardhelper.h
     shared/experiencegainchangetracker.h
     shared/nullexperiencegainchangetracker.h
     shared/nullexperienceperhourprovider.h
     shared/dynamicresourceshelper.cpp shared/dynamicresourceshelper.h
-    cip_ports/all_ports.cpp
-    cip_ports/native_port.h
-    cip_ports/animation_ports.h
-    cip_ports/appearances_ports.h
-    cip_ports/assets_ports.h
-    cip_ports/authentication_ports.h
-    cip_ports/bossbestiary_ports.h
-    cip_ports/chat_ports.h
-    cip_ports/client_ports.h
-    cip_ports/common_ports.h
-    cip_ports/config_ports.h
-    cip_ports/container_ports.h
-    cip_ports/creatures_ports.h
-    cip_ports/cyclopedia_ports.h
-    cip_ports/dailyreward_ports.h
-    cip_ports/effects_ports.h
-    cip_ports/exaltation_ports.h
-    cip_ports/exivaoptions_ports.h
-    cip_ports/friends_ports.h
-    cip_ports/game_ports.h
-    cip_ports/gameWidnow_ports.h
-    cip_ports/gamewindow_ports.h
-    cip_ports/highscores_ports.h
-    cip_ports/imbuing_ports.h
-    cip_ports/input_ports.h
-    cip_ports/market_ports.h
-    cip_ports/minimap_ports.h
-    cip_ports/network_ports.h
-    cip_ports/news_ports.h
-    cip_ports/prey_ports.h
-    cip_ports/proficiency_ports.h
-    cip_ports/protocol_ports.h
-    cip_ports/qmlcomponents_ports.h
-    cip_ports/questlog_ports.h
-    cip_ports/quickloot_ports.h
-    cip_ports/renderer_ports.h
-    cip_ports/reporting_ports.h
-    cip_ports/screenshot_ports.h
-    cip_ports/sessiondump_ports.h
-    cip_ports/shared_ports.h
-    cip_ports/skillwheel_ports.h
-    cip_ports/spells_ports.h
-    cip_ports/sprites_ports.h
-    cip_ports/store_ports.h
-    cip_ports/taskboard_ports.h
-    cip_ports/teamfinder_ports.h
-    cip_ports/trade_ports.h
-    cip_ports/tutorial_ports.h
-    cip_ports/worldmap_ports.h
     qmlcomponents/appearanceinstancerenderer.cpp qmlcomponents/appearanceinstancerenderer.h
     qmlcomponents/minimapquickitem.cpp qmlcomponents/minimapquickitem.h
     qmlcomponents/minimaprendererquickitem.cpp qmlcomponents/minimaprendererquickitem.h

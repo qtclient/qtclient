@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameaction.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 #include <protocol.pb.h>
@@ -174,7 +173,7 @@ private:
 
 /// The chat's game action candidates (CIP: chat::TChatGameActionProvider):
 /// v2 for a channel tab (or the empty tab bar), v3 for an entry of a channel.
-class TChatGameActionProvider final : public ::tibia::CipTyped
+class TChatGameActionProvider final
 {
 public:
     /// The name actions of a player entry (CIP +0x18, the generic chat

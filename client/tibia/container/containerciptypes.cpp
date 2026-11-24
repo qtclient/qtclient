@@ -39,15 +39,6 @@ QString capitalizeWords(const QString& name);
 namespace tibia::container {
 
 namespace {
-struct CipTypedKeep {
-    TContainer tContainer;
-};
-CipTypedKeep& typedKeep()
-{
-    static CipTypedKeep keep;
-    return keep;
-}
-
 TContainerStorage* g_containerStorage = nullptr;
 
 using ::tibia::protobuf::protocol::GameserverMessageChangeInContainer;
@@ -375,12 +366,6 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
             session->objectCountStorage()->setCounts(counts);
         tibia::game::notify("updateInventoryItems");
     }
-}
-
-void ownProductSurface(QObject* parent)
-{
-    (void)parent;
-    (void)typedKeep();
 }
 
 uint32_t TInventorySlot::durationRemainingSeconds() const

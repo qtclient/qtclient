@@ -3,7 +3,6 @@
 // client window exists (CIP: TGameClient creates them on its window-setup
 // timer and keeps them as its members).
 #include "client/gameclient.h"
-#include "client/clientciptypes.h"
 #include "game/gameactionrouter.h"
 #include "game/gamesessionbase.h"
 #include "game/sessionhooks.h"
@@ -73,7 +72,8 @@
 #include "gamewindow/infobannercontroller.h"
 #include "gamewindow/linkcopywarningdialogcontroller.h"
 #include "gamewindow/servermodaldialogcontroller.h"
-#include "prey/preyciptypes.h"
+#include "prey/preygameactionhandler.h"
+#include "prey/preyprotocolmessagehandler.h"
 #include "qmlcomponents/minimaprendererquickitem.h"
 #include "gamewindow/killtrackerwidgetcontroller.h"
 #include "gamewindow/loottrackingwidgetcontroller.h"

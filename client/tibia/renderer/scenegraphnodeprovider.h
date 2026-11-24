@@ -1,7 +1,6 @@
 #pragma once
 
 #include "renderer/worldmaprenderprovider.h"
-#include "shared/cip_typed.h"
 
 #include <QColor>
 
@@ -23,7 +22,7 @@ class THighlightedSpriteScenegraphNode;
 
 /// Nodes of one kind taken off the scene graph, for reuse (CIP renderer::TQSGNodePool).
 template<typename NodeT>
-class TQSGNodePool final : public ::tibia::CipTyped
+class TQSGNodePool final
 {
 public:
     TQSGNodePool() = default;
@@ -60,7 +59,7 @@ private:
 
 /// Hands out scene graph nodes of one window, reusing the ones given back
 /// (CIP renderer::TScenegraphNodeProvider). Render thread only.
-class TScenegraphNodeProvider final : public ::tibia::CipTyped
+class TScenegraphNodeProvider final
 {
 public:
     /// Makes the empty texture image nodes show until they get a sprite.

@@ -2,7 +2,6 @@
 
 // CIP-named store surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 #include "store/storestorage.h"
 
 #include <cip_gen.h>
@@ -15,9 +14,6 @@
 
 namespace tibia {
 namespace store {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// The offer descriptions the server sent, by offer id (CIP:
 /// store::TStoreDescriptionManager). A description not known yet is asked

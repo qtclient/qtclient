@@ -35,9 +35,6 @@ uint16_t invisibleTicksPerFrame();
 uint16_t itemTicksPerFrame();
 uint16_t effectTicksPerFrame();
 uint16_t missileTicksPerFrame();
-uint16_t animatedTextDuration();
-uint16_t staticDurationPerCharacter();
-uint16_t minStaticTextDuration();
 
 
 } // namespace config

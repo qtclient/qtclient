@@ -2,7 +2,6 @@
 
 // CIP friends:: data types, storages and the FriendSystemData (S 0x74) handler.
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -17,9 +16,6 @@
 
 namespace tibia {
 namespace friends {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// CIP friends::TAccountCharacterListEntry: one character of an account (a
 /// friend's main character, or a character of an account search result).

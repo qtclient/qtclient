@@ -26,9 +26,6 @@ struct RuntimeGameConfigState {
     uint16_t itemTicksPerFrame{ 75 };
     uint16_t effectTicksPerFrame{ 75 };
     uint16_t missileTicksPerFrame{ 75 };
-    uint16_t animatedTextDuration{ 1000 };
-    uint16_t staticDurationPerCharacter{ 60 };
-    uint16_t minStaticTextDuration{ 3000 };
 };
 
 RuntimeGameConfigState& state()
@@ -63,9 +60,6 @@ void initRuntimeGameConfig()
     s.itemTicksPerFrame = 75;
     s.effectTicksPerFrame = 75;
     s.missileTicksPerFrame = 75;
-    s.animatedTextDuration = 1000;
-    s.staticDurationPerCharacter = 60;
-    s.minStaticTextDuration = 3000;
 }
 
 void terminateRuntimeGameConfig() {}
@@ -92,9 +86,6 @@ uint16_t invisibleTicksPerFrame() { return state().invisibleTicksPerFrame; }
 uint16_t itemTicksPerFrame() { return state().itemTicksPerFrame; }
 uint16_t effectTicksPerFrame() { return state().effectTicksPerFrame; }
 uint16_t missileTicksPerFrame() { return state().missileTicksPerFrame; }
-uint16_t animatedTextDuration() { return state().animatedTextDuration; }
-uint16_t staticDurationPerCharacter() { return state().staticDurationPerCharacter; }
-uint16_t minStaticTextDuration() { return state().minStaticTextDuration; }
 
 } // namespace config
 } // namespace tibia

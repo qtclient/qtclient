@@ -59,73 +59,6 @@ struct AwareRange
     { return left == other.left && top == other.top && right == other.right && bottom == other.bottom; }
 };
 
-// Tibia-like Interface -> HUD creature-info options of one map view. They filter the view's
-// draw flags per creature (own character vs. everyone else) and pick what drawInformation shows.
-struct CreatureHudOptions
-{
-    bool ownHud{ true };
-    bool otherHud{ true };
-    bool ownBars{ true };
-    bool ownName{ true };
-    bool ownHealth{ true };
-    bool ownMana{ true };
-    bool ownHarmony{ true };
-    bool ownMarks{ true };
-    bool otherName{ true };
-    bool otherHealth{ true };
-    bool otherMarks{ true };
-    bool otherNpcIcons{ true };
-
-    int filterDrawFlags(const bool localPlayer, int drawFlags) const
-    {
-        if (localPlayer) {
-            if (!ownHud)
-                return drawFlags & ~tibia::client::DrawCreatureInfo;
-            if (!ownName)
-                drawFlags &= ~tibia::client::DrawNames;
-            if (!(ownBars || ownHealth || ownMana))
-                drawFlags &= ~tibia::client::DrawBars;
-            if (!ownMana)
-                drawFlags &= ~tibia::client::DrawManaBar;
-            if (!ownHarmony)
-                drawFlags &= ~tibia::client::DrawHarmony;
-            return drawFlags;
-        }
-        if (!otherHud)
-            return drawFlags & ~tibia::client::DrawCreatureInfo;
-        if (!otherName)
-            drawFlags &= ~tibia::client::DrawNames;
-        if (!otherHealth)
-            drawFlags &= ~tibia::client::DrawBars;
-        return drawFlags & ~(tibia::client::DrawManaBar | tibia::client::DrawHarmony);
-    }
-};
-
-struct MapPosInfo
-{
-    QRect rect;
-    QRect srcRect;
-    QPoint drawOffset;
-    float horizontalStretchFactor;
-    float verticalStretchFactor;
-    float scaleFactor;
-    CreatureHudOptions hud;
-
-    bool isInRange(const Position& pos, const bool ignoreZ = false) const
-    {
-        return camera.isInRange(pos, awareRange.left - 1, awareRange.right - 2, awareRange.top - 1, awareRange.bottom - 2, ignoreZ);
-    }
-
-    bool isInRangeEx(const Position& pos, const bool ignoreZ = false)  const
-    {
-        return camera.isInRange(pos, awareRange.left, awareRange.right, awareRange.top, awareRange.bottom, ignoreZ);
-    }
-
-private:
-    Position camera;
-    AwareRange awareRange;
-};
-
 struct RaceType
 {
     uint32_t raceId{ 0 };
@@ -229,12 +162,6 @@ struct CyclopediaHouseEntry
     uint8_t cancelMoveOutDisableReason{ 0 };
 };
 
-struct PreyMonster
-{
-    std::string name;
-    Outfit outfit;
-};
-
 /// Crystal/CIP OutfitMemorial (S 0xB0) body — golden + token outfit tabs.
 struct OutfitMemorialData
 {
@@ -255,23 +182,6 @@ struct OutfitMemorialData
     std::vector<std::string> fullTokenOutfitOwners;
 };
 
-struct TaskBoardShopItemData
-{
-    uint8_t id{ 0 };
-    uint8_t offerType{ 0 };
-    std::string title;
-    std::string description;
-    uint32_t price{ 0 };
-    uint8_t bought{ 0 };
-    uint32_t lookType{ 0 };
-    uint8_t lookAddons{ 0 };
-    uint32_t itemId{ 0 };
-    uint32_t optionalItemId{ 0 };
-    uint16_t maxPurchases{ 0 };
-    uint16_t currentPurchases{ 0 };
-    uint32_t nextCost{ 0 };
-};
-
 struct Imbuement
 {
     uint32_t id;
@@ -289,55 +199,6 @@ struct Imbuement
     uint32_t protectionCost;
 };
 
-struct MarketData
-{
-    std::string name;
-    ITEM_CATEGORY category;
-    uint16_t requiredLevel;
-    uint16_t restrictVocation;
-    uint16_t showAs;
-    uint16_t tradeAs;
-};
-
-struct NPCData
-{
-    std::string name;
-    std::string location;
-    uint32_t salePrice;
-    uint32_t buyPrice;
-    uint32_t currencyObjectTypeId;
-    std::string currencyQuestFlagDisplayName;
-};
-
-enum KeywordButtonIcon : uint16_t
-{
-    KEYWORDBUTTONICON_GENERALTRADE = 0,
-    KEYWORDBUTTONICON_POTIONTRADE = 1,
-    KEYWORDBUTTONICON_EQUIPMENTTRADE = 2,
-    KEYWORDBUTTONICON_SAIL = 3,
-    KEYWORDBUTTONICON_DEPOSITALL = 4,
-    KEYWORDBUTTONICON_WITHDRAW = 5,
-    KEYWORDBUTTONICON_BALANCE = 6,
-    KEYWORDBUTTONICON_YES = 7,
-    KEYWORDBUTTONICON_NO = 8,
-    KEYWORDBUTTONICON_BYE = 9,
-    KEYWORDBUTTONICON_LAST
-};
-
-struct MarketOffer
-{
-    uint32_t timestamp = 0;
-    uint16_t counter = 0;
-    uint8_t action = 0;
-    uint16_t itemId = 0;
-    uint16_t amount = 0;
-    uint64_t price = 0;
-    std::string playerName;
-    uint8_t state = 0;
-    uint16_t var = 0;
-    uint8_t itemTier = 0;
-};
-
 struct Light
 {
     Light() = default;
@@ -353,194 +214,6 @@ struct BossCooldownData
 
     BossCooldownData(uint32_t raceId, uint64_t cooldown)
         : bossRaceId(raceId), cooldownTime(cooldown) {}
-};
-
-struct PartyMemberData
-{
-    uint32_t memberID;
-    uint8_t highlight;
-    uint64_t loot;
-    uint64_t supply;
-    uint64_t damage;
-    uint64_t healing;
-
-    PartyMemberData(uint32_t id, uint8_t highlightValue, uint64_t lootValue, uint64_t supplyValue, uint64_t damageValue, uint64_t healingValue)
-        : memberID(id), highlight(highlightValue), loot(lootValue), supply(supplyValue), damage(damageValue), healing(healingValue) {}
-};
-
-struct PartyMemberName
-{
-    uint32_t memberID;
-    std::string memberName;
-
-    PartyMemberName(uint32_t id, const std::string& name)
-        : memberID(id), memberName(name) {}
-};
-
-struct StoreCategory
-{
-    std::string name;
-    std::vector<StoreCategory> subCategories;
-    uint8_t state;
-    std::vector<std::string> icons;
-    std::string parent;
-};
-
-struct SubOffer
-{
-    uint32_t id;
-    uint16_t count;
-    uint32_t price;
-    uint8_t coinType;
-    bool disabled;
-    uint16_t disabledReason;
-    uint16_t reasonIdDisable;
-    uint8_t state;
-    uint32_t validUntil;
-    uint32_t basePrice;
-    std::string name;         // oldProtocol
-    std::string description;  // oldProtocol
-    std::vector<std::string> icons; // oldProtocol
-    std::string parent;       // oldProtocol
-};
-
-struct StoreProduct
-{
-    std::string name;
-    uint8_t type{};
-    std::string icon;
-    uint16_t typeId{};
-    uint8_t sex{};
-    uint16_t maleOutfitId{}, femaleOutfitId{};
-    uint8_t outfitHead{}, outfitBody{}, outfitLegs{}, outfitFeet{};
-};
-
-struct StoreOffer
-{
-    std::string name;
-    std::vector<SubOffer> subOffers;
-    uint32_t id;
-    std::string description;
-    uint32_t price; // oldProtocol
-    uint8_t state; // oldProtocol
-    uint32_t basePrice; // oldProtocol
-    bool disabled; // oldProtocol
-    std::string reasonIdDisable; // oldProtocol
-    uint8_t type;
-    std::string icon;
-    uint16_t mountId;
-    uint16_t itemId;
-    uint16_t outfitId;
-    uint8_t outfitHead, outfitBody, outfitLegs, outfitFeet;
-    uint8_t sex;
-    uint16_t maleOutfitId, femaleOutfitId;
-    uint8_t tryOnType;
-    uint16_t collection;
-    uint16_t popularityScore;
-    uint32_t stateNewUntil;
-    bool configurable;
-    uint16_t productsCapacity;
-    std::vector<StoreProduct> products;
-};
-
-struct HomeOffer
-{
-    std::string name;
-    uint8_t unknownByte;
-    uint32_t id;
-    uint16_t unknownU16;
-    uint32_t price;
-    uint8_t coinType;
-    uint16_t disabledReasonIndex;
-    uint8_t unknownByte2;
-    uint8_t type;
-    std::string icon;
-    uint16_t mountClientId;
-    uint16_t itemType;
-    uint16_t sexId;
-    struct { uint8_t lookHead, lookBody, lookLegs, lookFeet; } outfit;
-    uint8_t tryOnType;
-    uint16_t collection;
-    uint16_t popularityScore;
-    uint32_t stateNewUntil;
-    uint8_t userConfiguration;
-    uint16_t productsCapacity;
-    // Every quantity of the offer; the fields above mirror the first one.
-    std::vector<SubOffer> subOffers;
-    bool disabled{};
-    uint8_t sex{};
-    uint16_t maleOutfitId{}, femaleOutfitId{};
-    std::vector<StoreProduct> products;
-};
-
-struct Banner
-{
-    std::string image;
-    uint8_t bannerType;
-    uint32_t offerId;
-    uint8_t unknownByte1, unknownByte2;
-};
-
-struct StoreData
-{
-    std::string categoryName;
-    uint32_t redirectId;
-    std::vector<std::string> disableReasons;
-    std::vector<HomeOffer> homeOffers;
-    std::vector<StoreOffer> storeOffers;
-    std::vector<Banner> banners;
-    uint8_t bannerDelay;
-    bool tooManyResults;
-    std::vector<std::string> menuFilter;
-};
-
-struct CyclopediaCharacterGeneralStats
-{
-    uint64_t experience;
-    uint16_t level;
-    uint16_t levelPercent;
-    uint16_t baseExpGain;
-    uint16_t lowLevelExpBonus;
-    uint16_t XpBoostPercent;
-    uint16_t staminaExpBonus;
-    uint16_t XpBoostBonusRemainingTime;
-    uint8_t canBuyXpBoost;
-    uint32_t health;
-    uint32_t maxHealth;
-    uint32_t mana;
-    uint32_t maxMana;
-    uint8_t soul;
-    uint16_t staminaMinutes;
-    uint16_t regenerationCondition;
-    uint16_t offlineTrainingTime;
-    uint16_t speed;
-    uint16_t baseSpeed;
-    uint32_t capacity;
-    uint32_t baseCapacity;
-    uint32_t freeCapacity;
-    uint16_t magicLevel;
-    uint16_t baseMagicLevel;
-    uint16_t loyaltyMagicLevel;
-    uint16_t magicLevelPercent;
-};
-
-struct CyclopediaCharacterCombatStats
-{
-    uint8_t weaponElement;
-    uint16_t weaponMaxHitChance;
-    uint8_t weaponElementDamage;
-    uint8_t weaponElementType;
-    uint16_t defense;
-    uint16_t armor;
-    uint8_t haveBlessings;
-};
-
-struct CyclopediaBestiaryRace
-{
-    uint8_t race;
-    std::string bestClass;
-    uint16_t count;
-    uint16_t unlockedCount;
 };
 
 struct CharmData
@@ -565,14 +238,6 @@ struct BestiaryCharmsData
     uint32_t points;
     std::vector<CharmData> charms;
     std::vector<uint16_t> finishedMonsters;
-};
-
-struct BestiaryOverviewMonsters
-{
-    uint16_t id;
-    uint8_t currentLevel;
-    uint8_t occurrence;
-    uint16_t creatureAnimusMasteryBonus;
 };
 
 struct LootItem
@@ -619,42 +284,6 @@ struct BosstiaryData
     uint8_t isTrackerActived;
 };
 
-struct BosstiarySlot
-{
-    uint8_t bossRace;
-    uint32_t killCount;
-    uint16_t lootBonus;
-    uint8_t killBonus;
-    uint8_t bossRaceRepeat;
-    uint32_t removePrice;
-    uint8_t inactive;
-};
-
-struct BossUnlocked
-{
-    uint32_t bossId;
-    uint8_t bossRace;
-};
-
-struct BosstiarySlotsData
-{
-    uint32_t playerPoints;
-    uint32_t totalPointsNextBonus;
-    uint16_t currentBonus;
-    uint16_t nextBonus;
-    bool isSlotOneUnlocked;
-    uint32_t bossIdSlotOne;
-    std::optional<BosstiarySlot> slotOneData;
-    bool isSlotTwoUnlocked;
-    uint32_t bossIdSlotTwo;
-    std::optional<BosstiarySlot> slotTwoData;
-    bool isTodaySlotUnlocked;
-    uint32_t boostedBossId;
-    std::optional<BosstiarySlot> todaySlotData;
-    bool bossesUnlocked;
-    std::vector<BossUnlocked> bossesUnlockedData;
-};
-
 struct ItemSummary
 {
     uint16_t itemId;
@@ -678,57 +307,10 @@ struct RecentPvPKillEntry
     uint8_t status;
 };
 
-struct CyclopediaCharacterRecentPvPKills
-{
-    std::vector<RecentPvPKillEntry> entries;
-};
-
 struct RecentDeathEntry
 {
     uint32_t timestamp;
     std::string cause;
-};
-
-struct CyclopediaCharacterRecentDeaths
-{
-    std::vector<RecentDeathEntry> entries;
-};
-
-struct OutfitColorStruct
-{
-    uint8_t lookHead;
-    uint8_t lookBody;
-    uint8_t lookLegs;
-    uint8_t lookFeet;
-    uint8_t lookMountHead;
-    uint8_t lookMountBody;
-    uint8_t lookMountLegs;
-    uint8_t lookMountFeet;
-};
-
-struct CharacterInfoOutfits
-{
-    uint16_t lookType;
-    std::string name;
-    uint8_t addons;
-    uint8_t type;
-    uint32_t isCurrent;
-};
-
-struct CharacterInfoMounts
-{
-    uint16_t mountId;
-    std::string name;
-    uint8_t type;
-    uint32_t isCurrent;
-};
-
-struct CharacterInfoFamiliar
-{
-    uint16_t lookType;
-    std::string name;
-    uint8_t type;
-    uint32_t isCurrent;
 };
 
 struct ItemInspectionData
@@ -938,19 +520,6 @@ struct CyclopediaCharacterMiscStats
     std::vector<Augment> equippedAugments;
 };
 
-struct ForgeItemInfo
-{
-    uint16_t id{ 0 };
-    uint8_t tier{ 0 };
-    uint16_t count{ 0 };
-};
-
-struct ForgeTransferData
-{
-    std::vector<ForgeItemInfo> donors;
-    std::vector<ForgeItemInfo> receivers;
-};
-
 struct ForgeGradeData
 {
     uint8_t tier{ 0 };
@@ -967,19 +536,6 @@ struct ForgeClassTierPrices
 {
     uint8_t classId{ 0 };
     std::vector<ForgeTierPrice> tiers;
-};
-
-struct ForgeResultData
-{
-    uint8_t actionType{ 0 };
-    bool convergence{ false };
-    bool success{ false };
-    uint16_t leftItemId{ 0 };
-    uint8_t leftTier{ 0 };
-    uint16_t rightItemId{ 0 };
-    uint8_t rightTier{ 0 };
-    uint8_t bonus{ 0 };
-    uint8_t coreCount{ 0 };
 };
 
 struct ForgeConfigData
@@ -1002,52 +558,4 @@ struct ForgeConfigData
     uint8_t fusionChanceImproved{ 0 };
     uint8_t fusionReduceTierLoss{ 0 };
     bool hasConvergence{ false };
-};
-
-struct ForgeOpenData
-{
-    std::vector<ForgeItemInfo> fusionItems;
-    std::vector<std::vector<ForgeItemInfo>> convergenceFusion;
-    std::vector<ForgeTransferData> transfers;
-    std::vector<ForgeTransferData> convergenceTransfers;
-    uint16_t dustLevel{ 0 };
-};
-
-struct GemData {
-    uint16_t gemID = 0;
-    uint8_t locked = 0;
-    uint8_t gemDomain = 0;
-    uint8_t gemType = 0;
-    uint8_t lesserBonus = 0;
-    uint8_t regularBonus = 0;
-    uint8_t supremeBonus = 0;
-};
-
-struct WheelData
-{
-    uint32_t ownerId;
-    uint8_t canUse;
-    uint8_t options;     // 0=cannot change, 1=can inc/dec, 2=only inc
-    uint8_t vocationId;
-    uint16_t points;
-    uint16_t extraPoints;
-
-    std::array<uint16_t, static_cast<size_t>(tibia::client::WheelSlots_t::SLOT_LAST)> wheelPoints;
-
-    std::vector<std::pair<uint16_t, uint8_t>> promotionScrolls;
-    uint8_t extraPointsForMonkQuest;
-
-    std::vector<uint16_t> activeGems;
-
-    std::unordered_map<uint16_t, GemData> revealedGems;
-
-    std::unordered_map<uint8_t, uint8_t> basicGrades;
-    std::unordered_map<uint8_t, uint8_t> supremeGrades;
-};
-struct ForgeHistory
-{
-    uint32_t createdAt;
-    uint8_t actionType;
-    std::string description;
-    uint8_t bonus;
 };

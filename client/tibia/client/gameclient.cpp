@@ -19,7 +19,8 @@
 #include "questlog/questlogciptypes.h"
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
-#include "prey/preyciptypes.h"
+#include "prey/preygameactionhandler.h"
+#include "prey/preyprotocolmessagehandler.h"
 #include "news/newsstorage.h"
 #include "analysers/itempricestorage.h"
 #include "proficiency/proficiencystorage.h"
@@ -27,15 +28,13 @@
 #include "shared/tibiaurltools.h"
 
 #include <algorithm>
-#include "network/networkciptypes.h"
 #include "imbuing/imbuingciptypes.h"
 #include "highscores/highscoresciptypes.h"
-#include "gameWidnow/gameWidnowciptypes.h"
-#include "exivaoptions/exivaoptionsciptypes.h"
-#include "exaltation/exaltationciptypes.h"
+#include "exivaoptions/exivaoptionsgameactionhandler.h"
+#include "exivaoptions/exivaoptionsprotocolmessagehandler.h"
+#include "exaltation/exaltationgameactionhandler.h"
+#include "exaltation/exaltationprotocolmessagehandler.h"
 #include "dailyreward/dailyrewardciptypes.h"
-#include "common/commonciptypes.h"
-#include "client/clientciptypes.h"
 #include "crashhandler.h"
 #include "crashreportdata.h"
 #include "crashreportsender.h"
@@ -82,11 +81,9 @@
 #include "config/tibiaconfig.h"
 #include "appearances/appearanceinstance.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
-#include "authentication/authenticationciptypes.h"
 #include "authentication/cloudflarechallengecontroller.h"
 #include "authentication/emailcoderequestuploader.h"
 #include "authentication/loginconfirmationcoderequestuploader.h"
-#include "assets/assetsciptypes.h"
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -415,27 +412,6 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     connect(this, &TGameClient::characterSelectionClosed, m_gameHost, &runtime::TGameHost::characterSelectionClosed);
     connect(this, &TGameClient::characterSelectionRequested, m_gameHost, &runtime::TGameHost::characterSelectionRequested);
 
-    shared::ownProductSurface(this);
-    assets::ownProductSurface(this);
-    authentication::ownProductSurface(this);
-    client::ownProductSurface(this);
-    common::ownProductSurface(this);
-    container::ownProductSurface(this);
-    creatures::ownProductSurface(this);
-    dailyreward::ownProductSurface(this);
-    exaltation::ownProductSurface(this);
-    exivaoptions::ownProductSurface(this);
-    game::ownProductSurface(this);
-    gameWidnow::ownProductSurface(this);
-    imbuing::ownProductSurface(this);
-    network::ownProductSurface(this);
-    prey::ownProductSurface(this);
-    proficiency::ownProductSurface(this);
-    questlog::ownProductSurface(this);
-    screenshot::ownProductSurface(this);
-    spells::ownProductSurface(this);
-    teamfinder::ownProductSurface(this);
-    trade::ownProductSurface(this);
     // The process' storages and handlers above publish to the client's router.
     {
         game::TInternalGameActionRouter* router = m_pGameActionRouter->internalRouter();

@@ -5,7 +5,6 @@
 #include "bossbestiary/bosstiarystorage.h"
 #include "bossbestiary/bosstrackerstorage.h"
 #include "input/gameactionptr.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

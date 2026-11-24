@@ -2,7 +2,6 @@
 
 // CIP highscores: the server answer's storage and the message handler filling it.
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 

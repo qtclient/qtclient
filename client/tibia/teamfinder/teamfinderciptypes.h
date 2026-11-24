@@ -3,7 +3,6 @@
 // Team Finder: the leader's own team, the team listings, and the settings and
 // start-time objects the Join / Assemble pages bind to.
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -32,9 +31,6 @@ class TWhiteBlacklist;
 
 namespace tibia {
 namespace teamfinder {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// What a team assembles for: nothing yet, a boss, a hunting place, a quest, or something else.
 struct TTeamActivity

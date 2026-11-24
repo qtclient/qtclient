@@ -384,26 +384,6 @@ void TWorldMapStorage::addEffectAppearance(const tibia::appearances::TAppearance
     sessionState().addEffectAppearance(appearance, position);
 }
 
-void TWorldMapStorage::addStaticText(const StaticTextPtr& text, const Position& position)
-{
-    sessionState().addStaticText(text, position);
-}
-
-bool TWorldMapStorage::removeStaticText(const StaticTextPtr& text)
-{
-    return sessionState().removeStaticText(text);
-}
-
-void TWorldMapStorage::addAnimatedText(const AnimatedTextPtr& text, const Position& position)
-{
-    sessionState().addAnimatedText(text, position);
-}
-
-bool TWorldMapStorage::removeAnimatedText(const AnimatedTextPtr& text)
-{
-    return sessionState().removeAnimatedText(text);
-}
-
 WorldMapFieldList fieldsOnFloor(const int8_t floor)
 {
     return TWorldMapStorage::ensureStorage()->fieldList(floor);

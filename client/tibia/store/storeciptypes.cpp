@@ -2,15 +2,6 @@
 
 namespace tibia::store {
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 void TStoreDescriptionManager::setMessageHandler(TStoreProtocolMessageHandler* handler)
 {
     for (const QMetaObject::Connection& connection : m_connections)

@@ -5,7 +5,6 @@
 
 #include "input/gameactiondispatch.h"
 #include "input/gameaction.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -36,9 +35,6 @@ class TObjectAppearanceInstanceInfoStorage;
 
 namespace tibia {
 namespace dailyreward {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// A daily reward protocol value of the range 0..2 (the collect state, a
 /// history entry's kind); others throw std::invalid_argument.
@@ -80,8 +76,6 @@ private:
     int m_cosmeticTokens = 0;
     int m_bountyRerollTokens = 0;
 };
-
-class TDailyRewardPickItems final : public ::tibia::CipTyped {};
 
 /// One line of the reward history (CIP: TDailyRewardStorage's 0x28-byte
 /// entries). Type 1 is a change made by the support.

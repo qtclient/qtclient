@@ -26,15 +26,6 @@
 
 namespace tibia {
 namespace client {
-    enum OperatingSystem_t : uint16_t
-    {
-        CLIENTOS_NONE = 0,
-        // CipSoft OS ids (Crystal CLIENTOS_NEW_*).
-        CLIENTOS_TIBIA_NEW_LINUX = 4,
-        CLIENTOS_TIBIA_NEW_WINDOWS = 5,
-        CLIENTOS_TIBIA_NEW_MAC = 6,
-    };
-
     enum Operation : uint8_t
     {
         OPERATION_ADD, OPERATION_REMOVE, OPERATION_CLEAN
@@ -50,45 +41,6 @@ namespace client {
         DrawHarmony = 1 << 5,
         DrawThingsAndLights = DrawThings | DrawLights,
         DrawCreatureInfo = DrawBars | DrawNames | DrawManaBar | DrawHarmony,
-    };
-
-    enum DatOpts : uint8_t
-    {
-        DatGround = 0,
-        DatGroundClip,
-        DatOnBottom,
-        DatOnTop,
-        DatContainer,
-        DatStackable,
-        DatForceUse,
-        DatMultiUse,
-        DatWritable,
-        DatWritableOnce,
-        DatFluidContainer,
-        DatSplash,
-        DatBlockWalk,
-        DatNotMoveable,
-        DatBlockProjectile,
-        DatBlockPathFind,
-        DatPickupable,
-        DatHangable,
-        DatHookSouth,
-        DatHookEast,
-        DatRotable,
-        DatLight,
-        DatDontHide,
-        DatTranslucent,
-        DatDisplacement,
-        DatElevation,
-        DatLyingCorpse,
-        DatAnimateAlways,
-        DatMinimapColor,
-        DatLensHelp,
-        DatFullGround,
-        DatIgnoreLook,
-        DatCloth,
-        DatAnimation, // lastest tibia
-        DatLastOpt = 255
     };
 
     enum InventorySlot : uint8_t
@@ -162,46 +114,6 @@ namespace client {
         InvalidDirection
     };
 
-    enum FluidsColor : uint8_t
-    {
-        FluidTransparent = 0,
-        FluidBlue,
-        FluidRed,
-        FluidOrange,
-        FluidGreen,
-        FluidYellow,
-        FluidWhite,
-        FluidPurple,
-        FluidBlack,
-        FluidBrown,
-        FluidPink
-    };
-
-    enum FluidsType : uint8_t
-    {
-        FluidNone = 0,
-        FluidWater,
-        FluidMana,
-        FluidBeer,
-        FluidOil,
-        FluidBlood,
-        FluidSlime,
-        FluidMud,
-        FluidLemonade,
-        FluidMilk,
-        FluidWine,
-        FluidHealth,
-        FluidUrine,
-        FluidRum,
-        FluidFruitJuice,
-        FluidCoconutMilk,
-        FluidTea,
-        FluidMead,
-        FluidInk,
-        FluidCandy,
-        FluidChocolate
-    };
-
     enum FightModes : uint8_t
     {
         FightOffensive = 1,
@@ -221,52 +133,6 @@ namespace client {
         WhiteHand = 1,
         YellowHand = 2,
         RedFist = 3
-    };
-
-    enum PlayerSkulls : uint8_t
-    {
-        SkullNone = 0,
-        SkullYellow,
-        SkullGreen,
-        SkullWhite,
-        SkullRed,
-        SkullBlack,
-        SkullOrange
-    };
-
-    enum PlayerShields : uint8_t
-    {
-        ShieldNone = 0,
-        ShieldWhiteYellow, // 1 party leader
-        ShieldWhiteBlue, // 2 party member
-        ShieldBlue, // 3 party member sexp off
-        ShieldYellow, // 4 party leader sexp off
-        ShieldBlueSharedExp, // 5 party member sexp on
-        ShieldYellowSharedExp, // 6 // party leader sexp on
-        ShieldBlueNoSharedExpBlink, // 7 party member sexp inactive guilty
-        ShieldYellowNoSharedExpBlink, // 8 // party leader sexp inactive guilty
-        ShieldBlueNoSharedExp, // 9 party member sexp inactive innocent
-        ShieldYellowNoSharedExp, // 10 party leader sexp inactive innocent
-        ShieldGray // 11 member of another party
-    };
-
-    enum PlayerEmblems : uint8_t
-    {
-        EmblemNone = 0,
-        EmblemGreen,
-        EmblemRed,
-        EmblemBlue,
-        EmblemMember,
-        EmblemOther
-    };
-
-    enum CreatureIcons : uint8_t
-    {
-        NpcIconNone = 0,
-        NpcIconChat,
-        NpcIconTrade,
-        NpcIconQuest,
-        NpcIconTradeQuest
     };
 
     enum PlayerStates : uint64_t
@@ -355,14 +221,6 @@ namespace client {
         MessageInvalid = 255
     };
 
-    enum PreySlotNum_t : uint8_t
-    {
-        PREY_SLOTNUM_FIRST = 0,
-        PREY_SLOTNUM_SECOND = 1,
-        PREY_SLOTNUM_THIRD = 2,
-        PREY_SLOTNUM_LAST = PREY_SLOTNUM_THIRD
-    };
-
     enum PreyState_t : uint8_t
     {
         PREY_STATE_LOCKED = 0,
@@ -374,74 +232,6 @@ namespace client {
         PREY_STATE_WILDCARD_SELECTION = 6,
     };
 
-    enum PreyTaskstate_t : uint8_t
-    {
-        PREY_TASK_STATE_LOCKED = 0,
-        PREY_TASK_STATE_INACTIVE = 1,
-        PREY_TASK_STATE_SELECTION = 2,
-        PREY_TASK_STATE_LIST_SELECTION = 3,
-        PREY_TASK_STATE_ACTIVE = 4,
-        PREY_TASK_STATE_COMPLETED = 5
-    };
-
-    enum TaskBoardShopOfferType_t : uint8_t
-    {
-        TASK_BOARD_SHOP_OFFER_ITEM = 0,
-        TASK_BOARD_SHOP_OFFER_MOUNT = 1,
-        TASK_BOARD_SHOP_OFFER_OUTFIT = 2,
-        TASK_BOARD_SHOP_OFFER_ITEM_DOUBLE = 3,
-        TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION = 4,
-        TASK_BOARD_SHOP_OFFER_WEEKLY_EXPANSION = 5
-    };
-
-    enum PreyMessageDialog_t : uint8_t
-    {
-        //PREY_MESSAGEDIALOG_IMBUEMENT_SUCCESS = 0,
-        //PREY_MESSAGEDIALOG_IMBUEMENT_ERROR = 1,
-        //PREY_MESSAGEDIALOG_IMBUEMENT_ROLL_FAILED = 2,
-        //PREY_MESSAGEDIALOG_IMBUEMENT_STATION_NOT_FOUND = 3,
-        //PREY_MESSAGEDIALOG_IMBUEMENT_CHARM_SUCCESS = 10,
-        //PREY_MESSAGEDIALOG_IMBUEMENT_CHARM_ERROR = 11,
-        PREY_MESSAGEDIALOG_PREY_MESSAGE = 20,
-        PREY_MESSAGEDIALOG_PREY_ERROR = 21,
-    };
-    enum PreyResourceType_t : uint8_t
-    {
-        PREY_RESOURCETYPE_BANK_GOLD = 0,
-        PREY_RESOURCETYPE_INVENTORY_GOLD = 1,
-        PREY_RESOURCETYPE_PREY_BONUS_REROLLS = 10
-    };
-    enum PreyBonusType_t : uint8_t
-    {
-        PREY_BONUS_DAMAGE_BOOST = 0,
-        PREY_BONUS_DAMAGE_REDUCTION = 1,
-        PREY_BONUS_XP_BONUS = 2,
-        PREY_BONUS_IMPROVED_LOOT = 3,
-        PREY_BONUS_NONE = 4, // internal usage but still added to client;
-        PREY_BONUS_FIRST = PREY_BONUS_DAMAGE_BOOST,
-        PREY_BONUS_LAST = PREY_BONUS_IMPROVED_LOOT,
-    };
-    enum PreyAction_t : uint8_t
-    {
-        PREY_ACTION_LISTREROLL = 0,
-        PREY_ACTION_BONUSREROLL = 1,
-        PREY_ACTION_MONSTERSELECTION = 2,
-        PREY_ACTION_REQUEST_ALL_MONSTERS = 3,
-        PREY_ACTION_CHANGE_FROM_ALL = 4,
-        PREY_ACTION_OPTION = 5,
-    };
-    enum PreyOption_t : uint8_t
-    {
-        PREY_OPTION_UNTOGGLE = 0,
-        PREY_OPTION_TOGGLE_AUTOREROLL = 1,
-        PREY_OPTION_TOGGLE_LOCK_PREY = 2,
-    };
-    enum PreyConfigState : uint8_t
-    {
-        PREY_CONFIG_STATE_FREE,
-        PREY_CONFIG_STATE_PREMIUM,
-        PREY_CONFIG_STATE_TIBIACOINS
-    };
     enum PreyUnlockState_t : uint8_t
     {
         PREY_UNLOCK_STORE_AND_PREMIUM = 0,
@@ -457,18 +247,6 @@ namespace client {
         INCREASELIMIT = 4,
     };
 
-
-    enum MagicEffectsType_t : uint8_t
-    {
-        MAGIC_EFFECTS_END_LOOP = 0, // ends the magic effect loop
-        MAGIC_EFFECTS_DELTA = 1, // needs uint8_t delta after type to adjust position
-        MAGIC_EFFECTS_DELAY = 2, // needs uint16_t delay after type to delay in miliseconds effect display
-        MAGIC_EFFECTS_CREATE_EFFECT = 3, // needs uint8_t effectid after type
-        MAGIC_EFFECTS_CREATE_DISTANCEEFFECT = 4, // needs uint8_t and deltaX(int8_t), deltaY(int8_t) after type
-        MAGIC_EFFECTS_CREATE_DISTANCEEFFECT_REVERSED = 5, // needs uint8_t and deltaX(int8_t), deltaY(int8_t) after type
-        MAGIC_EFFECTS_CREATE_SOUND_MAIN_EFFECT = 6, // needs uint16_t after type
-        MAGIC_EFFECTS_CREATE_SOUND_SECONDARY_EFFECT = 7, // needs uint8_t and uint16_t after type
-    };
 
     enum PathFindResult : uint8_t
     {
@@ -502,37 +280,6 @@ namespace client {
         AutoWalkPathTravel = 2,
     };
 
-    enum AutomapFlags : uint8_t
-    {
-        MapMarkTick = 0,
-        MapMarkQuestion,
-        MapMarkExclamation,
-        MapMarkStar,
-        MapMarkCross,
-        MapMarkTemple,
-        MapMarkKiss,
-        MapMarkShovel,
-        MapMarkSword,
-        MapMarkFlag,
-        MapMarkLock,
-        MapMarkBag,
-        MapMarkSkull,
-        MapMarkDollar,
-        MapMarkRedNorth,
-        MapMarkRedSouth,
-        MapMarkRedEast,
-        MapMarkRedWest,
-        MapMarkGreenNorth,
-        MapMarkGreenSouth
-    };
-
-    enum VipState : uint8_t
-    {
-        VipStateOffline = 0,
-        VipStateOnline = 1,
-        VipStatePending = 2
-    };
-
     enum Blessings : uint32_t
     {
         BlessingNone = 0,
@@ -558,30 +305,6 @@ namespace client {
     {
         DeathRegular = 0,
         DeathBlessed = 1
-    };
-
-    enum StoreProductTypes : uint8_t
-    {
-        ProductTypeOther = 0,
-        ProductTypeNameChange = 1
-    };
-
-    enum StoreErrorTypes : int8_t
-    {
-        StoreNoError = -1,
-        StorePurchaseError = 0,
-        StoreNetworkError = 1,
-        StoreHistoryError = 2,
-        StoreTransferError = 3,
-        StoreInformation = 4
-    };
-
-    enum StoreStates : uint8_t
-    {
-        StateNone = 0,
-        StateNew = 1,
-        StateSale = 2,
-        StateTimed = 3
     };
 
     enum ResourceTypes_t : uint8_t
@@ -679,30 +402,12 @@ namespace client {
         OLD_MARKETREQUEST_MY_HISTORY = 0xFFFF,
     };
 
-    enum MarketOfferState : uint8_t
-    {
-        OFFER_STATE_ACTIVE = 0,
-        OFFER_STATE_CANCELLED = 1,
-        OFFER_STATE_EXPIRED = 2,
-        OFFER_STATE_ACCEPTED = 3,
-        OFFER_STATE_ACCEPTEDEX = 255
-    };
-
     enum Supply_Stash_Actions_t : uint8_t
     {
         SUPPLY_STASH_ACTION_STOW_ITEM = 0,
         SUPPLY_STASH_ACTION_STOW_CONTAINER = 1,
         SUPPLY_STASH_ACTION_STOW_STACK = 2,
         SUPPLY_STASH_ACTION_WITHDRAW = 3
-    };
-
-    enum CyclopediaHouseState_t : uint8_t
-    {
-        CYCLOPEDIA_HOUSE_STATE_AVAILABLE = 0,
-        // 1 ?
-        CYCLOPEDIA_HOUSE_STATE_RENTED = 2,
-        CYCLOPEDIA_HOUSE_STATE_TRANSFER = 3,
-        CYCLOPEDIA_HOUSE_STATE_MOVEOUT = 4,
     };
 
     enum CyclopediaHouseAuctionType_t : uint8_t
@@ -744,15 +449,6 @@ namespace client {
         INSPECT_PLAYERTRADE = 2,
         INSPECT_CYCLOPEDIA = 3,
         INSPECT_PROFICIENCY = 4
-    };
-
-    enum GameStoreInfoType_t : uint8_t
-    {
-        SHOW_NONE = 0,
-        SHOW_MOUNT = 1,
-        SHOW_OUTFIT = 2,
-        SHOW_ITEM = 3,
-        SHOW_HIRELING = 4
     };
 
     enum GameStoreInfoStatesType_t : uint8_t
@@ -802,48 +498,6 @@ namespace client {
         IMBUEMENT_WINDOW_SCROLL = 2
     };
 
-    enum ClientEventType_t : uint8_t
-    {
-        CLIENT_EVENT_TYPE_SIMPLE = 1,
-        CLIENT_EVENT_TYPE_ACHIEVEMENT = 2,
-        CLIENT_EVENT_TYPE_TITLE = 3,
-        CLIENT_EVENT_TYPE_LEVEL = 4,
-        CLIENT_EVENT_TYPE_SKILL = 5,
-        CLIENT_EVENT_TYPE_BESTIARY = 6,
-        CLIENT_EVENT_TYPE_BOSSTIARY = 7,
-        CLIENT_EVENT_TYPE_QUEST = 8,
-        CLIENT_EVENT_TYPE_COSMETIC = 9,
-        CLIENT_EVENT_TYPE_PROFICIENCY = 10,
-        CLIENT_EVENT_TYPE_BOUNTY_TASK = 11,
-        CLIENT_EVENT_TYPE_WEEKLY_TASK = 12,
-        CLIENT_EVENT_TYPE_SPELL_UNLOCKED = 13,
-        CLIENT_EVENT_TYPE_LEADER_MONSTER = 14, // Echo Warden killed (raceId + charmPoints)
-        CLIENT_EVENT_TYPE_SUBAREA = 15, // Point of Interest / discovery viewpoint (areaId)
-        CLIENT_EVENT_TYPE_LAST
-    };
-
-    enum ClientEvent_t : uint8_t
-    {
-        // screenshot
-        CLIENT_EVENT_NONE = 0,
-        CLIENT_EVENT_BOSSDEFEATED = 1,
-        CLIENT_EVENT_DEATHPVE = 2,
-        CLIENT_EVENT_DEATHPVP = 3,
-        CLIENT_EVENT_PLAYERKILLASSIST = 4,
-        CLIENT_EVENT_PLAYERKILL = 5,
-        CLIENT_EVENT_PLAYERATTACKING = 6,
-        CLIENT_EVENT_TREASUREFOUND = 7,
-        CLIENT_EVENT_GIFTOFLIFE = 8,
-        // pop up
-        CLIENT_EVENT_ATTACKSTOPPED = 9,
-        CLIENT_EVENT_CAPACITYLIMIT = 10,
-        CLIENT_EVENT_OUTOFAMMO = 11,
-        CLIENT_EVENT_TARGETTOOCLOSE = 12,
-        CLIENT_EVENT_OUTOFSOULPOINTS = 13,
-        CLIENT_EVENT_TUTORIALCOMPLETE = 14,
-        CLIENT_EVENT_LAST
-    };
-
     enum Vocations_t : uint8_t
     {
         NONE = 0,
@@ -874,22 +528,6 @@ namespace client {
         TYPES_MONK_SERENE = 1,
         TYPES_MONK_VIRTUE = 2,
         TYPES_MONK_LAST
-    };
-
-    enum FloorViewMode
-    {
-        NORMAL,
-        FADE,
-        LOCKED,
-        ALWAYS,
-        ALWAYS_WITH_TRANSPARENCY
-    };
-
-    enum AntialiasingMode :uint8_t
-    {
-        ANTIALIASING_DISABLED,
-        ANTIALIASING_ENABLED,
-        ANTIALIASING_SMOOTH_RETRO
     };
 
     enum MagicEffectSources : uint8_t
@@ -957,23 +595,8 @@ namespace client {
         SLOT_FIRST = SLOT_GREEN_200,
         SLOT_LAST = SLOT_PURPLE_200
     };
-    // Qualidade das gemas
-    enum WheelGemQuality_t : uint8_t {
-        WheelGemQuality_Lesser   = 0,
-        WheelGemQuality_Regular  = 1,
-        WheelGemQuality_Greater  = 2,
-        WheelGemQuality_Supreme  = 3
-    };
 }
 }
-
-enum FrameGroupType : uint8_t
-{
-    FrameGroupDefault = 0,
-    FrameGroupIdle = FrameGroupDefault,
-    FrameGroupMoving,
-    FrameGroupInitial
-};
 
 enum ThingCategory : uint8_t
 {
@@ -984,148 +607,6 @@ enum ThingCategory : uint8_t
     ThingInvalidCategory,
     ThingExternalTexture,
     ThingLastCategory = ThingInvalidCategory,
-};
-
-enum StaticDataCategory : uint8_t
-{
-    StaticDataMonster = 0,
-    StaticDataAchievement,
-    StaticDataHouse,
-    StaticDataBoss,
-    StaticDataQuest,
-    StaticDataLast = StaticDataQuest,
-};
-
-enum ThingAttr : uint8_t
-{
-    ThingAttrGround = 0,
-    ThingAttrGroundBorder = 1,
-    ThingAttrOnBottom = 2,
-    ThingAttrOnTop = 3,
-    ThingAttrContainer = 4,
-    ThingAttrStackable = 5,
-    ThingAttrForceUse = 6,
-    ThingAttrMultiUse = 7,
-    ThingAttrWritable = 8,
-    ThingAttrWritableOnce = 9,
-    ThingAttrFluidContainer = 10,
-    ThingAttrSplash = 11,
-    ThingAttrNotWalkable = 12,
-    ThingAttrNotMoveable = 13,
-    ThingAttrBlockProjectile = 14,
-    ThingAttrNotPathable = 15,
-    ThingAttrPickupable = 16,
-    ThingAttrHangable = 17,
-    ThingAttrHookSouth = 18,
-    ThingAttrHookEast = 19,
-    ThingAttrRotateable = 20,
-    ThingAttrLight = 21,
-    ThingAttrDontHide = 22,
-    ThingAttrTranslucent = 23,
-    ThingAttrDisplacement = 24,
-    ThingAttrElevation = 25,
-    ThingAttrLyingCorpse = 26,
-    ThingAttrAnimateAlways = 27,
-    ThingAttrMinimapColor = 28,
-    ThingAttrLensHelp = 29,
-    ThingAttrFullGround = 30,
-    ThingAttrLook = 31,
-    ThingAttrCloth = 32,
-    ThingAttrMarket = 33,
-    ThingAttrUsable = 34,
-    ThingAttrWrapable = 35,
-    ThingAttrUnwrapable = 36,
-    ThingAttrTopEffect = 37,
-    ThingAttrUpgradeClassification = 38,
-    ThingAttrWearOut = 39,
-    ThingAttrClockExpire = 40,
-    ThingAttrExpire = 41,
-    ThingAttrExpireStop = 42,
-    ThingAttrPodium = 43,
-    ThingAttrDecoKit = 44,
-
-    // additional
-    ThingAttrOpacity = 100,
-
-    ThingAttrDefaultAction = 251,
-
-    ThingAttrFloorChange = 252,
-    ThingAttrNoMoveAnimation = 253, // 10.10: real value is 16, but we need to do this for backwards compatibility
-    ThingAttrChargeable = 254, // deprecated
-    ThingLastAttr = 255
-};
-
-enum ThingFlagAttr :uint64_t
-{
-    ThingFlagAttrNone = 0,
-    ThingFlagAttrGround = 1 << 0,
-    ThingFlagAttrGroundBorder = 1 << 1,
-    ThingFlagAttrOnBottom = 1 << 2,
-    ThingFlagAttrOnTop = 1 << 3,
-    ThingFlagAttrContainer = 1 << 4,
-    ThingFlagAttrStackable = 1 << 5,
-    ThingFlagAttrForceUse = 1 << 6,
-    ThingFlagAttrMultiUse = 1 << 7,
-    ThingFlagAttrWritable = 1 << 8,
-    ThingFlagAttrChargeable = 1 << 9,
-    ThingFlagAttrWritableOnce = 1 << 10,
-    ThingFlagAttrFluidContainer = 1 << 11,
-    ThingFlagAttrSplash = 1 << 12,
-    ThingFlagAttrNotWalkable = 1 << 13,
-    ThingFlagAttrNotMoveable = 1 << 14,
-    ThingFlagAttrBlockProjectile = 1 << 15,
-    ThingFlagAttrNotPathable = 1 << 16,
-    ThingFlagAttrPickupable = 1 << 17,
-    ThingFlagAttrHangable = 1 << 18,
-    ThingFlagAttrHookSouth = 1 << 19,
-    ThingFlagAttrHookEast = 1 << 20,
-    ThingFlagAttrRotateable = 1 << 21,
-    ThingFlagAttrLight = 1 << 22,
-    ThingFlagAttrDontHide = 1 << 23,
-    ThingFlagAttrTranslucent = 1 << 24,
-    ThingFlagAttrDisplacement = 1 << 25,
-    ThingFlagAttrElevation = 1 << 26,
-    ThingFlagAttrLyingCorpse = 1 << 27,
-    ThingFlagAttrAnimateAlways = 1 << 28,
-    ThingFlagAttrMinimapColor = 1 << 29,
-    ThingFlagAttrLensHelp = 1 << 30,
-    ThingFlagAttrFullGround = static_cast<uint64_t>(1) << 31,
-    ThingFlagAttrLook = static_cast<uint64_t>(1) << 32,
-    ThingFlagAttrCloth = static_cast<uint64_t>(1) << 33,
-    ThingFlagAttrMarket = static_cast<uint64_t>(1) << 34,
-    ThingFlagAttrUsable = static_cast<uint64_t>(1) << 35,
-    ThingFlagAttrWrapable = static_cast<uint64_t>(1) << 36,
-    ThingFlagAttrUnwrapable = static_cast<uint64_t>(1) << 37,
-    ThingFlagAttrWearOut = static_cast<uint64_t>(1) << 38,
-    ThingFlagAttrClockExpire = static_cast<uint64_t>(1) << 39,
-    ThingFlagAttrExpire = static_cast<uint64_t>(1) << 40,
-    ThingFlagAttrExpireStop = static_cast<uint64_t>(1) << 41,
-    ThingFlagAttrPodium = static_cast<uint64_t>(1) << 42,
-    ThingFlagAttrTopEffect = static_cast<uint64_t>(1) << 43,
-    ThingFlagAttrDefaultAction = static_cast<uint64_t>(1) << 44,
-    ThingFlagAttrDecoKit = static_cast<uint64_t>(1) << 45,
-    ThingFlagAttrNPC = static_cast<uint64_t>(1) << 46,
-    ThingFlagAttrAmmo = static_cast<uint64_t>(1) << 47,
-    ThingFlagAttrFloorChange = static_cast<uint64_t>(1) << 48,
-    ThingFlagAttrDualWield = static_cast<uint64_t>(1) << 49,
-    ThingFlagAttrSkillWheelGem = static_cast<uint64_t>(1) << 50,
-    ThingFlagAttrProficiency = static_cast<uint64_t>(1) << 51,
-    ThingFlagAttrImbueable = static_cast<uint64_t>(1) << 52,
-    ThingFlagAttrCorpse = static_cast<uint64_t>(1) << 53,
-    ThingFlagAttrPlayerCorpse = static_cast<uint64_t>(1) << 54,
-    ThingFlagAttrReportable = static_cast<uint64_t>(1) << 55,
-    ThingFlagAttrNoMovementAnimation = static_cast<uint64_t>(1) << 56,
-    ThingFlagAttrCyclopediaItem = static_cast<uint64_t>(1) << 57,
-};
-
-enum STACK_PRIORITY : uint8_t
-{
-    GROUND = 0,
-    GROUND_BORDER = 1,
-    ON_BOTTOM = 2,
-    ON_TOP = 3,
-    CREATURE = 4,
-    COMMON_ITEMS = 5
 };
 
 enum PLAYER_ACTION : uint8_t
@@ -1168,14 +649,6 @@ enum ITEM_CATEGORY : uint8_t
     ITEM_CATEGORY_FIST_WEAPONS = 27,
 };
 
-enum SpriteMask :uint8_t
-{
-    SpriteMaskRed = 1,
-    SpriteMaskGreen,
-    SpriteMaskBlue,
-    SpriteMaskYellow
-};
-
 
 enum TileThingType : uint32_t
 {
@@ -1205,16 +678,4 @@ enum TileThingType : uint32_t
     HAS_THING_WITH_ELEVATION = 1 << 23,
     IGNORE_LOOK = 1 << 24,
     CORRECT_CORPSE = 1 << 25
-};
-
-enum
-{
-    OTCM_SIGNATURE = 0x4D43544F,
-    OTCM_VERSION = 1
-};
-
-enum : uint8_t
-{
-    Animation_Force,
-    Animation_Show
 };

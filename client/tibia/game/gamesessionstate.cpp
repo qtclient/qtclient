@@ -123,7 +123,6 @@ void TGameSessionState::resetGameStates()
     m_online = false;
     m_dead = false;
     m_sceneFrozen = false;
-    m_serverBeat = 50;
     m_seq = 0;
     m_mapUpdatedAt = 0;
     m_mapUpdateTimer = { true, tibia::shared::TFrameStopWatch{} };
@@ -178,14 +177,6 @@ void TGameSessionState::processDisconnect()
 }
 
 
-
-
-
-
-
-
-
-
 void TGameSessionState::beginPlayerSession(const std::string_view characterName)
 {
     m_playerPresent = true;
@@ -210,11 +201,9 @@ void TGameSessionState::processGameStart()
 
     m_checkConnectionEvent = tibia::schedule::every([this] {
         if (!isConnectionOk() && !m_connectionFailWarned) {
-            tibia::game::notify("onConnectionFailing", true);
             tibia::game::TGameNotify::instance()->emitConnectionFailing(true);
             m_connectionFailWarned = true;
         } else if (isConnectionOk() && m_connectionFailWarned) {
-            tibia::game::notify("onConnectionFailing", false);
             tibia::game::TGameNotify::instance()->emitConnectionFailing(false);
             m_connectionFailWarned = false;
         }
@@ -251,7 +240,6 @@ void TGameSessionState::endSession()
     tibia::game::TGameNotify::instance()->emitGameEnded();
 
     if (m_connectionFailWarned) {
-        tibia::game::notify("onConnectionFailing", false);
         tibia::game::TGameNotify::instance()->emitConnectionFailing(false);
         m_connectionFailWarned = false;
     }
@@ -282,18 +270,6 @@ void TGameSessionState::setSceneFrozen(const bool frozen)
 
     m_sceneFrozen = frozen;
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 void TGameSessionState::processOpenContainer(const uint8_t containerId, const tibia::container::TInventorySlot& containerItem,
@@ -360,20 +336,6 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void TGameSessionState::processOwnTrade(const std::string_view name, const std::vector<tibia::container::TInventorySlot>& items)
 {
     tibia::game::notify("onOwnTrade", name, items);
@@ -383,27 +345,6 @@ void TGameSessionState::processCounterTrade(const std::string_view name, const s
 {
     tibia::game::notify("onCounterTrade", name, items);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 void TGameSessionState::processUpdateTarget(const uint32_t seq, const uint32_t targetId)
@@ -504,64 +445,6 @@ bool TGameSessionState::walk(const tibia::client::Direction direction)
     return true;
 }
 
-void TGameSessionState::requestStop()
-{
-    if (!canPerformGameAction() || !m_gameConnection)
-        return;
-    gameclient::sendStop();
-}
-
-void TGameSessionState::interruptAutoWalk()
-{
-    if (!m_playerPresent)
-        return;
-    const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
-    const bool hadPath = intent && intent->hasGoal();
-    tibia::game::localPlayerStopAutoWalk();
-    if (isFollowing())
-        cancelFollow();
-    if (hadPath)
-        requestStop();
-}
-
-
-
-void TGameSessionState::lookCreature(const uint32_t creatureId, const bool isBattleList)
-{
-    if (!canPerformGameAction() || !creatureId)
-        return;
-
-    if (isBattleList && m_protocolVersion >= 961) {
-        gameclient::sendLookCreature(creatureId);
-        return;
-    }
-
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    const std::shared_ptr<tibia::creatures::TCreature> row =
-        storage ? storage->creatureAt(creatureId) : nullptr;
-    if (!row)
-        return;
-
-    int stackPos = 0;
-    if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(row->position())) {
-        for (const auto& entry : tile->stackCreatureEntries()) {
-            if (entry.creatureId == creatureId) {
-                stackPos = entry.stackIndex;
-                break;
-            }
-        }
-    }
-    gameclient::sendLook(row->position(), static_cast<int>(Proto::Creature), static_cast<uint8_t>(stackPos));
-}
-
-
-
-
-
-
-
-
-
 
 void TGameSessionState::useOnCreature(const TObjectReference& object, const uint32_t creatureId)
 {
@@ -576,7 +459,6 @@ void TGameSessionState::useOnCreature(const TObjectReference& object, const uint
     gameclient::sendUseOnCreature(pos, object.typeId, stackPos, creatureId);
     tibia::game::notify("onUseWith", pos, static_cast<uint32_t>(object.typeId), creatureId, static_cast<int>(stackPos));
 }
-
 
 
 std::optional<TObjectReference> TGameSessionState::findItemInContainers(const uint32_t itemId, const int subType, const uint8_t tier)
@@ -605,9 +487,6 @@ std::optional<TObjectReference> TGameSessionState::findItemInContainers(const ui
 
     return std::nullopt;
 }
-
-
-
 
 
 void TGameSessionState::attack(const uint32_t creatureId)
@@ -672,83 +551,12 @@ void TGameSessionState::follow(const uint32_t creatureId)
 }
 
 
-
-
-
-
-
-
-void TGameSessionState::sendPartyAnalyzerAction(const uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items)
-{
-    if (!canPerformGameAction())
-        return;
-
-    gameclient::sendPartyAnalyzerAction(action, items);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void TGameSessionState::changeOutfit(const Outfit& outfit)
-{
-    changeOutfitAndMount(outfit, outfit.hasMount(), false);
-}
-
-void TGameSessionState::changeOutfitAndMount(const Outfit& outfit, const bool mounted, const bool randomMount)
-{
-    if (!canPerformGameAction())
-        return;
-
-    gameclient::sendChangeOutfit(outfit, mounted, randomMount);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 bool TGameSessionState::isAttacking()
 {
     if (!m_attackingCreatureId)
         return false;
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     return storage && !!storage->creatureAt(m_attackingCreatureId);
-}
-bool TGameSessionState::isFollowing()
-{
-    if (!m_followingCreatureId)
-        return false;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    return storage && !!storage->creatureAt(m_followingCreatureId);
 }
 bool TGameSessionState::isConnectionOk() { return m_gameConnection && m_gameConnection->millisSinceRead() < 5000; }
 
@@ -829,34 +637,6 @@ int TGameSessionState::findEmptyContainerId()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void TGameSessionState::imbuementDurations(const bool isOpen)
-{
-    if (!canPerformGameAction())
-        return;
-
-    gameclient::sendImbuementDurations(isOpen);
-}
-
-
-
-
 void TGameSessionState::requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t /*size*/, const std::vector<uint16_t>& listedItems)
 {
     if (!canPerformGameAction())
@@ -868,41 +648,5 @@ void TGameSessionState::requestQuickLootBlackWhiteList(const uint8_t filter, con
     gameclient::requestQuickLootBlackWhiteList(filter, actualSize, listedItems);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void TGameSessionState::sendStoreEvent(const uint8_t eventType)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendStoreEvent(eventType);
-}
-
-void TGameSessionState::sendClientCheck(const std::vector<uint8_t>& data)
-{
-    if (!m_gameConnection)
-        return;
-    gameclient::sendClientCheck(data);
-}
-
-
-void TGameSessionState::sendClientDetails(const std::string_view details)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendClientDetails(details);
-}
 
 }

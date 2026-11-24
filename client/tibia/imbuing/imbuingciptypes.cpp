@@ -16,15 +16,6 @@
 
 namespace tibia::imbuing {
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 namespace {
 
 /// One imbuement as the dialog refresh sends it.

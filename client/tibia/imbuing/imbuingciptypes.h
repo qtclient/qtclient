@@ -3,7 +3,6 @@
 // CIP-named imbuing surfaces (promoted from cipwire).
 
 #include "container/containerciptypes.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -36,9 +35,6 @@ namespace tibia {
 namespace imbuing {
 
 class TImbuingStorage;
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 /// One imbuement slot of a tracked object.

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameaction.h"
-#include "shared/cip_typed.h"
 
 #include <QString>
 
@@ -17,7 +16,7 @@ namespace input {
 
 /// The chat actions on a player's name (CIP: input::TGenericChatGameActionProvider):
 /// message, invite to the own private channel, report, ignore or unignore, add as VIP.
-class TGenericChatGameActionProvider : public ::tibia::CipTyped
+class TGenericChatGameActionProvider
 {
 public:
     TGenericChatGameActionProvider(const chat::TChatChannelStorage* chatChannelStorage, const creatures::TVipStorage* vipStorage);

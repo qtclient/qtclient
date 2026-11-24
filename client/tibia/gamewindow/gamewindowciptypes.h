@@ -6,7 +6,6 @@
 // CIP-named gamewindow surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
-#include "gamewindow/anonymousciptypes.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"
@@ -45,9 +44,6 @@ struct TChildTransactionDetails;
 
 namespace tibia {
 namespace gamewindow {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 class TActionBarController;
@@ -216,20 +212,6 @@ public:
 
 private:
     std::vector<TQMLCharacterData*> m_rows;
-};
-
-class TLargePerkInformation final : public cip::tibia::gamewindow::TLargePerkInformation
-{
-    Q_OBJECT
-public:
-    using cip::tibia::gamewindow::TLargePerkInformation::TLargePerkInformation;
-};
-
-class TTileInformation final : public cip::tibia::gamewindow::TTileInformation
-{
-    Q_OBJECT
-public:
-    using cip::tibia::gamewindow::TTileInformation::TTileInformation;
 };
 
 class TSimpleNameAndCountModel final : public QAbstractListModel
@@ -427,9 +409,6 @@ public:
     TChatTutorialMarkerRenderInfo(int markerId, int startIndex, int length, QObject* parent = nullptr);
 };
 
-/// CIP QML DTOs / list payloads (pin units); deepen fields from units as needed.
-class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAccountCharacterListData() = default; };
-class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
 /// An outfit as QML shows it (CIP: TOutfitQMLInformation): the look type, the four colour indices as
 /// colours and the addons.
 class TOutfitQMLInformation final : public cip::tibia::gamewindow::TOutfitQMLInformation

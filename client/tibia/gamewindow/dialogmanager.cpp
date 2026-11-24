@@ -76,7 +76,6 @@ TDialogStackController::TDialogStackController(std::shared_ptr<input::TEventFilt
     : cip::tibia::gamewindow::TDialogStackController(parent)
     , m_pEventFilterManager(std::move(EventFilterManager))
 {
-    ownProductSurface(this);
 }
 
 TDialogStackController::~TDialogStackController() = default;

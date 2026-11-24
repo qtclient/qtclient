@@ -2,7 +2,6 @@
 
 // CIP-named shared surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 #include "clockservice.h"
 #include "coordinate.h"
 
@@ -26,19 +25,11 @@
 namespace tibia {
 namespace shared {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
 class TDynamicResourcesHelper final : public cip::tibia::shared::TDynamicResourcesHelper
 {
     Q_OBJECT
 public:
     using cip::tibia::shared::TDynamicResourcesHelper::TDynamicResourcesHelper;
-};
-
-class TImagestripResponse final : public ::tibia::CipTyped {
-public:
-    TImagestripResponse() = default;
 };
 
 // TOptimized1PixelBorderImageProvider — live QQuickImageProvider in

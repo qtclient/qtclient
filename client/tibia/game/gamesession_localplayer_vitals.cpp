@@ -165,13 +165,6 @@ bool localPlayerIsPremium()
     return false;
 }
 
-bool localPlayerIsMagicShieldVocation()
-{
-    if (TPlayerData* data = currentPlayerData())
-        return data->magicShieldVocation();
-    return false;
-}
-
 uint8_t localPlayerHarmony()
 {
     if (TPlayerData* data = currentPlayerData())
@@ -191,13 +184,6 @@ uint64_t localPlayerResourceBalance(const tibia::client::ResourceTypes_t type)
     if (TPlayerData* data = currentPlayerData())
         return data->resourceBalance(type);
     return 0;
-}
-
-bool localPlayerHasResourceBalance(const tibia::client::ResourceTypes_t type)
-{
-    if (TPlayerData* data = currentPlayerData())
-        return data->hasResourceBalance(type);
-    return false;
 }
 
 uint16_t localPlayerSkillLevel(const tibia::client::Skill skill)
@@ -341,32 +327,11 @@ uint16_t localPlayerBaseMagicLevel()
     return 0;
 }
 
-uint16_t localPlayerMagicLevelPercent()
-{
-    if (TPlayerData* data = currentPlayerData())
-        return data->magicLevelPercent();
-    return 0;
-}
-
-std::vector<uint16_t> localPlayerSpells()
-{
-    if (TPlayerData* data = currentPlayerData())
-        return data->spells();
-    return {};
-}
-
 tibia::client::Direction localPlayerDirection()
 {
     if (const auto row = localPlayerCreature())
         return static_cast<tibia::client::Direction>(row->patternX());
     return tibia::client::InvalidDirection;
-}
-
-bool localPlayerIsSoftDead()
-{
-    if (const auto row = localPlayerCreature())
-        return row->isSoftDead();
-    return false;
 }
 
 uint8_t localPlayerSkull()
@@ -395,19 +360,6 @@ uint32_t localPlayerTotalCapacity()
     if (TPlayerData* data = currentPlayerData())
         return data->totalCapacity();
     return 0;
-}
-
-bool localPlayerHasEquippedItemId(const uint16_t itemId, const uint8_t tier)
-{
-    tibia::container::TInventoryContainer* inventory = currentInventoryContainer();
-    if (!hasLocalPlayer() || !inventory)
-        return false;
-    for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
-        const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
-        if (!row.empty() && row.typeId == itemId && row.tier == tier)
-            return true;
-    }
-    return false;
 }
 
 bool localPlayerIsStoreExpBoostPurchasable()

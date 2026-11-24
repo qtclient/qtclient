@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shared/cip_typed.h"
 
 #include <QElapsedTimer>
 #include <QMutex>
@@ -20,7 +19,7 @@ namespace worldmap {
 /// How long the last frames took from the GUI tick (afterAnimating) to the swap
 /// (CIP: , 10 frames). start runs on the GUI thread, finish on
 /// the render thread.
-class TFrameDurationRing : public ::tibia::CipTyped
+class TFrameDurationRing
 {
 public:
     explicit TFrameDurationRing(size_t capacity = 10);
@@ -45,7 +44,7 @@ private:
 /// The time the next frame will be shown: now on the current game session's
 /// clock plus the recent tick-to-swap time (CIP:
 /// worldmap::TNextFrameTimestampPredictor).
-class TNextFrameTimestampPredictor : public ::tibia::CipTyped
+class TNextFrameTimestampPredictor
 {
 public:
     /// `clockService` is read while no game session gives a clock of its own.

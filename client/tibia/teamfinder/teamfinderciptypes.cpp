@@ -104,15 +104,6 @@ QString serverDateTimeString(const uint32_t Timestamp)
         .arg(qmlcomponents::isServerDaylightTime(serverTime) ? QStringLiteral("CEST") : QStringLiteral("CET"));
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
 QString vocationName(const uint8_t Vocation, const bool Promoted)
 {
     if (!Promoted) {

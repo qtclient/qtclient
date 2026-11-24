@@ -10,8 +10,6 @@ namespace tibia {
 namespace world {
 
 void setWorldTime(int hour, int minute);
-int worldHour();
-int worldMinute();
 int subscribeWorldTime(std::function<void(int hour, int minute)> listener);
 void unsubscribeWorldTime(int id);
 

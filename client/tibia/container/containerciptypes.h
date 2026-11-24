@@ -7,7 +7,6 @@
 
 #include "appearances/appearanceinstance.h"
 #include "appearances/objectappearanceinstancetypeid.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -63,9 +62,6 @@ class ProtocolInventoryItem;
 namespace container {
 
 using TContainerID = int;
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 /// One inventory / container slot's appearance payload (CIP object-info).
 /// Controllers read this.

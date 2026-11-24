@@ -3,7 +3,6 @@
 // CIP-named cyclopedia surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
@@ -53,9 +52,6 @@ class TPartyHuntStorage;
 class TProgressStorage;
 }
 namespace cyclopedia {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 class TCreatureTrackerStorage;
@@ -232,13 +228,6 @@ private:
 private:
     TStorages m_storages;
     std::shared_ptr<IStaticHouseDataObserver> m_pStaticHouseDataObserver;
-};
-
-class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TItemPriceStorage::TItemPriceStorage;
 };
 
 /// One charm of the player as the charm message and the static charm table give it

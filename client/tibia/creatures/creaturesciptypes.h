@@ -5,7 +5,6 @@
 #include "input/gameactiondispatch.h"
 #include "creatures/creaturestorage.h"
 #include "input/gameaction.h"
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 #include <protocol.pb.h>
@@ -42,9 +41,6 @@ namespace worldmap {
 class TWorldMapStorage;
 }
 namespace creatures {
-
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
 
 
 

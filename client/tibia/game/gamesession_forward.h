@@ -25,53 +25,21 @@ class IGameActionContext;
 namespace tibia {
 namespace game {
 
-void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount);
-
 void acceptTrade();
-
-void answerModalDialog(uint32_t dialog, uint8_t button, uint8_t choice);
 
 void applyImbuement(uint8_t slot, uint32_t imbuementId, bool protectionCharm);
 
 void attack(uint32_t creatureId);
 
-void browseField(const Position& position);
-
-void browseMarket(uint8_t browseId, uint16_t browseType, uint8_t tier = 0);
-
-void buyItem(uint16_t typeId, uint8_t countOrSubType, uint16_t amount, bool ignoreCapacity, bool buyWithBackpack);
-
-void buyStoreOffer(const uint32_t offerId, const uint8_t action, const std::string_view& name, const uint8_t type, const std::string_view& location);
-
 bool canPerformGameAction();
-
-void cancelAttack();
-
-void cancelFollow();
-
-void cancelMarketOffer(uint32_t timestamp, uint16_t counter);
-
-void changeOutfitAndMount(const Outfit& outfit, bool mounted, bool randomMount);
 
 void clearImbuement(uint8_t slot);
 
-void closeById(int containerId);
-
 void closeImbuingWindow();
-
-void closeNpcChannel();
-
-void closeNpcTrade();
-
-void configureShowOffSocket(const Position& pos, uint16_t itemId, uint8_t stackpos);
 
 void confirmCharacterTradeConfiguration(uint32_t price, uint32_t endTimestamp, const std::vector<std::tuple<uint16_t, uint8_t>>& items, const std::vector<std::tuple<uint16_t, uint8_t>>& storeItems, const std::vector<uint16_t>& highlights, bool createAuction);
 
-void createMarketOffer(uint8_t type, uint16_t itemId, uint8_t itemTier, uint16_t amount, uint64_t price, uint8_t anonymous);
-
 void editGuildMessage(std::string_view text);
-
-void editList(uint32_t id, uint8_t doorId, std::string_view text);
 
 void editText(uint32_t id, std::string_view text);
 
@@ -79,42 +47,16 @@ void excludeFromOwnChannel(std::string_view name);
 
 void follow(uint32_t creatureId);
 
-void forgeRequest(tibia::client::ForgeAction_t actionType, bool convergence = false, uint16_t firstItemid = 0, uint8_t firstItemTier = 0, uint16_t secondItemId = 0, bool improveChance = false, bool tierLoss = false);
-
-void gatherAll(const Position& pos, uint16_t itemId, uint8_t stackpos);
-
-void gemAction(uint8_t actionType, uint16_t param, uint8_t pos);
-
-void inspectNpcTrade(uint16_t typeId, uint8_t count);
-
 void inspectTrade(bool counterOffer, uint8_t index);
-
-void inspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location);
 
 void inspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
 
 void inviteToOwnChannel(std::string_view name);
 
-bool isFollowing();
-
-void joinChannel(uint16_t channelId);
-
-void leaveChannel(uint16_t channelId);
-
-void leaveMarket();
-
-void lookCreature(uint32_t creatureId, bool isBattleList = false);
-
-void lookMapObject(const Position& position, uint16_t itemId, int stackPos);
-
-void openOwnChannel();
-
 void openStore(uint8_t serviceType = 0, std::string_view category = "");
 
 void openTransactionHistory(uint8_t entriesPerPage);
 
-
-void partyDisband();
 
 void preyAction(uint8_t slot, uint8_t actionType, uint16_t index);
 
@@ -134,55 +76,25 @@ void requestBossSlotAction(uint8_t action, uint32_t raceId);
 
 void requestBosstiaryInfo();
 
-void requestChannels();
-
 void requestCharacterTradeConfiguration(uint8_t action);
 
-void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
-
-void requestGuildMessage();
-
-void requestItemInfo(uint16_t typeId, uint8_t subType, uint8_t index);
-
-
-void requestOpenRewardHistory();
-
-void requestOutfit();
 
 void requestQuestLine(uint16_t questId);
 
 void requestQuestLog();
 
-void requestResourceBalance(uint8_t resourceType);
-
 void requestSendBuyCharmRune(uint8_t runeId, uint8_t action, uint16_t raceId);
 
 void requestSendCharacterInfo(uint32_t playerId, tibia::client::CyclopediaCharacterInfoType_t characterInfoType, uint16_t entriesPerPage = 0, uint16_t page = 0);
 
-void requestSendCyclopediaHouseAuction(tibia::client::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp = 0, uint64_t bidValue = 0, std::string_view name = "");
-
 void requestSetCharacterTitle(uint8_t titleId);
 
-void requestStoreOffers(const std::string_view categoryName, const std::string_view subCategory, const uint8_t sortOrder, const uint8_t serviceType);
-
-void requestTradeAt(const Position& position, uint16_t itemId, int stackPos, uint32_t creatureId);
-
 void requestTransactionDetails(uint32_t transactionId);
-
-void requestTransactionHistory(uint32_t page, uint32_t entriesPerPage);
-
-void rotateMapObject(const Position& position, uint16_t itemId, int stackPos);
-
-void seekInContainer(uint8_t containerId, uint16_t index);
 
 void selectImbuementItem(uint16_t itemId, const Position& pos, uint8_t stackpos);
 
 void selectImbuementScroll();
 
-void sellItem(uint16_t typeId, uint8_t subType, uint16_t amount, bool ignoreEquipped);
-
-
-void sendContainerAction(uint8_t action, uint8_t containerId = 0);
 
 void sendCyclopediaMapDonate(uint16_t areaId, uint32_t amount);
 
@@ -191,10 +103,6 @@ void sendCyclopediaMapResetViewpoints(uint16_t subAreaId);
 /// Asks the server for what the Cyclopedia map shows of a subarea (its viewpoints).
 void sendCyclopediaMapRequestArea(uint16_t subAreaId);
 
-void sendExivaOptions(bool allowAll, bool allowOwnGuild, bool allowOwnParty, bool allowVipList, bool allowPlayerWhitelist, bool allowGuildWhitelist, const std::vector<std::string>& characterWhiteList, const std::vector<std::string>& removeCharacter, const std::vector<std::string>& guildWhiteList, const std::vector<std::string>& removeGuild);
-
-void sendForgeBrowseHistoryRequest(uint16_t page);
-
 void sendOpenRewardWall();
 
 /// The party hunt loot type: 0 market prices, 1 the leader's prices.
@@ -202,33 +110,11 @@ void sendPartyAnalyzerPriceType(int lootType);
 
 void sendPartyAnalyzerReset();
 
-void sendQuickLootAt(uint8_t variant, const Position& position, uint16_t itemId, int stackPos);
-
-void sendRequestStoreHome();
-
-void sendRequestStoreOfferById(const uint32_t offerId, const uint8_t sortOrder, const uint8_t serviceType);
-
-void sendRequestStorePremiumBoost();
-
-void sendRequestStoreSearch(const std::string_view searchText, const uint8_t sortOrder, const uint8_t serviceType);
-
-void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool autoTrackNewQuests, bool autoUntrackCompletedQuests, uint8_t extra = 0x2A);
-
-void sendRequestUsefulThings(const uint8_t serviceType);
-
-void sendStartOfflineTraining(const uint8_t skillType);
-
-void sendTeleport(const Position& pos);
-
-void sendTutorialChangeVocation(uint8_t vocationClientId);
-
 void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
 
 void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
 
 void sendWeaponProficiencySlotAction(uint8_t actionType, uint16_t itemId, uint8_t level, uint8_t perkPosition, int offerIndex = 0);
-
-void setClientOption(uint8_t option, bool value);
 
 void setCreaturePodiumConfiguration(uint32_t monsterRaceId, const Position& pos, uint16_t itemId, uint8_t stackpos, uint8_t direction, uint8_t podiumVisible, uint8_t monsterVisible);
 
@@ -239,22 +125,6 @@ void setShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, ui
 void soulsealFightAction(uint16_t raceId);
 
 void talkChannel(tibia::client::MessageMode mode, uint16_t channelId, std::string_view message);
-
-void talkPrivate(tibia::client::MessageMode mode, std::string_view receiver, std::string_view message);
-
-void transferCoins(std::string_view recipient, uint32_t amount);
-
-void useInventoryItem(uint16_t itemId);
-
-void useMapObjectOnCreature(const Position& from, uint16_t fromId, int fromStack, uint32_t creatureId);
-
-void useWithMapObject(const Position& from, uint16_t fromId, int fromStack, const Position& to, uint16_t toId, int toStack);
-
-void wrapMapObject(const Position& position, uint16_t itemId, int stackPos);
-
-int getProtocolVersion();
-
-bool isUsingProtobuf();
 
 int getPing();
 
@@ -268,17 +138,9 @@ void setCanExivaOptions(const bool enable);
 
 std::string getWorldName();
 
-uint8_t getWalkMaxSteps();
-
-void setWalkMaxSteps(const uint8_t v);
-
 int getBugReportState();
 
 void setBugReportState(const int state);
-
-uint16_t getServerBeat();
-
-void setServerBeat(const uint16_t beat);
 
 void setExpertPvpMode(const bool enable);
 
@@ -292,11 +154,7 @@ Position takeNextTalkAim();
 
 uint8_t takeNextTalkAimMode();
 
-void resetMapUpdatedAt();
-
 void updateMapLatency();
-
-void requestStop();
 
 } // namespace game
 } // namespace tibia

@@ -5,7 +5,6 @@
 
 // CIP-named quickloot surfaces (promoted from cipwire).
 
-#include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
