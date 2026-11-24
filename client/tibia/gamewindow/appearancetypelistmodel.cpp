@@ -16,7 +16,8 @@
 #include <algorithm>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -118,7 +119,7 @@ bool TAppearanceTypeListModel::hasCounts() const
 
 uint16_t TAppearanceTypeListModel::cyclopediaTypeID(const TAppearanceTypeEntry& entry) const
 {
-    const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, entry.typeId);
     return type ? static_cast<uint16_t>(type->getCyclopediaType()) : 0;
 }
 
@@ -139,7 +140,7 @@ QString TAppearanceTypeListModel::lootValueImageSource(const TAppearanceTypeEntr
 
 uint16_t TAppearanceTypeListModel::displayTypeID(const TAppearanceTypeEntry& entry) const
 {
-    const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, entry.typeId);
     if (!type)
         return entry.typeId;
     if (const appearances::TAppearanceMarketProperties* market = type->marketProperties(); m_useDisplayTypeId && market)
@@ -200,7 +201,7 @@ QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role
         return 0u;
     case TradeableInMarket: {
         // The type has market properties.
-        const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+        const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, entry.typeId);
         return type != nullptr && type->marketProperties() != nullptr;
     }
     case MarketAverageValue:

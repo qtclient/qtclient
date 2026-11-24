@@ -14,7 +14,6 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::trade {
 
@@ -30,7 +29,7 @@ int amountLimit(const TNPCTradeGood& good)
 
 TAppearanceType* thingTypeOf(const TNPCTradeGood& good)
 {
-    return good.typeId() ? tibia::game::rawThingType(good.typeId(), ThingCategoryItem) : nullptr;
+    return good.typeId() ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, good.typeId()) : nullptr;
 }
 
 }

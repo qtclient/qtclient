@@ -1,7 +1,9 @@
 #pragma once
 
-/// CIP-neutral pack helpers — path / walk / aware / use / sight peels over `TWorldMapStorage`.
-/// Header must not include `worldmapsessionstate.h`, `TWorldMapField`, or `client/position.h`
+/// Pack-ABI map peels over the current session's `TWorldMapStorage`: walk, use,
+/// sight and the IdleOT travel path probe. Called from `mods/host_api_v1.cpp`
+/// (and the few host callers that want POD positions).
+/// Header must not include `worldmapstorage.h`, `TWorldMapField`, or `client/position.h`
 /// (position.h pulls framework into pack_sdk).
 
 #include <client/const.h>
@@ -10,9 +12,6 @@
 #include <functional>
 #include <memory>
 #include <vector>
-
-struct PathFindResult;
-using PathFindResult_ptr = std::shared_ptr<PathFindResult>;
 
 namespace tibia {
 namespace minimap {
@@ -44,12 +43,6 @@ struct MapAwareRange {
     uint8_t vertical() const { return static_cast<uint8_t>(top + bottom + 1); }
 };
 
-/// World ambient light (matches qtclient `Light` on Map).
-struct MapWorldLight {
-    uint8_t intensity = 0;
-    uint8_t color = 0;
-};
-
 /// POD peel of `TWorldMapField::TFieldItemHit` (ladder / rope / use — no ThingPtr).
 struct MapUseHit {
     bool ok = false;
@@ -57,96 +50,39 @@ struct MapUseHit {
     int stackPos = -1;
 };
 
-/// POD peel of session item scan hits (`typeId` matches qtclient appearance id — no ItemPtr).
-struct MapItemHit {
-    MapPos pos;
-    uint16_t typeId = 0;
-    int stackPos = -1;
-};
-
-/// Sync CIP auto-path probe (`canTravelPath` / AutoWalkPathTravel).
+/// Sync travel path probe (AutoWalkPathTravel): the IdleOT travel router asks
+/// it before arming an auto walk. `maxComplexity` caps the A* expansion.
 bool canTravelPath(MapPos from, MapPos to, int maxComplexity = 8000);
 
-/// Async CIP auto-path probe (`findPathAsync` + AutoWalkPathTravel).
+/// Async travel path probe (AutoWalkPathTravel) on a worker thread.
 /// Live blockers (fire, splash, parcels) fail when aware — no soft-blocker bypass.
 /// Callback runs on the GUI thread via schedule::post.
 void canTravelPathAsync(MapPos from, MapPos to, const std::function<void(bool ok)>& callback);
 
-/// Null-safe `getTile(pos)->isWalkable(ignoreCreatures)` — false when tile missing.
+/// Null-safe `fieldAt(pos)->isWalkable(ignoreCreatures)` — false when the field is missing.
 bool isWalkable(MapPos pos, bool ignoreCreatures = true);
 
-/// Empty when tile missing. Matches `TWorldMapField::walkingCreatureIds`.
-std::vector<uint32_t> walkingCreatureIds(MapPos pos);
-
+/// The current session's aware range.
 MapAwareRange awareRange();
-void setAwareRange(MapAwareRange range);
-void resetAwareRange();
 
-/// Central map position as MapPos.
-MapPos centralPosition();
-void setCentralPosition(MapPos pos);
-
-MapWorldLight worldLight();
-/// Idempotent when unchanged; emits `onWorldLightChange` when intensity/color differ.
-void applyWorldLight(uint8_t intensity, uint8_t color);
-
-bool isAwareOf(MapPos pos);
-
-/// Empty when tile missing. Matches `TWorldMapField::itemHits` (non-creature item rows).
+/// Empty when the field is missing. Matches `TWorldMapField::itemHits` (non-creature item rows).
 std::vector<MapUseHit> itemHits(MapPos pos);
 
-/// `ok=false` when tile missing or no use target. Matches `TWorldMapField::topUseHit`.
+/// `ok=false` when the field is missing or has no use target. Matches `TWorldMapField::topUseHit`.
 MapUseHit topUseHit(MapPos pos);
-
-/// Appearance/`typeId` scan in a rectangle.
-std::vector<MapItemHit> findItemsInRange(MapPos center, int rangeX, int rangeY,
-                                        const std::vector<uint16_t>& typeIds);
 
 /// Line-of-sight between two map positions.
 bool isSightClear(MapPos from, MapPos to);
 
-/// Cover-cache invalidation counter.
-uint32_t coverRevision();
-/// Drain static dirty tiles for cover-flood coalescing.
-void clearStaticDirtyTiles();
-/// Share opaque/top-ground probes across one FOV cover walk.
-void beginCoverProbeBatch();
-void endCoverProbeBatch();
-
-/// CIP pathfinder avoid set (`setPathAvoid` / `clearPathAvoids`).
+/// Fields the travel path finder keeps off (`TWorldMapStorage` path avoids).
 void setPathAvoid(MapPos pos, bool avoid);
 void clearPathAvoids();
 
-/// Async GoPath / auto-walk (`findPathAsync`).
-void findPathAsync(MapPos from, MapPos to, const std::function<void(PathFindResult_ptr)>& callback,
-                   tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
-
-struct MapPoint {
-    int x = 0;
-    int y = 0;
-};
-
-void notifyCameraMove(MapPoint offset);
-
-void cleanMap();
-void cleanMapDynamicThings();
-
-uint8_t firstAwareFloor();
-uint8_t lastAwareFloor();
-
-uint32_t itemRevision();
-
-bool isCompletelyCovered(MapPos pos, bool& isLoading, uint8_t firstFloor = 0);
-bool isCovered(MapPos pos, bool& isLoading, uint8_t firstFloor = 0);
-
+/// Minimap waypoint costs for the travel path finder (CIP TWaypointCostMap):
+/// set while the CipSoft minimap is live, cleared on world leave.
 using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
 void setWaypointCostFactory(WaypointCostFactory factory);
 void clearWaypointCostFactory();
-/// Snapshot of the minimap waypoint costs (null without a minimap).
-std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCosts();
-
-void initMap();
-void terminateMap();
 
 }
 }

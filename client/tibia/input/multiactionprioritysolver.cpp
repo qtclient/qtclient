@@ -7,7 +7,7 @@
 #include "spells/spellinfostorage.h"
 
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <algorithm>
 #include <limits>
@@ -91,7 +91,7 @@ int TMultiActionPrioritySolver::objectCount(IAction& candidate) const
     if (!candidate.hasObject())
         return 0;
     const uint16_t objectId = candidate.objectId();
-    const auto* type = tibia::game::rawThingType(objectId, ThingCategoryItem);
+    const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId);
     TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(objectId);
     if (candidate.hasLiquidType())
         instance = TObjectAppearanceInstanceTypeID::withLiquid(objectId, candidate.liquidType());

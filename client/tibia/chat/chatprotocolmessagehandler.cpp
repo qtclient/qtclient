@@ -18,7 +18,6 @@
 #include "effects/numericaleffect.h"
 
 #include <tibia/game/gamesession.h>
-#include "protocol/protocolcodes.h"
 
 #include <memory>
 #include <stdexcept>
@@ -37,10 +36,6 @@
 namespace tibia::chat {
 
 namespace {
-
-using client::gamecore::argInt;
-using client::gamecore::argString;
-using Args = std::vector<std::any>;
 
 /// CIP's message modes: the protocol's (identity table).
 enum Mode : int
@@ -92,14 +87,6 @@ enum Mode : int
     Mode53 = 53,
     Mode54 = 54,
 };
-
-int protocolMode(const Args& args, const size_t index)
-{
-    if (index < args.size())
-        if (const auto* mode = std::any_cast<tibia::client::MessageMode>(&args[index]))
-            return Proto::translateMessageModeToServer(*mode);
-    return -1;
-}
 
 /// Missing key → CIP default from (option id table; 0x1a
 /// openNewPrivateMessagesInNewTab = 0, 0x1b..0x20 / 0x45..0x46 console and
@@ -633,8 +620,7 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
     if (log && !consoleFilters(mode))
         m_storage.addServerLogEntry(consoleColor(mode), text);
     // IdleOT host extension: packs observe the server's text messages.
-    tibia::game::notify("onServerTextMessage", Proto::translateMessageModeFromServer(static_cast<uint8_t>(MessageMessage.mode())),
-                        MessageMessage.text());
+    tibia::game::notify("onServerTextMessage", static_cast<int>(MessageMessage.mode()), MessageMessage.text());
 }
 
 void TChatProtocolMessageHandler::handleLootMessageForChannelAndStatusMessage(const QString& text)

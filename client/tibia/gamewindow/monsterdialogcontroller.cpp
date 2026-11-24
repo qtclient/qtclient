@@ -33,7 +33,6 @@
 #include <cmath>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -381,9 +380,9 @@ const BestiaryMonsterData* TQmlMonsterRace::difficultyData() const { return m_de
 const BestiaryMonsterData* TQmlMonsterRace::statsData() const { return m_details && m_progress > 1 ? &*m_details : nullptr; }
 const BestiaryMonsterData* TQmlMonsterRace::sensitivityData() const { return m_details && m_progress > 2 ? &*m_details : nullptr; }
 
-QString TQmlMonsterRace::name() const { return qstr(tibia::game::raceData(static_cast<int>(m_raceID)).name); }
+QString TQmlMonsterRace::name() const { return qstr(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).name); }
 
-bool TQmlMonsterRace::hasAppearanceInstance() const { return tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getId() != 0; }
+bool TQmlMonsterRace::hasAppearanceInstance() const { return tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getId() != 0; }
 
 bool TQmlMonsterRace::graphicEffectsSupported() const { return QQuickWindow::graphicsApi() != QSGRendererInterface::Software; }
 
@@ -547,13 +546,13 @@ QString TQmlMonsterRace::monsterLocations() const
     return locations.join(QStringLiteral(", "));
 }
 
-uint TQmlMonsterRace::creatureOutfitId() const { return tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getId(); }
-QColor TQmlMonsterRace::creatureHeadColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getHead()); }
-QColor TQmlMonsterRace::creatureTorsoColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getBody()); }
-QColor TQmlMonsterRace::creatureLegsColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getLegs()); }
-QColor TQmlMonsterRace::creatureDetailColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getFeet()); }
-bool TQmlMonsterRace::creatureFirstAddOn() const { return (tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getAddons() & 1) != 0; }
-bool TQmlMonsterRace::creatureSecondAddOn() const { return (tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getAddons() & 2) != 0; }
+uint TQmlMonsterRace::creatureOutfitId() const { return tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getId(); }
+QColor TQmlMonsterRace::creatureHeadColor() const { return outfitColor(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getHead()); }
+QColor TQmlMonsterRace::creatureTorsoColor() const { return outfitColor(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getBody()); }
+QColor TQmlMonsterRace::creatureLegsColor() const { return outfitColor(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getLegs()); }
+QColor TQmlMonsterRace::creatureDetailColor() const { return outfitColor(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getFeet()); }
+bool TQmlMonsterRace::creatureFirstAddOn() const { return (tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getAddons() & 1) != 0; }
+bool TQmlMonsterRace::creatureSecondAddOn() const { return (tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<int>(m_raceID)).outfit.getAddons() & 2) != 0; }
 
 /// The selected charm's removal cost, unknown without a selection.
 QString TQmlMonsterRace::unassignCostString() const
@@ -810,7 +809,7 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
     m_search = SearchString;
     const QString needle = SearchString.toLower();
     std::vector<uint16_t> raceIds;
-    for (const RaceType& race : tibia::game::getAllRaces()) {
+    for (const RaceType& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
         if (race.boss || race.raceId == 0)
             continue;
         if (qstr(race.name).toLower().contains(needle))
@@ -869,7 +868,7 @@ void TMonsterDialogController::requestSwitchBackToRaceSummary() { requestClassif
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
 {
     // Only a known object type opens the items page.
-    if (tibia::game::thingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem))
+    if (tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(AppearanceTypeID)))
         Q_EMIT itemInfoDialogRequested(static_cast<uint16_t>(AppearanceTypeID));
 }
 
@@ -1024,7 +1023,7 @@ void TMonsterDialogController::onMonsterRaceDetailsChanged()
 
 void TMonsterDialogController::hookEvents()
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBestiaryMonsterData", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back("onUpdateBestiaryMonsterData", [this](const Args& args) {
         const auto* data = arg<BestiaryMonsterData>(args, 0);
         if (!data)
             return std::any{};

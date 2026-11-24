@@ -4,7 +4,6 @@
 #include "news/newsstorage.h"
 
 #include <protocol.pb.h>
-#include <tibia/game/gamenotify.h>
 
 #include <utility>
 
@@ -12,14 +11,12 @@ namespace tibia::news {
 
 namespace {
 
-/// The handler's showGameNewsMessage: the news button (or the pack hook when
-/// no game window exists) opens or highlights the news.
+/// The handler's showGameNewsMessage: the news button opens or highlights the
+/// news (nothing without a game window).
 void showGameNewsMessage(const int newsType, const bool notificationOnly)
 {
     if (auto* button = tibia::gamewindow::TNewsButtonController::instance())
         button->onShowGameNewsMessage(newsType, notificationOnly);
-    else
-        tibia::game::notify("onGameNews", newsType, notificationOnly);
 }
 
 }

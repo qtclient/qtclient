@@ -32,7 +32,6 @@
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/game/tgamenotify.h>
 #include <QString>
-#include <tibia/game/thingsession_forward.h>
 #include "protocol/clientmessages.h"
 #include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
@@ -407,7 +406,7 @@ void soulsealFightAction(const uint16_t raceId)
     gameclient::sendSoulSealsAction(raceId);
 }
 
-void talkChannel(const tibia::client::MessageMode mode, const uint16_t channelId, const std::string_view message)
+void talkChannel(const uint32_t mode, const uint16_t channelId, const std::string_view message)
 {
     if (!canPerformGameAction() || message.empty())
         return;

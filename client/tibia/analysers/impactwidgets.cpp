@@ -4,6 +4,8 @@
 #include "config/sidebaroptions.h"
 #include "game/gamesessionbase.h"
 #include "config/characterconfigurationmanager.h"
+#include "creatures/creaturestorage.h"
+#include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/gameaction.h"
@@ -199,10 +201,6 @@ TImpactWidgetController::TImpactWidgetController(TImpactStorage* storage, QQuick
     connect(m_storage, &TImpactStorage::optionsChanged, this, &TImpactWidgetController::optionsChanged);
     connect(m_storage, &TImpactStorage::graphValuesChanged, this, &TImpactWidgetController::onGraphValuesChanged);
     connect(m_storage, &TImpactStorage::allTimeValuesChanged, this, &TImpactWidgetController::allTimeValuesChanged);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
-        Q_EMIT optionsChanged();
-        return std::any{};
-    });
     onDamageValuesChanged();
     Q_EMIT healingValuesChanged();
     Q_EMIT sessionLengthChanged();
@@ -786,6 +784,9 @@ TPartyHuntWidgetController::TPartyHuntWidgetController(TPartyHuntStorage* storag
     m_proxy->sort(0);
     m_partyMemberModel = QVariant::fromValue<QObject*>(m_proxy);
     connect(m_storage, &TPartyHuntStorage::changed, this, &TPartyHuntWidgetController::onPartyHuntDataChanged);
+    // Host: the widget outlives a character switch; the next session's own creature.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TPartyHuntWidgetController::tryConnectToPlayerPartyStateSignal);
     tryConnectToPlayerPartyStateSignal();
     onPartyHuntDataChanged();
     widget()->createItem(QStringLiteral("PartyHuntWidget.qml"));
@@ -832,16 +833,22 @@ void TPartyHuntWidgetController::onWidgetOptionsChanged() { applyContentHeight(w
 
 void TPartyHuntWidgetController::tryConnectToPlayerPartyStateSignal()
 {
-    if (m_partyStateConnected)
+    // CIP: the own creature's party flag signal, once there is an own creature.
+    creatures::TCreatureStorage* const storage = tibia::game::currentCreatureStorage();
+    if (!storage)
         return;
-    m_partyStateConnected = true;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onShieldChange", [this](GameObject*, const std::vector<std::any>& args) {
-        if (args.empty())
-            return std::any{};
-        if (const auto* id = std::any_cast<uint32_t>(&args[0]); id && *id == tibia::game::localPlayerId())
-            onPlayerPartyFlagChagned();
-        return std::any{};
-    });
+    const std::shared_ptr<creatures::TCreature> player = storage->player();
+    if (!player) {
+        // Host: the widget can open before the own creature is known.
+        connect(storage, &creatures::TCreatureStorage::playerAdded, this,
+                &TPartyHuntWidgetController::tryConnectToPlayerPartyStateSignal, Qt::UniqueConnection);
+        return;
+    }
+    if (m_partyStateCreature.data() == player.get())
+        return;
+    m_partyStateCreature = player.get();
+    connect(player.get(), &creatures::TCreature::playerPartyFlagChanged, this, &TPartyHuntWidgetController::onPlayerPartyFlagChagned);
+    onPlayerPartyFlagChagned();
 }
 
 void TPartyHuntWidgetController::onPlayerPartyFlagChagned() { onPartyHuntDataChanged(); }

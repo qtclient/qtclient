@@ -22,7 +22,6 @@
 #include "game/gameciptypes.h"
 #include "game/playergameactionhandler.h"
 #include "game/tgamenotify.h"
-#include "game/thingsession_forward.h"
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
 #include "input/actionbuttongameactionhandler.h"
@@ -96,9 +95,6 @@
 
 namespace tibia::game {
 
-using SoftHook = tibia::game::SoftHook;
-using Args = TGameNotify::Args;
-
 namespace {
 
 /// CIP's TClientSessiondumpRecorder keep time (a constant in initialize).
@@ -132,7 +128,7 @@ authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGa
     data.worldPortUnprotected = character.worldPortProtected;
     data.worldPortProtected = character.worldPortProtected;
     data.worldName = character.worldName;
-    data.assetsIdentifier = QString::fromStdString(tibia::game::assetIdentifier());
+    data.assetsIdentifier = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getAssetIdentifier());
     return data;
 }
 
@@ -155,19 +151,6 @@ void TGameserverGameSession::wireProcessDeath()
     if (hub.m_playerPresent)
         tibia::game::localPlayerStopWalk();
     setSceneFrozen(true);
-}
-
-namespace {
-
-template<typename F>
-SoftHook gameHook(const char* field, F&& f)
-{
-    return SoftHook(field, [f = std::forward<F>(f)](const Args& args) {
-        f(args);
-        return std::any{};
-    });
-}
-
 }
 
 void hubDisconnectNow()
@@ -195,7 +178,7 @@ TGameserverGameSession::TGameserverGameSession(
                        parent)
     , m_authenticationAndEncryptionInfo(std::make_shared<authentication::TAuthenticationAndEncryptionInfo>())
 {
-    // CIP typed lifecycle (TGameNotify) — prefer over string SoftHook for end/fail.
+    // CIP typed lifecycle (TGameNotify).
     // The base announces worldEntered for every WorldEntered message.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
         // Same-socket alt switch ends the session in-process. The socket stays
@@ -204,7 +187,6 @@ TGameserverGameSession::TGameserverGameSession(
             return;
         Q_EMIT disconnected();
     });
-    m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
 }
 
 TGameserverGameSession::~TGameserverGameSession()

@@ -256,7 +256,7 @@ void TGameClientBase::setMinimapWorldmapProtocolHandler(worldmap::TWorldmapProto
     // The handler can hold a map already: take the floor and unseen fields of
     // its area as it would have.
     if (worldmap::TWorldMapStorage* storage = Handler->storage()) {
-        const Position center = storage->sessionState().getCentralPosition();
+        const Position center = storage->centralPosition();
         if (center.isValid()) {
             m_pMinimapTileStorage->setPlayerZ(center.z);
             m_pMinimapTileStorage->markUnseen();

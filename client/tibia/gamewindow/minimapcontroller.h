@@ -135,7 +135,7 @@ private:
     float m_dragRemainderY = 0;
     /// The last mouse position on the rose, normalised to 0..1 (unset: NaN).
     QPointF m_roseMouseNormalized{ qSNaN(), qSNaN() };
-    client::gamecore::Hook m_positionHook;
+    tibia::game::SoftHook m_positionHook;
     QPointer<minimap::TMinimapMarkerStorage> m_markerStorage;
     std::shared_ptr<minimap::TMinimapMarkerRenderProvider> m_markerRenderProvider;
     /// Declared after m_area: it keeps a pointer to the area.

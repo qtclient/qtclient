@@ -6,7 +6,7 @@
 
 #include <QColor>
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QDebug>
 #include <QDir>
@@ -45,9 +45,9 @@ namespace {
 TAppearanceType* objectType(const int id)
 {
     // The id is cut to 16 bit.
-    if (!tibia::game::isValidDatId(static_cast<uint16_t>(id), ThingCategoryItem))
+    if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(id), ThingCategoryItem))
         return nullptr;
-    return tibia::game::rawThingType(static_cast<uint16_t>(id), ThingCategoryItem);
+    return tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, static_cast<uint16_t>(id));
 }
 
 } // namespace

@@ -41,7 +41,6 @@
 #include "gamewindow/calendardialogcontroller.h"
 #include "gamewindow/buttonbarcontroller.h"
 #include "gamewindow/chatcontroller.h"
-#include "gamewindow/cipsoftuieventbridge.h"
 #include "gamewindow/containerstoragecontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/cooldownbarcontroller.h"
@@ -159,7 +158,7 @@
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/position.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QCoreApplication>
 #include <QEvent>
@@ -227,7 +226,6 @@ struct TGameClient::TGameWindow
     gamewindow::TMinimapController* minimapController = nullptr;
     std::unique_ptr<gamewindow::TContainerStorageController> containers;
     std::unique_ptr<exivaoptions::TExivaOptionsDialogController> exivaOptionsDialog;
-    std::unique_ptr<gamewindow::TCipSoftUiEventBridge> cipSoftUiEventBridge;
     std::unique_ptr<analysers::TAnalyserWidgets> analyserWidgets;
     std::unique_ptr<gamewindow::TTutorialShell> tutorialShell;
     std::unique_ptr<gamewindow::TTutorialOverlayController> tutorialOverlay;
@@ -860,9 +858,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     });
         }
     }
-    // Host: the gem atelier / helpers / RV channel / virtues subscribers and
-    // the analyser widgets (on the sidebar widgets).
-    g.cipSoftUiEventBridge = std::make_unique<gamewindow::TCipSoftUiEventBridge>();
+    // Host: the analyser widgets (on the sidebar widgets).
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
     {

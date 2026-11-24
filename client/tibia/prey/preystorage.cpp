@@ -1,6 +1,6 @@
 #include "prey/preystorage.h"
 
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <utility>
 
@@ -12,7 +12,7 @@ namespace {
 /// compare case-insensitively); 0 when there is none.
 uint16_t raceIdOfMonsterName(const QString& name)
 {
-    for (const auto& race : tibia::game::getAllRaces()) {
+    for (const auto& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
         if (QString::compare(QString::fromStdString(race.name), name, Qt::CaseInsensitive) == 0)
             return static_cast<uint16_t>(race.raceId);
     }

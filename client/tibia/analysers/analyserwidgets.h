@@ -284,7 +284,6 @@ private:
     QPointer<config::TSidebarOptions> m_options;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     QPointer<gamewindow::TGenericEnterTextDialogController> m_targetDialog;
-    std::vector<client::gamecore::Hook> m_hooks;
     qint64 m_lastTexts = 0;
     qint64 m_lastGauge = 0;
     qint64 m_lastGraph = 0;

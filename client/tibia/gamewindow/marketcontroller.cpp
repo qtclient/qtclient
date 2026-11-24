@@ -27,7 +27,7 @@
 #include <stdexcept>
 #include <vector>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -92,7 +92,7 @@ uint64_t playerGold()
 
 QString typeName(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     if (!type)
         return {};
     const auto* market = type->marketProperties();
@@ -378,12 +378,12 @@ TMarketController::TMarketController(config::TClientOptions* clientOptions, QQml
                     slotTier = inventory->slotAt(action.position().y).tier;
                 }
             }
-            const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+            const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
             tier = type && type->getClassification() > 0 ? slotTier : 0;
         }
         if (typeId == 0)
             return false;
-        const TAppearanceTypePtr& browsed = tibia::game::thingType(typeId, ThingCategoryItem);
+        const TAppearanceTypePtr& browsed = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
         m_messages->sendBrowseItem(typeId, browsed && browsed->getClassification() > 0 ? std::optional<uint8_t>(tier) : std::nullopt);
         return true;
     });
@@ -660,7 +660,7 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
     setItemProperty("selectedAppearanceTypeID", AppearanceTypeID);
     if (!m_messages)
         return;
-    const TAppearanceTypePtr& type = tibia::game::thingType(m_selectedType, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, m_selectedType);
     if (type && type->getClassification() > 0) {
         m_hasSelectedTier = true;
         m_selectedTier = static_cast<uint8_t>(QmlUpgradeTier);

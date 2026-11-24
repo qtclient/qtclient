@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::analysers {
 
@@ -38,7 +37,7 @@ double readTarget(const QJsonObject& json, const char* key)
 
 QString itemName(const uint16_t itemId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, itemId);
     if (!type)
         return {};
     if (!type->getName().empty())

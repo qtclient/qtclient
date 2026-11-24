@@ -34,7 +34,7 @@ int TCacheForWorldmapStorageLookupMembers::indexOf(const TWorldMapCoordinate& co
 
 int TCacheForWorldmapStorageLookupMembers::inVolume(const TWorldMapCoordinate& coordinate) const
 {
-    if (!m_storage || !m_storage->sessionState().isAwareOfPosition(coordinate.toPosition()))
+    if (!m_storage || !m_storage->isAwareOfPosition(coordinate.toPosition()))
         return -1;
     const int index = indexOf(coordinate);
     return index >= 0 && static_cast<size_t>(index) < m_valid.size() ? index : -1;

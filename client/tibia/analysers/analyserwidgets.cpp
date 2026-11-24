@@ -619,12 +619,6 @@ TProgressWidgetController::TProgressWidgetController(TProgressStorage* storage, 
         onExperienceInProgressStorageChanged();
     });
     connect(m_storage, &TProgressStorage::optionsChanged, this, &TProgressWidgetController::optionsChanged);
-    for (const char* event : { "onExperienceChange", "onLevelChange" }) {
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
-            Q_EMIT experienceDataChangedForTexts();
-            return std::any{};
-        });
-    }
     updateXPGraphData();
     widget()->createItem(QStringLiteral("ProgressWidget.qml"));
     if (QQuickItem* item = quickItem())

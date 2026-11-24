@@ -149,7 +149,6 @@ set(SOURCE_FILES
         tibia/idleot/stats.cpp
         tibia/client/outfit.cpp
         tibia/client/position.cpp
-        tibia/protocol/messagemodes.cpp
         tibia/protocol/extendedopcode.cpp
         tibia/protocol/extendedopcode_json.cpp
         tibia/protocol/servermessages.cpp
@@ -162,7 +161,6 @@ set(SOURCE_FILES
         tibia/assets/specialappearances.cpp
         tibia/game/gamesessionstate.cpp
         tibia/game/gamesession_forward.cpp
-        tibia/worldmap/worldmapsessionstate.cpp
         tibia/worldmap/worldmapfield.cpp
         tibia/creatures/attachedeffect.cpp
         tibia/creatures/attachedeffectmanager.cpp

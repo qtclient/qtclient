@@ -33,7 +33,7 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/game/gamesession_forward.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 namespace tibia::gamewindow {
 
@@ -714,7 +714,7 @@ TCyclopediaCreatureOccurrencesData TCyclopediaMapDialogController::creatureOccur
         creature.isUnknown = !m_storage->isMonsterKnown(monster.raceId);
         creature.raceName = creature.isUnknown
             ? qtTrId("monsters_unknown_name")
-            : cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(monster.raceId).name));
+            : cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(monster.raceId).name));
         data.creatures[monster.state].push_back(std::move(creature));
     }
     return data;

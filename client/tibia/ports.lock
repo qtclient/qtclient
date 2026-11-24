@@ -31678,7 +31678,7 @@ worldmap::TWorldMapRenderProvider::v8	43feca22674b29b4	ported	renderer/worldmapr
 worldmap::TWorldMapRenderProvider::v9	8949f079e5cfbdc1	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::addField
 worldmap::TWorldMapStorage::v12	9fb670436b9c666e	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
 worldmap::TWorldMapStorage::v13	21a6eba164b5a4d7	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::storedVolume
-worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
+worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::isAwareOfPosition
 worldmap::TWorldMapStorage::v15	842019cc137285f3	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasField
 worldmap::TWorldMapStorage::v16	56866489b3351ab0	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::field
 worldmap::TWorldMapStorage::v17	2fd690a3a80145cd	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fields

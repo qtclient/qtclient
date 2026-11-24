@@ -38,7 +38,6 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -321,7 +320,7 @@ public:
     bool isEmpty() const { return m_appearanceID == 0; }
     bool isDualWield() const
     {
-        TAppearanceType* type = tibia::game::rawThingType(static_cast<uint16_t>(m_appearanceID), ThingCategoryItem);
+        TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, static_cast<uint16_t>(m_appearanceID));
         return type && type->isDualWield();
     }
 
@@ -401,7 +400,6 @@ void TCharacterInfoDialogController::initialize()
     new TCharacterWorldTransferDialogController(this);
     new TMainCharacterChangeDialogController(this);
     new TMarketCoinTransactionDetailsDialogController(this);
-    hookEvents();
 }
 
 TCharacterInfoDialogController::~TCharacterInfoDialogController() = default;
@@ -886,15 +884,6 @@ int TCharacterInfoDialogController::dualWieldingObjectID() const
             return static_cast<int>(data->appearanceID());
     }
     return 0;
-}
-
-void TCharacterInfoDialogController::hookEvents()
-{
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInspectionState", [this](GameObject*, const std::vector<std::any>& args) {
-        m_inspectionState = client::gamecore::argInt(args, 1);
-        Q_EMIT inspectionStateChanged();
-        return std::any{};
-    });
 }
 
 }

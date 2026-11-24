@@ -4,7 +4,7 @@
 Inputs:
   --msgmap   JSONL from ghidra/TibiaMessageMap.java (class -> vtable address points)
   --binary   the Tibia x86_64 Mach-O client the msgmap was produced from
-  --root     monorepo root (reads qtclient protocolcodes/parse/send, Crystal protocolgame + modules.xml)
+  --root     monorepo root (reads qtclient protocol/dispatch.gen.cpp, Crystal protocolgame + modules.xml)
 
 Every payload message is a protobuf-lite extension of GameserverMessage /
 GameclientMessage. Its static ExtensionIdentifier is {u64 number, T* default_instance}
@@ -90,23 +90,15 @@ def _qtclient_file(root: Path, *parts: str) -> Path:
 
 
 def otc_sets(root):
-    src = _qtclient_file(root, "client", "tibia", "protocol", "protocolcodes.h").read_text()
-
-    def enum(name):
-        body = re.search(r"enum\s+" + name + r"[^{]*\{(.*?)\};", src, re.S).group(1)
-        out = defaultdict(list)
-        for k, v in re.findall(r"(\w+)\s*=\s*(\d+|0x[0-9a-fA-F]+)", body):
-            out[int(v, 0)].append(k)
-        return out
-
-    server, client = enum("GameServerOpcodes"), enum("ClientOpcodes")
-    s_names = {n: op for op, ns in server.items() for n in ns}
-    c_names = {n: op for op, ns in client.items() for n in ns}
-    parse = _qtclient_file(root, "client", "tibia", "protocol", "servermessages.cpp").read_text()
-    send = _qtclient_file(root, "client", "tibia", "protocol", "clientmessages.cpp").read_text()
-    parsed = {s_names[n] for n in re.findall(r"case Proto::(\w+)\s*:", parse) if n in s_names}
-    sent = {c_names[n] for n in re.findall(r"Proto::(Client\w+)", send) if n in c_names}
-    return server, client, parsed, sent
+    """The tip's dispatched opcodes, from the generated dispatch table (every CIP opcode is there)."""
+    src = _qtclient_file(root, "client", "tibia", "protocol", "dispatch.gen.cpp").read_text()
+    server_part, _, client_part = src.partition("bool bindClientMessage(")
+    server, client = defaultdict(list), defaultdict(list)
+    for op, name in re.findall(r"case (\d+): // (\w+)", server_part):
+        server[int(op)].append(name)
+    for op, name in re.findall(r"case (\d+): // (\w+)", client_part):
+        client[int(op)].append(name)
+    return server, client, set(server), set(client)
 
 
 def crystal_sets(root):

@@ -14,10 +14,10 @@ TGameNotify::TGameNotify(QObject* parent)
 
 TGameNotify* TGameNotify::instance()
 {
-    // Process-lifetime hub: Hooks/SoftHooks outlive QObject teardown during
-    // exit() (QThreadDataDestroyer deferred deletes). A function-local static
-    // QObject is destroyed in __cxa_finalize and leaves unsubscribe() reading
-    // a dead unordered_map (SIGSEGV in TSkillsWidgetController::~ / Hook::~).
+    // Process-lifetime hub: SoftHooks outlive QObject teardown during exit()
+    // (QThreadDataDestroyer deferred deletes). A function-local static QObject
+    // is destroyed in __cxa_finalize and leaves unsubscribe() reading a dead
+    // unordered_map (SIGSEGV in a SoftHook destructor).
     static TGameNotify* hub = new TGameNotify;
     return hub;
 }
@@ -118,36 +118,6 @@ SoftHook& SoftHook::operator=(SoftHook&& other) noexcept
 }
 
 SoftHook::~SoftHook()
-{
-    if (m_id)
-        TGameNotify::instance()->unsubscribe(m_id);
-}
-
-Hook::Hook(const std::string_view scope, const std::string_view field, Handler handler)
-{
-    // Legacy GameEvents scopes ("cip" / "object") share SoftHooks; self is unused.
-    (void)scope;
-    m_id = TGameNotify::instance()->subscribe(
-        field, [handler = std::move(handler)](const Args& args) {
-            return handler(nullptr, args);
-        });
-}
-
-Hook::Hook(Hook&& other) noexcept
-    : m_id(std::exchange(other.m_id, 0))
-{}
-
-Hook& Hook::operator=(Hook&& other) noexcept
-{
-    if (this != &other) {
-        if (m_id)
-            TGameNotify::instance()->unsubscribe(m_id);
-        m_id = std::exchange(other.m_id, 0);
-    }
-    return *this;
-}
-
-Hook::~Hook()
 {
     if (m_id)
         TGameNotify::instance()->unsubscribe(m_id);

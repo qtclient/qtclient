@@ -225,7 +225,6 @@ private:
     TTextStorage* m_textStorage = nullptr;
     effects::TEffectStorage* m_effects = nullptr;
     TWhiteBlacklist* m_whiteBlacklist = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
 
     /// Prefaults match (ids 0x1c/0x1d/0x20/0x1f/0x1b/0x1a/0x46/0x45)
     /// until setOptions runs.

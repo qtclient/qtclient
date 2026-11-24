@@ -13,7 +13,6 @@
 #include <QSGTransformNode>
 
 #include <algorithm>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -107,9 +106,9 @@ void TSingleObjectAppearanceInstanceRenderer::itemChange(const ItemChange change
 /// away (session end, shutdown) while the item still polishes.
 TAppearanceType* TSingleObjectAppearanceInstanceRenderer::type() const
 {
-    if (m_typeid <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem))
+    if (m_typeid <= 0 || !tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem))
         return nullptr;
-    TAppearanceType* const found = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem);
+    TAppearanceType* const found = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(m_typeid));
     return found && !found->isNull() ? found : nullptr;
 }
 

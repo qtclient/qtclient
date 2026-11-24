@@ -67,7 +67,6 @@ private:
 
     std::map<worldmap::TWorldMapCoordinate, TMinimapMarkerPtr> m_markers;
     bool m_dirty = false;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

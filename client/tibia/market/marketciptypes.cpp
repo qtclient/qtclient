@@ -3,7 +3,6 @@
 #include "protocol/protocolciptypes.h"
 
 #include <client/const.h>
-#include "protocol/protocolcodes.h"
 #include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
@@ -194,7 +193,8 @@ void TMarketProtocolMessageHandler::handleMarketBrowseMessage(const GameserverMe
 
 void TMarketProtocolMessageHandler::handleMessageMessage(const GameserverMessageMessage& message)
 {
-    if (Proto::translateMessageModeFromServer(static_cast<uint8_t>(message.mode())) == tibia::client::MessageMarket)
+    // CIP's chat message mode 42: the market's.
+    if (message.mode() == 42)
         Q_EMIT requestMarketMessageDialog(toQString(message.text()));
 }
 

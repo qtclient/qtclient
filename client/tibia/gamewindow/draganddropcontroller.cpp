@@ -1,6 +1,7 @@
 #include "draganddropcontroller.h"
 
-#include "game/thingsession_forward.h"
+#include <tibia/assets/things.h>
+#include <tibia/appearances/appearanceinstance.h>
 #include "input/gameactioncontext.h"
 #include "protocol/objectdata.h"
 #include "qmlcomponents/appearanceinstancerenderer.h"
@@ -252,7 +253,7 @@ void TDragAndDropController::updateIcon()
             data = TObjectData::upgradeable(typeId, static_cast<const input::TUpgradeableObjectApperanceTypeGameActionContext*>(object)->tier());
             break;
         default: {
-            const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+            const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
             if (type && type->isStackable()) {
                 data = TObjectData::cumulative(typeId, 1);
             } else if (type && type->isDecoKit()) {

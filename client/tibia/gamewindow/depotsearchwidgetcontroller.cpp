@@ -24,7 +24,7 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 #include <QGuiApplication>
 
@@ -69,7 +69,7 @@ constexpr auto ControlSchemeOption = "controlSchemeIndex";
 
 TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type && type->getId() != 0 ? type : nullptr;
 }
 
@@ -235,7 +235,7 @@ void TDepotSearchWidgetController::onDetailListChanged()
     std::vector<container::TInventorySlot> inbox;
     if (m_session && m_detailList) {
         for (const auto& [key, count] : m_detailList->stashCounts()) {
-            if (const TAppearanceTypePtr& type = tibia::game::thingType(key.first, ThingCategoryItem); type && type->getId() != 0)
+            if (const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, key.first); type && type->getId() != 0)
                 stash.push_back(TItemInfoDialogController::cyclopediaEntry(type));
         }
         depot = m_detailList->depotObjects();
@@ -259,7 +259,7 @@ QString TDepotSearchWidgetController::detailListObjectName() const
 {
     if (!m_detailList)
         return {};
-    const TAppearanceTypePtr& type = tibia::game::thingType(m_detailList->typeId(), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, m_detailList->typeId());
     return type && type->getId() != 0 ? TItemInfoDialogController::cyclopediaEntry(type).name : QString();
 }
 

@@ -11,7 +11,6 @@
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -66,7 +65,7 @@ TBossSkinModel::Entry entryFromRace(const uint16_t raceId, const std::string& na
         entry.outfit = outfit;
         return entry;
     }
-    const RaceType& race = tibia::game::raceData(raceId);
+    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     entry.name = QString::fromStdString(race.name);
     entry.outfit = race.outfit;
     return entry;

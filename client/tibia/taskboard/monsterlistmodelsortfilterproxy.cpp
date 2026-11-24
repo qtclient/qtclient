@@ -1,6 +1,6 @@
 #include "taskboard/monsterlistmodelsortfilterproxy.h"
 
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <algorithm>
 #include <type_traits>
@@ -58,12 +58,12 @@ bool TMonsterListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, con
             if constexpr (std::is_same_v<std::decay_t<decltype(filter)>, ShowAll>)
                 return true;
             else
-                return static_cast<int>(tibia::game::raceData(raceId).difficulty) == filter;
+                return static_cast<int>(tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).difficulty) == filter;
         },
         m_difficultyFilter);
     bool nameMatches = true;
     if (!m_nameFilter.isEmpty())
-        nameMatches = QString::fromStdString(tibia::game::raceData(raceId).name).indexOf(m_nameFilter, 0, Qt::CaseInsensitive) != -1;
+        nameMatches = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).name).indexOf(m_nameFilter, 0, Qt::CaseInsensitive) != -1;
     const bool notExcluded = std::find(m_excludedRaceIds.begin(), m_excludedRaceIds.end(), raceId) == m_excludedRaceIds.end();
     return nameMatches && difficultyMatches && notExcluded;
 }

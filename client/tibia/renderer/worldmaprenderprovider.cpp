@@ -51,7 +51,6 @@
 #include <tibia/game/gamesession.h>
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -483,8 +482,8 @@ bool TWorldMapRenderProvider::build()
         return false;
     }
 
-    // Cover caches invalidate per opaque cell (Map::invalidateCoverCachesFrom).
-    const uint32_t coverRevision = live ? tibia::game::coverRevision() : m_coverRevision;
+    // Cover caches invalidate per opaque cell (TWorldMapStorage::invalidateCoverCachesFrom).
+    const uint32_t coverRevision = live ? worldmap::TWorldMapStorage::ensureStorage()->coverRevision() : m_coverRevision;
     Position camera;
     QPoint walk;
     if (live) {
@@ -535,7 +534,7 @@ bool TWorldMapRenderProvider::build()
     phase.start();
     // CIP every-frame full emit (classic and raycast). Drain map dirty for cover-flood
     // coalescing; positions are unused because the whole FOV is remitted.
-    tibia::game::clearStaticDirtyTiles();
+    (void)worldmap::TWorldMapStorage::ensureStorage()->clearStaticDirtyTiles();
 
     m_objectCounter.setCentre(worldmap::TWorldMapCoordinate(m_camera));
 
@@ -555,7 +554,7 @@ bool TWorldMapRenderProvider::build()
         && m_lighting->beginFrame(lightingCamera(m_camera), DrawWidth, DrawHeight, first, last);
 
     // Share opaque/top-ground probes across FOV cover walks (cold-cache cliffs).
-    tibia::game::beginCoverProbeBatch();
+    worldmap::TWorldMapStorage::ensureStorage()->beginCoverProbeBatch();
     const std::vector<FieldEntry> fields = fieldsInVolume(first, last);
     // The grid spans the render volume plus a field on every side (at least
     // the draw grid the fields are walked in, so no two cells share an entry).
@@ -564,7 +563,7 @@ bool TWorldMapRenderProvider::build()
         : worldmap::TWorldMapExtent(DrawWidth, DrawHeight);
     TOcclusionGrid grid(std::max(volume.width, DrawWidth), std::max(volume.height, DrawHeight));
     addFields(fields, first, last, grid);
-    tibia::game::endCoverProbeBatch();
+    worldmap::TWorldMapStorage::ensureStorage()->endCoverProbeBatch();
     addMissiles(first, last);
     addHighlightBaseplate(m_records);
     markObscuredDrawCommands(grid, m_records);

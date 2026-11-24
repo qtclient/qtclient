@@ -9,7 +9,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 #include <protocol.pb.h>
 
@@ -84,12 +83,12 @@ void TEditTextController::showItemText(const uint32_t id, const QString& text, c
     const uint itemId = object ? object->id() : 0;
     bool editable = false;
     bool reportable = false;
-    if (tibia::game::isValidDatId(itemId, ThingCategoryItem)) {
-        const TAppearanceTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
+    if (tibia::appearances::TAppearancesManager::instance().isValidDatId(itemId, ThingCategoryItem)) {
+        const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, itemId);
         editable = type->isWritable() || (type->isWritableOnce() && text.isEmpty());
         reportable = type->isReportable();
     }
-    const bool stampedLetter = itemId != 0 && itemId == tibia::game::stampedLetterId();
+    const bool stampedLetter = itemId != 0 && itemId == tibia::appearances::TAppearancesManager::instance().getStampedLetterId();
     m_mode = EMode::ItemText;
     m_id = id;
     m_doorId = 0;

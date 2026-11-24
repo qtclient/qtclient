@@ -24,7 +24,6 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 

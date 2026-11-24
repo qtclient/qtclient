@@ -112,7 +112,6 @@ private:
     std::map<int, cip::tibia::game::TPremiumMessage*> m_messages;
     game::TPremiumMessageRenewPremium* m_renewPremium = nullptr;
     QTimer m_highlightTimer;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

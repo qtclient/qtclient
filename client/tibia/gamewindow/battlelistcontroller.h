@@ -358,7 +358,6 @@ private:
     int m_controlScheme = 1; // CIP control scheme (1 classic)
     bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

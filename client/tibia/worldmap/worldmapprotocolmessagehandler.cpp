@@ -17,7 +17,6 @@
 
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/mapsession.h>
 #include <tibia/game/sessionhooks.h>
 #include <tibia/schedule/schedule.h>
 #include <protocol.pb.h>
@@ -74,7 +73,7 @@ void TWorldmapProtocolMessageHandler::applyArea(const MapArea& area, const TShea
     for (const MapField& field : fields.fields()) {
         const Position position = central.coordinateOfAreaIndex(volume, index).toPosition();
         // The storage holds fields of its known area only.
-        if (game::isAwareOf({ position.x, position.y, position.z })) {
+        if (map().isAwareOfPosition(position)) {
             // The objects replace the field's content in their order; objects
             // that yield nothing are left out, and a field left without objects
             // is dropped.
@@ -116,7 +115,7 @@ TWorldMapStorage& TWorldmapProtocolMessageHandler::map() const
 
 TWorldMapCentralPosition TWorldmapProtocolMessageHandler::centralPosition() const
 {
-    const game::MapAwareRange range = game::awareRange();
+    const AwareRange range = map().awareRange();
     return TWorldMapCentralPosition(m_center, TWorldMapExtent(range.horizontal(), range.vertical(), 1),
                                     TWorldMapExtent(range.left, range.top, 0));
 }
@@ -127,7 +126,7 @@ void TWorldmapProtocolMessageHandler::moveKnownArea()
     map().setStoredVolume(center);
     if (m_effectStorage)
         m_effectStorage->removeOutside(
-            [](const Position& field) { return game::isAwareOf({ field.x, field.y, field.z }); });
+            [this](const Position& field) { return map().isAwareOfPosition(field); });
     // The minimap follows the view's floor and marks the fields of the area
     // the server left out as unseen, on every move (also onto the same spot).
     if (m_minimap) {
@@ -154,7 +153,7 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     const Position oldPosition = hasPlayer ? game::localPlayerPosition() : Position();
     // The session's first map also places the local player.
     if (!m_mapKnown && hasPlayer)
-        map().sessionState().setLocalPlayerPosition(position);
+        map().setLocalPlayerPosition(position);
     // The view centres on the map's field, its top-left subfield.
     if (m_viewport)
         m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(m_center, 0, 0));
@@ -304,7 +303,7 @@ void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const Gameserver
 {
     const auto intensity = static_cast<uint8_t>(AmbientLightMessage.intensity());
     const auto color = static_cast<uint8_t>(AmbientLightMessage.color());
-    tibia::game::applyWorldLight(intensity, color);
+    map().setWorldLight(intensity, color);
     if (m_ambientLightStorage)
         m_ambientLightStorage->setLight(TAmbientLight(intensity, color));
 }

@@ -19,7 +19,7 @@
 
 #include <client/position.h>
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QQmlComponent>
 #include <QQmlEngine>
@@ -381,7 +381,7 @@ TActionBarController::TObjectInstance TActionBarController::objectInstanceOfSett
     using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
     TObjectInstance object;
     const auto typeId = static_cast<uint16_t>(setting.objectId);
-    const auto* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
     TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
     if (setting.liquidType.has_value() && typeId != 0) {
         instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, uint32_t(*setting.liquidType));
@@ -579,7 +579,7 @@ void TActionBarController::tick(const qint64 now)
                         const game::TCooldown cooldown = cooldowns->objectCooldown(objectId, now);
                         if (now <= cooldown.end)
                             button->setCooldown(cooldown.duration, cooldown.end);
-                    } else if (const auto* type = tibia::game::rawThingType(objectId, ThingCategoryItem);
+                    } else if (const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId);
                                type && type->isMultiUse()) {
                         const game::TCooldown cooldown = cooldowns->multiUseCooldown(now);
                         if (now <= cooldown.end)
@@ -710,7 +710,7 @@ void TActionBarController::onEnableConditionsChanged()
                 if (action->objectID() == 0)
                     break;
                 const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
-                const auto* type = tibia::game::rawThingType(instance.typeId, ThingCategoryItem);
+                const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, instance.typeId);
                 uint count = uint(m_objectInfoStorage->count(instance));
                 if (const std::optional<uint16_t> counterpart = type ? type->expireCounterpart() : std::nullopt)
                     count += uint(m_objectInfoStorage->count(TObjectAppearanceInstanceTypeID::plain(*counterpart)));
@@ -769,7 +769,7 @@ void TActionBarController::onInventoryChanged()
             if (action->type() != TActionButtonController::OBJECT || action->useType() != config::EUseType::Equip)
                 continue;
             const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
-            const auto* type = action->objectID() != 0 ? tibia::game::rawThingType(instance.typeId, ThingCategoryItem) : nullptr;
+            const auto* type = action->objectID() != 0 ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, instance.typeId) : nullptr;
             if (!type)
                 continue;
             const std::optional<uint8_t> tier = instance.hasTier() ? std::optional<uint8_t>(instance.tier) : std::nullopt;
@@ -778,7 +778,7 @@ void TActionBarController::onInventoryChanged()
             if (action->useEquipSmartMode() && counterpartId) {
                 const auto* shown = type;
                 if (!equipped) {
-                    const auto* counterpart = tibia::game::rawThingType(*counterpartId, ThingCategoryItem);
+                    const auto* counterpart = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, *counterpartId);
                     equipped = m_inventory->isObjectEquipped(*counterpartId, tier);
                     if (counterpart)
                         shown = counterpart;

@@ -850,7 +850,7 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
         return;
     tibia::game::setNextTalkAim(pick.position);
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
+    tibia::game::talkChannel(static_cast<uint32_t>(action.talkMode()), 0, action.words().toStdString());
 }
 
 void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)

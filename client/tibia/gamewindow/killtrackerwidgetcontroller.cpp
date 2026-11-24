@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -42,7 +41,7 @@ uint32_t mapU32(const std::map<std::string, uint32_t>& row, const char* key)
 
 QString raceName(const uint32_t raceId)
 {
-    const RaceType& race = tibia::game::raceData(raceId);
+    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     if (!race.name.empty())
         return QString::fromStdString(race.name);
     return QStringLiteral("Race %1").arg(raceId);
@@ -118,7 +117,7 @@ void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<taskboa
     if (tasks.size() == 1 && tasks.front().claimState != taskboard::EBountyTaskClaimState::Available) {
         const taskboard::TBountyTask& task = tasks.front();
         entry.raceId = task.raceId;
-        entry.raceName = cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(task.raceId).name));
+        entry.raceName = cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(task.raceId).name));
         entry.amountToHunt = task.requiredKills;
         entry.amountHunted = task.currentKills;
         entry.isActive = true;

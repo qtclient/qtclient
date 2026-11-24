@@ -29,7 +29,6 @@
 #include <QCoreApplication>
 #include <QKeyEvent>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 #include <algorithm>
 #include <map>

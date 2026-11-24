@@ -41,7 +41,6 @@
 #include <tibia/game/gameservergamesession.h>
 #include <tibia/game/gamesession.h>
 #include <QString>
-#include <tibia/game/thingsession_forward.h>
 #include "protocol/clientmessages.h"
 
 namespace tibia::game {
@@ -105,18 +104,18 @@ const DebugWorldLight& debugWorldLight()
 uint8_t worldLightIntensity()
 {
     const DebugWorldLight& pinned = debugWorldLight();
-    return pinned.active ? pinned.intensity : worldLight().intensity;
+    return pinned.active ? pinned.intensity : tibia::worldmap::TWorldMapStorage::ensureStorage()->worldLight().intensity;
 }
 
 uint8_t worldLightColor()
 {
     const DebugWorldLight& pinned = debugWorldLight();
-    return pinned.hasColor ? pinned.color : worldLight().color;
+    return pinned.hasColor ? pinned.color : tibia::worldmap::TWorldMapStorage::ensureStorage()->worldLight().color;
 }
 
 uint32_t mapItemRevision()
 {
-    return itemRevision();
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->itemRevision();
 }
 
 int subscribeWorldTime(std::function<void(int, int)> listener)
@@ -162,7 +161,6 @@ void localPlayerHandleTeleport()
     if (const auto row = localPlayerCreature())
         row->resetMovement();
     localPlayerStopAutoWalk();
-    notifyCameraMove({});
 }
 
 void localPlayerStopWalk()
@@ -278,7 +276,7 @@ void talk(const std::string_view message)
     if (!canPerformGameAction() || message.empty())
         return;
 
-    talkChannel(tibia::client::MessageSay, 0, message);
+    talkChannel(1, 0, message); // CIP chat message mode Say
 }
 void turn(const tibia::client::Direction direction)
 {
@@ -378,14 +376,6 @@ void processCounterTrade(std::string_view name, const std::vector<::tibia::conta
     gameSessionState().processCounterTrade(name, items);
 }
 
-void processItemDetail(const ItemInspectionData& data)
-{
-    tibia::game::notify("onParseItemDetail", data);
-}
-void processInspectionState(const uint32_t creatureId, const uint8_t state)
-{
-    tibia::game::notify("onInspectionState", creatureId, state);
-}
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data)
 {
     tibia::game::notify("onUpdateBestiaryMonsterData", data);
@@ -393,10 +383,6 @@ void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data)
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData)
 {
     tibia::game::notify("onUpdateBestiaryCharmsData", charmData);
-}
-void processBosstiaryInfo(const std::vector<BosstiaryData>& boss)
-{
-    tibia::game::notify("onParseSendBosstiary", boss);
 }
 
 void requestBless()
@@ -573,7 +559,7 @@ Position localPlayerPosition()
         return {};
     if (const auto row = localPlayerCreature(); row && row->position().isValid())
         return row->position();
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState().localPlayerPosition();
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->localPlayerPosition();
 }
 
 MapPos localPlayerMapPos()

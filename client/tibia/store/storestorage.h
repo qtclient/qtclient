@@ -474,7 +474,6 @@ private:
     bool m_searchRefreshPending = false;
     bool m_refreshOffersAfterPurchase = false;
     QUrl m_imageBaseUrl;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

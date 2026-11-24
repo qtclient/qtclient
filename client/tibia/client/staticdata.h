@@ -276,14 +276,6 @@ struct BestiaryMonsterData
     bool castsSpells{ false };
 };
 
-struct BosstiaryData
-{
-    uint32_t raceId;
-    uint8_t category;
-    uint32_t kills;
-    uint8_t isTrackerActived;
-};
-
 struct ItemSummary
 {
     uint16_t itemId;

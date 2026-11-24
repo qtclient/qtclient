@@ -73,7 +73,6 @@ private:
     bool m_isPremium = false;
     bool m_marketStatisticsRequested = false;
     std::map<int, QColor> m_lootValueLevelColors;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

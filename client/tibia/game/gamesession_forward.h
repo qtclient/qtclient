@@ -124,7 +124,8 @@ void setShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, ui
 
 void soulsealFightAction(uint16_t raceId);
 
-void talkChannel(tibia::client::MessageMode mode, uint16_t channelId, std::string_view message);
+/// `mode` is CIP's chat message mode (the protocol's).
+void talkChannel(uint32_t mode, uint16_t channelId, std::string_view message);
 
 int getPing();
 

@@ -461,7 +461,7 @@ bool TBattleListController::handleGameActionCastSpellAtMouseCursor(const input::
     const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId()) : nullptr;
     tibia::game::setNextTalkAim(creature ? creature->position() : Position());
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
+    tibia::game::talkChannel(static_cast<uint32_t>(action.talkMode()), 0, action.words().toStdString());
     return true;
 }
 
@@ -794,18 +794,6 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         }
         return true;
     });
-
-    // Party list CipSoft publishes — creature fields are already updated; refresh rows.
-    using Args = std::vector<std::any>;
-    const auto refreshParty = [this](GameObject*, const Args&) {
-        triggerUpdate();
-        return std::any{};
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyLeft", refreshParty);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberHealthChange", refreshParty);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberManaChange", refreshParty);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberInfoChange", refreshParty);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberShowStatusChange", refreshParty);
 }
 
 TBattleListControllerStorage::~TBattleListControllerStorage()

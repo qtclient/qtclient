@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "config/sidebaroptions.h"
 #include "game/playerstatestracker.h"
 #include "gamewindow/sidebarpanelcontrollerbase.h"
@@ -125,7 +124,6 @@ private:
     /// Option 0x51 autoChaseEnabled (APPLY_AUTOCHASE_SETTING).
     bool m_autoChaseEnabled = false;
     int m_pvpMode = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
     int m_gameSessionListener = 0;
 
 public Q_SLOTS:

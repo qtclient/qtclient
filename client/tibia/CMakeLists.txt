@@ -647,7 +647,6 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/friendsconfigurationpagecontroller.cpp gamewindow/friendsconfigurationpagecontroller.h
     gamewindow/teamjoinpagecontroller.cpp gamewindow/teamjoinpagecontroller.h
     gamewindow/teamassemblepagecontroller.cpp gamewindow/teamassemblepagecontroller.h
-    gamewindow/cipsoftuieventbridge.cpp gamewindow/cipsoftuieventbridge.h
     analysers/analyserstorages.cpp analysers/analyserstorages.h
     analysers/itempricestorage.cpp analysers/itempricestorage.h
     analysers/progressstorage.cpp analysers/gainwastestorage.cpp analysers/impactstorage.cpp

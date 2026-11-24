@@ -10,7 +10,7 @@
 #include <client/staticdata.h>
 #include <tibia/appearances/appearanceinstance.h>
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <protocol.pb.h>
 
@@ -40,7 +40,7 @@ void fillInspectedAppearance(Dest& dest, const ::tibia::protobuf::protocol::Prot
     dest.tier = slot.tier;
     dest.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
     dest.fluidOrSplash = slot.fluidOrSplash;
-    TAppearanceType* type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, slot.typeId);
     dest.hookSouth = type && type->isHookSouth();
     dest.hookEast = type && type->isHookEast();
     dest.hasProficiency = type && type->getProficiencyId() != 0;

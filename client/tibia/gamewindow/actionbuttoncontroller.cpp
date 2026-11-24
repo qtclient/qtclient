@@ -20,7 +20,6 @@
 #include <limits>
 #include <vector>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -33,7 +32,7 @@ using A = input::EGameAction;
 
 bool isMultiUse(const int objectId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, objectId);
     return type && type->isMultiUse();
 }
 
@@ -509,7 +508,7 @@ bool TPrioritySolverAdapter::hasLiquidType() const
 {
     if (!hasObject())
         return false;
-    const TAppearanceType* type = tibia::game::rawThingType(objectId(), ThingCategoryItem);
+    const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId());
     return type && (type->isFluidContainer() || type->isSplash());
 }
 
@@ -522,7 +521,7 @@ bool TPrioritySolverAdapter::hasUpgradeTier() const
 {
     if (!hasObject())
         return false;
-    const TAppearanceType* type = tibia::game::rawThingType(objectId(), ThingCategoryItem);
+    const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId());
     return type && type->hasUpgradeClassification();
 }
 

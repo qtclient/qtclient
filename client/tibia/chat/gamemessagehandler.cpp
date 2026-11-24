@@ -5,7 +5,6 @@
 #include "chat/textstorage.h"
 #include "config/clientoptiondefaults.h"
 
-#include "protocol/protocolcodes.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
@@ -23,13 +22,10 @@ enum Mode : int
     Status = 30,
 };
 
-/// Hook arguments carry CIP's mode; CIP routes by the protocol's.
+/// Hook arguments carry CIP's chat message mode (the protocol's).
 int protocolMode(const Args& args, const size_t index)
 {
-    if (index < args.size())
-        if (const auto* mode = std::any_cast<tibia::client::MessageMode>(&args[index]))
-            return Proto::translateMessageModeToServer(*mode);
-    return -1;
+    return index < args.size() ? static_cast<int>(tibia::game::argInt(args, index)) : -1;
 }
 
 /// Missing key → CIP default ; gameWindow* filters default to 1.
@@ -44,9 +40,8 @@ bool option(const QJsonObject& options, const char* name)
 TGameMessageHandler::TGameMessageHandler(TTextStorage& texts)
     : m_texts(texts)
 {
-    using client::gamecore::Hook;
     // IdleOT host extension: packs post their own status lines (CIP posts SET_STATUS_LINE).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTextMessage", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back("onTextMessage", [this](const Args& args) {
         onTextMessage(protocolMode(args, 0), argString(args, 1));
         return std::any();
     });

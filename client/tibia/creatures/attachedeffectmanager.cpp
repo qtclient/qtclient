@@ -25,7 +25,6 @@
 #include "attachedeffect.h"
 #include "tibia/assets/things.h"
 #include "shared/tibiafilesystemhelper.h"
-#include <tibia/game/thingsession_forward.h>
 
 AttachedEffectManager g_attachedEffects;
 
@@ -36,7 +35,7 @@ AttachedEffectPtr AttachedEffectManager::getById(const uint16_t id) {
     }
 
     const auto& obj = it->second;
-    if (obj->m_thingId > 0 && !tibia::game::isValidDatId(obj->m_thingId, obj->m_thingCategory)) {
+    if (obj->m_thingId > 0 && !tibia::appearances::TAppearancesManager::instance().isValidDatId(obj->m_thingId, obj->m_thingCategory)) {
         return nullptr;
     }
 

@@ -14,6 +14,7 @@ namespace tibia::game {
 class IGameSession;
 }
 namespace tibia::creatures {
+class TCreatureStorage;
 class TUnjustifiedPointsStorage;
 }
 
@@ -92,9 +93,10 @@ private:
     QMetaObject::Connection m_unjustifiedPointsChanged;
     void refresh();
 
-    std::vector<client::gamecore::Hook> m_hooks;
+    /// The game session's creature storage, for the own creature's skull.
+    std::weak_ptr<creatures::TCreatureStorage> m_creatureStorage;
+    QMetaObject::Connection m_playerKillerMarkChanged;
     QPointer<config::TSidebarOptions> m_options;
-    bool m_playerKillerConnected = false;
 };
 
 class TUnjustifiedPointsWidgetManager final : public QObject

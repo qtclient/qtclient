@@ -1437,7 +1437,7 @@ int notifyEmitIntString(const char* field, int64_t a0, const char* a1)
 {
     if (!field || !a1)
         return -1;
-    tibia::game::notify(field, static_cast<tibia::client::MessageMode>(static_cast<uint8_t>(a0)), std::string(a1));
+    tibia::game::notify(field, static_cast<int>(a0), std::string(a1));
     return 0;
 }
 

@@ -7,7 +7,7 @@
 #include "client/staticdata.h"
 #include "input/gameaction.h"
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 #include <protocol.pb.h>
 
 #include <QCoreApplication>
@@ -119,7 +119,6 @@ void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiary& BosstiaryMessage)
 {
     std::vector<TBosstiaryEntry> entries;
-    std::vector<BosstiaryData> bosses;
     for (const auto& b : BosstiaryMessage.bosses()) {
         TBosstiaryEntry& entry = entries.emplace_back();
         entry.raceId = static_cast<int>(b.race_id());
@@ -127,11 +126,8 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage(const ::tibia::
         entry.category = bossCategory(b.category());
         entry.kills = b.kills();
         entry.tracked = b.tracked();
-        bosses.push_back({ .raceId = b.race_id(), .category = static_cast<uint8_t>(b.category()), .kills = b.kills(),
-                           .isTrackerActived = static_cast<uint8_t>(b.tracked() ? 1 : 0) });
     }
     m_pBosstiaryStorage->setEntries(std::move(entries));
-    tibia::game::processBosstiaryInfo(bosses);
 }
 
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage)
@@ -146,7 +142,7 @@ void TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage(const ::tibi
     std::vector<TBossTrackerEntry> entries;
     for (const ProtocolBossCooldown& cooldown : BossTrackingMessage.cooldowns()) {
         const auto raceId = static_cast<uint16_t>(cooldown.race_id());
-        const RaceType& race = tibia::game::raceData(raceId);
+        const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
         entries.emplace_back(raceId, cyclopedia::capitalizeWords(QString::fromStdString(race.name)), race.outfit,
                              static_cast<qint64>(static_cast<int32_t>(cooldown.cooldown())));
     }

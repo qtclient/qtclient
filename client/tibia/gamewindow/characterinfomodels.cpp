@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <tuple>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -27,7 +27,7 @@ namespace {
 
 QString appearanceName(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 

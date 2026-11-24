@@ -8,7 +8,7 @@
 #include "protocol/gameactioncontexthelper.h"
 
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QString>
 
@@ -53,7 +53,7 @@ TObjectAppearanceInstanceTypeID instanceTypeOf(const input::TGameActionContextPt
 
 const TAppearanceType* objectType(const uint16_t typeId)
 {
-    return tibia::game::rawThingType(typeId, ThingCategoryItem);
+    return tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
 }
 
 /// A stash message on an object: its place and its type.
@@ -163,7 +163,7 @@ void TContainerGameActionHandler::handleMoveObjectGameAction(const std::shared_p
             const TInventorySlot item = container->itemAt(static_cast<uint32_t>(slot->slot()));
             if (!item.empty()) {
                 const TAppearanceType* type = objectType(move.objectClientId());
-                if (item.typeId == tibia::game::supplyStashId() && type && type->isContainer()) {
+                if (item.typeId == tibia::appearances::TAppearancesManager::instance().getSupplyStashId() && type && type->isContainer()) {
                     Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowConfirmMoveObjectToStashDialog>(pGameActionMoveObject));
                     return;
                 }

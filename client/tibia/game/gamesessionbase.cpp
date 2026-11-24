@@ -805,7 +805,7 @@ void TGameSessionBase::initializeWorldMapSessionState()
 {
     if (m_worldInitialized)
         return;
-    m_worldMapStorage->sessionState().init();
+    m_worldMapStorage->resetAwareRange();
     m_worldInitialized = true;
 }
 

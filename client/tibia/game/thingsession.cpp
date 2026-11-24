@@ -15,7 +15,7 @@ std::string itemName(const uint16_t id)
 {
     if (!isValidItemId(id))
         return {};
-    if (const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem); type)
+    if (const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id); type)
         return type->getName();
     return {};
 }
@@ -34,7 +34,7 @@ bool itemIsContainer(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id);
     return type && type->isContainer();
 }
 
@@ -42,7 +42,7 @@ bool itemIsPickupable(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id);
     return type && type->isPickupable();
 }
 
@@ -50,7 +50,7 @@ int64_t itemMeanPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id);
     return type ? static_cast<int64_t>(type->getMeanPrice()) : 0;
 }
 
@@ -58,7 +58,7 @@ int64_t itemMaxNpcSaleGoldPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id);
     if (!type)
         return 0;
     int64_t npcSale = 0;

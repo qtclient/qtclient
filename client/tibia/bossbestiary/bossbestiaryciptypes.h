@@ -47,8 +47,7 @@ public:
     /// The kills and boss points of the three stages of each rarity.
     void handleBosstiaryStaticDataMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData& BosstiaryStaticDataMessage);
     void handleBossSlotsMessage(const ::tibia::protobuf::protocol::GameserverMessageBossSlots& BossSlotsMessage);
-    /// The bosses with their rarity, kills and tracking; the raw rows also go
-    /// out as "onParseSendBosstiary" for the boss tracker storage.
+    /// The bosses with their rarity, kills and tracking.
     void handleBosstiaryMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiary& BosstiaryMessage);
     /// The bosstiary button lights up for the boss (requestBosstiaryButtonHighlight).
     void handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage);

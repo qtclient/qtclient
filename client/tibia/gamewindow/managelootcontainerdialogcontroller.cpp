@@ -23,7 +23,7 @@
 #include <set>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -57,7 +57,7 @@ QList<TMessageDialogButton*> yesNoButtons()
 
 TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type && type->getId() != 0 ? type : nullptr;
 }
 
@@ -449,7 +449,7 @@ void TManageLootContainerDialogController::finishPick(const input::TTargetSelect
         return;
     if (target && target->objectClientId()) {
         const uint16_t typeId = target->objectClientId();
-        TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
         if (type && type->isContainer()) {
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectManagedContainer>(
                 mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,

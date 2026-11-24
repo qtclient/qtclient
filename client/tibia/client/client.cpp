@@ -23,6 +23,7 @@
 #include "client.h"
 
 #include <tibia/game/gamesession.h>
+#include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/things.h"
 
@@ -31,7 +32,7 @@ Client g_client;
 void Client::init(std::vector<std::string>& /*args*/)
 {
     tibia::config::initRuntimeGameConfig();
-    tibia::game::initMap();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->resetAwareRange();
     tibia::game::initGameHub();
     tibia::appearances::TAppearancesManager::instance().init();
 }
@@ -39,7 +40,7 @@ void Client::init(std::vector<std::string>& /*args*/)
 void Client::terminate()
 {
     tibia::game::terminateGameHub();
-    tibia::game::terminateMap();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->clean();
     tibia::appearances::TAppearancesManager::instance().terminate();
     tibia::config::terminateRuntimeGameConfig();
 }

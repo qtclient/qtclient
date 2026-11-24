@@ -555,10 +555,7 @@ void TPlayerData::updateLevel(const uint16_t level, const uint16_t levelPercent)
 
 void TPlayerData::updateExperience(const uint64_t experience)
 {
-    const auto oldExperience = static_cast<uint64_t>(m_experience);
     setExperience(static_cast<qint64>(experience));
-    if (oldExperience != experience)
-        notify("onExperienceChange", experience, oldExperience);
 }
 
 void TPlayerData::updateStamina(const uint16_t stamina)
@@ -578,30 +575,22 @@ void TPlayerData::updateSerene(const bool serene)
 
 void TPlayerData::updateFreeCapacity(const uint32_t hundredths)
 {
-    const auto oldFreeCapacity = static_cast<uint32_t>(m_freeCapacity);
     const uint32_t oldHundredths = m_freeCapacityHundredths;
-    const uint32_t freeCapacity = hundredths / 100;
     m_freeCapacityHundredths = hundredths;
-    setFreeCapacity(static_cast<int>(freeCapacity));
+    setFreeCapacity(static_cast<int>(hundredths / 100));
     // A change below one oz counts too (the inventory's zero-capacity warning).
     if (oldHundredths != hundredths)
-        notify("onFreeCapacityChange", freeCapacity, oldFreeCapacity);
+        scheduleChangeNotification();
 }
 
 void TPlayerData::updateTotalCapacity(const uint32_t totalCapacity)
 {
-    const auto oldTotalCapacity = static_cast<uint32_t>(m_capacity);
     setCapacity(static_cast<int>(totalCapacity));
-    if (oldTotalCapacity != totalCapacity)
-        notify("onTotalCapacityChange", totalCapacity, oldTotalCapacity);
 }
 
 void TPlayerData::updateBaseCapacity(const uint32_t baseCapacity)
 {
-    const auto oldBaseCapacity = static_cast<uint32_t>(m_baseCapacity);
     setBaseCapacity(static_cast<int>(baseCapacity));
-    if (oldBaseCapacity != baseCapacity)
-        notify("onBaseCapacityChange", baseCapacity);
 }
 
 void TPlayerData::updateStoreExpBoostPurchasable(const bool purchasable)
@@ -662,10 +651,7 @@ void TPlayerData::updateBlessings(const uint16_t blessings, const uint8_t blessV
 
 void TPlayerData::updateSoul(const uint8_t soul)
 {
-    const uint8_t oldSoul = m_soul;
     setSoul(soul);
-    if (oldSoul != soul)
-        notify("onSoulChange", soul, oldSoul);
 }
 
 uint16_t TPlayerData::experienceRate(const tibia::client::ExperienceRate_t type) const
@@ -747,10 +733,7 @@ void TPlayerData::updateBaseSpeed(const uint16_t baseSpeed)
 
 void TPlayerData::setRegenerationTime(const uint16_t regenerationTime)
 {
-    const uint16_t oldRegenerationTime = this->regenerationTime();
     setRegenerationSeconds(regenerationTime);
-    if (oldRegenerationTime != regenerationTime)
-        notify("onRegenerationChange", regenerationTime, oldRegenerationTime);
 }
 
 void TPlayerData::setOfflineTrainingTime(const uint16_t offlineTrainingTime)

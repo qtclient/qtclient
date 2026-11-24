@@ -26,10 +26,9 @@
 #include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "clockservice.h"
-#include <tibia/game/thingsession_forward.h>
 
 AttachedEffectPtr AttachedEffect::create(const uint16_t thingId, const ThingCategory category) {
-    if (!tibia::game::isValidDatId(thingId, category)) {
+    if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(thingId, category)) {
         return nullptr;
     }
 
@@ -162,5 +161,7 @@ void AttachedEffect::move(const Position& fromPosition, const Position& toPositi
 }
 
 TAppearanceType* AttachedEffect::getThingType() const {
-    return m_thingId > 0 ? tibia::game::rawThingType(m_thingId, m_thingCategory) : nullptr;
+    if (m_thingId == 0 || m_thingCategory >= ThingLastCategory)
+        return nullptr;
+    return tibia::appearances::TAppearancesManager::instance().findAppearanceType(m_thingCategory, m_thingId);
 }

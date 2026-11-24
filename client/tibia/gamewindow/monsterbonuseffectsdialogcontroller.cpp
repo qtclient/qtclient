@@ -23,7 +23,6 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -72,7 +71,7 @@ public:
         m_creatureLegsColor = QColor(Qt::black);
         m_creatureDetailColor = QColor(Qt::black);
         if (m_assigned) {
-            const Outfit& outfit = tibia::game::raceData(charm.raceId).outfit;
+            const Outfit& outfit = tibia::appearances::TAppearancesManager::instance().getRaceData(charm.raceId).outfit;
             m_hasAppearanceInstance = outfit.getId() != 0;
             m_creatureOutfitId = outfit.getId();
             m_creatureHeadColor = outfitColor(outfit.getHead());
@@ -269,7 +268,7 @@ void TMonsterBonusEffectsDialogController::setTemporarySelectedMonsterRaceID(con
     if (m_temporarySelectedMonsterRaceID == v)
         return;
     m_temporarySelectedMonsterRaceID = v;
-    const Outfit outfit = v != 0 ? tibia::game::raceData(v).outfit : Outfit();
+    const Outfit outfit = v != 0 ? tibia::appearances::TAppearancesManager::instance().getRaceData(v).outfit : Outfit();
     m_hasTemporarySelectedMonsterAppearanceInstance = v != 0 && outfit.getId() != 0;
     m_temporarySelectedMonsterOutfitId = outfit.getId();
     m_temporarySelectedMonsterHeadColor = outfitColor(outfit.getHead());
@@ -359,7 +358,7 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
             minorTab ? m_monsterRaceStorage->racesUnlockedForMinorCharms() : m_monsterRaceStorage->racesUnlockedForCharms();
         for (const cyclopedia::TMonsterRace& race : tabRaces) {
             const int raceId = race.raceId;
-            const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
+            const QString name = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).name);
             if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
                 continue;
             // The unlocked charms on the race; one of the tab's kind keeps it out.
@@ -520,7 +519,7 @@ void TMonsterBonusEffectsDialogController::assignBonusEffectToMonster(const int 
 
 QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int RaceID)
 {
-    return QString::fromStdString(tibia::game::raceData(RaceID).name);
+    return QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(RaceID).name);
 }
 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()

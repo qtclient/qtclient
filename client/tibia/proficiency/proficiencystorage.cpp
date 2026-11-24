@@ -17,7 +17,7 @@
 #include <climits>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::proficiency {
 
@@ -36,9 +36,9 @@ constexpr int KnightProfession = 1;
 
 TAppearanceTypePtr itemType(const uint16_t typeId)
 {
-    if (typeId == 0 || !tibia::game::isValidDatId(typeId, ThingCategoryItem))
+    if (typeId == 0 || !tibia::appearances::TAppearancesManager::instance().isValidDatId(typeId, ThingCategoryItem))
         return nullptr;
-    return tibia::game::thingType(typeId, ThingCategoryItem);
+    return tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
 }
 
 const std::array<uint32_t, 10>& tableOf(const uint16_t typeId)

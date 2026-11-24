@@ -889,8 +889,7 @@ private:
 };
 
 /// CIP input::TGameActionSendChatMessageWithSpeechVolume
-/// (SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME): says, whispers or yells (the
-/// tibia::client::MessageMode).
+/// (SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME): says, whispers or yells.
 class TGameActionSendChatMessageWithSpeechVolume final : public TGameActionSendChatMessage
 {
 public:
@@ -3167,7 +3166,7 @@ private:
 /// CIP input::TGameActionCrossHairSpell / TGameActionSpellAtMouseCursor: a spell
 /// (+0x38) cast at a selected target or the mouse cursor. The chat
 /// handler makes it from the spell id and then sets the spoken words (+0x40)
-/// and the talk mode (+0x58; qtclient: a tibia::client::MessageMode).
+/// and the talk mode (+0x58; CIP's chat message mode).
 class TGameActionTargetedSpell : public IGameAction
 {
 public:

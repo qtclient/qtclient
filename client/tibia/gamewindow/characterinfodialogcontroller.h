@@ -38,7 +38,6 @@ class TMessageDialogController;
 class TCharacterInfoDialogController final : public cip::tibia::gamewindow::TCharacterInfoDialogController
 {
     Q_OBJECT
-    Q_PROPERTY(int inspectionState READ inspectionState NOTIFY inspectionStateChanged)
 public:
     /// CIP's character info data types (TCharacterInfoStorage keys).
     enum EDataType {
@@ -82,7 +81,6 @@ public:
     void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
 
     int dataType() const { return m_dataType; }
-    int inspectionState() const { return m_inspectionState; }
 
     /// CIP .
     EDialogCategory dialogCategory() const override;
@@ -126,7 +124,6 @@ public:
     Q_INVOKABLE void setOrToggleCharacterTitle(uint characterTitleId);
 
 private:
-    void hookEvents();
     /// The session's character info storage, or null without a session.
     cyclopedia::TCharacterInfoStorage* characterInfoStorage() const { return m_characterInfoStorage.get(); }
     /// CIP : shows `dataType`, asking the server unless it is
@@ -161,7 +158,6 @@ private:
     void replace(T*& member, T* object);
     void replace(QList<QObject*>& member, QList<QObject*> objects);
 
-    std::vector<client::gamecore::Hook> m_hooks;
     /// The constructors' common part (achievement info, error box wiring, the
     /// QML carriers, the event hooks).
     void initialize();
@@ -173,13 +169,9 @@ private:
     /// The data type shown; the inspection until another page is picked.
     int m_dataType = Inspection;
     uint32_t m_characterId = 0;
-    int m_inspectionState = 0;
     /// The error the error message shows (2 no permission, 3 no inspection).
     int m_errorType = 0;
     std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;
-
-Q_SIGNALS:
-    void inspectionStateChanged();
 };
 
 }

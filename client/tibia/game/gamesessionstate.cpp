@@ -44,7 +44,6 @@
 #include <tibia/game/tgamenotify.h>
 
 #include <QString>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::game {
 
@@ -102,7 +101,7 @@ tibia::input::TPlayerMovementIntentHandler::Environment TGameSessionState::playe
 {
     tibia::input::TPlayerMovementIntentHandler::Environment env;
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
-        return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
+        return tibia::worldmap::TWorldMapStorage::ensureStorage()->isAwareOfPosition(coordinate.toPosition());
     };
     env.claimUnreachable = [](const tibia::worldmap::TWorldMapCoordinate& goal, const int result) {
         int reason = 0;
@@ -149,17 +148,17 @@ void TGameSessionState::resetGameStates()
         storage->clear();
     if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance())
         inventory->clear();
-    tibia::game::resetAwareRange();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->resetAwareRange();
 }
 
 void TGameSessionState::processConnectionError(const std::string_view message, const bool clean)
 {
-    // Errors only matter while the session still has its connection.
-    if (m_gameConnection) {
-        if (!clean)
-            tibia::game::notify("onConnectionError", std::string(message), 1);
+    // The session reports the error itself (IGameSession::connectionError);
+    // only a connection still held ends the game here.
+    (void)message;
+    (void)clean;
+    if (m_gameConnection)
         processDisconnect();
-    }
 }
 
 void TGameSessionState::processDisconnect()
@@ -185,7 +184,7 @@ void TGameSessionState::beginPlayerSession(const std::string_view characterName)
         storage->setPlayerID(0);
     if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance())
         data->setCharacterName(characterName);
-    tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState().resetLocalPlayer();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->resetLocalPlayer();
 }
 
 void TGameSessionState::processEnterGame()
@@ -227,7 +226,7 @@ void TGameSessionState::processCharacterSwitch(const std::string_view characterN
     endSession();
 
     resetGameStates();
-    tibia::game::cleanMapDynamicThings();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->cleanDynamicThings();
 
     beginPlayerSession(characterName);
     m_characterName = characterName;
@@ -259,7 +258,7 @@ void TGameSessionState::processGameEnd()
     m_characterName = "";
 
     // clean map creatures
-    tibia::game::cleanMapDynamicThings();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->cleanDynamicThings();
 }
 
 
@@ -315,7 +314,7 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
     tibia::container::TInventorySlot row = item;
     if (!row.empty() && row.durationSeconds > 0) {
         TAppearanceType* type = row.appearance ? row.appearance->thingType()
-                                         : tibia::game::rawThingType(row.typeId, ThingCategoryItem);
+                                         : tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, row.typeId);
         // expirestop-only items are paused server-side when equipped in their cloth slot.
         if (type && type->getClothSlot() == static_cast<int>(slot)
             && type->hasExpire()) {
@@ -583,8 +582,6 @@ void TGameSessionState::setProtocolVersion(const uint16_t version)
         throw std::runtime_error(std::format("Protocol version {} not supported", version));
 
     m_protocolVersion = version;
-
-    Proto::buildMessageModesMap(version);
 
     tibia::game::notify("onProtocolVersionChange", version);
 }

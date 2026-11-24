@@ -3,7 +3,6 @@
 
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolclassicwire.h"
-#include "protocol/protocolcodes.h"
 #include "protocol/protocolreader.h"
 #include "protocol/protocolserverpacketprocessor.h"
 #include "protocol/protocolservermessageprocessor.h"
@@ -58,11 +57,14 @@ EProductMessage readProductMessage(ClassicReader& Reader)
 {
     if (Reader.remaining() == 0)
         return EProductMessage::None;
+    // The product's messages: extended opcode (0x32) and character switch (0x0D).
+    constexpr uint8_t ExtendedOpcode = 0x32;
+    constexpr uint8_t CharacterSwitch = 0x0D;
     const uint8_t opcode = Reader.p[Reader.i];
-    if (opcode != Proto::GameServerExtendedOpcode && opcode != Proto::GameServerCharacterSwitch)
+    if (opcode != ExtendedOpcode && opcode != CharacterSwitch)
         return EProductMessage::None;
     ++Reader.i;
-    const bool read = opcode == Proto::GameServerExtendedOpcode ? readExtendedOpcode(Reader) : readCharacterSwitch(Reader);
+    const bool read = opcode == ExtendedOpcode ? readExtendedOpcode(Reader) : readCharacterSwitch(Reader);
     return read ? EProductMessage::Read : EProductMessage::Unreadable;
 }
 

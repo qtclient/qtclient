@@ -8,7 +8,6 @@
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 #include <protocol.pb.h>
 
 #include <algorithm>
@@ -299,16 +298,11 @@ void TDailyRewardProtocolMessageHandler::collectDailyReward(const bool fromShrin
 
 void TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)
 {
-    tibia::game::notify("onRestingAreaState", message.in_resting_area());
     Q_EMIT restingAreaStateChanged(message.in_resting_area());
 }
 
 void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const GameserverMessageOpenRewardWall& message)
 {
-    // The player states tracker follows the streak level.
-    tibia::game::notify("onOpenRewardWall", static_cast<uint8_t>(message.from_shrine() ? 1 : 0), message.next_reward_time(),
-                        static_cast<uint8_t>(message.day_streak_day()), static_cast<uint8_t>(message.collected()), message.message(),
-                        static_cast<uint16_t>(message.jokers()), message.time_left(), static_cast<uint16_t>(message.streak_level()));
     TDailyRewardStorage& storage = *m_storage;
     storage.setNextDailyRewardPosition(static_cast<uint8_t>(message.day_streak_day()));
     storage.setNextRewardTime(message.next_reward_time());

@@ -344,13 +344,6 @@ TNewsButtonController::TNewsButtonController(QObject* parent)
 {
     s_instance = this;
     connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TNewsButtonController::changed);
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onGameNews", [this](GameObject*, const std::vector<std::any>& args) {
-        const int newsType = static_cast<int>(client::gamecore::argInt(args, 0));
-        const bool notificationOnly = args.size() > 1 && client::gamecore::argBool(args, 1);
-        onShowGameNewsMessage(newsType, notificationOnly);
-        return std::any{};
-    });
 }
 
 TNewsButtonController::~TNewsButtonController()

@@ -7,10 +7,10 @@ extern "C" {
 #endif
 
 enum {
-    /* MessageMode (uint8_t in tip) */
-    QTCLIENT_MESSAGE_FAILURE = 19,
-    QTCLIENT_MESSAGE_STATUS = 28,
-    QTCLIENT_MESSAGE_TRANSACTION = 55,
+    /* CIP chat message mode (the protocol's) */
+    QTCLIENT_MESSAGE_FAILURE = 21,
+    QTCLIENT_MESSAGE_STATUS = 30,
+    QTCLIENT_MESSAGE_TRANSACTION = 51,
 
     QTCLIENT_SHIELD_NONE = 0,
     QTCLIENT_SHIELD_WHITE_YELLOW = 1,

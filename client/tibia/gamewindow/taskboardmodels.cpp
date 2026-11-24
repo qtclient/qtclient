@@ -2,7 +2,7 @@
 
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "qmlcomponents/qmlcomponentsciptypes.h"
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QSortFilterProxyModel>
 
@@ -31,7 +31,7 @@ QVariant TBountyTasksListModel::itemData(const TBountyTask& task, const int role
     case TaskIndexRole:
         return uint(task.index);
     case CaptionRole:
-        return cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(task.raceId).name));
+        return cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(task.raceId).name));
     case RaceIdRole:
         return uint(task.raceId);
     case KillTextRole:

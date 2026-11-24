@@ -32,22 +32,10 @@
 
 namespace tibia::game {
 
-using SoftHook = tibia::game::SoftHook;
-using Args = TGameNotify::Args;
-
 namespace {
 
 /// How far the next frame updater runs ahead when the player resets the storages.
 constexpr qint64 StorageResetLookaheadMillis = 60000;
-
-template<typename F>
-SoftHook gameHook(const char* field, F&& f)
-{
-    return SoftHook(field, [f = std::forward<F>(f)](const Args& args) {
-        f(args);
-        return std::any{};
-    });
-}
 
 }
 
@@ -93,16 +81,6 @@ TSessiondumpGameSession::TSessiondumpGameSession(
         else
             Q_EMIT pingTimeoutRecovered();
     });
-    m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0), 0); }));
-    m_hooks.push_back(gameHook("onLoginAdvice", [this](const Args& a) { Q_EMIT gameLoginAdviceMessage(argString(a, 0)); }));
-    m_hooks.push_back(gameHook("onLoginWait", [this](const Args& a) {
-        Q_EMIT gameLoginWaitMessage(argString(a, 0), static_cast<int>(argInt(a, 1)));
-    }));
-    m_hooks.push_back(gameHook("onConnectionError", [this](const Args& a) { Q_EMIT connectionError(argString(a, 0)); }));
-    m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
-    m_hooks.push_back(gameHook("onSessionDumpMarker", [this](const Args& a) {
-        Q_EMIT sessionDumpMarker(argString(a, 0));
-    }));
 }
 
 TSessiondumpGameSession::~TSessiondumpGameSession()

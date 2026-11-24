@@ -22,7 +22,7 @@
 
 #include <algorithm>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -132,7 +132,7 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
 
 config::EUseType TActionBarManager::defaultUseType(const int objectId)
 {
-    const TAppearanceTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
+    const TAppearanceTypePtr type = objectId > 0 ? tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, uint16_t(objectId)) : nullptr;
     if (!type)
         return config::EUseType::Use;
     // A worn container (a backpack) is used like any other object.

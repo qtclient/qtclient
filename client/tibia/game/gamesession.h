@@ -42,11 +42,11 @@ uint64_t millis();
 
 /// Map sea floor (`tibia::config::mapSeaFloor`). Header free of engine gameconfig.
 uint8_t mapSeaFloor();
-/// World ambient light intensity (`mapsession::worldLight`). Header free of `world.h`/`map.h`.
+/// World ambient light intensity (`TWorldMapStorage::worldLight`, the server's light).
 uint8_t worldLightIntensity();
-/// World ambient light color (`mapsession::worldLight`). Header free of `world.h`/`map.h`.
+/// World ambient light color (`TWorldMapStorage::worldLight`, the server's light).
 uint8_t worldLightColor();
-/// Map item revision for roof/geometry cache (`mapsession::itemRevision`).
+/// Map item revision for roof/geometry cache (`TWorldMapStorage::itemRevision`).
 uint32_t mapItemRevision();
 
 /// World-time / session-end hooks (`tibia::world::subscribe*` in `game/sessionhooks`).
@@ -233,11 +233,8 @@ void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibi
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
-void processItemDetail(const ItemInspectionData& data);
-void processInspectionState(uint32_t creatureId, uint8_t state);
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data);
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData);
-void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
 
 
 

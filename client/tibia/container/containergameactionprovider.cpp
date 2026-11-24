@@ -6,7 +6,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -45,7 +44,7 @@ void append(TGameActionList& actions, TGameActionList more)
 
 TAppearanceType* typeOf(const uint16_t typeId)
 {
-    return typeId ? tibia::game::rawThingType(typeId, ThingCategoryItem) : nullptr;
+    return typeId ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId) : nullptr;
 }
 
 /// CONTEXT_MENU and OPEN_CYCLOPEDIA, which every type list offers.

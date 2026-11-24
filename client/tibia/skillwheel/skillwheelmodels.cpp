@@ -5,7 +5,7 @@
 #include <tibia/assets/things.h>
 
 #include <algorithm>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::skillwheel {
 
@@ -30,7 +30,7 @@ QString itemName(const int typeId)
 {
     if (typeId <= 0)
         return {};
-    const TAppearanceTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(typeId));
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 

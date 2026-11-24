@@ -92,7 +92,6 @@ private:
     uint8_t m_level = 0;
     uint8_t m_perk = 0;
     bool m_fromPerkTree = false;
-    std::vector<client::gamecore::Hook> m_hooks;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
 
@@ -148,7 +147,6 @@ private:
     TWeaponProficiencyShapeDialogController* m_shape;
     gamewindow::TMessageDialogController* m_message;
     int m_selectedOffer = -1;
-    std::vector<client::gamecore::Hook> m_hooks;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
 };
@@ -232,7 +230,6 @@ public:
 
 private:
     TShapedPerkOptionsSortFilterProxyModel m_proxy;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

@@ -10,7 +10,7 @@
 #include <client/outfit.h>
 #include <QColor>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <protocol.pb.h>
 
@@ -61,7 +61,7 @@ Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& look, const 
     Outfit outfit;
     if (uint16_t lookType = static_cast<uint16_t>(look.look_type()); lookType != 0) {
         outfit.setCategory(ThingCategoryCreature);
-        if (!game::isValidDatId(lookType, ThingCategoryCreature))
+        if (!appearances::TAppearancesManager::instance().isValidDatId(lookType, ThingCategoryCreature))
             lookType = 0;
         outfit.setId(lookType);
         outfit.setHead(static_cast<uint8_t>(look.head()));
@@ -73,7 +73,7 @@ Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& look, const 
         outfit.setCategory(ThingCategoryEffect);
         outfit.setAuxId(13);
     } else {
-        if (!game::isValidDatId(item, ThingCategoryItem))
+        if (!appearances::TAppearancesManager::instance().isValidDatId(item, ThingCategoryItem))
             item = 0;
         outfit.setCategory(ThingCategoryItem);
         outfit.setAuxId(item);
@@ -92,7 +92,7 @@ Outfit outfitFromProtocol(const protobuf::protocol::Outfit& look, const protobuf
     Outfit outfit;
     if (uint16_t lookType = static_cast<uint16_t>(look.look_type()); lookType != 0) {
         outfit.setCategory(ThingCategoryCreature);
-        if (!game::isValidDatId(lookType, ThingCategoryCreature))
+        if (!appearances::TAppearancesManager::instance().isValidDatId(lookType, ThingCategoryCreature))
             lookType = 0;
         outfit.setId(lookType);
         outfit.setHead(static_cast<uint8_t>(look.colors().head()));
@@ -104,7 +104,7 @@ Outfit outfitFromProtocol(const protobuf::protocol::Outfit& look, const protobuf
         outfit.setCategory(ThingCategoryEffect);
         outfit.setAuxId(13);
     } else {
-        if (!game::isValidDatId(item, ThingCategoryItem))
+        if (!appearances::TAppearancesManager::instance().isValidDatId(item, ThingCategoryItem))
             item = 0;
         outfit.setCategory(ThingCategoryItem);
         outfit.setAuxId(item);

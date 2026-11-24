@@ -159,7 +159,6 @@ private:
     static TNewsButtonController* s_instance;
     shared::THighlightTimer m_highlightTimer{ 600000 };
     int m_newsType = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

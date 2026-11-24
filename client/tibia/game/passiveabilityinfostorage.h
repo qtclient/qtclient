@@ -77,19 +77,11 @@ public:
     /// Whether the table has the ability.
     static bool isKnownPassiveAbility(uint8_t id);
 
-    uint32_t currentCooldown() const { return m_currentCooldown; }
-    uint32_t maxCooldown() const { return m_maxCooldown; }
-    bool canDecay() const { return m_canDecay; }
-
 private:
     /// The table, built on first use.
     static const std::map<uint8_t, TPassiveAbilityInfo>& infos();
 
     static TPassiveAbilityInfoStorage* s_instance;
-    uint32_t m_currentCooldown = 0;
-    uint32_t m_maxCooldown = 0;
-    bool m_canDecay = false;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

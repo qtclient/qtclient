@@ -21,7 +21,7 @@
 #include <functional>
 #include <set>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -355,7 +355,7 @@ QString TNPCTradeController::currencyName() const
 {
     if (!m_storage || m_storage->currencyIsName())
         return m_storage ? m_storage->currencyName() : QString();
-    const TAppearanceTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(currencyTypeId()));
     if (!type)
         return {};
     // Gold is shown with every word capitalised.
@@ -474,7 +474,7 @@ uint64_t TNPCTradeController::availableCurrencyAmount() const
         return 0;
     if (m_storage->currencyIsItem()) {
         // A liquid currency object is never counted.
-        const TAppearanceTypePtr& type = tibia::game::thingType(m_storage->currencyTypeId(), ThingCategoryItem);
+        const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, m_storage->currencyTypeId());
         if (type && (type->isFluidContainer() || type->isSplash()))
             return 0;
     }

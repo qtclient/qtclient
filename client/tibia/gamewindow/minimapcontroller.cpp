@@ -54,7 +54,7 @@ TMinimapController::TMinimapController(std::shared_ptr<input::TGameActionMapper>
     // CIP: Thais temple until the player is known.
     m_area.setCenter(Position(32369, 32215, 7));
 
-    m_positionHook = client::gamecore::Hook(tibia::game::kNotifyScope, "onPositionChange", [this](GameObject*, const std::vector<std::any>& args) {
+    m_positionHook = tibia::game::SoftHook("onPositionChange", [this](const std::vector<std::any>& args) {
         if (!args.empty())
             if (const auto* position = std::any_cast<Position>(&args[0]))
                 onPlayerPositionChanged(*position);

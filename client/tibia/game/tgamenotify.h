@@ -10,26 +10,24 @@
 #include <unordered_map>
 #include <vector>
 
-class GameObject;
-
 namespace tibia {
 namespace game {
 
-/// CIP session notify: typed Qt signals for high-traffic fields, plus a
-/// string-field qtclient subscribe bus that does not use GameObject.
+/// CIP session notify: typed Qt signals for high-traffic fields, plus the
+/// string-field bus the pack ABI subscribes to (`notify_api.h`).
 class TGameNotify final : public QObject
 {
     Q_OBJECT
 
 public:
     using Args = std::vector<std::any>;
-    /// CIP field handler (no GameObject). Returning a non-empty any is the
-    /// last-wins result for `notifyR`.
+    /// A field handler. Returning a non-empty any is the last-wins result for
+    /// `notifyR`.
     using FieldHandler = std::function<std::any(const Args& args)>;
 
     static TGameNotify* instance();
 
-    /// CIP / qtclient field subscribe (replaces GameEvents Hook scopes).
+    /// Subscribes `handler` to `field`; the id unsubscribes it.
     int subscribe(std::string_view field, FieldHandler handler);
     void unsubscribe(int id);
 
@@ -67,8 +65,7 @@ private:
 
 using Args = TGameNotify::Args;
 
-/// RAII CIP / qtclient field subscription (preferred when the handler needs no
-/// GameObject self).
+/// RAII field subscription.
 class SoftHook
 {
 public:
@@ -84,27 +81,7 @@ private:
     int m_id = 0;
 };
 
-/// RAII subscribe → SoftHooks / TGameNotify. Scope is ignored (legacy "cip" /
-/// "object" args kept for call-site compatibility); GameObject self is always
-/// nullptr. Prefer SoftHook for new handlers.
-class Hook
-{
-public:
-    using Handler = std::function<std::any(GameObject* self, const Args& args)>;
-
-    Hook() = default;
-    Hook(std::string_view scope, std::string_view field, Handler handler);
-    Hook(Hook&& other) noexcept;
-    Hook& operator=(Hook&& other) noexcept;
-    Hook(const Hook&) = delete;
-    Hook& operator=(const Hook&) = delete;
-    ~Hook();
-
-private:
-    int m_id = 0;
-};
-
-/// Hook / SoftHook arguments as the engine passed them.
+/// SoftHook arguments as the engine passed them.
 QString argString(const Args& args, size_t index);
 qint64 argInt(const Args& args, size_t index);
 bool argBool(const Args& args, size_t index);

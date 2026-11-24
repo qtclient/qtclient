@@ -183,7 +183,6 @@ private:
     TDamageTypedModel* m_typedModel;
     QPointer<config::TSidebarOptions> m_options;
     QPointer<gamewindow::TGenericEnterTextDialogController> m_targetDialog;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 /// DamageInputWidget.qml (CIP: TDamageInputWidgetController, update , menu
@@ -360,8 +359,8 @@ private:
     TPartyHuntMembersListModel* m_model;
     gamewindow::TPartyHuntMembersListModelSortFilterProxy* m_proxy;
     QPointer<config::TSidebarOptions> m_options;
-    std::vector<client::gamecore::Hook> m_hooks;
-    bool m_partyStateConnected = false;
+    /// The own creature whose party flag signal is connected.
+    QPointer<QObject> m_partyStateCreature;
 };
 
 }

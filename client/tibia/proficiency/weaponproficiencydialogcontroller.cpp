@@ -23,7 +23,7 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::proficiency {
 
@@ -396,8 +396,8 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 
     // The asked weapon when it is a proficiency weapon not already shown,
     // otherwise the list's first entry with every weapon type.
-    const TAppearanceTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
-        ? tibia::game::thingType(typeId, ThingCategoryItem)
+    const TAppearanceTypePtr type = typeId != 0 && tibia::appearances::TAppearancesManager::instance().isValidDatId(typeId, ThingCategoryItem)
+        ? tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId)
         : nullptr;
     const bool selected = typeId != 0 && m_gameSession && select(typeId);
     if (!selected || !type) {
@@ -743,8 +743,8 @@ void TWeaponProficiencyDialogController::closeDialog()
 QString TWeaponProficiencyDialogController::currentTypeName() const
 {
     QString name = qtTrId("weapon_proficiency_nothing_selected");
-    if (m_currentTypeId != 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem)) {
-        const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+    if (m_currentTypeId != 0 && tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem)) {
+        const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(m_currentTypeId));
         if (type)
             name = QString::fromStdString(type->getName());
     }
@@ -754,9 +754,9 @@ QString TWeaponProficiencyDialogController::currentTypeName() const
 bool TWeaponProficiencyDialogController::currentIsUseRestricted() const
 {
     // CIP: restricted while nothing is selected or there is no session.
-    if (m_currentTypeId == 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
+    if (m_currentTypeId == 0 || !tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
         return true;
-    const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(m_currentTypeId));
     if (!type || !tibia::game::hasLocalPlayer())
         return true;
     return tibia::game::localPlayerLevel() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());

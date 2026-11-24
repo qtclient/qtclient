@@ -44,7 +44,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -57,7 +57,7 @@ constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
 QString itemNameOf(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     if (!type || type->getId() == 0)
         return QString::number(typeId);
     const auto* market = type->marketProperties();
@@ -1260,7 +1260,7 @@ namespace {
 std::vector<uint16_t> monsterRaceIdsOfOccurrences(const std::set<int>& occurrences)
 {
     std::vector<uint16_t> raceIds;
-    for (const RaceType& race : tibia::game::getAllRaces()) {
+    for (const RaceType& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
         if (race.boss)
             continue;
         if (occurrences.count(static_cast<int>(race.occurrence)) != 0 && race.category != 0)
@@ -1385,12 +1385,12 @@ void TSoulSealsDialogController::closeDialog()
 
 QString TSoulSealsDialogController::selectedMonstername() const
 {
-    return cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).name));
+    return cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).name));
 }
 
 int TSoulSealsDialogController::selectedFightPrice() const
 {
-    return taskboard::soulPitFightPrice(tibia::game::raceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).difficulty);
+    return taskboard::soulPitFightPrice(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).difficulty);
 }
 
 QString TSoulSealsDialogController::soulSealsString() const

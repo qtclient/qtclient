@@ -8,11 +8,8 @@
 namespace tibia {
 namespace game {
 
-/// CipSoft notify scope for session / protocol → controller hooks.
-inline constexpr std::string_view kNotifyScope = "cip";
-
-/// Protocol / engine → qtclient controllers via `TGameNotify` (CipSoft field bus).
-/// Prefer this (or SoftHook / typed TGameNotify signals) over retired GameEvents.
+/// Publishes `field` on the `TGameNotify` string bus (the pack ABI's fields).
+/// Tip code connects to the CipSoft classes' Qt signals instead.
 template<typename... T>
 inline void notify(const std::string_view field, const T&... args)
 {

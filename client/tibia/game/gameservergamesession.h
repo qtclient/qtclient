@@ -237,7 +237,6 @@ private:
     shared::TQtConnectionManager m_clientMessageConnections;
     /// Host: the file the session's packets are recorded to (--record).
     QString m_recordTo;
-    std::vector<tibia::game::SoftHook> m_hooks;
 };
 
 }

@@ -321,7 +321,7 @@ QString TNpcDialogController::sendChatMessage(const QString& Message, const bool
     if (text.isEmpty())
         return {};
     if (!sayToRemoteNpc(text))
-        tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, text.toStdString());
+        tibia::game::talkChannel(12, 0, text.toStdString()); // CIP chat message mode NpcTo
     // As TChatController::sayInChannel: the server does not echo NPC-channel lines.
     if (m_chatStorage)
         m_chatStorage->addNpcEntry(chat::consoleColor(12), text, m_chatStorage->ownName());

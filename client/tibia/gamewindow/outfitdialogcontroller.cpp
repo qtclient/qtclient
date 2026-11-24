@@ -14,7 +14,8 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <client/outfit.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 #include <QDir>
 #include <QFile>
@@ -29,9 +30,9 @@ namespace tibia::gamewindow {
 
 bool outfitCanBeColorized(const int lookType)
 {
-    if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature))
+    if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(lookType, ThingCategoryCreature))
         return false;
-    const TAppearanceTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, lookType);
     return type && type->getLayers() > 1;
 }
 
@@ -341,9 +342,9 @@ void TSelectOutfitDialogController::onShowSelectOutfitDialog()
 void TSelectOutfitDialogController::removeUnsupportedAddOns()
 {
     for (auto& outfit : m_dialogData->Outfits) {
-        if (!tibia::game::isValidDatId(outfit.Id, ThingCategoryCreature))
+        if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(outfit.Id, ThingCategoryCreature))
             continue;
-        const TAppearanceTypePtr& type = tibia::game::thingType(outfit.Id, ThingCategoryCreature);
+        const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryCreature, outfit.Id);
         if (!type || !type->hasFrameGroup(tibia::appearances::EFixedFrameGroup::OutfitIdle))
             continue;
         const uint32_t patterns = type->frameGroup(tibia::appearances::EFixedFrameGroup::OutfitIdle).patternHeight();

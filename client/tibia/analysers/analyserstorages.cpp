@@ -1,6 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
@@ -22,7 +23,6 @@ namespace tibia::analysers {
 
 namespace {
 
-using Args = std::vector<std::any>;
 
 constexpr auto KeyShowBaseXp = "showBaseXp";
 
@@ -190,9 +190,12 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
 {
     s_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+    // Host: the client's premium time storage, bound when a game starts.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
+        if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+            connect(premium, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TAnalyserStorages::premiumTimeChanged,
+                    Qt::UniqueConnection);
         Q_EMIT premiumTimeChanged();
-        return std::any{};
     });
 }
 

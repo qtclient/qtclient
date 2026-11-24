@@ -7,7 +7,7 @@
 #include "cyclopedia/cyclopediaciptypes.h"
 #include <utility>
 #include <algorithm>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tuple>
 #include <client/outfit.h>
@@ -238,9 +238,6 @@ void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMe
         return;
     if (m.list_type() == 0) {
         Q_EMIT inspectObjectDataReceived(list, static_cast<EInspectionListWindow>(m.client_window()));
-        // Host: the item info dialog still follows the notify hook (its
-        // connector is not ported).
-        tibia::game::processItemDetail(toItemInspectionData(list, static_cast<int>(m.client_window())));
     } else if (m.client_window() == 0) {
         Q_EMIT requestOpenInspectPlayerDialog(list, m.has_player_id() ? m.player_id() : 0xffffffffu);
     }
@@ -419,12 +416,9 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
 void TPlayerProtocolMessageHandler::handlePlayerStateMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message)
 {
-    const uint64_t oldStates = tibia::game::localPlayerStates();
     if (TPlayerData* data = m_playerData.get())
         data->setStates(std::bitset<30>(message.states() & 0x3fffffff), static_cast<int>(message.counter()));
     tibia::game::localPlayerSetStatesAndRottenBlood(message.states(), static_cast<uint8_t>(message.counter()));
-    if (const uint64_t states = tibia::game::localPlayerStates(); states != oldStates)
-        tibia::game::notify("onStatesChange", states, oldStates);
 }
 
 void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
@@ -535,8 +529,6 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
             m_spellInfoStorage->setUnlockedSpells(spellIds);
             Q_EMIT m_spellInfoStorage->activeSpellsChanged();
         }
-        // Host: the action bar's virtue borders still follow the notify hook.
-        tibia::game::notify("onVirtuesYellowBorder", spellIds);
         break;
     }
     default:
@@ -851,7 +843,7 @@ void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const Gameserve
         }
         triggers.push_back(*feature);
     }
-    tibia::game::notify("onPremiumTrigger", triggers);
+    Q_EMIT newPremiumFeatureList(triggers);
 }
 
 void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(

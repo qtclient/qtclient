@@ -26,7 +26,6 @@
 #include <QObject>
 
 #include <algorithm>
-#include <tibia/game/thingsession_forward.h>
 #include <client/staticdata.h>
 
 #include <limits>
@@ -223,7 +222,7 @@ void TContainerProtocolMessageHandler::handleObjectInfoMessage(const GameserverM
         const auto typeId = static_cast<uint16_t>(object.object_id());
         // The data is the liquid of fluid containers and splashes, the tier
         // of classified objects, nothing for the others.
-        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
         TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
         if (type && (type->isSplash() || type->isFluidContainer()))
             instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, object.data());
@@ -342,7 +341,7 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
             infos->resetCounts();
             for (const auto& e : message.entries()) {
                 const auto typeId = static_cast<uint16_t>(e.object_id());
-                const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+                const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
                 TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
                 if (type && (type->isSplash() || type->isFluidContainer()))
                     instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, e.tier());
@@ -356,7 +355,7 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
     std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
     for (const auto& e : message.entries()) {
         const auto id = static_cast<uint16_t>(e.object_id());
-        const TAppearanceType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+        const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, id);
         const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
         auto& entry = counts[{ id, tier }];
         entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
@@ -410,13 +409,13 @@ TInventorySlot TInventorySlot::fromProtocolObject(TAppearanceType* type, const u
 
 TInventorySlot TInventorySlot::fromTypeId(const uint16_t typeId, const uint16_t countOrSubType, const uint8_t tier)
 {
-    return fromProtocolObject(tibia::game::rawThingType(typeId, ThingCategoryItem), countOrSubType, tier);
+    return fromProtocolObject(tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId), countOrSubType, tier);
 }
 
 TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventoryItem& item)
 {
     const uint16_t typeId = static_cast<uint16_t>(item.item_id());
-    TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
     if (!type || type->getId() == 0)
         return {};
 
@@ -463,7 +462,7 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
         if (looktype != 0) {
             podiumOutfit.setCategory(ThingCategoryCreature);
             uint16_t lookId = looktype;
-            if (!tibia::game::isValidDatId(lookId, ThingCategoryCreature)) {
+            if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(lookId, ThingCategoryCreature)) {
                 lookId = 0;
             }
             podiumOutfit.setId(lookId);
@@ -475,7 +474,7 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
         } else {
             uint16_t lookTypeEx = static_cast<uint16_t>(item.has_look_type_ex() ? item.look_type_ex() : 0);
             if (lookTypeEx != 0) {
-                if (!tibia::game::isValidDatId(lookTypeEx, ThingCategoryItem)) {
+                if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(lookTypeEx, ThingCategoryItem)) {
                     lookTypeEx = 0;
                 }
                 if (lookTypeEx != 0) {
@@ -945,7 +944,7 @@ bool TInventoryContainer::isObjectEquipped(const uint16_t typeId, const std::opt
         const TInventorySlot& slot = slotAt(slotId);
         if (slot.empty() || slot.typeId != typeId)
             continue;
-        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
         if (!type || !type->hasUpgradeClassification())
             return true;
         return tier.has_value() && slot.tier == *tier;

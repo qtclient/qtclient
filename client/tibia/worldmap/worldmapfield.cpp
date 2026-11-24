@@ -15,7 +15,6 @@
 #include "tibia/assets/things.h"
 #include "sprites/spritesystem.h"
 #include <tibia/config/runtimegameconfig.h>
-#include <tibia/game/mapsession.h>
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/appearances/appearancetype.h>
 #include "clockservice.h"
@@ -881,8 +880,7 @@ bool TWorldMapField::isCompletelyCovered(const uint8_t firstFloor, const bool re
     if ((m_isCompletelyCovered & idChecked) == 0) {
         m_isCompletelyCovered |= idChecked;
         bool isLoading = false;
-        if (tibia::game::isCompletelyCovered(
-                { getPosition().x, getPosition().y, getPosition().z }, isLoading, firstFloor)) {
+        if (TWorldMapStorage::ensureStorage()->isCompletelyCovered(getPosition(), isLoading, firstFloor)) {
             m_isCompletelyCovered |= idState;
             m_isCovered |= idChecked; // Set covered is Checked
             m_isCovered |= idState;
@@ -910,7 +908,7 @@ bool TWorldMapField::isCovered(const int8_t firstFloor)
     if ((m_isCovered & idChecked) == 0) {
         m_isCovered |= idChecked;
         bool isLoading = false;
-        if (tibia::game::isCovered({ getPosition().x, getPosition().y, getPosition().z }, isLoading, firstFloor))
+        if (TWorldMapStorage::ensureStorage()->isCovered(getPosition(), isLoading, static_cast<uint8_t>(firstFloor)))
             m_isCovered |= idState;
 
         if (isLoading) {

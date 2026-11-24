@@ -15,11 +15,13 @@
 #include "appearances/appearancetype.h"
 #include "appearances/creatureplaceholderappearanceinstance.h"
 #include "clockservice.h"
+#include "effects/effectstorage.h"
 #include "iclockservice.h"
 
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
-#include <tibia/game/mapsession.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 #include <memory>
 
 namespace tibia::worldmap {
@@ -29,16 +31,33 @@ namespace {
 TWorldMapStorage* g_worldMapStorage = nullptr;
 std::unique_ptr<TWorldMapStorage> g_fallbackWorldMapStorage;
 
+/// The stored field at a map position (null off the map).
+TWorldMapField* mapFieldAt(TWorldMapStorage& storage, const Position& position)
+{
+    return position.isMapPosition() ? storage.fieldAt(position) : nullptr;
+}
+
+/// The field at a map position, created inside the stored volume (null off the map).
+TWorldMapField* createMapField(TWorldMapStorage& storage, const Position& position)
+{
+    return position.isMapPosition() ? storage.getOrCreateField(position) : nullptr;
+}
+
+/// probeCoverTile flags.
+constexpr uint8_t ProbeSeen = 1;
+constexpr uint8_t ProbeEmpty = 2;
+constexpr uint8_t ProbeOpaque = 4;
+constexpr uint8_t ProbeTopGround = 8;
+constexpr uint8_t ProbeLoading = 16;
+
 }
 
 TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
     : cip::tibia::worldmap::TWorldMapStorage(parent)
     , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
 {
-    // Size missile floors only — full sessionState().init() calls resetAwareRange →
-    // removeUnawareThings → ensureStorage(), which re-enters while g_worldMapStorage
-    // is still null (stack overflow). Callers init after setInstance / ensureStorage.
-    m_sessionState.ensureMissileFloorsSized();
+    // Host: the aware range is reset by the owner once the storage is installed
+    // (TGameSessionBase::initializeWorldMapSessionState, ensureStorage).
 }
 
 TWorldMapStorage::TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
@@ -48,7 +67,6 @@ TWorldMapStorage::TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementS
     , m_sharedSpeedCalculator(std::move(speedCalculator))
     , m_clock(std::move(clock))
 {
-    m_sessionState.ensureMissileFloorsSized();
     qRegisterMetaType<TWorldMapCoordinate>("TWorldMapCoordinate");
 }
 
@@ -77,8 +95,7 @@ TWorldMapStorage* TWorldMapStorage::ensureStorage()
     if (!g_fallbackWorldMapStorage) {
         g_fallbackWorldMapStorage = std::make_unique<TWorldMapStorage>();
         g_worldMapStorage = g_fallbackWorldMapStorage.get();
-        // After ctor: instance is live, so session init (aware range) is safe.
-        g_worldMapStorage->sessionState().init();
+        g_worldMapStorage->resetAwareRange();
         return g_worldMapStorage;
     }
     g_worldMapStorage = g_fallbackWorldMapStorage.get();
@@ -217,41 +234,6 @@ void TWorldMapStorage::setField(const TWorldMapCoordinate& coordinate, std::shar
     Q_EMIT informationAtWorldMapCoordinateHasChanged(coordinate);
 }
 
-void TWorldMapStorage::setFieldObjects(const Position& position,
-                                       const std::vector<appearances::TAppearanceInstancePtr>& objects)
-{
-    sessionState().setFieldObjects(position, objects);
-}
-
-bool TWorldMapStorage::insertObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position,
-                                      const int stackPos)
-{
-    return sessionState().insertObjectAt(object, position, stackPos);
-}
-
-bool TWorldMapStorage::replaceObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position,
-                                       const int stackPos)
-{
-    return sessionState().replaceObjectAt(object, position, stackPos);
-}
-
-appearances::TAppearanceInstancePtr TWorldMapStorage::removeObjectAt(const Position& position, const int stackPos)
-{
-    return sessionState().removeObjectAt(position, stackPos);
-}
-
-bool TWorldMapStorage::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos,
-                                                const bool fireLocalDisappear)
-{
-    return sessionState().removeCreatureFromFields(creatureId, fieldPos, fireLocalDisappear);
-}
-
-bool TWorldMapStorage::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
-                                         const Position& newPos, const bool byId)
-{
-    return sessionState().applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
-}
-
 void TWorldMapStorage::notifyCoordinateChanged(const Position& position)
 {
     // A stored field announces its coordinate itself.
@@ -265,8 +247,8 @@ TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
 {
     if (m_storedVolume)
         return *m_storedVolume;
-    const Position center = m_sessionState.getCentralPosition();
-    const AwareRange range = m_sessionState.getAwareRange();
+    const Position center = m_centralPosition;
+    const AwareRange range = m_awareRange;
     // The session places the volume (CipSoft's setStoredVolume always widens
     // it by the margins).
     return TShearedWorldMapCuboid(
@@ -282,7 +264,7 @@ void TWorldMapStorage::setStoredVolume(const Position& center)
     const TShearedWorldMapCuboid previous = storedVolume();
     // The session's centre defines the known area; moving it drops the fields
     // that leave it.
-    m_sessionState.setCentralPosition(center);
+    setCentralPosition(center);
     if (!(storedVolume() == previous))
         Q_EMIT storedVolumeHasChanged(storedVolume());
 }
@@ -310,7 +292,7 @@ bool TWorldMapStorage::isInStoredVolume(const Position& position) const
 {
     if (m_storedVolume)
         return m_storedVolume->contains(TWorldMapCoordinate(position));
-    return m_sessionState.isAwareOfPosition(position);
+    return isAwareOfPosition(position);
 }
 
 namespace {
@@ -373,17 +355,6 @@ void TWorldMapStorage::fillMinimapData(const TWorldMapField& field, minimap::TMi
     data.avoid = field.walkState() != 0 || field.hasAvoidedObjectOrCreature();
 }
 
-void TWorldMapStorage::addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)
-{
-    sessionState().addMissileAppearance(appearance);
-}
-
-void TWorldMapStorage::addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance,
-                                           const Position& position)
-{
-    sessionState().addEffectAppearance(appearance, position);
-}
-
 WorldMapFieldList fieldsOnFloor(const int8_t floor)
 {
     return TWorldMapStorage::ensureStorage()->fieldList(floor);
@@ -391,7 +362,7 @@ WorldMapFieldList fieldsOnFloor(const int8_t floor)
 
 const std::vector<tibia::appearances::TAppearanceInstancePtr>& floorMissiles(const uint8_t z)
 {
-    return TWorldMapStorage::ensureStorage()->sessionState().getFloorMissiles(z);
+    return effects::TEffectStorage::instance().missilesOn(z);
 }
 
 int TWorldMapStorage::groundSpeedAt(const Position& position)
@@ -568,6 +539,582 @@ bool TWorldMapStorage::hasTranslucentAt(const TWorldMapCoordinate& coordinate)
 {
     const TWorldMapField* field = fieldAt(coordinate);
     return field && field->hasTranslucent();
+}
+
+// Host: the field updates, the known area, the local player's field, the
+// world light and the renderer's cover caches.
+
+void TWorldMapStorage::fieldUpdated(const Position& position, const bool creature,
+                                    const tibia::client::Operation operation)
+{
+    if (!position.isMapPosition())
+        return;
+
+    // A creature's OPERATION_CLEAN is only a walking-field hint: it must not bump
+    // the cover or item revisions, or every step forces a full static remap.
+    // Real field cleans come without a creature. Creatures are never opaque, so
+    // only field cleans churn the cover caches.
+    const bool fieldClean = operation == tibia::client::OPERATION_CLEAN && !creature;
+    // Per-cell cover cache clear (a global wipe would cold-start every field on
+    // each map-stream packet). While the static dirty list is saturated, one
+    // wipe on the next cover-probe batch replaces the column walks.
+    if (fieldClean) {
+        m_coverRevision.fetch_add(1, std::memory_order_relaxed);
+        if (m_staticDirty.size() >= MaxStaticDirty)
+            m_coverInvalidateFlood = true;
+        else
+            invalidateCoverCachesFrom(position);
+        m_itemRevision.fetch_add(1, std::memory_order_relaxed);
+        // Static dirty for the world renderer; unaware eviction floods are skipped.
+        if (!m_removingUnawareThings && m_staticDirty.size() < MaxStaticDirty)
+            m_staticDirty.push_back(position);
+    }
+
+    // Walking-field hints (CLEAN with a creature) are not field changes.
+    if (!m_removingUnawareThings && (creature ? operation != tibia::client::OPERATION_CLEAN : true))
+        notifyCoordinateChanged(position);
+}
+
+void TWorldMapStorage::invalidateCoverCachesFrom(const Position& position)
+{
+    // isCompletelyCovered walks coveredUp from a field and tests a 2x2 at each
+    // level. An opaque change only affects the fields that look up through that
+    // cell: those columns lose their bits, not every field in the world.
+    Position cursor = position;
+    for (;;) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                if (TWorldMapField* field = mapFieldAt(*this, cursor.translated(dx, dy)))
+                    field->invalidateCoverCache();
+            }
+        }
+        if (!cursor.coveredDown())
+            break;
+    }
+}
+
+void TWorldMapStorage::invalidateAllCoverCaches()
+{
+    for (const auto& [coordinate, field] : m_fields)
+        field->invalidateCoverCache();
+    m_coverInvalidateFlood = false;
+}
+
+void TWorldMapStorage::beginCoverProbeBatch()
+{
+    if (m_coverInvalidateFlood)
+        invalidateAllCoverCaches();
+    m_coverProbe.clear();
+    m_coverProbeActive = true;
+}
+
+void TWorldMapStorage::endCoverProbeBatch()
+{
+    m_coverProbeActive = false;
+    m_coverProbe.clear();
+}
+
+uint8_t TWorldMapStorage::probeCoverTile(const Position& position)
+{
+    if (m_coverProbeActive) {
+        const auto it = m_coverProbe.find(position);
+        if (it != m_coverProbe.end())
+            return it->second;
+    }
+    uint8_t flags = ProbeSeen;
+    TWorldMapField* field = mapFieldAt(*this, position);
+    if (!field) {
+        flags |= ProbeEmpty;
+    } else {
+        if (field->isLoading())
+            flags |= ProbeLoading;
+        if (field->isFullyOpaque())
+            flags |= ProbeOpaque;
+        if (field->hasTopGround())
+            flags |= ProbeTopGround;
+    }
+    if (m_coverProbeActive)
+        m_coverProbe.emplace(position, flags);
+    return flags;
+}
+
+size_t TWorldMapStorage::clearStaticDirtyTiles()
+{
+    if (m_coverInvalidateFlood)
+        invalidateAllCoverCaches();
+    const size_t n = m_staticDirty.size();
+    m_staticDirty.clear();
+    return n;
+}
+
+bool TWorldMapStorage::isCovered(const Position& position, bool& isLoading, const uint8_t firstFloor)
+{
+    // A field above the position, or the top ground one floor up and down-right.
+    Position above = position;
+    while (above.coveredUp() && above.z >= firstFloor) {
+        const uint8_t here = probeCoverTile(above);
+        if (here & ProbeLoading) {
+            isLoading = true;
+            return false;
+        }
+        if (here & ProbeOpaque)
+            return true;
+        if (probeCoverTile(above.translated(1, 1)) & ProbeTopGround)
+            return true;
+    }
+    return false;
+}
+
+bool TWorldMapStorage::isCompletelyCovered(const Position& position, bool& isLoading, const uint8_t firstFloor)
+{
+    TWorldMapField* checked = mapFieldAt(*this, position);
+    const bool single = !checked || checked->isSingleDimension();
+    Position above = position;
+    while (above.coveredUp() && above.z >= firstFloor) {
+        bool covered = true;
+        bool done = false;
+
+        // Top ground on the 2x2 above.
+        for (auto x = -1; ++x < 2 && !done;) {
+            for (auto y = -1; ++y < 2 && !done;) {
+                const uint8_t flags = probeCoverTile(above.translated(x, y));
+                if ((flags & ProbeEmpty) || !(flags & ProbeTopGround)) {
+                    covered = false;
+                    done = true;
+                } else if (x == 1 && y == 1 && single) {
+                    done = true;
+                }
+            }
+        }
+        if (covered)
+            return true;
+
+        covered = true;
+        done = false;
+
+        // Fully opaque fields on the 2x2 above.
+        for (auto x = -1; ++x < 2 && !done;) {
+            for (auto y = -1; ++y < 2 && !done;) {
+                const uint8_t flags = probeCoverTile(above.translated(-x, -y));
+                if (flags & ProbeLoading) {
+                    isLoading = true;
+                    return false;
+                }
+                if ((flags & ProbeEmpty) || !(flags & ProbeOpaque)) {
+                    covered = false;
+                    done = true;
+                } else if (x == 0 && y == 0 && single) {
+                    done = true;
+                }
+            }
+        }
+        if (covered)
+            return true;
+    }
+    return false;
+}
+
+void TWorldMapStorage::cleanDynamicThings()
+{
+    // The local player's creature is stored, too.
+    if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
+        const QList<creatures::TCreatureID> ids = storage->creatureIds();
+        for (const creatures::TCreatureID id : ids)
+            removeCreatureFromFields(id);
+        for (const creatures::TCreatureID id : ids)
+            storage->remove(id);
+    }
+}
+
+void TWorldMapStorage::clean()
+{
+    cleanDynamicThings();
+    clearAllFields();
+}
+
+void TWorldMapStorage::cleanField(const Position& position)
+{
+    if (tibia::game::isSceneFrozen() || !position.isMapPosition())
+        return;
+    if (TWorldMapField* field = fieldAt(position)) {
+        field->setObjects({});
+        if (field->canErase())
+            removeField(position);
+        fieldUpdated(position, false, tibia::client::OPERATION_CLEAN);
+    } else {
+        notifyCoordinateChanged(position);
+    }
+}
+
+void TWorldMapStorage::setFieldObjects(const Position& position,
+                                       const std::vector<appearances::TAppearanceInstancePtr>& objects)
+{
+    // The field's content goes first; a field left without objects is dropped.
+    cleanField(position);
+    if (objects.empty() || tibia::game::isSceneFrozen())
+        return;
+    TWorldMapField* field = createMapField(*this, position);
+    if (!field)
+        return;
+    field->setObjects(objects);
+    m_itemRevision.fetch_add(1, std::memory_order_relaxed);
+    fieldUpdated(position, false, tibia::client::OPERATION_ADD);
+    for (const appearances::TAppearanceInstancePtr& object : objects) {
+        if (object->creatureId() != 0 && object->creatureId() == tibia::game::localPlayerId())
+            objectPlaced(object, position);
+    }
+}
+
+bool TWorldMapStorage::insertObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position,
+                                      const int stackPos)
+{
+    // Host: an item without a type is never placed.
+    if (!object || (!object->isCreature() && object->id() == 0) || !position.isValid())
+        return false;
+    TWorldMapField* field = createMapField(*this, position);
+    if (!field)
+        return false;
+    if (stackPos < 0 || stackPos >= 0xff)
+        (void)field->addObject(object);
+    else
+        (void)field->insertObject(object, static_cast<uint8_t>(stackPos));
+    objectPlaced(object, position);
+    return true;
+}
+
+bool TWorldMapStorage::replaceObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position,
+                                       const int stackPos)
+{
+    if (!object || stackPos < 0 || !position.isValid())
+        return false;
+    TWorldMapField* field = createMapField(*this, position);
+    if (!field)
+        return false;
+    const appearances::TAppearanceInstancePtr removed =
+        field->replaceObject(object, static_cast<uint8_t>(std::min(stackPos, 0xff)));
+    // The local player leaving its field (a turn puts its placeholder back).
+    if (removed && removed->creatureId() != 0 && removed->creatureId() == tibia::game::localPlayerId()) {
+        fieldUpdated(position, true, tibia::client::OPERATION_REMOVE);
+        localPlayerDisappeared();
+    }
+    objectPlaced(object, position);
+    return true;
+}
+
+appearances::TAppearanceInstancePtr TWorldMapStorage::removeObjectAt(const Position& position, const int stackPos)
+{
+    TWorldMapField* field = stackPos >= 0 && position.isValid() ? mapFieldAt(*this, position) : nullptr;
+    if (!field)
+        return nullptr;
+    appearances::TAppearanceInstancePtr removed = field->removeObject(static_cast<uint8_t>(std::min(stackPos, 0xff)));
+    if (!removed)
+        return nullptr;
+    // A creature leaving is announced; an object's field announces itself.
+    if (!removed->isCreature())
+        return removed;
+    const bool isLocal = removed->creatureId() != 0 && removed->creatureId() == tibia::game::localPlayerId();
+    fieldUpdated(position, isLocal, tibia::client::OPERATION_REMOVE);
+    if (isLocal)
+        localPlayerDisappeared();
+    return removed;
+}
+
+void TWorldMapStorage::objectPlaced(const appearances::TAppearanceInstancePtr& object, const Position& position)
+{
+    if (object->creatureId() != 0 && object->creatureId() == tibia::game::localPlayerId()) {
+        setLocalPlayerPosition(position);
+        localPlayerAppeared();
+        fieldUpdated(position, true, tibia::client::OPERATION_ADD);
+        return;
+    }
+    if (!object->isCreature())
+        m_itemRevision.fetch_add(1, std::memory_order_relaxed);
+    fieldUpdated(position, false, tibia::client::OPERATION_ADD);
+}
+
+void TWorldMapStorage::addMissileAppearance(const appearances::TAppearanceInstancePtr& appearance)
+{
+    if (dynamic_cast<appearances::TMissileEffectInstance*>(appearance.get()))
+        (void)effects::TEffectStorage::instance().add(appearance);
+}
+
+void TWorldMapStorage::addEffectAppearance(const appearances::TAppearanceInstancePtr& appearance,
+                                           const Position& position)
+{
+    if (!appearance || appearance->category() != ThingCategoryEffect)
+        return;
+    if (!dynamic_cast<appearances::TEffectInstance*>(appearance.get()))
+        return;
+    // The effect shows on its field even before the field has content.
+    (void)createMapField(*this, position);
+    if (effects::TEffectStorage::instance().add(appearance))
+        fieldUpdated(position, false, tibia::client::OPERATION_ADD);
+}
+
+bool TWorldMapStorage::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos,
+                                                const bool fireLocalDisappear)
+{
+    if (creatureId == 0)
+        return false;
+
+    const bool isLocal = creatureId == tibia::game::localPlayerId();
+    bool removed = false;
+    const auto removeAt = [&](const Position& at) {
+        TWorldMapField* field = at.isValid() ? mapFieldAt(*this, at) : nullptr;
+        if (!field)
+            return;
+        // The stack entry the creature's placeholder holds.
+        const auto& stack = field->appearances();
+        const auto it = std::ranges::find_if(stack, [creatureId](const appearances::TAppearanceInstancePtr& entry) {
+            return entry->creatureId() == creatureId;
+        });
+        if (it == stack.end())
+            return;
+        (void)field->removeObject(static_cast<uint8_t>(it - stack.begin()));
+        removed = true;
+        fieldUpdated(at, isLocal, tibia::client::OPERATION_REMOVE);
+    };
+
+    // The field the message names, else the field the creature stands on.
+    removeAt(fieldPos);
+    if (!removed) {
+        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(creatureId); row && row->position() != fieldPos)
+                removeAt(row->position());
+        }
+    }
+
+    if (removed && fireLocalDisappear && isLocal)
+        localPlayerDisappeared();
+    return removed;
+}
+
+bool TWorldMapStorage::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
+                                         const Position& newPos, const bool byId)
+{
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    if (!creatureId || !newPos.isValid() || !storage)
+        return false;
+    const auto row = storage->getOrCreate(creatureId);
+    if (!row)
+        return false;
+
+    // The position form names the field and slot the creature leaves; the id
+    // form moves it from where it stands.
+    const bool isLocal = creatureId == tibia::game::localPlayerId();
+    if (byId) {
+        // The creature leaves the field it stands on for the target field.
+        const Position from = row->position();
+        if (from.isValid() && from != newPos)
+            removeCreatureFromFields(creatureId, from, false);
+        if (row->placeholderAppearance() && createMapField(*this, newPos)) {
+            row->setPosition(newPos);
+            insertObjectAt(row->placeholderAppearance(), newPos, -1);
+        }
+        moveCreature(*row, from, newPos, elevationAt(from), elevationAt(newPos));
+        return true;
+    }
+    TWorldMapField* fromField = mapFieldAt(*this, oldPos);
+    if (!fromField || fromField->stackCreatureId(oldStack) != creatureId)
+        return false;
+    if (!createMapField(*this, newPos)) {
+        // A step out of the known area only leaves the field.
+        (void)fromField->removeObject(static_cast<uint8_t>(oldStack));
+        fieldUpdated(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+        return true;
+    }
+    if (!moveCreatureInstance(TWorldMapCoordinate(oldPos), oldStack, TWorldMapCoordinate(newPos)))
+        return false;
+    fieldUpdated(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+    if (isLocal) {
+        setLocalPlayerPosition(newPos);
+        localPlayerAppeared();
+    }
+    fieldUpdated(newPos, isLocal, tibia::client::OPERATION_ADD);
+    return true;
+}
+
+void TWorldMapStorage::removeUnawareThings()
+{
+    // The creatures standing outside the known area leave their fields.
+    if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
+        for (const creatures::TCreatureID id : storage->creatureIds()) {
+            const auto row = storage->creatureAt(id);
+            if (!row || !row->position().isValid())
+                continue;
+            if (!isAwareOfPosition(row->position()))
+                removeCreatureFromFields(id);
+        }
+    }
+    if (const uint32_t localId = tibia::game::localPlayerId();
+        localId != 0 && !isAwareOfPosition(tibia::game::localPlayerPosition()))
+        removeCreatureFromFields(localId);
+
+    // The storage keeps the fields of the known area only: every field outside
+    // it goes, and its coordinate is announced as changed.
+    m_removingUnawareThings = true;
+    removeFieldsOutsideStoredVolume(
+        [this](const Position& position) { return isAwareOfPosition(position); },
+        [this](const Position& position) { fieldUpdated(position, false, tibia::client::OPERATION_CLEAN); });
+    m_removingUnawareThings = false;
+}
+
+void TWorldMapStorage::resetLocalPlayer()
+{
+    if (m_localPlayerLeave) {
+        m_localPlayerLeave->cancel();
+        m_localPlayerLeave = nullptr;
+    }
+    m_localPlayerPosition = {};
+    m_localPlayerLastField = {};
+    m_localPlayerOffMap = true;
+}
+
+void TWorldMapStorage::setLocalPlayerPosition(const Position& position)
+{
+    if (m_localPlayerPosition == position)
+        return;
+    const Position oldPosition = m_localPlayerPosition;
+    m_localPlayerPosition = position;
+    tibia::game::notify("onPositionChange", position, oldPosition);
+}
+
+void TWorldMapStorage::localPlayerAppeared()
+{
+    if (m_localPlayerLeave) {
+        m_localPlayerLeave->cancel();
+        m_localPlayerLeave = nullptr;
+    }
+    const Position position = tibia::game::localPlayerPosition();
+    if (m_localPlayerOffMap) {
+        m_localPlayerOffMap = false;
+    } else if (m_localPlayerLastField != position) {
+        // The first field after the login is no jump.
+        if (m_localPlayerLastField.isValid() && !tibia::game::isOneStep(m_localPlayerLastField, position))
+            tibia::game::localPlayerHandleTeleport();
+        m_localPlayerLastField = position;
+    }
+    tibia::game::notify("onCreatureAppear", tibia::game::localPlayerId());
+}
+
+void TWorldMapStorage::localPlayerDisappeared()
+{
+    if (m_localPlayerLeave)
+        m_localPlayerLeave->cancel();
+    m_localPlayerLastField = tibia::game::localPlayerPosition();
+    tibia::game::notify("onCreatureDisappear", tibia::game::localPlayerId());
+    m_localPlayerLeave = tibia::schedule::post([this] {
+        m_localPlayerOffMap = true;
+        tibia::game::localPlayerStopWalk();
+        m_localPlayerLastField = {};
+        m_localPlayerLeave = nullptr;
+    });
+}
+
+void TWorldMapStorage::setCentralPosition(const Position& center)
+{
+    if (tibia::game::isSceneFrozen() || m_centralPosition == center)
+        return;
+
+    m_centralPosition = center;
+    removeUnawareThings();
+
+    // The server leaves the local player out of the map when its field holds
+    // too many objects: the player then stands at the central position.
+    tibia::schedule::post([this] {
+        if (!tibia::game::hasLocalPlayer())
+            return;
+        const Position oldPosition = tibia::game::localPlayerPosition();
+        if (oldPosition == m_centralPosition)
+            return;
+        if (const TWorldMapField* field = fieldAt(oldPosition)) {
+            const uint32_t localId = tibia::game::localPlayerId();
+            if (std::ranges::any_of(field->appearances(), [localId](const appearances::TAppearanceInstancePtr& entry) {
+                    return entry->creatureId() == localId;
+                }))
+                return;
+        }
+        if (!m_localPlayerOffMap)
+            localPlayerDisappeared();
+        setLocalPlayerPosition(m_centralPosition);
+        localPlayerAppeared();
+    });
+}
+
+void TWorldMapStorage::setWorldLight(const uint8_t intensity, const uint8_t color)
+{
+    const Light oldLight = m_worldLight;
+    const Light newLight{ intensity, color };
+    m_worldLight = newLight;
+    if (oldLight.color != color || oldLight.intensity != intensity)
+        tibia::game::notify("onWorldLightChange", newLight, oldLight);
+}
+
+bool TWorldMapStorage::isAwareOfPosition(const Position& position, const AwareRange& range) const
+{
+    if ((position.z < firstAwareFloor() || position.z > lastAwareFloor()) && range == m_awareRange)
+        return false;
+
+    Position grounded = position;
+    while (grounded.z != m_centralPosition.z) {
+        if (grounded.z > m_centralPosition.z) {
+            // 65535,65535,15 cannot go up to 65536,65536,14.
+            if (grounded.x == UINT16_MAX || grounded.y == UINT16_MAX)
+                break;
+            grounded.coveredUp();
+        } else {
+            // 0,0,0 cannot go down to -1,-1,1.
+            if (grounded.x == 0 || grounded.y == 0)
+                break;
+            grounded.coveredDown();
+        }
+    }
+
+    return m_centralPosition.isInRange(grounded, range.left, range.right, range.top, range.bottom);
+}
+
+void TWorldMapStorage::setAwareRange(const AwareRange& range)
+{
+    m_awareRange = range;
+    removeUnawareThings();
+}
+
+void TWorldMapStorage::resetAwareRange()
+{
+    setAwareRange({ .left = static_cast<uint8_t>(tibia::config::mapViewPortWidth()),
+                    .top = static_cast<uint8_t>(tibia::config::mapViewPortHeight()),
+                    .right = static_cast<uint8_t>(tibia::config::mapViewPortWidth() + 1),
+                    .bottom = static_cast<uint8_t>(tibia::config::mapViewPortHeight() + 1) });
+}
+
+uint8_t TWorldMapStorage::firstAwareFloor() const
+{
+    if (m_centralPosition.z <= tibia::config::mapSeaFloor())
+        return 0;
+    return m_centralPosition.z - tibia::config::mapAwareUndergroundFloorRange();
+}
+
+uint8_t TWorldMapStorage::lastAwareFloor() const
+{
+    if (m_centralPosition.z <= tibia::config::mapSeaFloor())
+        return tibia::config::mapSeaFloor();
+    return std::min<uint8_t>(m_centralPosition.z + tibia::config::mapAwareUndergroundFloorRange(),
+                             tibia::config::mapMaxZ());
+}
+
+void TWorldMapStorage::setPathAvoid(const Position& position, const bool avoid)
+{
+    if (!position.isValid())
+        return;
+    if (avoid)
+        m_pathAvoids.insert(position);
+    else
+        m_pathAvoids.erase(position);
+}
+
+void TWorldMapStorage::clearPathAvoids()
+{
+    m_pathAvoids.clear();
 }
 
 }

@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <set>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
@@ -54,7 +54,7 @@ QString categoryText(const int category)
 
 TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type && type->getId() != 0 ? type : nullptr;
 }
 

@@ -4,12 +4,14 @@
 #include "gamewindow/appearancetypefilterselection.h"
 
 #include "game/gameciptypes.h"
+#include "game/inspectedobject.h"
 
 #include "app/clientoptions.h"
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
 #include "config/clientoptions.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "exaltation/exaltationstorage.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 #include "gamewindow/marketcontroller.h"
 #include "input/gameaction.h"
@@ -30,14 +32,13 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
 namespace {
 
 using A = input::EGameAction;
-using Args = std::vector<std::any>;
 using Proxy = TAppearanceTypeListModelSortFilterProxy;
 
 /// The market's category order (CIP), copied from TMarketController.
@@ -57,7 +58,7 @@ TAppearanceTypePtr itemType(const uint16_t typeId)
 {
     if (typeId == 0)
         return nullptr;
-    return tibia::game::thingType(typeId, ThingCategoryItem);
+    return tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
 }
 
 /// CIP : the market category; the coins are "Gold", the rest "Unsorted".
@@ -165,22 +166,16 @@ TItemInfoDialogController::TItemInfoDialogController(std::shared_ptr<appearances
             Q_EMIT premiumTimeChanged();
         });
     }
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args&) {
-        if (m_enableTierAndClassificationSelection)
-            updateAvailableClassifications();
-        return std::any{};
-    });
     // CIP connects the option storage to the loot value (its background).
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String("colorizeLootStyle"))
             Q_EMIT lootValueChanged();
     });
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]))
-            onInspectObjectDataReceived(*data);
-        return std::any{};
-    });
+    // The session's inspection results and forge classifications; again for each session.
+    connectToCurrentGameSession();
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TItemInfoDialogController::connectToCurrentGameSession);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_entriesBuilt = false;
         resetInspect();
@@ -442,6 +437,30 @@ void TItemInfoDialogController::onCharacterConfigurationChanged()
     Q_EMIT lootValueChanged();
     Q_EMIT trackingChanged();
     Q_EMIT lootBlackWhitelistChanged();
+}
+
+void TItemInfoDialogController::connectToCurrentGameSession()
+{
+    disconnect(m_inspectionConnection);
+    disconnect(m_exaltationConnection);
+    m_inspectionConnection = {};
+    m_exaltationConnection = {};
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (!session)
+        return;
+    // The protocol handler reports the Cyclopedia's item inspections with the
+    // inspect dialog's.
+    if (const auto& handler = session->gameProtocolMessageHandler())
+        m_inspectionConnection = connect(handler.get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived, this,
+                                         [this](const std::vector<TInspectObjectData>& list, const game::EInspectionListWindow window) {
+                                             onInspectObjectDataReceived(game::toItemInspectionData(list, window));
+                                         });
+    // The forge's classifications are the filter's entries.
+    if (const auto& forge = session->exaltationStorage())
+        m_exaltationConnection = connect(forge.get(), &exaltation::TExaltationStorage::baseDataChanged, this, [this] {
+            if (m_enableTierAndClassificationSelection)
+                updateAvailableClassifications();
+        });
 }
 
 void TItemInfoDialogController::onInspectObjectDataReceived(const ItemInspectionData& data)

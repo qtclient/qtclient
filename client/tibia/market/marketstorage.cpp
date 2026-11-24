@@ -6,7 +6,7 @@
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 #include <algorithm>
 #include <cmath>
@@ -87,7 +87,7 @@ TMarketStorage::TMarketStorage(QObject* parent)
     reset();
     // Host: the classifications and tiers the market filters by come with
     // the forge data, the coin packet size with the store.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back("forgeData", [this](const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
         if (!data)
             return std::any{};
@@ -102,7 +102,7 @@ TMarketStorage::TMarketStorage(QObject* parent)
         Q_EMIT classificationsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreInit", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back("onStoreInit", [this](const Args& args) {
         m_coinsPacketSize = std::max(1, static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
@@ -134,7 +134,7 @@ uint32_t TMarketStorage::maximumObjectsPerOffer(const uint16_t typeId) const
 {
     if (typeId == 0)
         return 0;
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type && type->isStackable() ? 64000 : 2000;
 }
 

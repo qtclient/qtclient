@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <QJsonObject>
-#include <tibia/game/thingsession_forward.h>
 
 #include "qmlcomponents/texthelper.h"
 

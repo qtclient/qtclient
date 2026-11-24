@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::creatures {
 
@@ -280,7 +279,10 @@ void TCreature::updateCoveredField()
 
 void TCreature::rebuildOutfitAppearance()
 {
-    TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
+    // An outfit without a category (none received yet) has no type.
+    TAppearanceType* type = m_outfit.getCategory() < ThingLastCategory
+        ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(m_outfit.getCategory(), m_outfit.getId())
+        : nullptr;
     appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::installed()->fromOutfit(m_outfit, type);
     if (appearance)
         appearance->linkCreature(m_creatureId);
@@ -734,8 +736,8 @@ std::vector<std::shared_ptr<TCreature>> TCreatureStorage::spectatorsNear(const P
     int minZ = center.z;
     int maxZ = center.z;
     if (multiFloor) {
-        minZ = tibia::game::firstAwareFloor();
-        maxZ = tibia::game::lastAwareFloor();
+        minZ = tibia::worldmap::TWorldMapStorage::ensureStorage()->firstAwareFloor();
+        maxZ = tibia::worldmap::TWorldMapStorage::ensureStorage()->lastAwareFloor();
     }
 
     const int startX = center.x - left;

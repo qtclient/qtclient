@@ -1,6 +1,10 @@
 #include "playerstatestracker.h"
 
 #include "app/clientoptions.h"
+#include "dailyreward/dailyrewardciptypes.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 
 #include <tibia/creatures/creaturestorage.h>
 #include <tibia/game/gamenotify.h>
@@ -9,36 +13,14 @@
 
 namespace tibia::game {
 
-namespace {
-
-using Args = std::vector<std::any>;
-
-
-}
-
 TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter filter, QObject* parent)
     : QObject(parent)
     , m_filter(filter)
     , m_options(config::SpecialConditionsOptions::load())
 {
-    const auto onPlayer = [this](GameObject*, const Args&) {
-        refresh();
-        return std::any{};
-    };
-    for (const char* event : { "onStatesChange", "onRegenerationChange", "onSkullChange", "onEmblemChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer);
-    // CipSoft: the server only says whether the player is in a resting area;
-    // the bonus follows the daily reward streak (at least 2).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRestingAreaState", [this](GameObject*, const Args& args) {
-        m_inRestingArea = client::gamecore::argBool(args, 0);
-        updateRestingArea();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenRewardWall", [this](GameObject*, const Args& args) {
-        m_rewardStreak = static_cast<uint>(client::gamecore::argInt(args, 7));
-        updateRestingArea();
-        return std::any{};
-    });
+    // CIP: the session's player data, own creature and daily reward signals.
+    m_sessionListener = subscribeCurrentGameSessionChanged([this] { connectToCurrentGameSession(); });
+    connectToCurrentGameSession();
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_inRestingArea = m_restingAreaBonus = false;
         m_rewardStreak = 0;
@@ -51,6 +33,64 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
         reloadOptions();
         Q_EMIT optionsChanged();
     });
+    refresh();
+}
+
+TPlayerStatesTracker::~TPlayerStatesTracker()
+{
+    unsubscribeCurrentGameSessionChanged(m_sessionListener);
+}
+
+void TPlayerStatesTracker::connectToCurrentGameSession()
+{
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    const TGameSessionBase* session = currentGameSession();
+    if (!session) {
+        connectToPlayerCreature();
+        return;
+    }
+    // The states, the regeneration and the hunger are the player data's.
+    if (const std::shared_ptr<TPlayerData>& player = session->playerData())
+        m_sessionConnections.push_back(connect(player.get(), &TPlayerData::playerDataChanged, this, &TPlayerStatesTracker::refresh));
+    // The skull and the guild war emblem are the own creature's.
+    if (const std::shared_ptr<creatures::TCreatureStorage>& storage = session->creatureStorage())
+        m_sessionConnections.push_back(connect(storage.get(), &creatures::TCreatureStorage::playerAdded, this,
+                                               &TPlayerStatesTracker::connectToPlayerCreature));
+    // CipSoft: the server only says whether the player is in a resting area;
+    // the bonus follows the daily reward streak (at least 2).
+    if (const auto& handler = session->dailyRewardProtocolMessageHandler())
+        m_sessionConnections.push_back(connect(handler.get(), &dailyreward::TDailyRewardProtocolMessageHandler::restingAreaStateChanged,
+                                               this, [this](const bool inRestingArea) {
+                                                   m_inRestingArea = inRestingArea;
+                                                   updateRestingArea();
+                                               }));
+    if (const std::shared_ptr<dailyreward::TDailyRewardStorage>& rewards = session->dailyRewardStorage()) {
+        dailyreward::TDailyRewardStorage* const storage = rewards.get();
+        m_sessionConnections.push_back(connect(storage, &dailyreward::TDailyRewardStorage::dailyRewardStreakStateChanged, this,
+                                               [this, storage] {
+                                                   m_rewardStreak = storage->rewardStreakLength();
+                                                   updateRestingArea();
+                                               }));
+    }
+    connectToPlayerCreature();
+}
+
+void TPlayerStatesTracker::connectToPlayerCreature()
+{
+    disconnect(m_playerKillerMarkConnection);
+    disconnect(m_playerGuildFlagConnection);
+    m_playerKillerMarkConnection = {};
+    m_playerGuildFlagConnection = {};
+    creatures::TCreatureStorage* const storage = currentCreatureStorage();
+    const std::shared_ptr<creatures::TCreature> player = storage ? storage->player() : nullptr;
+    if (player) {
+        m_playerKillerMarkConnection =
+            connect(player.get(), &creatures::TCreature::playerKillerMarkChanged, this, &TPlayerStatesTracker::refresh);
+        m_playerGuildFlagConnection =
+            connect(player.get(), &creatures::TCreature::playerGuildFlagChanged, this, &TPlayerStatesTracker::refresh);
+    }
     refresh();
 }
 

@@ -23,7 +23,6 @@
 
 #include <algorithm>
 #include <iterator>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 

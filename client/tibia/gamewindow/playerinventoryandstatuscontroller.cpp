@@ -19,6 +19,7 @@
 #include "game/playerdata.h"
 
 #include <QGuiApplication>
+#include <QStringList>
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -29,7 +30,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 using A = input::EGameAction;
 using Cursor = TMouseCursorController;
 
@@ -117,22 +117,6 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
     }
     readExpireOptions();
 
-    const auto onPlayer = [this](auto method) {
-        return [this, method](GameObject*, const Args&) {
-            (this->*method)();
-            return std::any{};
-        };
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInventoryChange", [this](GameObject*, const Args& args) {
-        const auto* slot = args.empty() ? nullptr : std::any_cast<tibia::client::InventorySlot>(&args[0]);
-        refreshSlot(slot ? static_cast<int>(*slot) : static_cast<int>(client::gamecore::argInt(args, 0)));
-        refreshDualWielding();
-        updateMouseCursorForCurrentSlot();
-        return std::any{};
-    });
-    // CIP: the player's data-changed signal refreshes everything the panel shows.
-    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::onPlayerDataChanged));
     m_gameSessionListener = tibia::game::subscribeCurrentGameSessionChanged([this] { onGameSessionChanged(); });
     onGameSessionChanged();
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
@@ -185,7 +169,11 @@ void TPlayerInventoryAndStatusController::onGameSessionChanged()
     if (game::TPlayerData* player = tibia::game::currentPlayerData())
         connect(player, &game::TPlayerData::playerDataChanged, this, &TPlayerInventoryAndStatusController::onPlayerDataChanged,
                 Qt::UniqueConnection);
+    if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer())
+        connect(inventory, &container::TInventoryContainer::inventoryChanged, this,
+                &TPlayerInventoryAndStatusController::onInventoryChanged, Qt::UniqueConnection);
     onPlayerDataChanged();
+    onInventoryChanged();
 }
 
 void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* PanelItem)

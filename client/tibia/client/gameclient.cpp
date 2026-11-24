@@ -763,7 +763,7 @@ void TGameClient::shutdown()
     // storage first leaves terminate → removeUnawareThings dangling (SIGSEGV
     // on quit Exit).
     gamecore::terminate();
-    tibia::game::cleanMap();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->clean();
     m_opcodes.reset();
     // The session goes now, not on the next event loop pass: the engine is down.
     g_releaseGameSessionsNow = true;

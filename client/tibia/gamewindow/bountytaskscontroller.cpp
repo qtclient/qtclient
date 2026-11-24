@@ -14,7 +14,6 @@
 #include <limits>
 #include <vector>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -98,7 +97,7 @@ QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<
 std::vector<uint16_t> bountyMonsterRaceIds()
 {
     std::vector<uint16_t> raceIds;
-    for (const RaceType& race : tibia::game::getAllRaces()) {
+    for (const RaceType& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
         if (race.category != 0 && race.flag7 && race.difficulty >= 2 && race.difficulty <= 5)
             raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }

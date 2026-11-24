@@ -1,9 +1,11 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "game/playerstates.h"
 
 #include <QObject>
+#include <QString>
+
+#include <vector>
 
 namespace tibia {
 namespace game {
@@ -17,6 +19,7 @@ class TPlayerStatesTracker final : public QObject
     Q_OBJECT
 public:
     TPlayerStatesTracker(config::SpecialConditionsFilter filter, QObject* parent = nullptr);
+    ~TPlayerStatesTracker() override;
 
     TPlayerStateDisplayInfoModel* model() { return &m_model; }
     const config::SpecialConditionsOptions& options() const { return m_options; }
@@ -32,6 +35,11 @@ Q_SIGNALS:
     void optionsChanged();
 
 private:
+    /// Host: the tracker follows the current game session's signals itself.
+    void connectToCurrentGameSession();
+    /// The own creature's skull and guild flag signals, once it is known.
+    void connectToPlayerCreature();
+
     config::SpecialConditionsFilter m_filter;
     config::SpecialConditionsOptions m_options;
     TPlayerStateDisplayInfoModel m_model;
@@ -40,7 +48,10 @@ private:
     bool m_lastInRestingArea = false;
     uint m_rewardStreak = 0;
     QString m_restingAreaText;
-    std::vector<client::gamecore::Hook> m_hooks;
+    int m_sessionListener = 0;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
+    QMetaObject::Connection m_playerKillerMarkConnection;
+    QMetaObject::Connection m_playerGuildFlagConnection;
 };
 
 }

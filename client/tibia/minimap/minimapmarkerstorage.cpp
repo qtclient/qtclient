@@ -33,22 +33,6 @@ void TMinimapMarkerStorage::setActive(TMinimapMarkerStorage* storage) { g_active
 TMinimapMarkerStorage::TMinimapMarkerStorage(QObject* parent)
     : cip::tibia::minimap::TMinimapMarkerStorage(parent)
 {
-    using Args = std::vector<std::any>;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onAddAutomapFlag", [this](GameObject*, const Args& args) {
-        const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]);
-        if (!pos)
-            return std::any{};
-        const auto icon = static_cast<uint8_t>(client::gamecore::argInt(args, 1));
-        addMarker(TMinimapMarker(TWorldMapCoordinate(*pos), icon,
-                                 client::gamecore::argString(args, 2),
-                                 QDateTime::currentDateTimeUtc()));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRemoveAutomapFlag", [this](GameObject*, const Args& args) {
-        if (const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]))
-            removeMarker(TWorldMapCoordinate(*pos));
-        return std::any{};
-    });
     bindActions();
 }
 

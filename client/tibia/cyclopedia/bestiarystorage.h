@@ -95,7 +95,7 @@ Q_SIGNALS:
     void charmsChanged();
 
 private:
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<tibia::game::SoftHook> m_hooks;
     QList<TCharm> m_charms;
     int m_availableCharmSlots = 0;
     quint64 m_resetAllCharmsCost = 0;

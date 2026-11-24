@@ -644,7 +644,6 @@ private:
     std::shared_ptr<TPartyHuntStorage> m_partyHunt;
     std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
     std::vector<QMetaObject::Connection> m_sessionConnections;
-    std::vector<client::gamecore::Hook> m_hooks;
     bool m_hasCharacter = false;
 };
 

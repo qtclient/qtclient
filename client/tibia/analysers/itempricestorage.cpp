@@ -1,5 +1,7 @@
 #include "analysers/itempricestorage.h"
 
+#include "game/gameciptypes.h"
+
 #include <client/staticdata.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -14,13 +16,11 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/game/gamesession_forward.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::analysers {
 
 namespace {
-
-using Args = std::vector<std::any>;
 
 const QString ConfigurationName = QStringLiteral("itemprices");
 const QString KeySources = QStringLiteral("primaryLootValueSources");
@@ -34,7 +34,7 @@ QPointer<TItemPriceStorage> s_instance;
 
 const std::vector<tibia::appearances::TNpcTradeData>* npcOffers(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type ? &type->npcTradeData() : nullptr;
 }
 
@@ -49,11 +49,12 @@ bool paidInOtherCurrency(const tibia::appearances::TNpcTradeData& offer)
 TItemPriceStorage::TItemPriceStorage(QObject* parent)
     : cip::tibia::cyclopedia::TItemPriceStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
-        onPremiumTimeChanged();
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
+        // CIP: the client's premium time storage's premiumTimeChanged. Host:
+        // the storage is the client's one, bound when a game starts.
+        if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+            connect(premium, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TItemPriceStorage::onPremiumTimeChanged,
+                    Qt::UniqueConnection);
         onPremiumTimeChanged();
         setWorldName(QString::fromStdString(tibia::game::getWorldName()));
     });

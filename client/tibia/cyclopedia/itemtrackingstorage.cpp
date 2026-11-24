@@ -10,7 +10,7 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -48,7 +48,7 @@ bool isCoinNotAutoTracked(const uint16_t objectType) { return objectType == Gold
 
 QString trackedItemName(const uint16_t objectType)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(objectType, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, objectType);
     if (type && type->marketProperties())
         return type->marketProperties()->name;
     switch (objectType) {

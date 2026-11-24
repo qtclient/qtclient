@@ -15,7 +15,6 @@
 
 #include <stdexcept>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::input {
 
@@ -130,7 +129,7 @@ IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32
 IGameActionPtr TGenericObjectGameActionProvider::openCyclopediaAction(const uint16_t clientId)
 {
     auto action = std::make_shared<TGameActionOpenCyclopedia>(0);
-    if (TAppearanceType* type = clientId ? tibia::game::thingType(clientId, ThingCategoryItem) : nullptr)
+    if (TAppearanceType* type = clientId ? tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, clientId) : nullptr)
         action->setTypeId(static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId()));
     return action;
 }
@@ -171,7 +170,7 @@ TGameActionContextPtr locationOf(const Position& position, const int stackPositi
     if (const container::TStoredContainer* row = storage ? storage->containerAt(slot->containerId()) : nullptr) {
         const container::TInventorySlot& item = row->containerItem();
         const TAppearanceType* type = item.appearance ? item.appearance->thingType()
-                                                : (item.typeId ? tibia::game::rawThingType(item.typeId, ThingCategoryItem) : nullptr);
+                                                : (item.typeId ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, item.typeId) : nullptr);
         flagged->setContainerIsLootCorpse(isLootCorpse(type));
         flagged->setContainerIsBrowseField(row->name() == QLatin1String("Browse Field"));
     }
@@ -219,7 +218,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameA
         use = push(has(&TAppearanceType::isMultiUse) ? A::USE_WITH : A::USE);
     } else {
         use = push(A::OPEN);
-        if (id != tibia::game::supplyStashId()) {
+        if (id != tibia::appearances::TAppearancesManager::instance().getSupplyStashId()) {
             // A container inside a container opens in its window by default;
             // anywhere else in a new one.
             const IGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
@@ -229,7 +228,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameA
         // CIP: a TGameActionSimple; the dialog takes no object context.
         actions.push_back(makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
     }
-    if (id == tibia::game::standardRewardChestId())
+    if (id == tibia::appearances::TAppearancesManager::instance().getStandardRewardChestId())
         push(A::GATHER_ALL);
     if (has(&TAppearanceType::isWrapable))
         push(A::WRAP);
@@ -320,7 +319,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameA
             auto stow = std::make_shared<TGameActionStashStowStack>(object, count);
             actions.push_back(std::make_shared<TGameActionStashOpenStowStackDialog>(stow));
         }
-        if (isContainer && id != tibia::game::supplyStashId())
+        if (isContainer && id != tibia::appearances::TAppearancesManager::instance().getSupplyStashId())
             push(A::STASH_STOW_CONTAINER_CONTENT);
     }
     if (containers && containers->isMarketAvailable() && has(&TAppearanceType::isMarketable))
@@ -401,7 +400,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const TGameActio
         return {};
     TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : nullptr;
     if (!type)
-        type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+        type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, slot.typeId);
     // Inventory and container slots own the count; appearance instances can keep a
     // stale shared one.
     const TGameActionContextPtr context = objectContext(type, slot.typeId, slot.fluid, slot.tier, slot.decoItemId);

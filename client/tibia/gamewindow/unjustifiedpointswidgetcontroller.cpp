@@ -17,7 +17,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 
 QString skullSource(const int skull)
 {
@@ -103,13 +102,13 @@ void TUnjustifiedPointsWidgetController::saveWidgetOptions()
 
 void TUnjustifiedPointsWidgetController::connectPlayerKillerModeChangedToDisplayDataChanged()
 {
-    if (m_playerKillerConnected)
-        return;
-    m_playerKillerConnected = true;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSkullChange", [this](GameObject*, const Args&) {
-        refresh();
-        return std::any{};
-    });
+    // CIP: the own creature's player killer mark signal.
+    disconnect(m_playerKillerMarkChanged);
+    m_playerKillerMarkChanged = {};
+    const std::shared_ptr<creatures::TCreatureStorage> storage = m_creatureStorage.lock();
+    const std::shared_ptr<creatures::TCreature> player = storage ? storage->player() : nullptr;
+    if (player)
+        m_playerKillerMarkChanged = connect(player.get(), &creatures::TCreature::playerKillerMarkChanged, this, [this] { refresh(); });
 }
 
 void TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage()
@@ -169,7 +168,9 @@ void TUnjustifiedPointsWidgetController::connectToGameSession(const std::shared_
 {
     disconnect(m_playerAdded);
     disconnect(m_unjustifiedPointsChanged);
+    disconnect(m_playerKillerMarkChanged);
     m_unjustifiedPointsStorage.reset();
+    m_creatureStorage.reset();
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     if (!session)
         return;
@@ -179,6 +180,7 @@ void TUnjustifiedPointsWidgetController::connectToGameSession(const std::shared_
             connect(m_unjustifiedPointsStorage.get(), &creatures::TUnjustifiedPointsStorage::unjustifiedPointsDataChanged, this,
                     [this] { refresh(); });
     const std::shared_ptr<creatures::TCreatureStorage>& creatureStorage = session->creatureStorage();
+    m_creatureStorage = creatureStorage;
     if (creatureStorage && creatureStorage->player())
         connectPlayerKillerModeChangedToDisplayDataChanged();
     else if (creatureStorage)

@@ -1,6 +1,8 @@
 #include "premiumpanelcontroller.h"
 
+#include "game/currentgamesession.h"
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "store/storestorage.h"
 
 #include "input/gameactionhandlers.h"
@@ -19,7 +21,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 
 constexpr int RenewPremiumFeature = 0xd;
 /// CIP: the timer's interval set in .
@@ -40,11 +41,6 @@ TPremiumPanelController::TPremiumPanelController()
     m_highlightTimer.setInterval(HighlightMs);
     connect(&m_highlightTimer, &QTimer::timeout, this, &TPremiumPanelController::stopHighlight);
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumTrigger", [this](GameObject*, const Args& args) {
-        if (const auto* features = args.empty() ? nullptr : std::any_cast<std::vector<uint8_t>>(&args[0]))
-            onNewPremiumFeatureList(*features);
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { applySessionVisibility(); });
 
     m_gameActions.on(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
@@ -96,6 +92,11 @@ void TPremiumPanelController::setPremiumTimeStorage(game::TPremiumTimeStorage* P
 
 void TPremiumPanelController::onSessionStarted()
 {
+    // CIP: the session's premium protocol message handler's feature list.
+    if (const game::TGameSessionBase* session = game::currentGameSession())
+        if (const auto& handler = session->premiumProtocolMessageHandler())
+            connect(handler.get(), &game::TPremiumProtocolMessageHandler::newPremiumFeatureList, this,
+                    &TPremiumPanelController::onNewPremiumFeatureList, Qt::UniqueConnection);
     applySessionVisibility();
 }
 

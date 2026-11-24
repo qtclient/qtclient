@@ -4,7 +4,7 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 #include <QLocale>
 #include <QRegularExpression>
@@ -720,7 +720,7 @@ TConcoctionQmlData::TConcoctionQmlData(const int appearanceTypeId, const qlonglo
 {
     m_appearanceTypeID = appearanceTypeId;
     m_secondsRemaining = secondsRemaining;
-    if (const TAppearanceTypePtr& type = tibia::game::thingType(appearanceTypeId, ThingCategoryItem))
+    if (const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, appearanceTypeId))
         m_name = QString::fromStdString(type->getName());
 }
 

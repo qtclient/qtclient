@@ -181,7 +181,7 @@ private:
     TMarketOfferList m_history;
     std::map<int, std::vector<int>> m_classTiers;
     int m_coinsPacketSize = 1;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<tibia::game::SoftHook> m_hooks;
 };
 
 }

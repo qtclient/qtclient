@@ -512,12 +512,16 @@ public:
 
     /// The premium time storage the player data's premium state goes to.
     void setPremiumTimeStorage(TPremiumTimeStorage* premiumTimeStorage);
-    /// The premium features the server wants advertised.
-    static void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
+    /// The premium features the server wants advertised: newPremiumFeatureList.
+    void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
     /// The client's premium feature for a protocol feature id, none for an unknown one.
     static std::optional<uint8_t> premiumFeature(uint32_t trigger);
     /// Hands the premium flag and its end to the premium time storage, when there is one.
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
+
+Q_SIGNALS:
+    /// The premium features (tibia::client premium feature ids) the server triggered.
+    void newPremiumFeatureList(const std::vector<uint8_t>& PremiumFeatureList);
 
 private:
     // Host: the handler keeps a guarded pointer where CipSoft keeps a

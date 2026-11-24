@@ -108,7 +108,7 @@ int TCharm::nextGradeCost() const { return grade >= 3 ? 0 : charmCost(id, grade 
 TBestiaryStorage::TBestiaryStorage(QObject* parent)
     : QObject(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBestiaryCharmsData", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back("onUpdateBestiaryCharmsData", [this](const Args& args) {
         const auto* data = arg<BestiaryCharmsData>(args, 0);
         if (!data)
             return std::any{};

@@ -7,7 +7,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 #include <protocol.pb.h>
 

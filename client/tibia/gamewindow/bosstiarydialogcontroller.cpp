@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -171,7 +170,7 @@ void TBosstiaryDialogController::onPointsChanged() { m_model->refreshRoles({ TBo
 void TBosstiaryDialogController::showRace(const int raceId)
 {
     bossbestiary::TBosstiaryFilter filter;
-    filter.search = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
+    filter.search = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<uint32_t>(raceId)).name);
     if (m_storage)
         m_storage->setFilter(filter);
 }

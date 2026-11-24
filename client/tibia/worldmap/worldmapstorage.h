@@ -8,15 +8,20 @@
 
 #include "appearances/appearanceinstance.h"
 
+#include <client/const.h>
 #include <client/declarations.h>
 #include <client/position.h>
+#include <client/staticdata.h>
 
-#include "worldmap/worldmapsessionstate.h"
+#include <tibia/schedule/schedule.h>
 
+#include <atomic>
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -32,6 +37,7 @@ class TLocationWorldMapCoordinateWithStackPositionContext;
 }
 namespace minimap {
 struct TMinimapDataOfOneField;
+class TWaypointCosts;
 class TWaypointSectors;
 }
 namespace worldmap {
@@ -133,23 +139,82 @@ public:
     void moveCreature(creatures::TCreature& creature, const Position& from, const Position& to, int elevationFrom,
                       int elevationTo);
 
-    TWorldMapSessionState& sessionState() { return m_sessionState; }
-    const TWorldMapSessionState& sessionState() const { return m_sessionState; }
-
-    /// The field at `position` holds `objects` in their order; without
-    /// objects it leaves the storage (see TWorldMapSessionState::setFieldObjects).
+    /// The field at `position` holds `objects` in their order (creatures are
+    /// their placeholders); a field left without objects leaves the storage.
     void setFieldObjects(const Position& position, const std::vector<appearances::TAppearanceInstancePtr>& objects);
     /// Puts an object on the field at `position`: at `stackPos`, or where its
-    /// kind sorts for 0xff.
+    /// kind sorts for 0xff (or a negative position).
     bool insertObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position, int stackPos);
     /// The object at `stackPos` of the field at `position` makes way for `object`.
     bool replaceObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position, int stackPos);
     /// Takes the object at `stackPos` off the field at `position`; null when none is there.
     appearances::TAppearanceInstancePtr removeObjectAt(const Position& position, int stackPos);
+    /// Takes the creature off the field `fieldPos` names, else off the field it
+    /// stands on. `fireLocalDisappear`: DeleteOnMap and unaware fields only.
     bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
                                   bool fireLocalDisappear = true);
+    /// MoveCreature. `byId`: the message names the creature instead of its field and slot.
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack, const Position& newPos,
                            bool byId);
+    /// Takes every creature off the fields and out of the creature storage.
+    void cleanDynamicThings();
+    /// The creatures leave, then every field goes (world leave).
+    void clean();
+
+    /// Host: the known area around the central position. A field is known when,
+    /// projected onto the central floor, it lies within the aware range and its
+    /// floor is between firstAwareFloor() and lastAwareFloor().
+    bool isAwareOfPosition(const Position& position) const { return isAwareOfPosition(position, m_awareRange); }
+    bool isAwareOfPosition(const Position& position, const AwareRange& range) const;
+    /// The aware range; changing it drops what leaves the known area.
+    AwareRange awareRange() const { return m_awareRange; }
+    void setAwareRange(const AwareRange& range);
+    /// The aware range of the configured viewport.
+    void resetAwareRange();
+    Position centralPosition() const { return m_centralPosition; }
+    uint8_t firstAwareFloor() const;
+    uint8_t lastAwareFloor() const;
+
+    /// Host: the local player's field as the map last placed it; its creature's
+    /// position takes over once the creature stands somewhere.
+    Position localPlayerPosition() const { return m_localPlayerPosition; }
+    /// A new character session: the player is off the map and has no field yet.
+    void resetLocalPlayer();
+    /// The map placed the local player on `position` (onPositionChange when it moved).
+    void setLocalPlayerPosition(const Position& position);
+
+    /// Host: the server's world light as it arrived (the pack's raycast lighting
+    /// reads it; TAmbientLightStorage shows the interpolated one).
+    Light worldLight() const { return m_worldLight; }
+    /// Publishes onWorldLightChange when intensity or colour differ.
+    void setWorldLight(uint8_t intensity, uint8_t color);
+
+    /// Host: bumped when an opaque field changes (a field is cleaned); the
+    /// renderer's floor cache follows it. Cover caches are cleared per cell.
+    uint32_t coverRevision() const { return m_coverRevision.load(std::memory_order_relaxed); }
+    /// Bumped when an item is added to or removed from a field, or a field is cleaned.
+    uint32_t itemRevision() const { return m_itemRevision.load(std::memory_order_relaxed); }
+    /// One world map build: memoize opaque / top-ground probes shared across FOV cover walks.
+    void beginCoverProbeBatch();
+    void endCoverProbeBatch();
+    /// Drops the pending static dirty fields (cover-flood coalescing counter);
+    /// returns how many were discarded.
+    size_t clearStaticDirtyTiles();
+    /// A field above `position` (from floor `firstFloor` on) covers it.
+    /// `isLoading`: a field on the way is still loading (no answer yet).
+    bool isCovered(const Position& position, bool& isLoading, uint8_t firstFloor = 0);
+    bool isCompletelyCovered(const Position& position, bool& isLoading, uint8_t firstFloor = 0);
+
+    /// Host (pack travel path finder): fields the path finder keeps off.
+    void setPathAvoid(const Position& position, bool avoid);
+    void clearPathAvoids();
+    bool isPathAvoided(const Position& position) const { return m_pathAvoids.contains(position); }
+    /// Indexed8 waypoint snapshot factory (CIP TWaypointCostMap), set from
+    /// TGameClient while the CipSoft minimap is live; cleared on world leave.
+    using WaypointCostFactory = std::function<std::shared_ptr<minimap::TWaypointCosts>()>;
+    const WaypointCostFactory& waypointCostFactory() const { return m_waypointCostFactory; }
+    void setWaypointCostFactory(WaypointCostFactory factory) { m_waypointCostFactory = std::move(factory); }
+    void clearWaypointCostFactory() { m_waypointCostFactory = {}; }
 
     /// CIP: informationAtWorldMapCoordinateHasChanged — call after a field mutate.
     void notifyCoordinateChanged(const Position& position);
@@ -196,8 +261,10 @@ public:
     /// keeps off it (a walk state other than free, an object to avoid or a creature).
     void fillMinimapData(const TWorldMapField& field, minimap::TMinimapDataOfOneField& data) const;
 
-    /// Dynamic overlay peels (qtclient-bridge dual-write).
+    /// A missile goes to the effect storage.
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
+    /// A magic effect goes to the effect storage; it shows on its field even
+    /// before the field has content.
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position);
 
 Q_SIGNALS:
@@ -207,12 +274,36 @@ Q_SIGNALS:
 private:
     /// A field's objects changed: its coordinate's information did.
     void fieldAppearanceInstancesChanged(const TWorldMapField* field);
-    /// `position` lies in the stored volume (the session state's aware range
-    /// while no volume was set).
+    /// `position` lies in the stored volume (the aware range while no volume
+    /// was set).
     bool isInStoredVolume(const Position& position) const;
 
+    /// Host: the field at `position` changed (`creature`: a creature moved on
+    /// it, not the field content). Bumps the revisions, clears the cover
+    /// caches that look through it and announces the coordinate.
+    void fieldUpdated(const Position& position, bool creature, tibia::client::Operation operation);
+    /// The field at `position` loses its objects; an empty field leaves the storage.
+    void cleanField(const Position& position);
+    /// A field at `position` took `object`: the field announces the change, and
+    /// the local player's placeholder places the local player there.
+    void objectPlaced(const appearances::TAppearanceInstancePtr& object, const Position& position);
+    /// The local player's creature went onto a field: a field it did not step
+    /// to from the last one ends the motion and the walk goal.
+    void localPlayerAppeared();
+    /// The local player's creature left its field; unless it reappears before
+    /// the event loop turns, it counts as off the map and its step stops.
+    void localPlayerDisappeared();
+    /// Creatures and fields outside the known area go.
+    void removeUnawareThings();
+    void setCentralPosition(const Position& center);
+    /// Drop isCompletelyCovered / isCovered bits for fields that look up through `position`.
+    void invalidateCoverCachesFrom(const Position& position);
+    /// Wipe every stored field's cover bits (stream-flood coalesce).
+    void invalidateAllCoverCaches();
+    /// Packed cover-probe flags for one build (see beginCoverProbeBatch).
+    uint8_t probeCoverTile(const Position& position);
+
     std::map<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>> m_fields;
-    TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
     std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_sharedSpeedCalculator;
@@ -225,6 +316,29 @@ private:
     /// The volume setStoredVolume(volume, withMargins) set; unset for the live
     /// session's storage.
     std::optional<TShearedWorldMapCuboid> m_storedVolume;
+
+    // Host: the known area, the local player's field, the server light, the
+    // renderer's revisions and cover probes, and the pack path finder's state.
+    Position m_centralPosition;
+    AwareRange m_awareRange;
+    Position m_localPlayerPosition;
+    /// The field the player left (the jump test); cleared once it stays off the map.
+    Position m_localPlayerLastField;
+    bool m_localPlayerOffMap{ true };
+    tibia::schedule::TScheduledTaskPtr m_localPlayerLeave;
+    Light m_worldLight;
+    bool m_removingUnawareThings{ false };
+    std::atomic<uint32_t> m_coverRevision{ 0 };
+    std::atomic<uint32_t> m_itemRevision{ 0 };
+    std::vector<Position> m_staticDirty;
+    static constexpr size_t MaxStaticDirty = 4096;
+    /// Opaque stream hit MaxStaticDirty: one full cover wipe is deferred instead of N column walks.
+    bool m_coverInvalidateFlood{ false };
+    /// Frame-local memo: seen|empty|opaque|topGround|loading (see probeCoverTile).
+    bool m_coverProbeActive{ false };
+    std::unordered_map<Position, uint8_t, Position::Hasher> m_coverProbe;
+    std::unordered_set<Position, Position::Hasher> m_pathAvoids;
+    WaypointCostFactory m_waypointCostFactory;
 };
 
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).

@@ -33,7 +33,7 @@ typedef struct QtClientNotifyApiV1 {
     int64_t (*arg_int)(void* tip_args, size_t index);
     int (*arg_bool)(void* tip_args, size_t index);
 
-    /** Emit on the CIP field bus (e.g. onTextMessage): a0 = MessageMode as int64, a1 = UTF-8. */
+    /** Emit on the CIP field bus (e.g. onTextMessage): a0 = CIP chat message mode (QTCLIENT_MESSAGE_*), a1 = UTF-8. */
     int (*emit_int_string)(const char* field, int64_t a0, const char* a1);
 
     /** Host API v5+ (read only when api_version >= 5): `fn` runs each time the game client's

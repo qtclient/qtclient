@@ -19,7 +19,7 @@
 #include <functional>
 #include <optional>
 #include <stdexcept>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::exaltation {
 
@@ -32,7 +32,7 @@ std::optional<int> classificationOf(const uint16_t typeId)
 {
     if (typeId == 0)
         return std::nullopt;
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     if (!type || type->getClassification() == 0)
         return std::nullopt;
     return type->getClassification();
@@ -526,7 +526,7 @@ uint TExaltationForgeTransferPageController::sourceObjectCount() const
 QString TExaltationForgeTransferPageController::sourceObjectName() const
 {
     if (m_sourceObjectTypeId != 0) {
-        if (const TAppearanceTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
+        if (const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, m_sourceObjectTypeId); type && type->getId() != 0)
             return QString::fromStdString(type->getName());
     }
     return qtTrId("dummy_unknown");

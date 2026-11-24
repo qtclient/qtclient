@@ -20,7 +20,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/client/outfit.h>
-#include <tibia/game/thingsession_forward.h>
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -64,13 +63,13 @@ QString capitalizeWords(const QString& name)
 
 QString bossName(const int raceId)
 {
-    return capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name));
+    return capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<uint32_t>(raceId)).name));
 }
 
 QString monsterRaceName(const uint16_t raceId)
 {
     // The static monster races, then the bosses; unknown races get a placeholder.
-    const auto& race = tibia::game::raceData(raceId);
+    const auto& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     if (raceId == 0 || race.raceId != raceId)
         return qtTrId("monsters_unknown_name");
     return capitalizeWords(QString::fromStdString(race.name));
@@ -78,7 +77,7 @@ QString monsterRaceName(const uint16_t raceId)
 
 Outfit monsterRaceAppearance(const uint16_t raceId)
 {
-    return tibia::game::raceData(raceId).outfit;
+    return tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).outfit;
 }
 
 TMonsterRaceStorage::TMonsterRaceStorage(QObject* parent)
@@ -1257,7 +1256,7 @@ void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
         TCreatureTrackerEntry& entry = entries.emplace_back();
         entry.raceId = static_cast<uint16_t>(e.race_id());
         // The monster's or the boss's static race name, each word capitalised.
-        entry.name = capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(entry.raceId)).name));
+        entry.name = capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(static_cast<uint32_t>(entry.raceId)).name));
         entry.currentKills = e.kills();
         entry.killsForDetails1 = static_cast<uint16_t>(e.first_unlock());
         entry.killsForDetails2 = static_cast<uint16_t>(e.second_unlock());

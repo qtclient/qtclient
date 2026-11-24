@@ -180,7 +180,7 @@ private:
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
     std::shared_ptr<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
     std::vector<QMetaObject::Connection> m_sessionConnections;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<tibia::game::SoftHook> m_hooks;
     TMessageDialogController* m_confirmDialog;
     bool m_shown = false;
     /// Set by the destructor: the page refreshes run but build no QML objects.

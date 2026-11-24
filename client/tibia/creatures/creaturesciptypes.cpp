@@ -16,7 +16,7 @@
 #include "protocol/protocolcodes.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <tibia/game/gamesession.h>
 #include <tibia/worldmap/worldmapfield.h>
@@ -137,7 +137,7 @@ void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creature
         // The swing points from the player towards the attacked creature.
         const auto player = storage->creatureAt(tibia::game::localPlayerId());
         const uint16_t effectId = attackAnimationEffect(value);
-        if (!player || !effectId || !tibia::game::isValidDatId(effectId, ThingCategoryEffect))
+        if (!player || !effectId || !tibia::appearances::TAppearancesManager::instance().isValidDatId(effectId, ThingCategoryEffect))
             break;
         const Position& from = player->position();
         const Position& at = creature->position();
@@ -219,6 +219,8 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
     const uint32_t id = message.creature().id();
     switch (message.type()) {
     case 0:
+    case 11:
+    case 12:
     case 13:
     case 14:
     case 15:
@@ -226,34 +228,19 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
         if (message.has_creature())
             applyProtocolCreature(message.creature());
         break;
-    case 11:
-        if (message.has_creature())
-            applyProtocolCreature(message.creature());
-        tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(message.creature().mana_percent()));
-        break;
-    case 12:
-        if (message.has_creature())
-            applyProtocolCreature(message.creature());
-        tibia::game::notify("onPartyMemberShowStatusChange", id, message.creature().show_status());
-        break;
     // Product server party extensions.
     case 16:
         updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
             creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
         });
-        tibia::game::notify("onPartyMemberHealthChange", id, static_cast<uint8_t>(message.health_percent()),
-                            message.health(), message.max_health());
         break;
     case 17:
-        tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(message.mana_percent()), message.mana(),
-                            message.max_mana());
+        // The product server's party member mana: the battle list shows no mana.
         break;
     case 18:
         updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
             creature->setVocation(static_cast<uint8_t>(message.vocation()));
         });
-        tibia::game::notify("onPartyMemberInfoChange", id, static_cast<uint8_t>(message.vocation()),
-                            static_cast<uint16_t>(message.level()));
         break;
     default:
         break;
@@ -290,9 +277,6 @@ void TCreatureProtocolMessageHandler::handleCreaturePartyMessage(const Gameserve
 void TCreatureProtocolMessageHandler::handleInspectionStateMessage(const GameserverMessageInspectionState& message)
 {
     applyProtocolCreature(message.creature());
-    // Host: the character info dialog follows the state through the game notify.
-    tibia::game::processInspectionState(message.creature().id(),
-                                        static_cast<uint8_t>(message.creature().inspection_type()));
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureUnpassMessage(const GameserverMessageCreatureUnpass& message)

@@ -1,7 +1,7 @@
 #include "taskboard/monsterlistfiltermodel.h"
 
 #include "cyclopedia/cyclopediaciptypes.h"
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <algorithm>
 
@@ -27,9 +27,9 @@ QVariant TMonsterListFilterModel::data(const QModelIndex& index, const int role)
     case RaceIdRole:
         return QVariant(static_cast<uint>(raceId));
     case NameRole:
-        return cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(raceId).name));
+        return cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).name));
     case SoulPitFightPriceRole:
-        return soulPitFightPrice(tibia::game::raceData(raceId).difficulty);
+        return soulPitFightPrice(tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).difficulty);
     case AnimusMasteryCompletedRole:
         return std::find(m_completedAnimusMasteryRaceIds.begin(), m_completedAnimusMasteryRaceIds.end(), raceId)
             != m_completedAnimusMasteryRaceIds.end();

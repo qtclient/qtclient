@@ -2270,7 +2270,7 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendOpenParentContainer(Position{});
         return true;
     case 150: // Talk
-        gameclient::sendTalk(static_cast<tibia::client::MessageMode>(0), 0, std::string_view{}, std::string_view{});
+        gameclient::sendTalk(0, 0, std::string_view{}, std::string_view{});
         return true;
     case 151: // GetChannels
         gameclient::sendRequestChannels();

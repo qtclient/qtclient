@@ -42,7 +42,6 @@
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -885,7 +884,7 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
             rightHandEmpty = false;
         if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
             leftHandTypeId = entry.typeId;
-            if (TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
+            if (TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, entry.typeId))
                 leftHandDualWield = type->isDualWield();
         }
     }

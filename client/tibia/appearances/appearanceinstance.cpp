@@ -27,7 +27,6 @@
 #include <atomic>
 #include <cmath>
 #include <iterator>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::appearances {
 
@@ -827,7 +826,7 @@ TAppearanceType* TAppearanceInstanceFactory::dummyAppearanceType(const ThingCate
 
 TAppearanceType* TAppearanceInstanceFactory::appearanceType(const ThingCategory category, const uint16_t id) const
 {
-    if (TAppearanceType* type = m_pAppearancesManager->getRawThingType(id, category))
+    if (TAppearanceType* type = m_pAppearancesManager->findAppearanceType(category, id))
         return type;
     return dummyAppearanceType(category);
 }
@@ -1109,15 +1108,15 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanc
 std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
                                                                                                     const Position& field)
 {
-    TAppearanceType* type = m_pAppearancesManager->getRawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
+    TAppearanceType* type = m_pAppearancesManager->findAppearanceType(ThingCategoryEffect, kind == 1 ? 57 : 56);
     return makeTracked<TTutorialFieldEffectInstance>(type, field, uint8_t{ 0 },
                                                      static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, TAppearanceType* type)
 {
-    if (!type)
-        type = m_pAppearancesManager->getRawThingType(outfit.getId(), outfit.getCategory());
+    if (!type && outfit.getCategory() < ThingLastCategory)
+        type = m_pAppearancesManager->findAppearanceType(outfit.getCategory(), outfit.getId());
     if (outfit.isItem())
         return makeTracked<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())

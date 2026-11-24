@@ -24,7 +24,6 @@
 #include <stdexcept>
 #include <cmath>
 #include <vector>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -36,9 +35,9 @@ constexpr int FieldSize = 32;
 
 TAppearanceType* thingType(const int id, const ThingCategory category)
 {
-    if (id <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(id), category))
+    if (id <= 0 || !tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(id), category))
         return nullptr;
-    TAppearanceType* type = tibia::game::thingType(static_cast<uint16_t>(id), category);
+    TAppearanceType* type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(category, static_cast<uint16_t>(id));
     return type && !type->isNull() && type->getAnimationPhases() > 0 ? type : nullptr;
 }
 

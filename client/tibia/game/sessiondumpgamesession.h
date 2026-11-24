@@ -113,8 +113,6 @@ public:
 
 Q_SIGNALS:
     void clientOutOfDate();
-    /// Named cue from CIP SessionDumpMarker (S 0x05) during a live dump or replay.
-    void sessionDumpMarker(const QString& marker);
     /// CIP SessionDumpStart (S 0x04) when a server begins a dump (Crystal TBD).
     void sessionDumpStart(const QString& sessionKey);
 
@@ -174,8 +172,6 @@ private:
     bool m_sawPendingStateEntered = false;
     /// Host: disconnected was announced (by the session or the classic state).
     bool m_decodedReplayEnded = false;
-
-    std::vector<tibia::game::SoftHook> m_hooks;
 };
 
 }

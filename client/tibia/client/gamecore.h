@@ -8,8 +8,6 @@
 #include <string>
 #include <tibia/game/tgamenotify.h>
 
-class GameObject;
-
 namespace tibia {
 namespace client {
 
@@ -64,8 +62,7 @@ std::string assetsRoot(int version);
 /// CIP sounds directory — sibling `sounds/` under the same Resources search root.
 std::string soundsRoot(int version);
 
-/// Pack / qtclient subscribe + arg helpers live on allowlisted `tibia/game/tgamenotify.h`.
-using Hook = tibia::game::Hook;
+/// The notify arguments and their readers live on `tibia/game/tgamenotify.h`.
 using Args = tibia::game::Args;
 using tibia::game::argString;
 using tibia::game::argInt;

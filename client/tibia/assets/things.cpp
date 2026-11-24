@@ -388,21 +388,6 @@ void TAppearancesManager::setStaticInformation(TStaticInformation information)
     m_monsterRaces = std::move(information.monsters);
     m_monsterRaces.insert(m_monsterRaces.end(), std::make_move_iterator(information.bosses.begin()),
                           std::make_move_iterator(information.bosses.end()));
-    m_monsterClasses = std::move(information.monsterClasses);
-    m_cyclopediaHouses = std::move(information.houses);
-    m_cyclopediaAchievements = std::move(information.achievements);
-    m_cyclopediaQuests = std::move(information.quests);
-}
-
-TAppearanceTypePtr TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
-{
-    return TAppearanceInstanceFactory::installed()->appearanceType(category < ThingLastCategory ? category : ThingCategoryItem,
-                                                                  id);
-}
-
-TAppearanceType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)
-{
-    return findType(category, id);
 }
 
 const RaceType& TAppearancesManager::getRaceData(const uint32_t raceId)
@@ -553,16 +538,6 @@ TAppearanceTypeList TAppearancesManager::getProficiencyObjectTypes() const
             result.push_back(const_cast<TAppearanceType*>(&type));
     }
     return result;
-}
-
-std::string TAppearancesManager::getCyclopediaItemName(const uint16_t id)
-{
-    const TAppearanceType* type = getRawThingType(id, ThingCategoryItem);
-    if (!type)
-        return {};
-    if (const TAppearanceMarketProperties* market = type->marketProperties(); market && !market->name.isEmpty())
-        return market->name.toStdString();
-    return type->getName();
 }
 
 std::set<QString> TAppearancesManager::creatureProductBuyerNames() const

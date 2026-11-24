@@ -8,7 +8,7 @@
 #include "sound/soundstorage.h"
 #include "worldmap/worldmapstorage.h"
 
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <protocol.pb.h>
 
@@ -65,11 +65,11 @@ bool visible(const uint32_t source)
 std::shared_ptr<appearances::TEffectInstance> makeEffect(const uint16_t effectId, const Position& field,
                                                          const uint8_t source, const qint64 now, const qint64 delay)
 {
-    const uint16_t drawId = game::resolveEffectId(effectId);
-    if (!game::isValidDatId(drawId, ThingCategoryEffect))
+    const uint16_t drawId = appearances::TAppearancesManager::instance().resolveEffectId(effectId);
+    if (!appearances::TAppearancesManager::instance().isValidDatId(drawId, ThingCategoryEffect))
         return nullptr;
     auto effect = appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(drawId, field, source, now);
-    if (const auto* variant = game::findEffectVariant(effectId)) {
+    if (const auto* variant = appearances::TAppearancesManager::instance().findEffectVariant(effectId)) {
         effect->setUnderCreatures(variant->underCreatures);
         effect->setVariantId(effectId);
     }
@@ -112,7 +112,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
         }
         case 1: {
             const auto id = static_cast<uint16_t>(entry.appearance_id());
-            if (!visible(entry.source()) || !game::isValidDatId(id, ThingCategoryMissile))
+            if (!visible(entry.source()) || !appearances::TAppearancesManager::instance().isValidDatId(id, ThingCategoryMissile))
                 break;
             map->addMissileAppearance(appearances::TAppearanceInstanceFactory::installed()->createMissile(
                 id, at, positionOf(entry.destination()), static_cast<uint8_t>(entry.source()), now));
@@ -142,7 +142,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
 
 void TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage(const GameserverMessageRemoveGraphicalEffect& message)
 {
-    m_effectStorage->remove(game::resolveEffectId(static_cast<uint16_t>(message.appearance_id())),
+    m_effectStorage->remove(appearances::TAppearancesManager::instance().resolveEffectId(static_cast<uint16_t>(message.appearance_id())),
                                       positionOf(message.coordinate()));
 }
 

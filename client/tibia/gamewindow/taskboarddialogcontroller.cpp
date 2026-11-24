@@ -14,7 +14,7 @@
 
 #include <client/const.h>
 #include <client/staticdata.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/assets/things.h>
 
 #include <QLocale>
 

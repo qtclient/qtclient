@@ -107,8 +107,6 @@ public:
 
     void processGameEnd();
 
-    friend class TWorldMapSessionState;
-
 public:
     // login related
     /// The live session starts a login: the game state resets and `connection`

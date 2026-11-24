@@ -36,7 +36,7 @@ private:
     void onTextMessage(int mode, const QString& text);
 
     TTextStorage& m_texts;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<tibia::game::SoftHook> m_hooks;
 
     bool m_showMessages = true;
 };

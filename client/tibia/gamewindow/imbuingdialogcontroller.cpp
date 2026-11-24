@@ -19,7 +19,7 @@
 #include <utility>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::imbuing {
 
@@ -299,13 +299,13 @@ bool localPlayerPremium()
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
 }
 
 uint32_t imbuementSlotCount(const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
     return type ? type->getImbueSlots() : 0;
 }
 

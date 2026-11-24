@@ -14,7 +14,6 @@
 #include <QJsonObject>
 #include <QLocale>
 #include <QQuickItem>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 

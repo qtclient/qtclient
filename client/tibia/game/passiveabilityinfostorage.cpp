@@ -1,18 +1,10 @@
 #include "game/passiveabilityinfostorage.h"
 
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
-
 #include <QtGlobal>
 
-#include <any>
 #include <utility>
 
 namespace tibia::game {
-
-using client::gamecore::Args;
-using client::gamecore::argBool;
-using client::gamecore::argInt;
 
 TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::s_instance = nullptr;
 
@@ -51,19 +43,6 @@ TPassiveAbilityInfoStorage::TIterator& TPassiveAbilityInfoStorage::TIterator::op
 TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
     : cip::tibia::game::TPassiveAbilityInfoStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
-        // onPassiveData(abilityId, remainingMs, totalMs, decaying) — cooldown
-        // also lands in TCooldownStorage for action-bar overlays.
-        m_currentCooldown = static_cast<uint32_t>(argInt(args, 1));
-        m_maxCooldown = static_cast<uint32_t>(argInt(args, 2));
-        m_canDecay = argBool(args, 3);
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_currentCooldown = 0;
-        m_maxCooldown = 0;
-        m_canDecay = false;
-    });
 }
 
 TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::instance()

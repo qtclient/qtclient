@@ -148,6 +148,9 @@ private:
     /// The character's item settings changed: the type's loot value source
     /// again, and its value, tracking and list state.
     void onCharacterConfigurationChanged();
+    /// Host: the current session's inspection results and forge base data
+    /// (CIP's connector is not ported).
+    void connectToCurrentGameSession();
     void onInspectObjectDataReceived(const ItemInspectionData& data);
     void setInspectData(TItemInspectData* data);
     /// CIP .
@@ -178,7 +181,8 @@ private:
     bool m_buttons[4] = {};
     QTimer m_inspectTimer;
     qint64 m_lastInspect = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
+    QMetaObject::Connection m_inspectionConnection;
+    QMetaObject::Connection m_exaltationConnection;
 };
 
 }

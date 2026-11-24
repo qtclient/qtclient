@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/thingsession_forward.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -114,7 +113,7 @@ void TPreyBestiarySelectionModel::setRaces(const QList<uint16_t>& races)
     m_entries.clear();
     m_entries.reserve(races.size());
     for (const uint16_t race : races)
-        m_entries.append({ .id = race, .name = capitalizeWords(QString::fromStdString(tibia::game::raceData(race).name)) });
+        m_entries.append({ .id = race, .name = capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(race).name)) });
     m_count = static_cast<int>(m_entries.size());
     endResetModel();
     Q_EMIT rowCountChanged();
