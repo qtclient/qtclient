@@ -1,5 +1,6 @@
 #include "sessiondumpgamesession.h"
 #include "game/gameactionrouter.h"
+#include "game/gameciptypes.h"
 
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
@@ -110,6 +111,11 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     createStorages();
     createProtocolMessageHandlers();
     connectProtocolMessageHandlers();
+    // Host: CipSoft's dump announces the world through its player; qtclient's
+    // replay feeds the dump's WorldEntered message to the player messages
+    // (the game server session links it in its own message links).
+    m_connectionManager.add(connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedWorldEnteredMessage,
+                                    playerProtocolMessageHandler().get(), &TPlayerProtocolMessageHandler::handleWorldEnteredMessage));
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
@@ -117,7 +123,8 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     // The dump is loaded now and played when the session starts.
     startSessiondump(m_sessiondumpMetaInfo->sessiondump);
     // Host: a periodic timer stands in for CipSoft's zero-interval single-shot
-    // timer that the game client restarts every tick and frame.
+    // timer, which processNetwork and every prepared frame restart (qtclient's
+    // frame preparation does not restart it).
     m_sessiondumpTimer.setInterval(16);
     m_connectionManager.add(
         connect(&m_sessiondumpTimer, &QTimer::timeout, this, &TSessiondumpGameSession::onSessiondumpTimerElapsed));
@@ -378,6 +385,15 @@ void TSessiondumpGameSession::onRequestResetOfStorages()
     nextFrameUpdater()->update(clockService()->nowMillis() + StorageResetLookaheadMillis);
     containerStorage()->clear();
     chatChannelStorage()->clearAllChannels();
+}
+
+void TSessiondumpGameSession::processNetwork()
+{
+    // Host: qtclient's text dumps have no player for the timer to drive.
+    if (!m_sessiondumpPlayer)
+        return;
+    if (!m_sessiondumpTimer.isActive())
+        m_sessiondumpTimer.start();
 }
 
 void TSessiondumpGameSession::onSessiondumpTimerElapsed()

@@ -40,23 +40,23 @@ public:
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& ResourceBalanceMessage);
     void handleSoulSealsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageSoulSealsDialog& SoulSealsMessage);
 
-    static void requestBountyTasks();
-    static void requestWeeklyTasks();
-    static void requestShopRewards();
+    void requestBountyTasks();
+    void requestWeeklyTasks();
+    void requestShopRewards();
     /// The difficulty 0..3 and the elite flag travel together.
-    static void setBountyTaskDifficulty(int difficulty, bool elite);
-    static void rerollBountyTasks();
-    static void acceptBountyTask(int taskIndex);
-    static void claimBountyReward();
-    static void upgradeBountyTalisman(int talismanIndex);
-    static void deliverWeeklyTask(int taskIndex);
-    static void selectWeeklyTaskDifficulty(int difficulty);
-    static void buyShopReward(int offerIndex);
-    static void unlockPreferredMonsterSlot();
-    static void clearPreferredMonster(int slotIndex);
-    static void clearAvoidedMonster(int slotIndex);
-    static void assignPreferredMonster(int slotIndex, int raceId);
-    static void assignAvoidedMonster(int slotIndex, int raceId);
+    void setBountyTaskDifficulty(int difficulty, bool elite);
+    void rerollBountyTasks();
+    void acceptBountyTask(int taskIndex);
+    void claimBountyReward();
+    void upgradeBountyTalisman(int talismanIndex);
+    void deliverWeeklyTask(int taskIndex);
+    void selectWeeklyTaskDifficulty(int difficulty);
+    void buyShopReward(int offerIndex);
+    void unlockPreferredMonsterSlot();
+    void clearPreferredMonster(int slotIndex);
+    void clearAvoidedMonster(int slotIndex);
+    void assignPreferredMonster(int slotIndex, int raceId);
+    void assignAvoidedMonster(int slotIndex, int raceId);
 
 Q_SIGNALS:
     void sendTaskboardCommand(const ::tibia::protobuf::protocol::GameclientMessageTaskboard& TaskboardMessage);
@@ -64,6 +64,10 @@ Q_SIGNALS:
     void openSoulSealsDialog(const std::vector<uint16_t>& AnimusMasteryRaceIds);
 
 private:
+    /// Emits the command (sendTaskboardCommand); the session links it to the message queue.
+    void sendCommand(const ::tibia::protobuf::protocol::GameclientMessageTaskboard& command);
+    void sendOption(int option);
+
     std::shared_ptr<TTaskboardCurrenciesStorage> m_currencies;
     std::shared_ptr<TTaskboardWeeklyTasksStorage> m_weeklyTasks;
     std::shared_ptr<TTaskboardBountyTasksStorage> m_bountyTasks;

@@ -315,6 +315,7 @@ void TDailyRewardProtocolMessageHandler::collectDailyReward(const bool fromShrin
 void TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)
 {
     tibia::game::notify("onRestingAreaState", message.in_resting_area());
+    Q_EMIT restingAreaStateChanged(message.in_resting_area());
 }
 
 void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const GameserverMessageOpenRewardWall& message)

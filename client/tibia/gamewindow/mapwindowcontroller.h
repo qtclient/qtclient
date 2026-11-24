@@ -96,6 +96,9 @@ public:
     void syncFov();
     /// Classic vs product pack HUD chrome layout (FOV unchanged).
     void refreshClassicView();
+    /// The window went full screen: with a session its camera takes the
+    /// pane's mapWindowScaleFactor, then the creature HUDs refresh.
+    void onFullscreenModeEntered();
 
 public Q_SLOTS:
     /// MapWindowPane's mapWindowClicked: mouse in mapWindow pixels.

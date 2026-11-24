@@ -16,14 +16,19 @@ namespace tibia::animation {
 /// The phase of an animated sprite sequence. Phases follow the appearance's
 /// durations from a start time; a synchronized animation starts at time 0, so
 /// every instance shows the same phase.
-class TAnimator final
+class TAnimator
 {
 public:
     TAnimator(TAnimationInfo info, qint64 startMs);
+    virtual ~TAnimator() = default;
+    TAnimator(const TAnimator&) = default;
+    TAnimator& operator=(const TAnimator&) = default;
+    TAnimator(TAnimator&&) = default;
+    TAnimator& operator=(TAnimator&&) = default;
 
     /// Advance to `nowMs`: whole cycles are skipped, then phase by phase.
-    void update(qint64 nowMs);
-    int phase() const { return m_phase; }
+    virtual void update(qint64 nowMs);
+    virtual int phase() const { return m_phase; }
     int phaseCount() const { return static_cast<int>(m_info.phaseCount()); }
     /// A counted animation played all its cycles.
     bool isFinished() const { return m_finished; }
@@ -40,8 +45,10 @@ public:
     /// process-wide generator is used.
     static void setRandomNumberGenerator(std::shared_ptr<shared::TRandomNumberGenerator> generator);
 
-private:
+protected:
     int m_phase = 0;
+
+private:
     bool m_alwaysLoop = false;
     qint64 m_nextPhaseMs = 0;
     TAnimationInfo m_info;

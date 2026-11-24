@@ -677,31 +677,6 @@ void TGameSessionState::follow(const uint32_t creatureId)
     gameclient::sendFollow(id, m_seq);
 }
 
-void TGameSessionState::cancelAttackAndFollow()
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (isFollowing())
-        setFollowingCreatureId(0);
-
-    if (isAttacking())
-        setAttackingCreatureId(0);
-
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (storage->attackID())
-            storage->setAttackID(0);
-        if (storage->followID())
-            storage->setFollowID(0);
-    }
-
-    tibia::game::localPlayerStopAutoWalk();
-
-    gameclient::sendCancelAttackAndFollow();
-
-    tibia::game::notify("onCancelAttackAndFollow");
-}
-
 
 
 

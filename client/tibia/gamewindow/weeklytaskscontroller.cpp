@@ -277,7 +277,8 @@ void TWeeklyTasksController::showDialogTab()
 {
     if (!m_gameSession || m_requestPending)
         return;
-    taskboard::TTaskboardProtocolMessageHandler::requestWeeklyTasks();
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get()))
+        session->taskboardProtocolMessageHandler()->requestWeeklyTasks();
     m_requestPending = true;
 }
 
@@ -315,7 +316,8 @@ void TWeeklyTasksController::deliverTask(const int taskIndex)
             m_deliverTaskConfirmationConnections.disconnectAll();
             if (!m_gameSession || m_requestPending)
                 return;
-            taskboard::TTaskboardProtocolMessageHandler::deliverWeeklyTask(taskIndex);
+            if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get()))
+                session->taskboardProtocolMessageHandler()->deliverWeeklyTask(taskIndex);
             m_requestPending = true;
         }));
     m_deliverTaskConfirmationConnections.add(connect(m_deliverTaskConfirmationDialog, &TMessageDialogController::discardClicked, this, [this](bool) {
@@ -328,7 +330,8 @@ void TWeeklyTasksController::selectDifficulty(const int difficulty)
 {
     if (!m_gameSession || m_requestPending)
         return;
-    taskboard::TTaskboardProtocolMessageHandler::selectWeeklyTaskDifficulty(difficulty);
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get()))
+        session->taskboardProtocolMessageHandler()->selectWeeklyTaskDifficulty(difficulty);
     m_requestPending = true;
 }
 

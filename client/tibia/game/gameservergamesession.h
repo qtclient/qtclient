@@ -214,6 +214,9 @@ private:
     std::shared_ptr<protocol::TProtocolClientMessageProcessor> m_clientMessageProcessor;
     /// Host: the packet onClientMessageReadyToProcess is handing on; null outside it.
     const network::TGameserverNetworkPacket* m_clientPacketBeingSent = nullptr;
+    /// Host: the login packet went out on this connection; XTEA frames written
+    /// before it (a controller's request queued while connecting) are dropped.
+    bool m_loginPacketSent = false;
     /// The decoded bytes of the server packets, read by the server packet processor.
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_serverMessageStream;
     std::shared_ptr<protocol::TProtocolServerPacketProcessor> m_serverPacketProcessor;

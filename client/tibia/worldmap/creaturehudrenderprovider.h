@@ -18,6 +18,9 @@ namespace tibia {
 namespace config {
 class TClientOptions;
 }
+namespace dailyreward {
+class TDailyRewardProtocolMessageHandler;
+}
 namespace game {
 class TPlayerData;
 }
@@ -103,6 +106,7 @@ public:
                                std::shared_ptr<TWorldMapViewport> worldMapViewport,
                                std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider,
                                std::shared_ptr<game::TPlayerData> playerData, config::TClientOptions* clientOptions,
+                               std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> dailyRewardProtocolMessageHandler = nullptr,
                                QObject* parent = nullptr);
 
     /// The records of the creatures in the visible area that show a HUD,
@@ -114,6 +118,10 @@ public:
     /// its field in `worldMapStorage` (true without a storage).
     static bool isUncovered(const std::shared_ptr<TWorldMapStorage>& worldMapStorage, const TWorldMapCoordinate& position,
                             int firstVisibleFloor);
+
+public Q_SLOTS:
+    /// The daily reward handler said whether the player is in a resting area.
+    void setInRestingArea(bool inRestingArea) { m_inRestingArea = inRestingArea; }
 
 private:
     void readOptions();
@@ -134,6 +142,10 @@ private:
     std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::shared_ptr<game::TPlayerData> m_playerData;
     config::TClientOptions* m_clientOptions = nullptr;
+    std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> m_dailyRewardProtocolMessageHandler;
+    /// The player is in a resting area. Host: the player's states are built
+    /// by m_playerStates, which follows the resting area itself.
+    bool m_inRestingArea = false;
     /// The player's special conditions with the HUD filter (resting area and
     /// options included).
     mutable game::TPlayerStatesTracker m_playerStates;

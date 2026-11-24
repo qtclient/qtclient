@@ -18,6 +18,9 @@ struct TSlotInfo
     QString text;
     bool acceptsDrop = true;
     bool isUpdatable = true;
+    /// CipSoft's third flag: set for the inventory's slots only; nothing in
+    /// CipSoft's client reads it back.
+    bool isInventorySlot = false;
     int tutorialMarkerId = 0;
     QString managedContainerTooltip;
 };

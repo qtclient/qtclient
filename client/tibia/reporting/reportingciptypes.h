@@ -4,6 +4,7 @@
 
 #include "reporting/reportingstorage.h"
 #include "shared/cip_typed.h"
+#include "client/position.h"
 
 #include <cip_gen.h>
 
@@ -13,6 +14,8 @@
 
 #include <QByteArray>
 #include <QObject>
+#include <QString>
+#include <cstdint>
 
 namespace tibia::protobuf::protocol {
 class GameserverMessageMessage;
@@ -63,6 +66,20 @@ public:
     /// its author, the text's edit id and the text itself.
     void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message);
+    /// GameclientMessageRuleViolationReport: the report type (0 name, 1 statement, 2 bot, 3 hireling name,
+    /// 4 text; any other throws std::runtime_error), the reason (0..20; any other throws
+    /// std::invalid_argument), the reported name, the comment, the translation and the statement, hireling
+    /// and text ids (0 where the type has none).
+    void reportRuleViolation(uint32_t type, uint32_t reason, const QString& name, const QString& comment, const QString& translation,
+                             uint32_t statementId, uint32_t hirelingId, uint32_t textId);
+    void reportName(uint32_t reason, const QString& name, const QString& comment, const QString& translation);
+    void reportStatement(uint32_t reason, const QString& name, const QString& comment, const QString& translation, uint32_t statementId);
+    /// A bot report has no translation.
+    void reportBot(uint32_t reason, const QString& name, const QString& comment);
+    void reportHirelingName(uint32_t reason, const QString& name, const QString& comment, const QString& translation, uint32_t hirelingId);
+    void reportText(uint32_t reason, const QString& name, const QString& comment, const QString& translation, uint32_t textId);
+    /// GameclientMessageGetTextForReport for the object at the classic position.
+    void requestTextForReport(const Position& position, uint16_t typeId, int stackPosition);
 
 Q_SIGNALS:
     void sendRuleViolationReport(const ::tibia::protobuf::protocol::GameclientMessageRuleViolationReport& RuleViolationReportMessage);

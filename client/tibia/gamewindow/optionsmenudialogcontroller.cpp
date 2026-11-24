@@ -5,8 +5,10 @@
 #include "app/clientoptions.h"
 #include "app/graphicsrestart.h"
 #include "chat/chatchannel.h"
+#include "creatures/creaturestorage.h"
 #include "client/gameclient.h"
 #include "config/clientoptiondefaults.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/configbackupreader.h"
 #include "config/hotkeyoptions.h"
 #include "game/currentgamesession.h"
@@ -419,12 +421,15 @@ void TOptionsMenuDialogController::applyButtonClicked()
 
     app::ClientOptions::storeChanged(*pending);
 
-    if (restartNeeded) {
-        // CIP: one "Restart" button (USER_DEFINED, no keys).
-        m_restartMessage->setButtons({ new TMessageDialogButton(Button::USER_DEFINED, qtTrId("restart"), 0u) });
-        m_restartMessage->showMessage(qtTrId("graphics_setting_requires_restart_caption"),
-                                      qtTrId("graphics_setting_requires_restart_text"));
-    }
+    if (restartNeeded)
+        showRestartMessage(qtTrId("graphics_setting_requires_restart_caption"), qtTrId("graphics_setting_requires_restart_text"));
+}
+
+void TOptionsMenuDialogController::showRestartMessage(const QString& caption, const QString& text)
+{
+    // One "Restart" button (USER_DEFINED, no keys).
+    m_restartMessage->setButtons({ new TMessageDialogButton(Button::USER_DEFINED, qtTrId("restart"), 0u) });
+    m_restartMessage->showMessage(caption, text);
 }
 
 void TOptionsMenuDialogController::clearMarkedActionBars()
@@ -576,10 +581,10 @@ void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFil
 void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
-    const TRendererOptions before(*m_clientOptions);
     std::optional<config::TConfigBackupReader> reader;
     try {
-        reader.emplace(files::data().getFileSystemHelper(), localFile(m_importFile),
+        reader.emplace(m_pFileSystemHelper ? m_pFileSystemHelper->getFileSystemHelper() : files::data().getFileSystemHelper(),
+                       localFile(m_importFile),
                        std::vector<QString>{ QLatin1String(ConfDirectory), QLatin1String(CharacterDataDirectory),
                                              QLatin1String(MinimapDirectory) });
     } catch (const std::runtime_error&) {
@@ -588,8 +593,19 @@ void TOptionsMenuDialogController::importArchive()
         return;
     }
     reader->extractTo(root);
+
+    // Imported minimap files: the markers are read again and the minimap
+    // shows the new tiles.
+    if (reader->containsMinimap()) {
+        if (m_pMinimapTileDiskIO)
+            m_pMinimapTileDiskIO->loadMinimapMarkerFileContentFromDiskIfPossible();
+        if (m_pMinimapTileStorage)
+            Q_EMIT m_pMinimapTileStorage->reloadVisibleMinimap();
+    }
+
     if (!reader->containsOptions())
         return;
+    const TRendererOptions before(*m_clientOptions);
     // qtclient's TClientOptions keeps its own file: the extracted
     // conf/clientoptions.json is applied through ClientOptions.
     QFile optionsFile(root.filePath(QLatin1String(OptionsFile)));
@@ -602,12 +618,20 @@ void TOptionsMenuDialogController::importArchive()
     const config::TClientOptions& after = *m_clientOptions;
     for (const Page& page : m_pages)
         page.page->load(after);
-    const bool same = TRendererOptions(after) == before;
-    m_infoMessage->setButtons(okButton());
-    if (same)
+    // In game the character's configuration is read again from the
+    // imported character data.
+    if (game::TGameSessionBase* session = game::currentGameSession()) {
+        if (session->characterConfigurationManager() && session->creatureStorage())
+            session->characterConfigurationManager()->loadConfigurationForCharacter(session->creatureStorage()->playerID());
+    }
+
+    if (TRendererOptions(after) == before) {
+        m_infoMessage->setButtons(okButton());
         m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_success_caption"), qtTrId("optionsmenu_file_import_success_text"));
-    else
-        m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_info_caption"), qtTrId("optionsmenu_file_import_info_text"));
+    } else {
+        // A renderer, vsync or font renderer change takes a restart.
+        showRestartMessage(qtTrId("optionsmenu_file_import_info_caption"), qtTrId("optionsmenu_file_import_info_text"));
+    }
 }
 
 config::TOptionsPage* TOptionsMenuDialogController::pageOf(const EDialogCategories category) const

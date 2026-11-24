@@ -13,12 +13,14 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
 }
 namespace game {
+class IGameSession;
 class TPremiumTimeStorage;
 }
 }
@@ -117,8 +119,11 @@ private Q_SLOTS:
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
-private:
+public:
+    /// The manager's factory seeds the visibility of the open analysers.
     void onWidgetVisibility(int widgetType, bool visible);
+
+private:
     void toggle(int widgetType);
 
     QPointer<gamewindow::TSidebarWidgetsManager> m_widgets;
@@ -416,6 +421,10 @@ private:
 
     template <class Controller>
     void add(int widgetType, std::function<Controller*()> make);
+    /// The widgets manager's session hook for a controller that connects to
+    /// the game session itself (none otherwise).
+    template <class Controller>
+    std::function<void(const std::shared_ptr<game::IGameSession>&)> connectToGameSessionHook(int widgetType);
 
     TAnalyserStorages* m_storages;
     QPointer<gamewindow::TSidebarWidgetsManager> m_widgets;

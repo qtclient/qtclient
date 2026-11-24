@@ -5,6 +5,7 @@
 
 #include <QImage>
 
+#include <functional>
 #include <memory>
 
 namespace tibia::assets {
@@ -53,6 +54,9 @@ public:
     /// The decompressor of asset images (store images decode through it too).
     const std::shared_ptr<TSpritesheetDecompressor>& decompressor() const { return m_decompressor; }
 
+    /// Runs `use` while no other thread reads the metadata (the metadata
+    /// manager remembers its last lookup).
+    void withMetadataLocked(const std::function<void()>& use);
     /// Where a sprite id lives; invalid metadata for an unknown sprite. Thread safe.
     TSpriteFromSpritesheetInfo spriteInfo(uint32_t spriteId, bool opaque = false);
     /// The size of a sprite from its spritesheet's layout (empty when unknown).

@@ -158,11 +158,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
     case A::CANCEL_CROSSHAIR_SPELL:
         finishTargetSelection(nullptr);
         break;
-    case A::STOP_ATTACKING_FOLLOWING_WALKING:
-        // qtclient: CipSoft's creatures handler stops the attack and the follow
-        // and its movement handler the walk; tibia::game::stop does both.
-        tibia::game::stop();
-        break;
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
         Q_EMIT publishGameAction(std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE,
                                                                              qtTrId("you_see_nothing"), QColor(Qt::green)));

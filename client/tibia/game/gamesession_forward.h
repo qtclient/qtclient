@@ -124,8 +124,6 @@ void rejectTrade();
 
 void reportBugCip(uint8_t category, std::string_view comment, std::string_view typoSpeaker, std::string_view typoText, const Position& position);
 
-void reportRuleViolationCip(uint8_t type, uint8_t reason, std::string_view name, std::string_view comment, std::string_view translation, uint32_t id);
-
 void requestBestiary();
 
 void requestBestiaryOverview(std::string_view catName, bool search = false, std::vector<uint16_t> raceIds = {});
@@ -166,8 +164,6 @@ void requestSendCyclopediaHouseAuction(tibia::client::CyclopediaHouseAuctionType
 void requestSetCharacterTitle(uint8_t titleId);
 
 void requestStoreOffers(const std::string_view categoryName, const std::string_view subCategory, const uint8_t sortOrder, const uint8_t serviceType);
-
-void requestTextForReport(const Position& position, uint16_t typeId, uint8_t stackPosition);
 
 void requestTradeAt(const Position& position, uint16_t itemId, int stackPos, uint32_t creatureId);
 
@@ -241,8 +237,6 @@ void setHirelingOutfit(const Outfit& outfit, uint32_t hirelingCreatureId);
 void setShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, uint16_t itemId, uint8_t stackpos, uint8_t direction, uint8_t podiumVisible);
 
 void soulsealFightAction(uint16_t raceId);
-
-void stop();
 
 void talkChannel(tibia::client::MessageMode mode, uint16_t channelId, std::string_view message);
 

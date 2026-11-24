@@ -1092,8 +1092,12 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.string(m.comment());
         if (type != 2) {
             w.string(m.translation());
-            if (type == 1 || type == 3 || type == 4)
+            if (type == 1)
                 w.u32(m.statement_id());
+            else if (type == 3)
+                w.u32(m.hireling_id());
+            else if (type == 4)
+                w.u32(m.text_id());
         }
         return w.out;
     }
@@ -1328,10 +1332,12 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(static_cast<uint8_t>(m.slot()));
         const auto action = m.action();
         w.u8(static_cast<uint8_t>(action));
-        if (action == 2 || action == 5)
-            w.u8(static_cast<uint8_t>(m.index()));
+        if (action == 5)
+            w.u8(static_cast<uint8_t>(m.automatic_extend_type()));
         else if (action == 4)
             w.u16(static_cast<uint16_t>(m.race_id()));
+        else if (action == 2)
+            w.u8(static_cast<uint8_t>(m.index()));
         return w.out;
     }
     case 243: {

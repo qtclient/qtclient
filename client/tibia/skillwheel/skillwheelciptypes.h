@@ -121,15 +121,15 @@ public:
     /// The wheel of a player.
     void requestSkillWheel(uint32_t playerId);
     /// The character's wheel through the cyclopedia character info (the character info dialog).
-    static void requestCharacterSkillWheel(uint32_t characterId);
+    void requestCharacterSkillWheel(uint32_t characterId);
     /// The 36 slice points and the eight vessels' gems (-1 empty).
     void saveSkillWheel(const TWheel& wheel);
-    static void dismantleGem(int gemId);
-    static void revealGem(int quality);
-    static void reshapeGem(int gemId, int modIndex);
-    static void attemptReshapeGem(int gemId, int modIndex);
-    static void toggleGemLock(int gemId);
-    static void enhanceModGrade(int modType, int modId);
+    void dismantleGem(int gemId);
+    void revealGem(int quality);
+    void reshapeGem(int gemId, int modIndex);
+    void attemptReshapeGem(int gemId, int modIndex);
+    void toggleGemLock(int gemId);
+    void enhanceModGrade(int modType, int modId);
 
 Q_SIGNALS:
     void sendRequestSkillWheel(const ::tibia::protobuf::protocol::GameclientMessageRequestSkillWheel& RequestSkillWheelMessage);
@@ -138,6 +138,9 @@ Q_SIGNALS:
     void sendGemAtelierAction(const ::tibia::protobuf::protocol::GameclientMessageGemAtelier& GemAtelierMessage);
 
 private:
+    /// One GemAtelier message: the action, its gem or value, and the mod index.
+    void sendGemAtelier(uint32_t action, uint16_t value, uint8_t secondValue);
+
     QPointer<TSkillWheelStorage> m_storage;
     std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
     std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;

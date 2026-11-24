@@ -749,8 +749,9 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    // The game session builds its protocol message and game action handlers.
-    new TPremiumTimeStorage(parent);
+    // The premium time storage is the game client's (TGameClient's client
+    // objects); each current session gets it through setPremiumTimeStorage.
+    (void)parent;
 }
 
 void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMessageEditText& m)

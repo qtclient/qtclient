@@ -162,13 +162,6 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_widgets(widgets)
 {
-    for (const int type : { W::BossCooldowns, W::LootTracker, W::XpAnalyser, W::LootAnalyser, W::WasteAnalyser, W::ImpactAnalyser,
-                            W::DamageInputAnalyser, W::HuntingSessionAnalyser, W::PartyHuntAnalyser })
-        onWidgetVisibility(type, m_widgets && m_widgets->isWidgetOpen(type));
-    if (m_widgets) {
-        connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetVisible, this, &TAnalyticsSelectorWidgetController::onWidgetVisible);
-        connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetHidden, this, &TAnalyticsSelectorWidgetController::onWidgetHidden);
-    }
     widget()->createItem(QStringLiteral("AnalyticsSelectorWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TAnalyticsSelectorWidgetController::onWidgetQuickItemDestroyed);
@@ -1154,6 +1147,15 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
 {
     add<TAnalyticsSelectorWidgetController>(W::AnalyticsSelector, [this] {
         auto* controller = new TAnalyticsSelectorWidgetController(m_widgets, m_gameWindowItem, m_engine);
+        if (m_widgets) {
+            connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetVisible, controller,
+                    &TAnalyticsSelectorWidgetController::onWidgetVisible);
+            connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetHidden, controller,
+                    &TAnalyticsSelectorWidgetController::onWidgetHidden);
+        }
+        for (const int type : { W::BossCooldowns, W::LootTracker, W::XpAnalyser, W::LootAnalyser, W::WasteAnalyser, W::ImpactAnalyser,
+                                W::DamageInputAnalyser, W::HuntingSessionAnalyser, W::PartyHuntAnalyser })
+            controller->onWidgetVisibility(type, m_widgets && m_widgets->isWidgetOpen(type));
         controller->setSidebarOptions(m_options());
         controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         return controller;
@@ -1188,8 +1190,10 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
         return controller;
     });
     add<TDamageInputWidgetController>(W::DamageInputAnalyser, [this] {
-        auto* controller = new TDamageInputWidgetController(m_storages->damageInput(), m_gameWindowItem, m_engine);
-        controller->setSidebarOptions(m_options());
+        // As CipSoft's widgets manager: made with the engine, then connected
+        // to the current game session.
+        auto* controller = new TDamageInputWidgetController(m_gameWindowItem, m_engine);
+        controller->connectToGameSession(m_widgets ? m_widgets->gameSession() : nullptr);
         return controller;
     });
     add<TPartyHuntWidgetController>(W::PartyHuntAnalyser, [this] {
@@ -1247,7 +1251,21 @@ void TAnalyserWidgets::add(const int widgetType, std::function<Controller*()> ma
                                                   s.controller->deleteLater();
                                                   s.controller = nullptr;
                                               },
+                                              connectToGameSessionHook<Controller>(widgetType),
                                           });
+}
+
+template <class Controller>
+std::function<void(const std::shared_ptr<game::IGameSession>&)> TAnalyserWidgets::connectToGameSessionHook(const int widgetType)
+{
+    if constexpr (requires(Controller& controller) { controller.connectToGameSession(std::shared_ptr<game::IGameSession>{}); }) {
+        return [this, widgetType](const std::shared_ptr<game::IGameSession>& GameSession) {
+            if (QObject* controller = m_slots[widgetType].controller)
+                static_cast<Controller*>(controller)->connectToGameSession(GameSession);
+        };
+    } else {
+        return {};
+    }
 }
 
 }

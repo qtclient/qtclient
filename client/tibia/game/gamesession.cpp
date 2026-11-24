@@ -614,7 +614,8 @@ void requestBestiarySearch(const uint16_t raceId)
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaRace(raceId);
+    if (TGameSessionBase* session = currentGameSession())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaRace(raceId);
 }
 void openPrivateChannel(const std::string_view receiver)
 {

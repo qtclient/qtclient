@@ -136,6 +136,11 @@ QHash<int, QByteArray> TTraderInventoryModel::roleNames() const
     };
 }
 
+const std::vector<TTraderInventoryEntry>& TTraderInventoryModel::entries() const
+{
+    return m_entries;
+}
+
 void TTraderInventoryModel::reset(std::vector<TTraderInventoryEntry> entries)
 {
     beginResetModel();
@@ -423,35 +428,44 @@ void TNPCTradeController::refresh()
     const ENPCTradeDirection direction = m_storage->direction();
     m_proxy.setDirection(direction);
 
-    std::set<std::pair<uint16_t, uint8_t>> previous;
-    for (const TNPCTradeGood& good : m_goods)
-        previous.emplace(good.typeId(), good.liquidType());
+    // The new rows, sorted by object type, and the object types they hold.
     m_goods = m_storage->goods(direction);
-    std::set<std::pair<uint16_t, uint8_t>> current;
     std::vector<TTraderInventoryEntry> entries;
     entries.reserve(m_goods.size());
+    std::set<uint16_t> types;
     for (const TNPCTradeGood& good : m_goods) {
-        current.emplace(good.typeId(), good.liquidType());
         entries.push_back({ good.name, direction == ENPCTradeDirection::SELL ? good.sellPrice : good.buyPrice, good.weight, maximumAmount(&good),
                             good.typeId(), good.liquidType(), good.hookDirection() });
+        types.insert(good.typeId());
     }
-    const bool sameGoods = previous == current;
-    if (sameGoods)
-        Q_EMIT requestSaveScrollPositionAndRestoreAfterTradableGoodsListUpdate();
-    m_model.reset(std::move(entries));
-    if (!sameGoods)
-        Q_EMIT requestPositionViewAtBeginning();
+    std::sort(entries.begin(), entries.end(),
+              [](const TTraderInventoryEntry& left, const TTraderInventoryEntry& right) { return left.typeId < right.typeId; });
 
-    if (m_selectedTypeId != 0 && !selectedGood()) {
-        m_selectedTypeId = 0;
-        m_selectedLiquidType = 0;
+    std::set<uint16_t> shownTypes;
+    for (const TTraderInventoryEntry& entry : m_model.entries())
+        shownTypes.insert(entry.typeId);
+
+    if (m_model.entries() != entries) {
+        // Selling the same objects (amounts or prices changed): keep the
+        // list where the player scrolled it.
+        if (direction == ENPCTradeDirection::SELL && shownTypes == types)
+            Q_EMIT requestSaveScrollPositionAndRestoreAfterTradableGoodsListUpdate();
+        m_model.reset(std::move(entries));
+        if (shownTypes != types)
+            Q_EMIT requestPositionViewAtBeginning();
+    }
+
+    const bool selectionAvailable = good(m_selectedTypeId, m_selectedLiquidType) != nullptr;
+    if (selectionAvailable || m_selectedTypeId != 0 || m_selectedLiquidType != 0) {
+        if (!selectionAvailable) {
+            m_selectedTypeId = 0;
+            m_selectedLiquidType = 0;
+        }
         Q_EMIT selectedTypeIdChanged();
         Q_EMIT selectedLiquidTypeChanged();
+        updateAmount(!selectionAvailable);
     }
-    updateAmount(false);
     Q_EMIT tradedirectionChanged();
-    Q_EMIT currencyBalanceChanged();
-    Q_EMIT buyOrSellPriceChanged();
 }
 
 uint64_t TNPCTradeController::availableCurrencyAmount() const

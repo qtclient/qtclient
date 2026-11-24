@@ -11,8 +11,16 @@
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/coordinates.h"
+#include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
+
+#include <protocol.pb.h>
+
+#include <QString>
+
+#include <stdexcept>
+#include <vector>
 
 namespace tibia::game {
 
@@ -91,6 +99,53 @@ std::shared_ptr<appearances::TAppearanceInstanceFactory> TGameWorldVolumeStorage
 std::shared_ptr<renderer::TRenderVolumeProvider> TGameWorldVolumeStorage::renderVolumeProvider() const
 {
     return m_renderVolumeProvider;
+}
+
+void TGameWorldVolumeStorage::fillFromArea(const worldmap::TWorldMapCuboid& area,
+                                           const protobuf::protocol::MapFields& fields)
+{
+    using namespace ::tibia::protobuf::protocol;
+    m_worldMapStorage->setStoredVolume(worldmap::TShearedWorldMapCuboid(area), true);
+    const worldmap::TWorldMapCuboid envelope = area.shearEnvelope();
+    m_worldMapViewport->setSize(envelope.getExtent().width << 5, envelope.getExtent().height << 5);
+    m_worldMapViewport->setCenter(worldmap::TWorldMapSubfieldCoordinate::fromField(envelope.getOrigin(), 0, 0));
+
+    const worldmap::TWorldMapExtent extent = area.getExtent();
+    std::size_t index = 0;
+    for (const MapField& field : fields.fields()) {
+        // The index-th field of the box: column first (y fastest, then x),
+        // the floors from the box's first floor down.
+        const auto height = static_cast<std::size_t>(extent.height);
+        const int column = static_cast<int>(index / height);
+        const int row = static_cast<int>(index % height);
+        const int floor = static_cast<int>(index / (height * static_cast<std::size_t>(extent.width)));
+        const worldmap::TWorldMapCoordinate coordinate =
+            area.getOrigin() + worldmap::TWorldMapExtent(column % extent.width, row, floor % extent.depth);
+        if (worldmap::TWorldMapField* mapField = m_worldMapStorage->getOrCreateField(coordinate.toPosition())) {
+            std::vector<appearances::TAppearanceInstancePtr> objects;
+            for (const AppearanceInstance& object : field.objects()) {
+                if (object.HasExtension(CreatureData::creature_data))
+                    continue;
+                appearances::TAppearanceInstancePtr instance =
+                    m_appearanceInstanceFactory->createFromProtobuf(object, m_clockService->nowMillis());
+                // Host: qtclient's factory takes no coordinate; an object drawn by
+                // its field's pattern takes it from the coordinate here.
+                if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(instance))
+                    patterned->applyWorldMapCoordinate(coordinate.toPosition());
+                if (instance)
+                    objects.push_back(std::move(instance));
+            }
+            mapField->setObjects(objects);
+        }
+        index += static_cast<std::size_t>(field.skip()) + 1;
+    }
+    const std::size_t count = area.getExtent().volume();
+    if (index != count)
+        throw std::runtime_error(
+            QStringLiteral("Number of processed fields (%1) doesn't fit the number of fields in the area to read (%2)")
+                .arg(index)
+                .arg(count)
+                .toStdString());
 }
 
 void TGameWorldVolumeStorage::updateViewportFromCamera()

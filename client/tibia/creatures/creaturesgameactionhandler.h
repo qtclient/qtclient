@@ -24,9 +24,7 @@ class TCreatureStorage;
 ///
 /// qtclient: three of CipSoft's cases are handled by other qtclient handlers
 /// (USE_ON_TARGET / USE_ON_YOURSELF by input::TUseWithGameActionHandler,
-/// TEMPORARY_SELECT_CREATURE by the battle list storage), and
-/// STOP_ATTACKING_FOLLOWING_WALKING stays with input::TUnportedGameActionHandler,
-/// which also stops the walk (CipSoft's movement handler half of that action).
+/// TEMPORARY_SELECT_CREATURE by the battle list storage).
 /// CipSoft's slots take the typed action and read its creature id; qtclient's
 /// creature actions come in several action classes, so the slots take the
 /// action and read the id with input::creatureIdOf.

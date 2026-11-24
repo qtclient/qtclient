@@ -1,6 +1,9 @@
 #include "housesinfodialogcontroller.h"
 
 #include "game/gamesessionbase.h"
+#include "game/gameworldvolumestorage.h"
+#include "config/clientoptions.h"
+#include "renderer/worldmapquickitem.h"
 
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
@@ -30,6 +33,8 @@
 #include <QJsonObject>
 #include <QLocale>
 #include <QTimeZone>
+#include <protocol.pb.h>
+#include <stdexcept>
 
 #include <unordered_map>
 
@@ -479,6 +484,9 @@ void THousesInfoDialogController::connectToGameSession(const std::shared_ptr<gam
     m_sessionConnections.clear();
     m_storage.reset();
     m_cyclopediaProtocolMessageHandler.reset();
+    if (auto* worldMap = qobject_cast<qmlcomponents::TWorldMapQuickItem*>(m_houseWorldMap.data()))
+        worldMap->setRenderProvider(nullptr);
+    m_houseVolume.reset();
     m_townFilterModel.clear();
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
@@ -505,6 +513,12 @@ void THousesInfoDialogController::connectToGameSession(const std::shared_ptr<gam
         cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(storage);
         m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
                                                [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get()); }));
+        // CIP: the preview shows the house in a volume of its own, with fresh
+        // client options and the session's appearances and clock.
+        m_houseVolume = std::make_shared<game::TGameWorldVolumeStorage>(session->appearancesManager(), session->appearanceInstanceFactory(),
+                                                                        std::make_shared<config::TClientOptions>(),
+                                                                        m_gameSession->clockService());
+        setPreviewRenderSources();
         Q_EMIT currentHouseIdChanged();
     } else {
         setAmbientLightStorage(nullptr);
@@ -667,8 +681,8 @@ void THousesInfoDialogController::requestDynamicDataForTown() { m_townRequestTim
 
 void THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout()
 {
-    if (m_storage)
-        m_storage->requestTown(m_proxy->townFilter());
+    if (m_cyclopediaProtocolMessageHandler)
+        m_cyclopediaProtocolMessageHandler->sendRequestTownHouses(m_proxy->townFilter());
 }
 
 void THousesInfoDialogController::setTownFilter(const QString& Town)
@@ -692,8 +706,21 @@ void THousesInfoDialogController::refresh()
 
 void THousesInfoDialogController::setHouseWorldMapQuickItem(cip::tibia::qmlcomponents::TWorldMapQuickItem* pWorldMapQuickItem)
 {
+    if (auto* previous = qobject_cast<qmlcomponents::TWorldMapQuickItem*>(m_houseWorldMap.data()); previous && previous != pWorldMapQuickItem)
+        previous->setRenderProvider(nullptr);
     m_houseWorldMap = pWorldMapQuickItem;
+    setPreviewRenderSources();
     onHouseViewportChanged();
+}
+
+void THousesInfoDialogController::setPreviewRenderSources()
+{
+    auto* worldMap = qobject_cast<qmlcomponents::TWorldMapQuickItem*>(m_houseWorldMap.data());
+    if (!worldMap)
+        return;
+    // Host: qtclient's world map item takes the render provider only; the
+    // provider draws the volume's own viewport.
+    worldMap->setRenderProvider(m_houseVolume ? m_houseVolume->worldMapRenderProvider().get() : nullptr);
 }
 
 void THousesInfoDialogController::setHouseCameraViewport(cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType* pCameraViewport)
@@ -707,8 +734,18 @@ void THousesInfoDialogController::selectHouse(const uint HouseId)
     if (m_currentHouseId == HouseId)
         return;
     m_currentHouseId = HouseId;
+    const cyclopedia::TStaticHouseMapArea house = cyclopedia::houseMapArea(HouseId);
+    ::tibia::protobuf::protocol::MapFields fields;
+    if (!fields.ParseFromArray(house.fields.constData(), static_cast<int>(house.fields.size())))
+        throw std::logic_error("THousesInfoDialogController::selectHouse malformed protobuf data");
     updateHouseLayers(HouseId);
     onHouseViewportChanged();
+    // Host: houseMapArea answers an empty box without fields for a house the
+    // static map data does not list (CipSoft's data lists every house).
+    if (m_houseVolume && !house.fields.isEmpty()) {
+        m_houseVolume->fillFromArea(house.area, fields);
+        m_houseVolume->updateViewportFromCamera();
+    }
     Q_EMIT currentHouseIdChanged();
 }
 
@@ -886,14 +923,15 @@ void THousesInfoDialogController::onActionRejectTransferClicked()
 
 void THousesInfoDialogController::onHouseActionConfirmed()
 {
-    switch (m_storage ? m_pendingAction : -1) {
-        case 1: m_storage->bid(m_pendingHouseId, m_pendingAmount); break;
-        case 2: m_storage->moveOut(m_pendingHouseId, m_pendingTimestamp); break;
-        case 3: m_storage->transfer(m_pendingHouseId, m_pendingTimestamp, m_pendingName, m_pendingAmount); break;
-        case 4: m_storage->cancelMoveOut(m_pendingHouseId); break;
-        case 5: m_storage->cancelTransfer(m_pendingHouseId); break;
-        case 6: m_storage->acceptTransfer(m_pendingHouseId); break;
-        case 7: m_storage->rejectTransfer(m_pendingHouseId); break;
+    cyclopedia::TCyclopediaProtocolMessageHandler* handler = m_cyclopediaProtocolMessageHandler.get();
+    switch (handler ? m_pendingAction : -1) {
+        case 1: handler->sendHouseBid(m_pendingHouseId, m_pendingAmount); break;
+        case 2: handler->sendHouseMoveOut(m_pendingHouseId, m_pendingTimestamp); break;
+        case 3: handler->sendHouseTransfer(m_pendingHouseId, m_pendingTimestamp, m_pendingName, m_pendingAmount); break;
+        case 4: handler->sendHouseCancelMoveOut(m_pendingHouseId); break;
+        case 5: handler->sendHouseCancelTransfer(m_pendingHouseId); break;
+        case 6: handler->sendHouseAcceptTransfer(m_pendingHouseId); break;
+        case 7: handler->sendHouseRejectTransfer(m_pendingHouseId); break;
         default: break;
     }
     resetHouseActionData();

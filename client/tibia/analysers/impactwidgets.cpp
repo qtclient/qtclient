@@ -2,6 +2,8 @@
 
 #include "analysers/analyserwidgets.h"
 #include "config/sidebaroptions.h"
+#include "game/gamesessionbase.h"
+#include "config/characterconfigurationmanager.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/gameaction.h"
@@ -514,29 +516,41 @@ QString sourceLabel(const QString& name) { return name.isEmpty() ? qtTrId("damag
 
 }
 
-TDamageInputWidgetController::TDamageInputWidgetController(TDamageInputStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                           QObject* parent)
+TDamageInputWidgetController::TDamageInputWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
     , m_sources(new TDamageSourceModel(this))
     , m_types(new TDamageTypedModel(true, this))
     , m_fromSource(new TDamageTypedModel(true, this))
 {
-    connect(m_storage, &TDamageInputStorage::valuesChanged, this, &TDamageInputWidgetController::updateLists);
-    connect(m_storage, &TDamageInputStorage::graphChanged, this, &TDamageInputWidgetController::updateGraph);
-    connect(m_storage, &TDamageInputStorage::optionsChanged, this, &TDamageInputWidgetController::widgetConfigurationChanged);
-    updateLists();
-    updateGraph();
-    Q_EMIT widgetConfigurationChanged();
     widget()->createItem(QStringLiteral("DamageInputWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TDamageInputWidgetController::onWidgetQuickItemDestroyed);
 }
 
-void TDamageInputWidgetController::setSidebarOptions(config::TSidebarOptions* options)
+void TDamageInputWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_options = options;
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    config::TCharacterConfigurationManager* configuration = session ? session->characterConfigurationManager().get() : nullptr;
+    m_storage = configuration ? configuration->damageInputStorage() : nullptr;
+    if (!m_storage)
+        return;
+    m_gameSessionConnections.add(
+        connect(m_storage, &TDamageInputStorage::optionsChanged, this, &TDamageInputWidgetController::widgetConfigurationChanged));
+    m_gameSessionConnections.add(connect(configuration, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                         &TDamageInputWidgetController::widgetConfigurationChanged));
+    if (config::TSidebarOptions* options = configuration->sidebarOptions()) {
+        m_options = options;
+        m_gameSessionConnections.add(connect(options, &config::TSidebarOptions::damageInputAnalyserWidgetOptionsChanged, this,
+                                             &TDamageInputWidgetController::onWidgetOptionsChanged));
+    }
+    m_gameSessionConnections.add(connect(m_storage, &TDamageInputStorage::valuesChanged, this, &TDamageInputWidgetController::updateLists));
+    m_gameSessionConnections.add(connect(m_storage, &TDamageInputStorage::graphChanged, this, &TDamageInputWidgetController::updateGraph));
     onWidgetOptionsChanged();
+    updateLists();
+    updateGraph();
+    Q_EMIT widgetConfigurationChanged();
 }
 
 QQuickItem* TDamageInputWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -568,20 +582,21 @@ void TDamageInputWidgetController::onWidgetQuickItemDestroyed() {}
 void TDamageInputWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, DamageInputOptionsKey); }
 
 /// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+/// The saved content height and maximized state of the widget.
 void TDamageInputWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, DamageInputOptionsKey); }
 
-bool TDamageInputWidgetController::showDamageGraph() const { return m_storage->showGraph(); }
+bool TDamageInputWidgetController::showDamageGraph() const { return m_storage && m_storage->showGraph(); }
 
-bool TDamageInputWidgetController::showDamageTypeList() const { return m_storage->showTypes(); }
+bool TDamageInputWidgetController::showDamageTypeList() const { return m_storage && m_storage->showTypes(); }
 
-bool TDamageInputWidgetController::showDamageSourceList() const { return m_storage->showSources(); }
+bool TDamageInputWidgetController::showDamageSourceList() const { return m_storage && m_storage->showSources(); }
 
-bool TDamageInputWidgetController::showSessionValues() const { return m_storage->showSessionValues(); }
+bool TDamageInputWidgetController::showSessionValues() const { return m_storage && m_storage->showSessionValues(); }
 
 /// CIP.
-QString TDamageInputWidgetController::totalDamageString() const { return format::grouped(m_storage->total()); }
+QString TDamageInputWidgetController::totalDamageString() const { return format::grouped(m_storage ? m_storage->total() : 0); }
 
-QString TDamageInputWidgetController::maxDpsTakenString() const { return format::grouped(m_storage->maxPerSecond()); }
+QString TDamageInputWidgetController::maxDpsTakenString() const { return format::grouped(m_storage ? m_storage->maxPerSecond() : 0); }
 
 QObject* TDamageInputWidgetController::damageSourcesModel() const { return m_sources; }
 
@@ -597,6 +612,8 @@ QString TDamageInputWidgetController::detailedDamageSource() const { return m_de
 
 void TDamageInputWidgetController::updateLists()
 {
+    if (!m_storage)
+        return;
     const double total = static_cast<double>(m_storage->total());
     std::vector<TDamageTypedModel::Entry> types;
     for (const auto& [element, value] : m_storage->elements()) {
@@ -614,7 +631,7 @@ void TDamageInputWidgetController::updateLists()
 
 void TDamageInputWidgetController::updateDetail()
 {
-    if (!m_detailedSource.isEmpty()) {
+    if (!m_detailedSource.isEmpty() && m_storage) {
         for (const TDamageInputStorage::Source& source : m_storage->sources()) {
             if (sourceLabel(source.name) != m_detailedSource)
                 continue;
@@ -634,6 +651,8 @@ void TDamageInputWidgetController::updateDetail()
 
 void TDamageInputWidgetController::updateGraph()
 {
+    if (!m_storage)
+        return;
     const std::vector<double> values = m_storage->graph(m_graphMaxY);
     m_graph = graphPoints(values.data(), static_cast<int>(values.size()), m_storage->showSessionValues());
     Q_EMIT damageTakenGraphChanged();
@@ -650,7 +669,7 @@ void TDamageInputWidgetController::onDamageSourceDetailsRequested(const QString&
 void TDamageInputWidgetController::onShowContextMenu()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
-    if (!menu)
+    if (!menu || !m_storage)
         return;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("damageinput_reset")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] { m_storage->reset(); });

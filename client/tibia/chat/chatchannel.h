@@ -233,6 +233,8 @@ public:
     /// v13: a loot line in the Loot channel, or without one in every channel
     /// that shows the server log.
     void addLootEntry(const QColor& color, const QString& text);
+    /// v14: a system line in the reserved channel, if there is one.
+    void addReservedChannelEntry(const QColor& color, const QString& text);
     /// v15: speech on the map; level 0 makes a speaker entry without level.
     void addLocalEntry(const QColor& color, const QString& name, const QString& text, int level, bool traded,
                        uint32_t statementId);
@@ -280,6 +282,8 @@ public:
     TChatChannel* serverLog() const { return m_serverLog; }
     /// v34.
     TChatChannel* lootChannel() const { return m_lootChannel; }
+    /// v35.
+    TChatChannel* reservedChannel() const { return m_reservedChannel; }
     /// v36: the player's own private channel, if open.
     TChatChannel* ownChannel() const;
     /// v37.
@@ -319,6 +323,9 @@ private:
     TChatChannel* m_localChat = nullptr;
     TChatChannel* m_serverLog = nullptr;
     TChatChannel* m_lootChannel = nullptr;
+    /// CipSoft's fourth fixed channel after Local Chat, Server Log and Loot;
+    /// nothing in this build of CipSoft's client assigns it, so it stays empty.
+    TChatChannel* m_reservedChannel = nullptr;
     std::vector<TChatChannel*> m_channels;
     /// Lower case.
     QString m_ownName;
@@ -351,10 +358,6 @@ QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool
 QString formatLootRichText(QString text);
 /// "{#rrggbb|text}" -> "<font color="#rrggbb">text</font>".
 QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings);
-
-/// CIP's clamped integer setting: the QSettings value in the
-/// group, a value below the minimum is stored back as the minimum.
-int chatSetting(const QString& key, int defaultValue, int minimum);
 
 }
 }

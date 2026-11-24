@@ -53,39 +53,56 @@ void TSkillWheelProtocolMessageHandler::saveSkillWheel(const TWheel& wheel)
 
 void TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(const uint32_t characterId)
 {
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenCharacterInfo(characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL);
+    protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo message;
+    message.set_character_id(characterId);
+    message.set_info_type(static_cast<uint32_t>(tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL));
+    Q_EMIT sendRequestSkillWheelViaCyclopedia(message);
+}
+
+void TSkillWheelProtocolMessageHandler::sendGemAtelier(const uint32_t action, const uint16_t value, const uint8_t secondValue)
+{
+    // Dismantle, reshape, lock and attempted reshape name a gem; reveal names a
+    // quality and the mod grade enhancement a mod type.
+    protobuf::protocol::GameclientMessageGemAtelier message;
+    message.set_action(action);
+    if (action == 0 || action == 2 || action == 3 || action == 5)
+        message.set_gem_index(value);
+    else
+        message.set_first_value(static_cast<uint8_t>(value));
+    message.set_second_value(secondValue);
+    Q_EMIT sendGemAtelierAction(message);
 }
 
 void TSkillWheelProtocolMessageHandler::dismantleGem(const int gemId)
 {
-    tibia::game::gemAction(0, static_cast<uint16_t>(gemId), 0);
+    sendGemAtelier(0, static_cast<uint16_t>(gemId), 0);
 }
 
 void TSkillWheelProtocolMessageHandler::revealGem(const int quality)
 {
     if (static_cast<unsigned>(quality) >= 3)
         throw std::runtime_error("unhandled enum value");
-    tibia::game::gemAction(1, static_cast<uint16_t>(quality), 0);
+    sendGemAtelier(1, static_cast<uint16_t>(quality), 0);
 }
 
 void TSkillWheelProtocolMessageHandler::reshapeGem(const int gemId, const int modIndex)
 {
-    tibia::game::gemAction(2, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
+    sendGemAtelier(2, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
 }
 
 void TSkillWheelProtocolMessageHandler::attemptReshapeGem(const int gemId, const int modIndex)
 {
-    tibia::game::gemAction(5, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
+    sendGemAtelier(5, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
 }
 
 void TSkillWheelProtocolMessageHandler::toggleGemLock(const int gemId)
 {
-    tibia::game::gemAction(3, static_cast<uint16_t>(gemId), 0);
+    sendGemAtelier(3, static_cast<uint16_t>(gemId), 0);
 }
 
 void TSkillWheelProtocolMessageHandler::enhanceModGrade(const int modType, const int modId)
 {
-    tibia::game::gemAction(4, static_cast<uint16_t>(static_cast<uint8_t>(modType)), static_cast<uint8_t>(modId));
+    sendGemAtelier(4, static_cast<uint16_t>(static_cast<uint8_t>(modType)), static_cast<uint8_t>(modId));
 }
 
 void TSkillWheelProtocolMessageHandler::setSkillWheelStorage(TSkillWheelStorage* storage)

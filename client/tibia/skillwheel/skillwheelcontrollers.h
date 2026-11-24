@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <optional>
+#include <variant>
 
 class QQmlEngine;
 class QQuickItem;
@@ -398,8 +399,17 @@ private:
     TModListModel* m_list;
     TModListSortFilterProxyModel* m_filter;
     TPaginationProxyModel* m_pages;
-    bool m_pendingBasic = true;
-    int m_pendingMod = -1;
+    /// The mod an enhancement under a grade filter selects again once the new
+    /// grades arrive: a basic (alternative 0) or a supreme mod id.
+    struct TBasicModToReselect
+    {
+        int id;
+    };
+    struct TSupremeModToReselect
+    {
+        int id;
+    };
+    std::optional<std::variant<TBasicModToReselect, TSupremeModToReselect>> m_modToReselect;
 };
 
 /// SkillWheelDialog.qml (CIP: TSkillWheelDialogController): the wheel, gem atelier and fragment

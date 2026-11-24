@@ -17,9 +17,11 @@ using RaceList = std::vector<RaceType>;
 namespace tibia::appearances {
 
 class TAppearanceInstanceTracker;
+class TUseableAppearances;
 }
 namespace tibia::sprites {
 class TAppearanceTypeSpritesheetMapping;
+class TSpritesheetsMetadataManager;
 }
 namespace tibia::appearances {
 
@@ -40,6 +42,8 @@ public:
 
     /// The spritesheets of each appearance type, filled by postprocessAppearances.
     const std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping>& spritesheetMapping() const { return m_spritesheetMapping; }
+    /// CIP v9: the set of useable appearances, made empty with the manager.
+    std::shared_ptr<TUseableAppearances> useableAppearances() const { return m_useableAppearances; }
 
     struct EffectVariant
     {
@@ -92,8 +96,10 @@ public:
     void setStaticInformation(TStaticInformation information);
 
     /// Builds every appearance type from the appearances asset (throws
-    /// std::logic_error on malformed data).
-    void initialize(const std::string& bytes);
+    /// std::logic_error on malformed data); `metadataManager` places each
+    /// sprite in its spritesheet (without one the types keep only sprite ids).
+    void initialize(const std::string& bytes,
+                    const std::shared_ptr<sprites::TSpritesheetsMetadataManager>& metadataManager = nullptr);
     /// Adds the creature placeholder outfit and the coin market category, and
     /// registers the sprites of every type.
     void postprocessAppearances();
@@ -147,6 +153,7 @@ private:
     void linkExpireCounterparts();
 
     std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping> m_spritesheetMapping;
+    std::shared_ptr<TUseableAppearances> m_useableAppearances;
 
     std::map<EAppearanceCategory, std::map<uint16_t, TAppearanceType>> m_appearanceTypes;
     RaceList m_monsterRaces;

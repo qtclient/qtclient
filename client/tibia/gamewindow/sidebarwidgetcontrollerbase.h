@@ -91,9 +91,18 @@ public:
     /// v16: null once the item is gone.
     QQuickItem* quickItem() const { return m_item; }
 
-    /// v13 / v14.
+    /// v13 / v14: the controller's override when it set one, else showItem / hideItem.
     void show();
     void hide();
+    /// The base v13 / v14: the item shows / hides.
+    void showItem();
+    void hideItem();
+    /// A controller overriding v13 / v14 (CIP: TSidebarWidgetControllerWithFocusHandling).
+    void setShowHideOverrides(std::function<void()> show, std::function<void()> hide)
+    {
+        m_showOverride = std::move(show);
+        m_hideOverride = std::move(hide);
+    }
     /// v17 / v18 / v19 (0xff: in no sidebar).
     uint parentSidebarId() const { return m_parentSidebarId; }
     void setParentSidebarId(uint sidebarId);
@@ -140,6 +149,8 @@ private:
     QPointer<QQuickItem> m_item;
     QTimer m_contentSizeTimer;
     std::function<void(uint)> m_assignParentSidebarId;
+    std::function<void()> m_showOverride;
+    std::function<void()> m_hideOverride;
     uint m_parentSidebarId = NoSidebar;
 };
 

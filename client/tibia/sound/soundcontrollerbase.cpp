@@ -138,9 +138,7 @@ std::optional<TSoundPlayerToken> TSoundControllerBase::playSingleShot(const floa
         return std::nullopt;
     std::optional<TPlayableSound> playable = m_soundManager ? m_soundManager->playableSound(soundId) : std::nullopt;
     const std::shared_ptr<TSoundPlayerManager> manager = m_playerManager.lock();
-    // CipSoft preloads effect data, so its sounds are ready here; qtclient
-    // converts on first use and the player waits for the data.
-    if (!manager || !playable || (!playable->isReady() && !playable->isLoading())) {
+    if (!manager || !playable || !playable->isReady()) {
         qDebug() << "Could not find Sound Effect ID" << soundId;
         return std::nullopt;
     }

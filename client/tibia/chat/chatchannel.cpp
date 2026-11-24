@@ -9,13 +9,13 @@
 #include "creatures/creaturestorage.h"
 #include "analysers/itempricestorage.h"
 #include "config/clientoptions.h"
+#include "config/clientsettings.h"
 
 #include <tibia/game/tgamenotify.h>
 
 #include <QTextDocumentFragment>
 #include <QRegularExpression>
 #include <QSignalBlocker>
-#include <QSettings>
 
 #include <algorithm>
 
@@ -127,7 +127,8 @@ TChatChannel::TChatChannel(const uint32_t maxEntries, const TChatChannelIdentifi
 
 uint32_t TChatChannel::maxEntries()
 {
-    static const uint32_t value = static_cast<uint32_t>(chatSetting(QStringLiteral("maxChatBacklogLength"), 1000, 5));
+    static const uint32_t value = static_cast<uint32_t>(
+        config::clientSettingAtLeast(QStringLiteral("CHAT"), QStringLiteral("maxChatBacklogLength"), 1000, 5));
     return value;
 }
 
@@ -262,6 +263,12 @@ void TChatChannelStorage::addServerLogEntry(const QColor& color, const QString& 
         if (channel->isSubscribedToServerLog())
             channel->addEntry(entry);
     }
+}
+
+void TChatChannelStorage::addReservedChannelEntry(const QColor& color, const QString& text)
+{
+    if (m_reservedChannel)
+        m_reservedChannel->addEntry(TClientChatEntryFactory::systemEntry(color, text));
 }
 
 void TChatChannelStorage::addLootEntry(const QColor& color, const QString& text)
@@ -608,17 +615,6 @@ QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool s
     // The entry's colour and a hanging indent of 10.
     return QStringLiteral("<p style=\"margin-left:10px; text-indent:-10px\"><font color=\"%1\">%2%3</font></p>")
         .arg(entry.color.name(), prefix.toHtmlEscaped(), body);
-}
-
-int chatSetting(const QString& key, const int defaultValue, const int minimum)
-{
-    QSettings settings;
-    settings.beginGroup(QStringLiteral("CHAT"));
-    const int value = settings.value(key, defaultValue).toInt();
-    if (value >= minimum)
-        return value;
-    settings.setValue(key, minimum);
-    return minimum;
 }
 
 }

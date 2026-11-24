@@ -8,7 +8,12 @@
 
 #include <QString>
 
+#include <memory>
+
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace input {
 class IGameAction;
 }
@@ -39,6 +44,8 @@ public:
     void handleGameAction(const input::IGameAction& action);
     /// The marker icons the dialog offers: 40.
     uint numberOfMinimapMarkers() const override;
+    /// CIP: keeps the current session (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     void onCancelClicked() override;
@@ -52,6 +59,7 @@ private:
 
     minimap::TMinimapMarkerStorage* m_markers;
     Position m_position;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

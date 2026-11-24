@@ -150,7 +150,6 @@ public:
     void cancelAttack() { attack(0); }
     void follow(uint32_t creatureId);
     void cancelFollow() { follow(0); }
-    void cancelAttackAndFollow();
 
     // talk related
     // 15.25+ crosshair / needPosition spells: aim tile appended to the next say (>= 1530)

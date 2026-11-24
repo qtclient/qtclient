@@ -76,7 +76,7 @@ TNpcDialogController::TNpcDialogController(config::TClientOptions* ClientOptions
                                            QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), Engine, DialogParentItem, parent)
     , m_trade(DialogParentItem, Engine)
-    , m_chat(this)
+    , m_chat(std::shared_ptr<config::TClientOptions>(std::shared_ptr<void>(), ClientOptions), GameActionMapper, 2, this)
     , m_filter(&m_chat, this)
     , m_chatControl(ChatController)
     , m_clientOptions(ClientOptions)

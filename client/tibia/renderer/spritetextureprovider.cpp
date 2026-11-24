@@ -86,11 +86,19 @@ TSpriteTextureProvider::TSpriteTextureProvider(QQuickWindow* window, const bool 
 {
     if (!window)
         return;
+    m_textureCreator = std::make_unique<sprites::TQtTextureAtlasTextureCreator>(window);
     // Both fire on the render thread, where the cache lives.
     connect(window, &QQuickWindow::beforeRendering, this, &TSpriteTextureProvider::onBeforeRenderNewFrame,
             Qt::DirectConnection);
     connect(window, &QQuickWindow::sceneGraphInvalidated, this, &TSpriteTextureProvider::onSceneGraphInvalidated,
             Qt::DirectConnection);
+}
+
+TSpriteTextureProvider::~TSpriteTextureProvider()
+{
+    // The cache deletes the empty texture with its own.
+    if (m_emptyTexture.texture)
+        m_cache->release(m_emptyTexture.owner);
 }
 
 QImage TSpriteTextureProvider::trimmedToOpaquePixels(const QImage& image, QRect& rect)
@@ -186,15 +194,16 @@ TSpriteTexture TSpriteTextureProvider::texture(const SpriteIdentifier& identifie
     if (loading)
         return {};
     TSpriteTexture texture{ .rect = rect };
-    if (!image.isNull() && m_window && m_window->isSceneGraphInitialized()) {
-        // CIP TQtTextureAtlasTextureCreator: cacheable sprites go to the atlas.
-        texture.texture = cacheable ? m_window->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas)
-                                    : m_window->createTextureFromImage(image);
+    if (!image.isNull() && m_textureCreator) {
+        // Cacheable sprites may go to the atlas.
+        texture.owner = cacheable ? m_textureCreator->createTextureFromImage(image)
+                                  : m_textureCreator->createNonAtlasTextureFromImage(image);
+        texture.texture = texture.owner.get();
     }
     if (!bypassCache && cacheable)
         m_cache->insert(identifier, texture);
     else
-        m_cache->release(texture.texture);
+        m_cache->release(texture.owner);
     return texture;
 }
 
@@ -223,9 +232,22 @@ void TSpriteTextureProvider::onBeforeRenderNewFrame()
     m_cache->beginFrame();
 }
 
+TSpriteTexture TSpriteTextureProvider::emptyTexture()
+{
+    if (!m_emptyTexture.texture && m_textureCreator) {
+        m_emptyTexture.owner = m_textureCreator->createNonAtlasTextureFromImage(QImage());
+        m_emptyTexture.texture = m_emptyTexture.owner.get();
+    }
+    return m_emptyTexture;
+}
+
 void TSpriteTextureProvider::onSceneGraphInvalidated()
 {
     m_cache->removeAll();
+    // Host: the empty texture belongs to the scene graph going away.
+    if (m_emptyTexture.texture)
+        m_cache->release(m_emptyTexture.owner);
+    m_emptyTexture = {};
 }
 
 TSpriteTextureProviderManager::TSpriteTextureProviderManager(QObject* parent)

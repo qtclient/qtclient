@@ -23,6 +23,7 @@ namespace {
 using A = input::EGameAction;
 
 TContextMenuController* g_instance = nullptr;
+std::shared_ptr<TContextMenuController> g_sharedInstance;
 
 /// The name an action names: its creature's, else its text.
 QString nameOf(const input::IGameAction& action)
@@ -194,9 +195,11 @@ TContextMenuEntryItem::TContextMenuEntryItem(const QString& text, const QString&
     m_isSeparator = separator;
 }
 
-TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* root, QObject* parent)
+TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* root,
+                                               std::shared_ptr<input::TEventFilterManager> eventFilterManager, QObject* parent)
     : cip::tibia::gamewindow::TContextMenuController(parent)
     , m_root(root)
+    , m_eventFilterManager(std::move(eventFilterManager))
 {
     g_instance = this;
 
@@ -239,6 +242,17 @@ TContextMenuController::~TContextMenuController()
 TContextMenuController* TContextMenuController::instance()
 {
     return g_instance;
+}
+
+void TContextMenuController::createInstance(QQmlEngine* engine, QQuickItem* root,
+                                            std::shared_ptr<input::TEventFilterManager> eventFilterManager)
+{
+    g_sharedInstance = std::make_shared<TContextMenuController>(engine, root, std::move(eventFilterManager));
+}
+
+void TContextMenuController::resetInstance()
+{
+    g_sharedInstance.reset();
 }
 
 QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, QString& shortcut)
@@ -393,16 +407,16 @@ void TContextMenuController::onRequestClose()
 {
     if (m_shield)
         m_shield->setVisible(false);
-    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
-        eventFilters->hideContextMenu();
+    if (m_eventFilterManager)
+        m_eventFilterManager->hideContextMenu();
     Q_EMIT contextMenuClosed();
 }
 
 void TContextMenuController::onAsyncShow()
 {
     onCalculatePosition();
-    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
-        eventFilters->showContextMenu();
+    if (m_eventFilterManager)
+        m_eventFilterManager->showContextMenu();
     if (m_shield)
         m_shield->setVisible(true);
 }

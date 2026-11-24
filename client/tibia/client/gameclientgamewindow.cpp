@@ -19,6 +19,7 @@
 #include "config/tibiaconfig.h"
 #include "config/characterconfigurationmanager.h"
 #include "config/clientoptions.h"
+#include "config/clientsettings.h"
 #include "config/clientoptionsmodeswitcher.h"
 #include "config/optionspages.h"
 #include "controllers/characterselectioncontroller.h"
@@ -98,6 +99,7 @@
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/configurecreaturepodiumdialogcontroller.h"
 #include "gamewindow/editminimapmarkerdialogcontroller.h"
+#include "sound/soundconfiguration.h"
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/vocationselectiondialogcontroller.h"
 #include "gamewindow/whiteblacklistdialogcontroller.h"
@@ -243,7 +245,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<QObject> productHost;
     /// Child of the map window pane.
     gamewindow::TMapWindowController* mapWindowController = nullptr;
-    std::unique_ptr<gamewindow::TContextMenuController> contextMenu;
     std::unique_ptr<gamewindow::TDialogStackController> dialogStack;
     std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
@@ -272,6 +273,8 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TOptionsMenuDialogController> optionsDialog;
     std::unique_ptr<input::TOpenWebsiteGameActionHandler> openWebsiteActions;
     std::unique_ptr<gamewindow::TFPSLatencyIndicatorController> fpsLatency;
+    /// CIP +0x2e8: the chat mode manager (the chat, the action bars and the movement keys share it).
+    std::shared_ptr<chat::TChatModeManager> chatModeManager;
     std::unique_ptr<gamewindow::TChatController> chat;
     std::unique_ptr<gamewindow::TActionBarManager> actionBars;
     std::unique_ptr<gamewindow::TTargetSelectionController> targetSelection;
@@ -525,7 +528,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         earlyCtx.launcherEnv = &g.env;
         mods::earlyBootstrapAll(earlyCtx);
     }
-    g.contextMenu = std::make_unique<gamewindow::TContextMenuController>(engine, window->contentItem());
+    // CIP: the process-wide context menu over the window, with the event
+    // filter manager (released by the client's destructor).
+    gamewindow::TContextMenuController::createInstance(engine, window->contentItem(), g.eventFilterManager);
     g.dialogStack = std::make_unique<gamewindow::TDialogStackController>(engine, g.dialogPlaceholder);
     gamewindow::TDialogStackController* dialogStack = g.dialogStack.get();
     // TEventFilterManager emits the chat-input focus signals while a dialog is up, so dialog inputs get the focus.
@@ -552,7 +557,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     gamewindow::TMapWindowController* mapWindowController = g.mapWindowController;
     mapWindowController->syncFov();
     // CIP: the chat controller.
-    g.chat = std::make_unique<gamewindow::TChatController>(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), *this);
+    g.chatModeManager = std::make_shared<chat::TChatModeManager>();
+    g.chat = std::make_unique<gamewindow::TChatController>(
+        static_cast<uint>(config::clientSettingAtLeast(QStringLiteral("CHAT"), QStringLiteral("maxChatInputHistoryLength"), 1000, 1)),
+        dialogParentItem, gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), engine, sharedClientOptions(),
+        m_pGameActionMapper, tibiaFileSystemHelper(), shared::TClockService::process(), m_pTibiaUrlTools, g.chatModeManager);
     gamewindow::TChatController* chat = g.chat.get();
     // CIP: the client's white/blacklist tells the chat about filtered messages.
     connect(whiteBlacklist().get(), &chat::TWhiteBlacklist::messageFiltered, chat, &gamewindow::TChatController::onMessageFiltered);
@@ -564,12 +573,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(chat, &gamewindow::TChatController::chatModeChanged, g.keyboardShortcuts.get(),
             &input::TKeyboardShortcutHandler::onHotkeyOptionsChanged);
     g.keyboardShortcuts->onHotkeyOptionsChanged();
-    // CIP: the action bar manager takes the client options, the premium time
-    // storage and the spell table; the three groups (bottom, left, right)
-    // are made here and added to it. Host: the premium time storage is the
-    // live session's (CipSoft keeps one with the client).
+    // CIP: the action bar manager takes the client options, the client's
+    // premium time storage and the spell table; the three groups (bottom,
+    // left, right) are made here and added to it.
     g.actionBars = std::make_unique<gamewindow::TActionBarManager>(config::TClientOptions::instance(),
-                                                                   game::TPremiumTimeStorage::liveInstance(), spellInfoStorage());
+                                                                   m_pPremiumTimeStorage.get(), spellInfoStorage());
     {
         const std::array<std::pair<gamewindow::EActionBarPosition, const char*>, 3> actionBarContainers{
             { { gamewindow::EActionBarPosition::ActionBarPositionBottom, "bottomActionBars" },
@@ -966,7 +974,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(g.clipboardActions.get(), &input::TClipboardGameActionHandler::publishGameAction, router,
             &game::TInternalGameActionRouter::handleGameActionInternal);
     publishToRouter(m_pLinkCopyWarningDialogController.get());
-    publishToRouter(g.contextMenu.get());
+    publishToRouter(gamewindow::TContextMenuController::instance());
     publishToRouter(m_pPreyDialogController.get());
     publishToRouter(g.imbuingDialog.get());
     publishToRouter(g.inspectObjectDialog.get());
@@ -1054,7 +1062,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &authentication::TAuthenticationProcessController::handleGameAction);
     handleActionFromRouter(m_pLinkCopyWarningDialogController.get());
     handleFromRouter(g.tutorialOverlay.get());
-    handleFromRouter(g.contextMenu.get());
+    handleFromRouter(gamewindow::TContextMenuController::instance());
     handleFromRouter(g.clientOptionsModeSwitcher.get());
     handleFromRouter(m_pPreyDialogController.get());
     handleFromRouter(g.actionBars.get());
@@ -1239,16 +1247,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             g.sidebarWidgets->setSidebarOptions(sidebarOptions());
             g.sidebarPanels->setSidebarOptions(sidebarOptions());
             if (gamewindow::TPremiumPanelController* premiumPanel = g.sidebarPanels->premiumPanel()) {
-                premiumPanel->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+                premiumPanel->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
                 premiumPanel->onSessionStarted();
                 if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get()))
                     connect(session->storeProtocolMessageHandler().get(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged,
                             premiumPanel, &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
             }
             // CIP: the skill wheel dialog's premium status follows the premium time.
-            g.skillWheelDialog->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-            if (game::TGameserverGameSession* live = session())
-                live->skillWheelGameActionHandler()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+            g.skillWheelDialog->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
             g.sidebarWidgets->onLoginRampUpFinished();
             m_pCyclopediaDialogController->setAmbientLightStorage(ambientLight());
             // The Cyclopedia map's local minimap mode draws the local minimap.
@@ -1345,167 +1351,188 @@ std::shared_ptr<input::TKeyboardShortcutHandler> TGameClient::keyboardShortcutHa
     return m_gameWindow ? m_gameWindow->keyboardShortcuts : nullptr;
 }
 
+void TGameClient::onFullscreenModeEntered()
+{
+    if (m_gameWindow && m_gameWindow->mapWindowController)
+        m_gameWindow->mapWindowController->onFullscreenModeEntered();
+}
+
 void TGameClient::connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    // CipSoft's order of the game window controllers' connectors.
-    if (m_gameWindow) {
-        TGameWindow& g = *m_gameWindow;
-        if (g.newsDialog)
-            g.newsDialog->connectToGameSession(GameSession);
-        if (g.gameWindowController)
-            g.gameWindowController->connectToGameSession(GameSession);
-        if (g.mapWindowController)
-            g.mapWindowController->connectToGameSession(GameSession);
-        // Host: the battle lists' mouse target and the FPS indicator's build
-        // times are the session's world map frame's.
-        if (g.sidebarWidgets)
-            g.sidebarWidgets->battleLists()->setWorldMapRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
-        if (g.fpsLatency)
-            g.fpsLatency->setRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
-        if (g.containers)
-            g.containers->connectToGameSession(GameSession);
-        if (m_pSelectObjectAmountDialogController)
-            m_pSelectObjectAmountDialogController->connectToGameSession(GameSession);
-        if (g.chat)
-            g.chat->connectToGameSession(GameSession);
-        if (g.optionsDialog)
-            g.optionsDialog->connectToGameSession(GameSession);
-        if (m_pMarketController)
-            m_pMarketController->connectToGameSession(GameSession);
-        // Host shim: the analysers' aggregate follows the session's storages;
-        // the drop tracker reports on the chat's channels.
-        if (g.analyserStorages)
-            g.analyserStorages->connectToGameSession(GameSession);
-        if (session)
-            session->itemTrackingStorage()->setChatStorage(session->chatChannelStorage().get());
-        // CIP: the sidebar widgets manager connects every widget it owns and
-        // opens and closes the player trade and depot search widgets from
-        // the session's protocol handlers.
-        if (g.sidebarWidgets)
-            g.sidebarWidgets->connectToGameSession(GameSession);
-        if (g.sidebarPanels)
-            g.sidebarPanels->connectToGameSession(GameSession);
-        if (g.cooldownBar)
-            g.cooldownBar->connectToGameSession(GameSession);
-        if (m_pGameSessionDisconnectReactionController)
-            m_pGameSessionDisconnectReactionController->connectToGameSession(GameSession);
-        if (m_pWhiteBlacklist)
-            m_pWhiteBlacklist->setGameSession(GameSession);
-        if (m_pReportViolationController)
-            m_pReportViolationController->connectToGameSession(GameSession);
-        if (m_pEditTextController)
-            m_pEditTextController->connectToGameSession(GameSession);
-        if (m_pSelectOutfitDialogController)
-            m_pSelectOutfitDialogController->connectToGameSession(GameSession);
-        if (m_pConfigureCreaturePodiumDialogController)
-            m_pConfigureCreaturePodiumDialogController->connectToGameSession(GameSession);
-        if (m_pStoreDialogController)
-            m_pStoreDialogController->connectToGameSession(GameSession);
-        if (g.hirelingNameChange)
-            g.hirelingNameChange->connectToGameSession(GameSession);
-        if (m_pBugReportDialogController)
-            m_pBugReportDialogController->connectToGameSession(GameSession);
-        if (m_pPreyDialogController)
-            m_pPreyDialogController->connectToGameSession(GameSession);
-        if (g.imbuingDialog) {
-            g.imbuingDialog->connectToGameSession(GameSession);
-            g.imbuingDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        }
-        if (g.inspectObjectDialog)
-            g.inspectObjectDialog->connectToGameSession(GameSession);
-        if (g.inspectPlayerDialog)
-            g.inspectPlayerDialog->connectToGameSession(GameSession);
-        if (m_pDeathDialogController)
-            m_pDeathDialogController->connectToGameSession(GameSession);
-        if (m_pOutfitMemorialDialogController)
-            m_pOutfitMemorialDialogController->connectToGameSession(GameSession);
-        if (m_pMultiOfflineTrainingDialogController)
-            m_pMultiOfflineTrainingDialogController->connectToGameSession(GameSession);
-        if (g.actionBars)
-            g.actionBars->connectToGameSession(GameSession);
-        if (m_pBlessingsDialogController) {
-            m_pBlessingsDialogController->connectToGameSession(GameSession);
-            m_pBlessingsDialogController->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        }
-        if (g.sidebarPanels)
-            g.sidebarPanels->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        if (m_pRewardWallDialogController) {
-            m_pRewardWallDialogController->connectToGameSession(GameSession);
-            m_pRewardWallDialogController->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        }
-        if (g.manageLootDialog) {
-            g.manageLootDialog->connectToGameSession(GameSession);
-            g.manageLootDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        }
-        if (m_pCyclopediaDialogController) {
-            m_pCyclopediaDialogController->connectToGameSession(GameSession);
-            m_pCyclopediaDialogController->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-            // Host: the Cyclopedia's houses and map pages draw the session's light.
-            m_pCyclopediaDialogController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
-        }
-        if (g.socialDialog) {
-            g.socialDialog->connectToGameSession(GameSession);
-            g.socialDialog->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        }
-        if (m_pTaskboardDialogController)
-            m_pTaskboardDialogController->connectToGameSession(GameSession);
-        if (m_pSoulSealsDialogController)
-            m_pSoulSealsDialogController->connectToGameSession(GameSession);
-        if (m_pShowSpellBookDialogController)
-            m_pShowSpellBookDialogController->connectToGameSession(GameSession);
-        if (m_pStashDialogController)
-            m_pStashDialogController->connectToGameSession(GameSession);
-        if (g.exivaOptionsDialog)
-            g.exivaOptionsDialog->connectToGameSession(GameSession);
-        if (g.screenshotManager)
-            g.screenshotManager->connectToGameSession(GameSession);
-        m_predictor->connectToGameSession(GameSession);
-        if (m_pHighscoresDialogController)
-            m_pHighscoresDialogController->connectToGameSession(GameSession);
-        // The quest log and the quest tracker show the session's quest log storage.
-        if (m_pQuestLogController)
-            m_pQuestLogController->connectToGameSession(GameSession);
-        if (g.characterTradeDialog)
-            g.characterTradeDialog->connectToGameSession(GameSession);
-        if (m_pExaltationForgeDialogController)
-            m_pExaltationForgeDialogController->connectToGameSession(GameSession);
-        if (m_pStoreAndResourceBalanceHelperController)
-            m_pStoreAndResourceBalanceHelperController->connectToGameSession(GameSession);
-        if (g.skillWheelDialog)
-            g.skillWheelDialog->connectToGameSession(GameSession);
-        if (m_pWeaponProficiencyDialogController)
-            m_pWeaponProficiencyDialogController->connectToGameSession(GameSession);
-        if (m_pWeaponProficiencyShapeDialogController)
-            m_pWeaponProficiencyShapeDialogController->connectToGameSession(GameSession);
-        if (m_pWeaponProficiencyReshapeDialogController)
-            m_pWeaponProficiencyReshapeDialogController->connectToGameSession(GameSession);
-        if (g.npcDialog)
-            g.npcDialog->connectToGameSession(GameSession);
-        if (g.tutorialShell) {
-            g.tutorialShell->hint()->connectToGameSession(GameSession);
-            g.tutorialShell->vocation()->connectToGameSession(GameSession);
-        }
-        // Host shim until these controllers connect to the session themselves:
-        // they follow the session's character configuration being loaded.
-        if (g.containers)
-            g.containers->setCharacterConfigurationManager(session ? session->characterConfigurationManager().get() : nullptr);
-        if (config::TCharacterConfigurationManager* manager = session ? session->characterConfigurationManager().get() : nullptr) {
-            if (g.analyserStorages)
-                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g.analyserStorages.get(),
-                        &analysers::TAnalyserStorages::onCharacterConfigurationLoaded, Qt::UniqueConnection);
-            if (gamewindow::TCyclopediaDialogController* cyclopedia = m_pCyclopediaDialogController.get())
-                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
-                        &gamewindow::TCyclopediaMapDialogController::showDialogTab, Qt::UniqueConnection);
-            if (gamewindow::TQuestLogController* questLog = m_pQuestLogController.get())
-                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
-                        &gamewindow::TQuestLogController::onCharacterConfigurationLoaded, Qt::UniqueConnection);
-        }
+    TGameWindow* g = m_gameWindow.get();
+    // CIP: the controllers follow the new session (or let go of the old one)
+    // in this order; the premium-aware ones also get the client's premium
+    // time storage and the Cyclopedia and the social dialog the minimap's.
+    if (g && g->gameWindowController)
+        g->gameWindowController->connectToGameSession(GameSession);
+    if (g && g->mapWindowController)
+        g->mapWindowController->connectToGameSession(GameSession);
+    // Host: the battle lists' mouse target and the FPS indicator's build
+    // times are the session's world map frame's.
+    if (g && g->sidebarWidgets)
+        g->sidebarWidgets->battleLists()->setWorldMapRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
+    if (g && g->fpsLatency)
+        g->fpsLatency->setRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
+    if (g && g->containers)
+        g->containers->connectToGameSession(GameSession);
+    if (m_pSelectObjectAmountDialogController)
+        m_pSelectObjectAmountDialogController->connectToGameSession(GameSession);
+    if (g && g->chat)
+        g->chat->connectToGameSession(GameSession);
+    if (m_pMarketController)
+        m_pMarketController->connectToGameSession(GameSession);
+    if (m_pOutfitMemorialDialogController)
+        m_pOutfitMemorialDialogController->connectToGameSession(GameSession);
+    if (m_pSelectOutfitDialogController)
+        m_pSelectOutfitDialogController->connectToGameSession(GameSession);
+    if (m_pConfigureCreaturePodiumDialogController)
+        m_pConfigureCreaturePodiumDialogController->connectToGameSession(GameSession);
+    // Host shim: the analysers' aggregate follows the session's storages;
+    // the drop tracker reports on the chat's channels.
+    if (g && g->analyserStorages)
+        g->analyserStorages->connectToGameSession(GameSession);
+    if (session)
+        session->itemTrackingStorage()->setChatStorage(session->chatChannelStorage().get());
+    // CIP: the sidebar widgets manager connects every widget it owns and
+    // opens and closes the player trade and depot search widgets from
+    // the session's protocol handlers.
+    if (g && g->sidebarWidgets)
+        g->sidebarWidgets->connectToGameSession(GameSession);
+    if (g && g->sidebarPanels)
+        g->sidebarPanels->connectToGameSession(GameSession);
+    if (g && g->cooldownBar)
+        g->cooldownBar->connectToGameSession(GameSession);
+    // The quest log and the quest tracker show the session's quest log storage.
+    if (m_pQuestLogController)
+        m_pQuestLogController->connectToGameSession(GameSession);
+    // Host: the server modal dialog still hears the game notify bus
+    // (hookDialogsToGameNotify) instead of the session's protocol handler.
+    if (m_pGameSessionDisconnectReactionController)
+        m_pGameSessionDisconnectReactionController->connectToGameSession(GameSession);
+    if (m_pWhiteBlacklist)
+        m_pWhiteBlacklist->setGameSession(GameSession);
+    if (m_pReportViolationController)
+        m_pReportViolationController->connectToGameSession(GameSession);
+    if (m_pEditTextController)
+        m_pEditTextController->connectToGameSession(GameSession);
+    if (m_pDeathDialogController)
+        m_pDeathDialogController->connectToGameSession(GameSession);
+    if (g && g->optionsDialog)
+        g->optionsDialog->connectToGameSession(GameSession);
+    if (g && g->newsDialog)
+        g->newsDialog->connectToGameSession(GameSession);
+    if (m_pStoreDialogController)
+        m_pStoreDialogController->connectToGameSession(GameSession);
+    if (m_pBugReportDialogController)
+        m_pBugReportDialogController->connectToGameSession(GameSession);
+    if (m_pPreyDialogController)
+        m_pPreyDialogController->connectToGameSession(GameSession);
+    if (g && g->imbuingDialog) {
+        g->imbuingDialog->connectToGameSession(GameSession);
+        g->imbuingDialog->connectToPremiumTimeStorage(m_pPremiumTimeStorage.get());
     }
+    if (g && g->inspectObjectDialog)
+        g->inspectObjectDialog->connectToGameSession(GameSession);
+    if (g && g->inspectPlayerDialog)
+        g->inspectPlayerDialog->connectToGameSession(GameSession);
+    if (g && g->actionBars)
+        g->actionBars->connectToGameSession(GameSession);
+    if (m_pBlessingsDialogController) {
+        m_pBlessingsDialogController->connectToGameSession(GameSession);
+        m_pBlessingsDialogController->connectToPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    }
+    // Host: the premium panel lives in the sidebar panels manager.
+    if (g && g->sidebarPanels)
+        g->sidebarPanels->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    if (m_pRewardWallDialogController) {
+        m_pRewardWallDialogController->connectToGameSession(GameSession);
+        m_pRewardWallDialogController->connectToPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    }
+    if (g && g->manageLootDialog) {
+        g->manageLootDialog->connectToGameSession(GameSession);
+        g->manageLootDialog->connectToPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    }
+    if (m_pCyclopediaDialogController) {
+        m_pCyclopediaDialogController->connectToGameSession(GameSession);
+        m_pCyclopediaDialogController->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
+        // Host: the Cyclopedia's houses and map pages draw the session's light.
+        m_pCyclopediaDialogController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
+    }
+    if (m_pTaskboardDialogController)
+        m_pTaskboardDialogController->connectToGameSession(GameSession);
+    if (m_pSoulSealsDialogController)
+        m_pSoulSealsDialogController->connectToGameSession(GameSession);
+    if (g && g->socialDialog) {
+        g->socialDialog->connectToGameSession(GameSession);
+        g->socialDialog->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    }
+    if (m_pShowSpellBookDialogController)
+        m_pShowSpellBookDialogController->connectToGameSession(GameSession);
+    if (m_pStashDialogController)
+        m_pStashDialogController->connectToGameSession(GameSession);
+    if (g && g->exivaOptionsDialog)
+        g->exivaOptionsDialog->connectToGameSession(GameSession);
+    if (g && g->screenshotManager)
+        g->screenshotManager->connectToGameSession(GameSession);
+    m_predictor->connectToGameSession(GameSession);
+    if (g && g->calendarDialog)
+        g->calendarDialog->closeDialog();
+    if (g && g->hirelingNameChange)
+        g->hirelingNameChange->connectToGameSession(GameSession);
+    // CIP: the login's controller follows the session (its player's level and
+    // data, and the login request uploader's character list).
+    if (m_authentication)
+        m_authentication->connectToGameSession(std::dynamic_pointer_cast<game::TGameSessionBase>(GameSession));
+    if (m_pHighscoresDialogController)
+        m_pHighscoresDialogController->connectToGameSession(GameSession);
+    if (g && g->characterTradeDialog)
+        g->characterTradeDialog->connectToGameSession(GameSession);
+    if (m_pExaltationForgeDialogController)
+        m_pExaltationForgeDialogController->connectToGameSession(GameSession);
+    if (soundConfiguration())
+        soundConfiguration()->setGameSession(GameSession);
+    if (g && g->skillWheelDialog)
+        g->skillWheelDialog->connectToGameSession(GameSession);
+    if (m_pWeaponProficiencyDialogController)
+        m_pWeaponProficiencyDialogController->connectToGameSession(GameSession);
+    if (m_pWeaponProficiencyShapeDialogController)
+        m_pWeaponProficiencyShapeDialogController->connectToGameSession(GameSession);
+    if (m_pWeaponProficiencyReshapeDialogController)
+        m_pWeaponProficiencyReshapeDialogController->connectToGameSession(GameSession);
+    if (g && g->npcDialog)
+        g->npcDialog->connectToGameSession(GameSession);
+    if (g && g->tutorialShell)
+        g->tutorialShell->hint()->connectToGameSession(GameSession);
+    if (m_pStoreAndResourceBalanceHelperController)
+        m_pStoreAndResourceBalanceHelperController->connectToGameSession(GameSession);
     if (m_pSoundController)
         m_pSoundController->connectToGameSession(GameSession);
+    if (g && g->tutorialShell)
+        g->tutorialShell->vocation()->connectToGameSession(GameSession);
+    if (m_pMultiOfflineTrainingDialogController)
+        m_pMultiOfflineTrainingDialogController->connectToGameSession(GameSession);
     if (m_pBossDifficultySelectionDialogController)
         m_pBossDifficultySelectionDialogController->connectToGameSession(GameSession);
+    if (m_pInfoBannerController)
+        m_pInfoBannerController->connectToGameSession(GameSession);
+    if (g && g->editMinimapMarkerDialog)
+        g->editMinimapMarkerDialog->connectToGameSession(GameSession);
+    // Host shim until these controllers connect to the session themselves:
+    // they follow the session's character configuration being loaded.
+    if (g && g->containers)
+        g->containers->setCharacterConfigurationManager(session ? session->characterConfigurationManager().get() : nullptr);
+    if (config::TCharacterConfigurationManager* manager = session ? session->characterConfigurationManager().get() : nullptr) {
+        if (g && g->analyserStorages)
+            connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g->analyserStorages.get(),
+                    &analysers::TAnalyserStorages::onCharacterConfigurationLoaded, Qt::UniqueConnection);
+        if (gamewindow::TCyclopediaDialogController* cyclopedia = m_pCyclopediaDialogController.get())
+            connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
+                    &gamewindow::TCyclopediaMapDialogController::showDialogTab, Qt::UniqueConnection);
+        if (gamewindow::TQuestLogController* questLog = m_pQuestLogController.get())
+            connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
+                    &gamewindow::TQuestLogController::onCharacterConfigurationLoaded, Qt::UniqueConnection);
+    }
 }
 
 void TGameClient::onGameSessionDisconnected()

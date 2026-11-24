@@ -24,6 +24,7 @@
 #include "game/thingsession_forward.h"
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
+#include "input/actionbuttongameactionhandler.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/domainhandlers.h"
 #include "input/genericgameactionhandler.h"
@@ -277,6 +278,11 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createSessionControllers();
     m_playerMovementGameActionHandler =
         std::make_shared<input::TPlayerMovementGameActionHandler>(m_playerMovementIntentHandler);
+    // The action bar's handler. Host: qtclient's handler reads the hotkey
+    // options, the keyboard shortcut handler's action factory and the ping
+    // from the process instances CipSoft passes in.
+    m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
+        spellInfoStorage(), cooldownStorage(), playerData(), objectAppearanceInstanceInfoStorage(), clockService());
     // CIP: the session records its last server messages (kept 10 to 20 seconds)
     // and hands them to the crash handler as the report's session dump.
     m_sessiondumpRecorder = std::make_shared<sessiondump::TClientSessiondumpRecorder>(SessiondumpKeepSeconds);
@@ -429,6 +435,15 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
                  &TLoginProtocolMessageHandler::handleReadyForSecondaryConnectionMessage));
     link(connect(login, &TLoginProtocolMessageHandler::sendLoginMessage, queue, &Queue::sendLogin));
     link(connect(login, &TLoginProtocolMessageHandler::sendSecondaryLoginMessage, queue, &Queue::sendSecondaryLogin));
+
+    TGameProtocolMessageHandler* game = gameProtocolMessageHandler().get();
+    link(connect(queue, &Queue::receivedPendingStateEnteredMessage, game, &TGameProtocolMessageHandler::handlePendingStateEnteredMessage));
+    link(connect(queue, &Queue::receivedDeadMessage, game, &TGameProtocolMessageHandler::handleDeadMessage));
+    link(connect(game, &TGameProtocolMessageHandler::sendEnterWorldMessage, queue, &Queue::sendEnterWorld));
+    link(connect(game, &TGameProtocolMessageHandler::sendClientDetails, queue, &Queue::sendClientDetails));
+    link(connect(game, &TGameProtocolMessageHandler::sendSetClientOptions, queue, &Queue::sendSetClientOptions));
+    link(connect(game, &TGameProtocolMessageHandler::sendSetVocation, queue, &Queue::sendSetVocationMessage));
+
     using network::TNetworkQualityProtocolMessageHandler;
     TNetworkQualityProtocolMessageHandler* networkQuality = m_networkQualityProtocolMessageHandler.get();
     link(connect(queue, &Queue::receivedMessage, networkQuality, &TNetworkQualityProtocolMessageHandler::handleAnyMessage));
@@ -445,12 +460,6 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::pingTimeoutRecovered, this,
                  &TGameserverGameSession::pingTimeoutRecovered));
 
-    TGameProtocolMessageHandler* game = gameProtocolMessageHandler().get();
-    link(connect(game, &TGameProtocolMessageHandler::sendEnterWorldMessage, queue, &Queue::sendEnterWorld));
-    link(connect(game, &TGameProtocolMessageHandler::sendClientDetails, queue, &Queue::sendClientDetails));
-    link(connect(game, &TGameProtocolMessageHandler::sendSetClientOptions, queue, &Queue::sendSetClientOptions));
-    link(connect(game, &TGameProtocolMessageHandler::sendSetVocation, queue, &Queue::sendSetVocationMessage));
-
     using container::TContainerProtocolMessageHandler;
     TContainerProtocolMessageHandler* containers = containerProtocolMessageHandler().get();
     link(connect(containers, &TContainerProtocolMessageHandler::sendCloseContainerMessage, queue, &Queue::sendCloseContainer));
@@ -460,8 +469,6 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(containers, &TContainerProtocolMessageHandler::sendContainerActionMessage, queue,
                  &Queue::sendContainerActionMessage));
 
-    // The generic object actions' messages. QUIT_GAME (sendQuitGame) stays the
-    // game client's (host: it logs out through the session's logout request).
     using input::TGenericGameActionHandler;
     TGenericGameActionHandler* generic = genericGameActionHandler().get();
     link(connect(generic, &TGenericGameActionHandler::sendToggleWrapState, queue, &Queue::sendToggleWrapState));
@@ -471,6 +478,9 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(generic, &TGenericGameActionHandler::sendLook, queue, &Queue::sendLook));
     link(connect(generic, &TGenericGameActionHandler::sendBrowseField, queue, &Queue::sendBrowseField));
     link(connect(generic, &TGenericGameActionHandler::sendMoveObject, queue, &Queue::sendMoveObject));
+    link(connect(generic, &TGenericGameActionHandler::sendQuitGame, queue, &Queue::sendQuitGame));
+    link(connect(generic, &TGenericGameActionHandler::showCharacterSelectionDialog, this,
+                 &IGameSession::showCharacterSelectionDialog));
     link(connect(generic, &TGenericGameActionHandler::sendRequestResourceBalance, queue, &Queue::sendRequestResourceBalance));
     link(connect(generic, &TGenericGameActionHandler::sendTeleport, queue, &Queue::sendTeleport));
 
@@ -530,6 +540,8 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(useWith, &TUseWithGameActionHandler::sendUseOnCreature, queue, &Queue::sendUseOnCreature));
     link(connect(game, &TGameProtocolMessageHandler::sendStartOfflineTraining, queue, &Queue::sendStartOfflineTrainingMessage));
     link(connect(player, &TPlayerGameActionHandler::sendSetTactics, queue, &Queue::sendSetTactics));
+    TPlayerProtocolMessageHandler* playerMessages = playerProtocolMessageHandler().get();
+    link(connect(queue, &Queue::receivedWorldEnteredMessage, playerMessages, &TPlayerProtocolMessageHandler::handleWorldEnteredMessage));
 
     using chat::TChatGameActionHandler;
     TChatGameActionHandler* chat = chatGameActionHandler().get();
@@ -546,15 +558,6 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(crossHairSpellGameActionHandler().get(), &input::TCrossHairSpellGameActionHandler::sendTalkMessage, queue,
                  &Queue::sendTalkMessage));
 
-    link(connect(friendsProtocolMessageHandler().get(), &friends::TFriendsProtocolMessageHandler::sendFriendSystemAction, queue,
-                 &Queue::sendFriendSystemAction));
-    link(connect(gatherAllProtocolMessageHandler().get(), &input::TGatherAllProtocolMessageHandler::sendGatherAll, queue,
-                 &Queue::sendGatherAll));
-    connectPlayerMovementIntentHandler();
-    link(connect(bossDifficultySelectionProtocolMessageHandler(),
-                 &TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionDataChanged, queue,
-                 &Queue::sendBossDifficultySelectionChangedMessage));
-
     using market::TMarketProtocolMessageHandler;
     TMarketProtocolMessageHandler* market = marketProtocolMessageHandler().get();
     link(connect(market, &TMarketProtocolMessageHandler::sendMarketLeave, queue, &Queue::sendMarketLeave));
@@ -562,6 +565,13 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(market, &TMarketProtocolMessageHandler::sendMarketCancel, queue, &Queue::sendMarketCancel));
     link(connect(market, &TMarketProtocolMessageHandler::sendMarketAccept, queue, &Queue::sendMarketAccept));
     link(connect(market, &TMarketProtocolMessageHandler::sendMarketCreate, queue, &Queue::sendMarketCreate));
+
+    connectPlayerMovementIntentHandler();
+    // STOP_ATTACKING_FOLLOWING_WALKING: the movement handler's cancel goes out
+    // through the player messages (the base links their cancel to the queue too).
+    link(connect(m_playerMovementGameActionHandler.get(), &input::TPlayerMovementGameActionHandler::sendCancel, playerMessages,
+                 &TPlayerProtocolMessageHandler::cancel));
+    link(connect(playerMessages, &TPlayerProtocolMessageHandler::sendCancel, queue, &Queue::sendCancel));
 
     using trade::TNPCTradeProtocolMessageHandler;
     TNPCTradeProtocolMessageHandler* npcTrade = npcTradeProtocolMessageHandler().get();
@@ -622,6 +632,9 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(store, &TStoreProtocolMessageHandler::sendRequestTransactionDetails, queue, &Queue::sendOpenTransactionDetails));
 
     link(connect(game, &TGameProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
+    using ::tibia::cyclopedia::TCyclopediaProtocolMessageHandler;
+    TCyclopediaProtocolMessageHandler* cyclopediaMessages = cyclopediaProtocolMessageHandler().get();
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendInspectObject, queue, &Queue::sendInspectObject));
 
     using imbuing::TImbuingProtocolMessageHandler;
     TImbuingProtocolMessageHandler* imbuing = imbuingProtocolMessageHandler().get();
@@ -641,6 +654,23 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(dailyReward, &TDailyRewardProtocolMessageHandler::sendDailyRewardHistory, queue, &Queue::sendDailyRewardHistory));
     link(connect(dailyReward, &TDailyRewardProtocolMessageHandler::sendCollectDailyReward, queue, &Queue::sendCollectDailyReward));
 
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendMarketStatistics, queue, &Queue::sendMarketStatistics));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopedia, queue,
+                 &Queue::sendOpenMonsterCyclopedia));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaMonsters, queue,
+                 &Queue::sendOpenMonsterCyclopediaMonsters));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaRace, queue,
+                 &Queue::sendOpenMonsterCyclopediaRace));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendMonsterBonusEffectAction, queue,
+                 &Queue::sendMonsterBonusEffectAction));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendCyclopediaMapAction, queue,
+                 &Queue::sendCyclopediaMapAction));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendOpenCyclopediaCharacterInfo, queue,
+                 &Queue::sendOpenCyclopediaCharacterInfo));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendCyclopediaHouseAction, queue,
+                 &Queue::sendCyclopediaHouseAction));
+    link(connect(cyclopediaMessages, &TCyclopediaProtocolMessageHandler::sendPartyHuntAnalyser, queue,
+                 &Queue::sendPartyHuntAnalyser));
     link(connect(bestiaryTrackerProtocolMessageHandler().get(), &cyclopedia::TBestiaryTrackerProtocolMessageHandler::sendTrackBestiaryRace,
                  queue, &Queue::sendTrackBestiaryRace));
 
@@ -653,6 +683,8 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
 
     link(connect(exivaOptionsProtocolMessageHandler().get(), &exivaoptions::TExivaOptionsProtocolMessageHandler::sendSetExivaOptions, queue,
                  &Queue::sendSetExivaOptions));
+    link(connect(friendsProtocolMessageHandler().get(), &friends::TFriendsProtocolMessageHandler::sendFriendSystemAction, queue,
+                 &Queue::sendFriendSystemAction));
     link(connect(highscoresProtocolMessageHandler().get(), &highscores::THighscoresProtocolMessageHandler::sendHighscoresMessage, queue,
                  &Queue::sendHighscoresMessage));
 
@@ -675,6 +707,9 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(bossBestiary, &TBossBestiaryProtocolMessageHandler::sendOpenBossSlots, queue, &Queue::sendOpenBossSlots));
     link(connect(bossBestiary, &TBossBestiaryProtocolMessageHandler::sendEditBossSlot, queue, &Queue::sendEditBossSlot));
 
+    link(connect(gatherAllProtocolMessageHandler().get(), &input::TGatherAllProtocolMessageHandler::sendGatherAll, queue,
+                 &Queue::sendGatherAll));
+
     using skillwheel::TSkillWheelProtocolMessageHandler;
     TSkillWheelProtocolMessageHandler* skillWheel = skillWheelProtocolMessageHandler().get();
     link(connect(skillWheel, &TSkillWheelProtocolMessageHandler::sendRequestSkillWheel, queue, &Queue::sendRequestSkillWheel));
@@ -694,6 +729,9 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     link(connect(taskboard, &TTaskboardProtocolMessageHandler::sendTaskboardCommand, queue, &Queue::sendTaskboardCommandMessage));
     link(connect(taskboard, &TTaskboardProtocolMessageHandler::sendFightMonsterInSoulPitCommand, queue,
                  &Queue::sendSoulSealsFightMonsterMessage));
+    link(connect(bossDifficultySelectionProtocolMessageHandler(),
+                 &TBossDifficultySelectionProtocolMessageHandler::sendDifficultySelectionDataChanged, queue,
+                 &Queue::sendBossDifficultySelectionChangedMessage));
 }
 
 void TGameserverGameSession::connectGameActionHandlers()
@@ -848,6 +886,14 @@ void TGameserverGameSession::onClientMessageReadyToProcess(
         return;
     const network::TGameserverNetworkPacket packet = m_clientMessageProcessor->processClientMessage(*pGameclientMessage);
     if (packet.data().isEmpty())
+        return;
+    // Host: an XTEA frame ahead of the login packet would reach the server as
+    // the connection's first packet and break its decryption of everything
+    // after; until the login is out, such messages go nowhere (as when the
+    // connection is not up yet).
+    if (packet.encryptionType() == network::TGameserverNetworkPacket::LoginRsa)
+        m_loginPacketSent = true;
+    else if (!m_loginPacketSent)
         return;
     m_clientPacketBeingSent = &packet;
     sessionNetwork->writeClientFrame(packet.data());

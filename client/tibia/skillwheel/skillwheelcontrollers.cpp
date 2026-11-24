@@ -15,6 +15,8 @@
 #include <limits>
 #include <numeric>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -94,6 +96,13 @@ TSkillWheelStorage* sessionSkillWheelStorage(const std::shared_ptr<game::IGameSe
     TSkillWheelStorage* storage =
         base && base->characterConfigurationManager() ? base->characterConfigurationManager()->skillWheelStorage() : nullptr;
     return storage ? storage : emptyStorage;
+}
+
+/// The session's skill wheel protocol handler; null without a game session.
+TSkillWheelProtocolMessageHandler* sessionSkillWheelHandler(const std::shared_ptr<game::IGameSession>& session)
+{
+    const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
+    return base ? base->skillWheelProtocolMessageHandler().get() : nullptr;
 }
 
 int spentPoints(const std::array<int, SlotCount>& points) { return std::accumulate(points.begin(), points.end(), 0); }
@@ -1289,7 +1298,10 @@ TGemAtelierPageController::TGemAtelierPageController(QQmlEngine* engine, QQuickI
     , m_reshapeModDialog(new TGemAtelierReshapeModDialogController(engine, dialogParentItem, this))
 {
     m_dismantleConfirm->setCloseOnButtonClicked(true);
-    connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { TSkillWheelProtocolMessageHandler::dismantleGem(m_dismantleGemId); });
+    connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] {
+        if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+            handler->dismantleGem(m_dismantleGemId);
+    });
     m_pages->setSourceModel(m_filter);
     m_gemInventory = m_pages;
     m_maxRevealedGems = MaxRevealedGems;
@@ -1465,14 +1477,19 @@ void TGemAtelierPageController::dismantleGem(const int GemId)
     m_dismantleConfirm->showMessage(qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_title"),
                                     qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_text"));
 }
-void TGemAtelierPageController::revealGem(const int GemQuality) { TSkillWheelProtocolMessageHandler::revealGem(GemQuality); }
+void TGemAtelierPageController::revealGem(const int GemQuality)
+{
+    if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+        handler->revealGem(GemQuality);
+}
 void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx)
 {
     if (!m_storage)
         return;
     m_storage->setReshapeModIdx(-1);
     m_storage->setReshapeGemId(-1);
-    TSkillWheelProtocolMessageHandler::reshapeGem(GemId, ModIdx);
+    if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+        handler->reshapeGem(GemId, ModIdx);
 }
 
 void TGemAtelierPageController::attemptReshapeGem(const int GemId, const int ModIdx)
@@ -1482,7 +1499,8 @@ void TGemAtelierPageController::attemptReshapeGem(const int GemId, const int Mod
     m_storage->setReshapeModIdx(ModIdx);
     m_storage->setReshapeGemId(GemId);
     m_storage->rememberGemModsBeforeReshape();
-    TSkillWheelProtocolMessageHandler::attemptReshapeGem(GemId, ModIdx);
+    if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+        handler->attemptReshapeGem(GemId, ModIdx);
 }
 
 void TGemAtelierPageController::onTemporaryReshapedGemChanged()
@@ -1502,7 +1520,11 @@ void TGemAtelierPageController::onConfirmReshape()
         return;
     reshapeGem(m_storage->reshapeGemId(), m_storage->reshapeModIdx());
 }
-void TGemAtelierPageController::toggleGemLock(const int GemId) { TSkillWheelProtocolMessageHandler::toggleGemLock(GemId); }
+void TGemAtelierPageController::toggleGemLock(const int GemId)
+{
+    if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+        handler->toggleGemLock(GemId);
+}
 /// CIP: an index beyond the active vessels selects none (-1).
 void TGemAtelierPageController::selectVessel(const int Index)
 {
@@ -1649,7 +1671,8 @@ void TFragmentWorkshopPageController::setFilterMods(const int v)
     cip::tibia::gamewindow::TFragmentWorkshopPageController::setFilterMods(v);
 }
 
-/// New grades: keep the selected mod (CIP keeps the pending selection when a grade filter hides it).
+/// New grades: the list and its configuration refresh; a mod enhanced under a
+/// grade filter is selected again.
 /// The skill wheel dialog closing: first page, no filters, no mod selected and
 /// no mod waiting to be selected.
 void TFragmentWorkshopPageController::clearData()
@@ -1658,25 +1681,27 @@ void TFragmentWorkshopPageController::clearData()
     m_filter->resetFilters();
     m_filterMods = 0;
     m_selectedModIndex = QPersistentModelIndex();
-    m_pendingMod = -1;
+    m_modToReselect.reset();
 }
 
 void TFragmentWorkshopPageController::onModsChanged()
 {
-    const QModelIndex current = m_selectedModIndex;
-    const TModListEntry* selected = nullptr;
-    if (current.isValid()) {
-        const QModelIndex source = m_filter->mapToSource(m_pages->mapToSource(current));
-        selected = m_list->entry(source.row());
-    }
-    const bool basic = selected ? selected->basic : m_pendingBasic;
-    const int mod = selected ? selected->mod : m_pendingMod;
     if (!m_storage)
         return;
     m_list->setMods(m_storage->modList());
     updateConfiguration();
-    if (mod >= 0)
-        selectMod(basic, mod);
+    // The mod enhanced under a grade filter is selected again (the filter
+    // may hide it now).
+    if (m_modToReselect) {
+        const auto [isBasicMod, modId] = std::visit(
+            [](const auto& mod) {
+                using TMod = std::decay_t<decltype(mod)>;
+                return std::pair<bool, int>(std::is_same_v<TMod, TBasicModToReselect>, mod.id);
+            },
+            *m_modToReselect);
+        selectMod(isBasicMod, modId);
+        m_modToReselect.reset();
+    }
     m_filter->invalidateRows();
     Q_EMIT modGradesChanged();
 }
@@ -1691,8 +1716,6 @@ void TFragmentWorkshopPageController::updateConfiguration()
 
 void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int ModID)
 {
-    m_pendingBasic = isBasicMod;
-    m_pendingMod = ModID;
     const auto find = [this, isBasicMod, ModID] { return isBasicMod ? m_filter->indexOfBasicMod(ModID) : m_filter->indexOfSupremeMod(ModID); };
     QModelIndex filtered = find();
     if (!filtered.isValid()) {
@@ -1706,9 +1729,16 @@ void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int
 
 void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, const int ModID)
 {
-    m_pendingBasic = isBasicMod;
-    m_pendingMod = ModID;
-    TSkillWheelProtocolMessageHandler::enhanceModGrade(isBasicMod ? 0 : 1, ModID);
+    if (TSkillWheelProtocolMessageHandler* handler = sessionSkillWheelHandler(m_gameSession))
+        handler->enhanceModGrade(isBasicMod ? 0 : 1, ModID);
+    // Under a grade filter (4..7) the enhanced mod may drop out of the list:
+    // it is selected again when the new grades arrive.
+    if ((m_filter->filterMods() & ~3) == 4) {
+        if (isBasicMod)
+            m_modToReselect = TBasicModToReselect{ ModID };
+        else
+            m_modToReselect = TSupremeModToReselect{ ModID };
+    }
 }
 
 // ---------------------------------------------------------------------------

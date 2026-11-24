@@ -61,9 +61,11 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
         if (const auto* trade = gameActionAs<TGameActionPlayerTradeItem>(pGameAction); trade && trade->targetCreatureId() != 0)
             stopMovement();
         break;
+    case A::STOP_ATTACKING_FOLLOWING_WALKING:
+        stopMovement();
+        Q_EMIT sendCancel();
+        break;
     default:
-        // qtclient: STOP_ATTACKING_FOLLOWING_WALKING (stop the walk, sendCancel) is
-        // handled by TUnportedGameActionHandler through tibia::game::stop.
         break;
     }
 }

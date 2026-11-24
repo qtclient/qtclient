@@ -171,47 +171,63 @@ public:
     /// The player died: the cyclopedia dialog closes (requestCloseCyclopediaDialog).
     void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
-    // Requests (CipSoft's ICyclopediaProtocol slots).
+    // Requests (CipSoft's ICyclopediaProtocol slots): each builds its message and
+    // emits the matching send signal; the session links them to its message queue.
     /// Cyclopedia inspection of an object type (InspectObject type 3, no count).
-    static void sendInspectCyclopediaObject(uint16_t objectId);
-    static void sendMarketStatistics();
-    static void sendOpenMonsterCyclopedia();
+    void sendInspectCyclopediaObject(uint16_t objectId);
+    void requestMarketStatistics();
+    void requestMonsterCyclopedia();
     /// The races of a classification.
-    static void sendOpenMonsterCyclopediaMonsters(const QString& classification);
+    void requestMonsterCyclopediaMonsters(const QString& classification);
     /// The races of a search result.
-    static void sendOpenMonsterCyclopediaMonsters(const std::vector<uint16_t>& raceIds);
-    static void sendOpenMonsterCyclopediaRace(uint32_t raceId);
+    void requestMonsterCyclopediaMonsters(const std::vector<uint16_t>& raceIds);
+    void requestMonsterCyclopediaRace(uint32_t raceId);
     /// MonsterBonusEffectAction 0..3: unlock, assign to a race, remove, reset all.
-    static void sendUnlockCharm(uint32_t charmId);
-    static void sendAssignCharm(uint32_t charmId, uint32_t raceId);
-    static void sendRemoveCharm(uint32_t charmId);
-    static void sendResetAllCharms();
+    void sendUnlockCharm(uint32_t charmId);
+    void sendAssignCharm(uint32_t charmId, uint32_t raceId);
+    void sendRemoveCharm(uint32_t charmId);
+    void sendResetAllCharms();
     /// CyclopediaMapAction: an area's data, a donation, resetting an area's viewpoints.
-    static void sendRequestMapArea(uint32_t areaId);
-    static void sendMapDonation(uint32_t areaId, uint64_t amount);
-    static void sendResetMapAreaViewpoints(uint32_t areaId);
-    static void sendOpenCharacterInfo(uint32_t characterId, int infoType);
+    void sendRequestMapArea(uint32_t areaId);
+    void sendMapDonation(uint32_t areaId, uint64_t amount);
+    void sendResetMapAreaViewpoints(uint32_t areaId);
+    void sendOpenCharacterInfo(uint32_t characterId, int infoType);
     /// Paged form; general stats also request the wheel page.
-    static void sendOpenCharacterInfo(uint32_t characterId, int infoType, uint32_t entriesPerPage, uint32_t page);
+    void sendOpenCharacterInfo(uint32_t characterId, int infoType, uint32_t entriesPerPage, uint32_t page);
     /// CyclopediaHouseAction 0..7.
-    static void sendRequestTownHouses(const QString& town);
-    static void sendHouseBid(uint32_t houseId, uint64_t bid);
-    static void sendHouseMoveOut(uint32_t houseId, uint32_t date);
-    static void sendHouseTransfer(uint32_t houseId, uint32_t date, const QString& newOwner, uint64_t price);
-    static void sendHouseCancelMoveOut(uint32_t houseId);
-    static void sendHouseCancelTransfer(uint32_t houseId);
-    static void sendHouseAcceptTransfer(uint32_t houseId);
-    static void sendHouseRejectTransfer(uint32_t houseId);
+    void sendRequestTownHouses(const QString& town);
+    void sendHouseBid(uint32_t houseId, uint64_t bid);
+    void sendHouseMoveOut(uint32_t houseId, uint32_t date);
+    void sendHouseTransfer(uint32_t houseId, uint32_t date, const QString& newOwner, uint64_t price);
+    void sendHouseCancelMoveOut(uint32_t houseId);
+    void sendHouseCancelTransfer(uint32_t houseId);
+    void sendHouseAcceptTransfer(uint32_t houseId);
+    void sendHouseRejectTransfer(uint32_t houseId);
     /// PartyHuntAnalyser 0 and 2: reset the session; send the loot prices of objects.
-    static void sendResetPartyHuntAnalyser();
-    static void sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds);
+    void sendResetPartyHuntAnalyser();
+    void sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds);
     /// The party's loot type (0 market, 1 leader); with the leader's prices the prices of every
     /// cyclopedia object follow, 400 per message.
-    static void sendPartyHuntLootType(int lootType);
+    void sendPartyHuntLootType(int lootType);
 
 Q_SIGNALS:
+    void sendInspectObject(const ::tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage);
+    void sendMarketStatistics(const ::tibia::protobuf::protocol::GameclientMessageMarketStatistics& MarketStatisticsMessage);
+    void sendOpenMonsterCyclopedia(const ::tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopedia& MonsterCyclopediaMessage);
+    void sendOpenMonsterCyclopediaMonsters(
+        const ::tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaMonsters& MonsterCyclopediaMonstersMessage);
+    void sendOpenMonsterCyclopediaRace(const ::tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaRace& MonsterCyclopediaRaceMessage);
+    void sendMonsterBonusEffectAction(const ::tibia::protobuf::protocol::GameclientMessageMonsterBonusEffectAction& MonsterBonusEffectAction);
+    void sendCyclopediaMapAction(const ::tibia::protobuf::protocol::GameclientMessageCyclopediaMapAction& CyclopediaMapAction);
+    void sendOpenCyclopediaCharacterInfo(const ::tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo& OpenCyclopediaCharacterInfo);
+    void sendCyclopediaHouseAction(const ::tibia::protobuf::protocol::GameclientMessageCyclopediaHouseAction& CyclopediaHousActionMessage);
+    void sendPartyHuntAnalyser(const ::tibia::protobuf::protocol::GameclientMessagePartyHuntAnalyser& Message);
     void monsterCyclopediaNewDetailsForMonster(quint16 UpdatedMonsterRaceID);
     void requestHouseActionResultDialog(quint32 HouseID, quint8 Action, quint8 ErrorCode, bool HasBeenOutbidden);
+
+private:
+    void sendHouseAction(uint32_t action, uint32_t houseId);
+    void sendMonsterBonusEffect(uint32_t action, std::optional<uint32_t> charmId, std::optional<uint32_t> raceId);
 
 private:
     TStorages m_storages;

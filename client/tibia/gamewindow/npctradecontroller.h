@@ -52,6 +52,8 @@ struct TTraderInventoryEntry
     uint16_t typeId = 0;
     uint8_t liquidType = 0;
     uint8_t hookDirection = 0;
+
+    bool operator==(const TTraderInventoryEntry&) const = default;
 };
 
 /// The goods of the current trade direction (CIP: TTraderInventoryModel,
@@ -78,6 +80,7 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
+    const std::vector<TTraderInventoryEntry>& entries() const;
     void reset(std::vector<TTraderInventoryEntry> entries);
 
 private:
@@ -179,7 +182,9 @@ private:
     void setTradeStorage();
     /// Fills the context menu of a good (look/inspect, sort, options).
     void buildContextMenu(TContextMenuController* menu, int typeId, uint liquidType);
-    /// CIP .
+    /// Rebuilds the goods list of the trade direction (sorted by object
+    /// type), keeps or resets the list's scroll position and drops a
+    /// selection the trader no longer lists.
     void refresh();
     /// The amount of the trade's currency the player has: 0 without a trade.
     uint64_t availableCurrencyAmount() const;

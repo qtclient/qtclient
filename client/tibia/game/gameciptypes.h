@@ -515,8 +515,8 @@ public:
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
 
 private:
-    // Host: the storage is QObject-owned (ownProductSurface), so the handler
-    // keeps a guarded pointer where CipSoft keeps a shared_ptr.
+    // Host: the handler keeps a guarded pointer where CipSoft keeps a
+    // shared_ptr to the game client's storage.
     QPointer<TPremiumTimeStorage> m_premiumTimeStorage;
 };
 

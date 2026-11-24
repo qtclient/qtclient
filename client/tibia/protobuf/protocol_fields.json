@@ -14252,6 +14252,12 @@
         "type": "uint32",
         "number": 4,
         "label": "optional"
+      },
+      {
+        "name": "automatic_extend_type",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
       }
     ],
     "note": "CIP TProtobufClientMessageTranslator::v80."
@@ -14375,6 +14381,18 @@
         "name": "statement_id",
         "type": "uint32",
         "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "hireling_id",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "text_id",
+        "type": "uint32",
+        "number": 8,
         "label": "optional"
       }
     ],

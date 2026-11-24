@@ -36,10 +36,16 @@ namespace tibia::game {
 class IGameSession;
 }
 
-namespace tibia {
-namespace client {
-class TGameClient;
+class QQmlEngine;
+
+namespace tibia::config {
+class TClientOptions;
 }
+
+namespace tibia::shared {
+class IClockService;
+class TTibiaFileSystemHelper;
+class TTibiaUrlTools;
 }
 
 namespace tibia {
@@ -64,7 +70,11 @@ public:
         DateTimeRole,
     };
 
-    explicit TChatChannelController(QObject* parent = nullptr);
+    /// CIP: the console options give the entry format and follow its
+    /// changes; `Kind` tells the console's primary (0), secondary (1) and
+    /// the NPC dialog's (2) channel view apart.
+    TChatChannelController(std::shared_ptr<config::TClientOptions> ClientOptions,
+                           std::shared_ptr<input::TGameActionMapper> GameActionMapper, int Kind, QObject* parent = nullptr);
 
     chat::TChatChannel* channel() const { return m_channel; }
     /// CIP: the rows go and the new channel's entries come.
@@ -158,6 +168,9 @@ private:
     void clearSelection();
     void invalidateSizes();
 
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    int m_kind = 0;
     QPointer<chat::TChatChannel> m_channel;
     std::vector<Row> m_rows;
     TChatChannelFilterController m_filter;
@@ -263,7 +276,8 @@ class TOpenChatChannelDialogController final : public TDialogController<cip::tib
 {
     Q_OBJECT
 public:
-    explicit TOpenChatChannelDialogController(QObject* parent = nullptr);
+    /// CIP: the dialog is made in `engine` under `dialogParentItem`.
+    TOpenChatChannelDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     /// CIP v27: the dialog's item goes.
     void destroyDialog() { dialog()->destroy(); }
 
@@ -293,7 +307,16 @@ class TChatController final : public cip::tibia::gamewindow::TChatController
 {
     Q_OBJECT
 public:
-    TChatController(QQuickItem* chatItem, client::TGameClient& gameClient, QObject* parent = nullptr);
+    /// CIP: the input history keeps `MaxChatInputHistoryLength` lines; the
+    /// dialogs are made in `Engine` under `DialogParentItem`; `ChatItem` gets
+    /// the controller and its models; the channel views read the client
+    /// options; channels are saved through the file system helper with the
+    /// clock's time; the chat mode is the client's manager.
+    TChatController(uint MaxChatInputHistoryLength, QQuickItem* DialogParentItem, QQuickItem* ChatItem, QQmlEngine* Engine,
+                    std::shared_ptr<config::TClientOptions> ClientOptions, std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                    std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                    std::shared_ptr<shared::IClockService> ClockService, std::shared_ptr<shared::TTibiaUrlTools> TibiaUrlTools,
+                    std::shared_ptr<chat::TChatModeManager> ChatModeManager, QObject* parent = nullptr);
     ~TChatController() override;
 
     /// Bind the active Chat / HudChat item (classic dock vs floated HUD).
@@ -304,9 +327,9 @@ public:
     /// CIP : the console's exiva options button is enabled on an
     /// Optional PvP world.
     bool exivaOptionsAvailable() const override;
-    int chatMode() const override { return m_mode.chatMode(); }
-    /// The chat's mode manager (the action bars follow its chat mode).
-    chat::TChatModeManager& chatModeManager() { return m_mode; }
+    int chatMode() const override { return m_pChatModeManager->chatMode(); }
+    /// The client's chat mode manager the chat was given.
+    chat::TChatModeManager& chatModeManager() { return *m_pChatModeManager; }
 
     /// The current session's channels, or null.
     chat::TChatChannelStorage* storage() const { return m_chatChannelStorage.get(); }
@@ -314,7 +337,6 @@ public:
     /// and the dialogs are cleared; then the tabs show `GameSession`'s
     /// channels, and its login opens the channels from the options.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
     /// PRESS_ENTER_IN_CHAT, while it is shown SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT
@@ -328,7 +350,7 @@ public:
     /// `channel` rather than the current tab.
     QString sendChatMessageTo(chat::TChatChannel* channel, const QString& chatMessage, bool isSpell = false, int spellCastType = 0);
     /// CIP : the chat mode's message-sent step.
-    void onMessageSent() { m_mode.onMessageSent(); }
+    void onMessageSent() { m_pChatModeManager->onMessageSent(); }
 
 public Q_SLOTS:
     void openChannelsFromConfig() override;
@@ -425,9 +447,15 @@ private:
     void showRecentlyTraded(const QString& name);
 
     QPointer<QQuickItem> m_chatItem;
+    /// CIP +0x60 .. +0xb0, as given.
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_pTibiaFileSystemHelper;
+    std::shared_ptr<shared::IClockService> m_pClockService;
+    std::shared_ptr<shared::TTibiaUrlTools> m_pTibiaUrlTools;
+    std::shared_ptr<chat::TChatModeManager> m_pChatModeManager;
     /// The current session's channels' actions (made by the connector).
     std::shared_ptr<chat::TChatGameActionProvider> m_actionProvider;
-    chat::TChatModeManager m_mode;
     /// CIP +0x4b0: the current session.
     std::shared_ptr<game::IGameSession> m_gameSession;
     /// CIP +0x4c0: the session's chat protocol message handler.
@@ -440,7 +468,6 @@ private:
     TChatChannelController m_secondary;
     TChatChannelTabController m_tabs;
     TOpenChatChannelDialogController m_openDialog;
-    input::TGameActionMapper m_mapper;
     TGenericEnterTextDialogController m_inviteDialog;
     TGenericEnterTextDialogController m_excludeDialog;
     /// CIP +0x438: "recently traded" and the account data warning.
@@ -451,7 +478,6 @@ private:
     QTimer m_ignoredFlashTimer;
     bool m_ignoredFlash = false;
     QTimer m_exivaSuppressedTimer;
-    client::TGameClient& m_gameClient;
     bool m_channelListRequested = false;
     bool m_channelsFromConfigOpened = false;
     /// CIP: the chat input history, at most m_maxChatInputHistoryLength lines

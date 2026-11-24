@@ -253,7 +253,6 @@ void TGameSessionBase::createStorages()
     m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices);
     // The drop tracker announces on the session's status line and follows the premium state.
     m_itemTrackingStorage->setTextStorage(m_textStorage.get());
-    m_itemTrackingStorage->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
     m_gainWasteStorage = std::make_shared<analysers::TGainWasteStorage>(itemPrices);
     m_impactStorage = std::make_shared<analysers::TImpactStorage>();
     m_damageInputStorage = std::make_shared<analysers::TDamageInputStorage>();
@@ -388,7 +387,6 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage, m_marketStorage);
     m_newsProtocolMessageHandler = std::make_shared<news::TNewsProtocolMessageHandler>();
     m_premiumProtocolMessageHandler = std::make_shared<TPremiumProtocolMessageHandler>();
-    m_premiumProtocolMessageHandler->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
     m_tutorialProtocolMessageHandler = std::make_shared<tutorial::TTutorialProtocolMessageHandler>();
     m_preyProtocolMessageHandler = std::make_shared<prey::TPreyProtocolMessageHandler>(m_preyStorage);
     if (!m_gameActionContextHelper)
@@ -469,7 +467,8 @@ void TGameSessionBase::createRenderProviders()
         std::make_shared<worldmap::TWorldMapPicker>(m_renderVolumeProvider, m_worldMapRenderProvider, m_worldMapStorage);
     m_numericalEffectRenderProvider = std::make_shared<effects::TNumericalEffectRenderProvider>(m_effectStorage, m_worldMapStorage);
     m_creatureHUDRenderProvider = std::make_shared<worldmap::TCreatureHUDRenderProvider>(
-        m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData, m_clientOptions.get());
+        m_worldMapStorage, m_creatureStorage, m_worldMapViewport, m_worldMapRenderProvider, m_playerData, m_clientOptions.get(),
+        m_dailyRewardProtocolMessageHandler);
     m_textOverlayRenderProvider = std::make_shared<chat::TTextOverlayRenderProvider>(m_textStorage);
     m_containerRenderProvider = std::make_shared<container::TContainerRenderProvider>(m_containerStorage, m_clientOptions.get());
     m_battleListRenderProvider = std::make_shared<creatures::TBattleListRenderProvider>(m_creatureStorage, m_worldMapViewport,
@@ -500,9 +499,6 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_genericObjectGameActionProvider = std::make_shared<input::TGenericObjectGameActionProvider>(
         m_creatureStorage, m_genericChatGameActionProvider, m_partyGameActionProvider, m_inspectPlayerGameActionProvider,
         m_quickLootBlackWhitelistStorage);
-    // Host: CipSoft's game server session hands the providers its premium time
-    // storage when it gets one; qtclient's is the process-wide one.
-    m_genericObjectGameActionProvider->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
     m_battleListGameActionProvider = std::make_shared<creatures::TBattleListGameActionProvider>(m_genericObjectGameActionProvider);
     m_worldMapGameActionProvider = std::make_shared<worldmap::TWorldMapGameActionProvider>(
         *m_worldMapRenderProvider, *m_worldMapViewport, m_genericObjectGameActionProvider);
@@ -523,8 +519,6 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     if (!m_gameActionContextHelper)
         m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
     m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>();
-    connect(m_genericGameActionHandler.get(), &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
-            &IGameSession::showCharacterSelectionDialog);
     m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>(m_creatureStorage, m_clipboardHelper);
     m_playerGameActionHandler = std::make_shared<TPlayerGameActionHandler>(m_creatureStorage, m_playerData);
     m_containerGameActionHandler = std::make_shared<container::TContainerGameActionHandler>(m_containerStorage, m_objectCountStorage);
@@ -554,10 +548,6 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
         std::make_shared<skillwheel::TSkillWheelGameActionHandler>(m_skillWheelProtocolMessageHandler, m_playerCreature);
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_skillWheelGameActionHandler.get(),
             &skillwheel::TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage);
-    // Host: the action bar's handler (the game client's in CipSoft).
-    m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
-        m_spellInfoStorage, m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage,
-        clockService());
 }
 
 void TGameSessionBase::connectGameActionHandlers()
@@ -606,8 +596,9 @@ void TGameSessionBase::connectGameActionHandlers()
             &protocol::TProtocolMessageQueue::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_gatherAllGameActionHandler.get(),
             &input::TGatherAllGameActionHandler::handleGameAction);
-    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_actionButtonGameActionHandler.get(),
-            &input::TActionButtonGameActionHandler::handleGameAction);
+    if (m_actionButtonGameActionHandler)
+        connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_actionButtonGameActionHandler.get(),
+                &input::TActionButtonGameActionHandler::handleGameAction);
     connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_battleListGameActionHandler.get(),
             &gamewindow::TBattleListGameActionHandler::handleGameAction);
     // ... and takes the game actions the session's parts publish.
@@ -670,8 +661,9 @@ void TGameSessionBase::connectGameActionHandlers()
     // game actions too.
     connect(m_containerProtocolMessageHandler.get(), &container::TContainerProtocolMessageHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
-    connect(m_actionButtonGameActionHandler.get(), &input::TActionButtonGameActionHandler::publishGameAction, router,
-            &TInternalGameActionRouter::handleGameActionInternal);
+    if (m_actionButtonGameActionHandler)
+        connect(m_actionButtonGameActionHandler.get(), &input::TActionButtonGameActionHandler::publishGameAction, router,
+                &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_battleListGameActionHandler.get(), &gamewindow::TBattleListGameActionHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
 }
@@ -689,6 +681,22 @@ void centerViewportOnCreature(const std::weak_ptr<creatures::TCreature>& creatur
 }
 
 void TGameSessionBase::updatePlayerMovementIntentHandler() {}
+
+void TGameSessionBase::setPremiumTimeStorage(const std::shared_ptr<TPremiumTimeStorage>& premiumTimeStorage)
+{
+    // Host: qtclient builds these in initialize, so a session not yet
+    // initialized has none of them.
+    if (m_premiumProtocolMessageHandler)
+        m_premiumProtocolMessageHandler->setPremiumTimeStorage(premiumTimeStorage.get());
+    if (m_vipWidgetGameActionProvider)
+        m_vipWidgetGameActionProvider->setPremiumTimeStorage(premiumTimeStorage);
+    if (m_genericObjectGameActionProvider)
+        m_genericObjectGameActionProvider->setPremiumTimeStorage(premiumTimeStorage.get());
+    if (m_itemTrackingStorage)
+        m_itemTrackingStorage->setPremiumTimeStorage(premiumTimeStorage.get());
+    if (m_skillWheelGameActionHandler)
+        m_skillWheelGameActionHandler->setPremiumTimeStorage(premiumTimeStorage.get());
+}
 
 void TGameSessionBase::setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
                                           std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
@@ -887,7 +895,6 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedBlessingsMessage, player, &TPlayerProtocolMessageHandler::handleBlessingsMessage);
         link(&Queue::receivedSwitchPresetMessage, player, &TPlayerProtocolMessageHandler::handleSwitchPresetMessage);
         link(&Queue::receivedHirelingNameChangeMessage, player, &TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage);
-        link(&Queue::receivedWorldEnteredMessage, player, &TPlayerProtocolMessageHandler::handleWorldEnteredMessage);
         link(&Queue::receivedLoginSuccessMessage, player, &TPlayerProtocolMessageHandler::handleLoginSuccessMessage);
     }
     // Host: the player's movement messages go out through the session's queue
@@ -940,10 +947,10 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedSessionDumpStartMessage, game, &TGameProtocolMessageHandler::handleSessionDumpStartMessage);
         link(&Queue::receivedInspectionListMessage, game, &TGameProtocolMessageHandler::handleInspectionListMessage);
         link(&Queue::receivedShowMultiOfflineTrainingDialogMessage, game, &TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage);
-        // Host: the session messages CIP's game server session handles itself.
-        link(&Queue::receivedPendingStateEnteredMessage, game, &TGameProtocolMessageHandler::handlePendingStateEnteredMessage);
+        // Host: the world entered reaches the host's session state. The pending
+        // state, the death and the player's WorldEntered are the game server
+        // session's own links (a dump links WorldEntered itself).
         link(&Queue::receivedWorldEnteredMessage, game, &TGameProtocolMessageHandler::handleWorldEnteredMessage);
-        link(&Queue::receivedDeadMessage, game, &TGameProtocolMessageHandler::handleDeadMessage);
         link(&Queue::receivedClientCheckMessage, game, &TGameProtocolMessageHandler::handleClientCheckMessage);
         link(&Queue::receivedShowMessageDialogMessage, game, &TGameProtocolMessageHandler::handleShowMessageDialogMessage);
         link(&Queue::receivedSpellDataModificationMessage, game, &TGameProtocolMessageHandler::handleSpellDataModificationMessage);

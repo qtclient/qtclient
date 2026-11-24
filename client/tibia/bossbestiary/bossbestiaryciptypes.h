@@ -53,7 +53,7 @@ public:
     void handleBosstiaryMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiary& BosstiaryMessage);
     /// The bosstiary button lights up for the boss (requestBosstiaryButtonHighlight).
     void handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage);
-    static void handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage);
+    void handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage);
     /// The free podium message (dialog type 60) opens the bosstiary's free podium dialog with its text.
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& ShowMessageDialogMessage);
 

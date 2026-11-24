@@ -111,6 +111,7 @@ class IGameSession;
 class TGameActionRouter;
 class TGameSessionMetaInfo;
 class TOutfitDialogStorage;
+class TPremiumTimeStorage;
 class TGameserverGameSession;
 class TSessiondumpGameSession;
 class TStatusbarStorage;
@@ -313,6 +314,9 @@ public:
     chat::TTextStorage* textStorage() const;
     /// CIP +0x2c8: the client's white/blacklist (chat filter, map bubbles, the white/blacklist dialog).
     const std::shared_ptr<chat::TWhiteBlacklist>& whiteBlacklist() const { return m_pWhiteBlacklist; }
+    /// CIP: the client's premium time storage (made in initialize()): the
+    /// current session and the game window's premium-aware controllers read it.
+    const std::shared_ptr<game::TPremiumTimeStorage>& premiumTimeStorage() const { return m_pPremiumTimeStorage; }
     /// CIP +0x2b8: the client's news storage (the news dialog, the news widget
     /// and the session's news protocol handler read it) and +0x2a8 its disk cache.
     const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_pNewsStorage; }
@@ -455,6 +459,9 @@ public Q_SLOTS:
     /// CIP: the client window changed its size: every open multi action list
     /// of the action bars closes.
     void onWindowSizeChanged() override;
+    /// CIP: the client window went full screen: the map window takes its
+    /// pane's scale factor again and lays out the creature HUDs.
+    void onFullscreenModeEntered() override;
     /// CIP: the game window's Quit.
     void onExitClientRequested();
     /// CIP: the login mask's credentials start the account login.
@@ -716,6 +723,8 @@ private:
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     /// The chat pane's ignore list, applied to each session's message handler.
     std::shared_ptr<chat::TWhiteBlacklist> m_pWhiteBlacklist;
+    /// CIP: the account's premium state, handed to the current session.
+    std::shared_ptr<game::TPremiumTimeStorage> m_pPremiumTimeStorage;
     /// CIP +0x2a8 / +0x2b8: the news cache on disk and the news storage (made in initialize()).
     std::shared_ptr<news::TNewsDiskIO> m_pNewsDiskIO;
     std::shared_ptr<news::TNewsStorage> m_pNewsStorage;

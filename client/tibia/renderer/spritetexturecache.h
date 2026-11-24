@@ -45,6 +45,8 @@ struct TSpriteTexture
     QSGTexture* texture = nullptr;
     /// In sprite pixels; the sprite's top-left is (0, 0).
     QRect rect;
+    /// The texture's owner from the texture creator (null with no texture).
+    std::shared_ptr<QSGTexture> owner;
 };
 
 /// Sprite textures of one window, in Qt's shared texture atlas (CIP:
@@ -88,8 +90,8 @@ public:
     void beginFrame();
     /// CIP REMOVE_SPRITEIDENTIFIER_FROM_CACHE: drop one key from either map.
     void remove(const SpriteIdentifier& identifier);
-    /// A texture that is not stored: deleted with the retired ones.
-    void release(QSGTexture* texture) { retire(texture); }
+    /// A texture that is not stored: let go with the retired ones.
+    void release(std::shared_ptr<QSGTexture> texture) { retire(std::move(texture)); }
     /// CIP onSceneGraphInvalidated: drop every key.
     void removeAll();
     /// Drop every texture (HD mode toggle rebuilds with/without xBR4). Callers must
@@ -108,16 +110,18 @@ private:
         /// Counted against the budget (CIP's strong map); the others are
         /// textures outside the atlas (its weak map).
         bool budgeted = false;
+        /// The texture's owner (null for a sprite that does not exist).
+        std::shared_ptr<QSGTexture> owner;
     };
     void evict(double share);
-    void retire(QSGTexture* texture);
+    void retire(std::shared_ptr<QSGTexture> texture);
     void flushRetired();
     void markSceneDirty() const;
 
     QQuickWindow* m_window;
     QHash<SpriteIdentifier, Entry> m_textures;
-    QVector<QSGTexture*> m_retired;
-    QVector<QSGTexture*> m_graveyard;
+    QVector<std::shared_ptr<QSGTexture>> m_retired;
+    QVector<std::shared_ptr<QSGTexture>> m_graveyard;
     uint32_t m_frame = 0;
     /// CIP: one eviction per frame; reset by beginFrame.
     bool m_evicted = false;

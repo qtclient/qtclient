@@ -75,6 +75,9 @@ public:
     virtual void startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry);
     /// A dump has no player movement intent handler: nothing.
     void updatePlayerMovementIntentHandler() override;
+    /// The game client's network tick: the process timer starts again when it
+    /// is not running.
+    void processNetwork() override;
     /// True for the tutorial dump a new character watches before its live session.
     bool isTutorial() const;
 

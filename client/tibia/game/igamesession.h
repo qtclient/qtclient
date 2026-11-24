@@ -16,6 +16,7 @@ class IClockService;
 namespace tibia::game {
 
 class TGameSessionMetaInfo;
+class TPremiumTimeStorage;
 
 /// CIP game::IGameSession: a game session (live, replayed or the tutorial) as
 /// the game client and its controllers see it. The client builds one per
@@ -43,6 +44,9 @@ public:
     /// The clock the session's frames run on: the next frame's predicted
     /// time is read from it.
     virtual std::shared_ptr<shared::IClockService> clockService() const = 0;
+    /// CIP v16: the game client's premium time storage reaches the session's
+    /// handlers and providers that follow the account's premium state.
+    virtual void setPremiumTimeStorage(const std::shared_ptr<TPremiumTimeStorage>& premiumTimeStorage) = 0;
 
 Q_SIGNALS:
     void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);

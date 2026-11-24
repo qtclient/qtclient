@@ -23,6 +23,7 @@ class TCyclopediaProtocolMessageHandler;
 }
 namespace game {
 class IGameSession;
+class TGameWorldVolumeStorage;
 }
 namespace worldmap {
 class TAmbientLightStorage;
@@ -224,11 +225,15 @@ private:
     void onRequestDynamicDataForTownTimerTimeout();
     /// Pick a town (if none) and the first house row so the 3D preview is not blank.
     void ensureTownAndHouseSelection();
+    /// CIP: the preview's world map draws the house volume (none without one).
+    void setPreviewRenderSources();
 
     std::vector<QMetaObject::Connection> m_sessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<cyclopedia::THousesStorage> m_storage;
     std::shared_ptr<cyclopedia::TCyclopediaProtocolMessageHandler> m_cyclopediaProtocolMessageHandler;
+    /// CIP +0x1a0: the selected house's area, made for each session.
+    std::shared_ptr<game::TGameWorldVolumeStorage> m_houseVolume;
     QPointer<cip::tibia::qmlcomponents::TWorldMapQuickItem> m_houseWorldMap;
     QPointer<cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType> m_houseCamera;
     THousesModel* m_model;

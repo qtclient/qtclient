@@ -73,6 +73,13 @@ TBossSkinModel::Entry entryFromRace(const uint16_t raceId, const std::string& na
 
 }
 
+TBossSkinModel::TBossSkinModel(QObject* parent)
+    : cip::TBossSkinModel(parent)
+{
+    connect(this, &QAbstractItemModel::rowsInserted, this, &TBossSkinModel::rowCountChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &TBossSkinModel::rowCountChanged);
+}
+
 void TBossSkinModel::setEntries(QList<Entry> entries)
 {
     beginResetModel();

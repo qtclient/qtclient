@@ -227,6 +227,8 @@ public:
     /// Which frames show, for every creature.
     static const TCreatureMarkOptions& markOptions();
     static void setMarkOptions(const TCreatureMarkOptions& options);
+    /// CIP: how long a timed square shows (the game client sets it from the client settings).
+    static void setTimedSquareDuration(qint64 Milliseconds);
     /// The step's elevation while moving, the field's otherwise.
     int drawElevation() const;
     uint8_t patternX() const { return m_patternX; }

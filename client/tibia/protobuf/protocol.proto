@@ -5608,6 +5608,7 @@ message GameclientMessagePreyAction {
   optional uint32 action = 2;
   optional uint32 index = 3;
   optional uint32 race_id = 4;
+  optional uint32 automatic_extend_type = 5;
   extend GameclientMessage {
     optional GameclientMessagePreyAction gameclient_message_prey_action = 235;
   }
@@ -5683,6 +5684,8 @@ message GameclientMessageRuleViolationReport {
   optional string comment = 4;
   optional string translation = 5;
   optional uint32 statement_id = 6;
+  optional uint32 hireling_id = 7;
+  optional uint32 text_id = 8;
   extend GameclientMessage {
     optional GameclientMessageRuleViolationReport gameclient_message_rule_violation_report = 242;
   }

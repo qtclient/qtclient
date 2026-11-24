@@ -11,6 +11,7 @@
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
+#include <QTimer>
 
 #include <algorithm>
 #include <QJsonObject>
@@ -26,16 +27,6 @@ namespace {
 
 using A = input::EGameAction;
 constexpr auto OptionsKey = "bossCooldownsWidgetOptions";
-
-qmlcomponents::TOutfitQmlModel* outfitForRace(const int raceId, QObject* parent)
-{
-    const RaceType& race = tibia::game::raceData(static_cast<uint32_t>(raceId));
-    const Outfit& outfit = race.outfit;
-    const bool objectOutfit = outfit.getId() == 0 && outfit.getAuxId() != 0;
-    const uint16_t outfitId = static_cast<uint16_t>(objectOutfit ? outfit.getAuxId() : outfit.getId());
-    return new qmlcomponents::TOutfitQmlModel(outfitId, outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet(),
-                                              (outfit.getAddons() & 1) != 0, (outfit.getAddons() & 2) != 0, objectOutfit, parent);
-}
 
 } // namespace
 
@@ -87,12 +78,9 @@ QHash<int, QByteArray> TBossTrackerListModel::roleNames() const
 
 void TBossTrackerListModel::clearOutfits()
 {
-    for (Row& row : m_all) {
-        if (row.outfit) {
-            row.outfit->deleteLater();
-            row.outfit = nullptr;
-        }
-    }
+    // The outfit models belong to the entries.
+    for (Row& row : m_all)
+        row.outfit = nullptr;
 }
 
 void TBossTrackerListModel::setRows(std::vector<Row> rows)
@@ -181,6 +169,21 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
         connect(item, &QObject::destroyed, this, &TBossTrackerWidgetController::onWidgetQuickItemDestroyed);
     }
     connect(&m_focus, &TUiFocusManager::focusChanged, this, &TBossTrackerWidgetController::focusChanged);
+    // The widget's show and hide are this controller's.
+    widget()->setShowHideOverrides([this] { show(); }, [this] { hide(); });
+}
+
+void TBossTrackerWidgetController::hide()
+{
+    m_focus.releaseFocus();
+    widget()->hideItem();
+}
+
+void TBossTrackerWidgetController::show()
+{
+    widget()->showItem();
+    m_focus.takeFocus();
+    QTimer::singleShot(0, this, [this] { Q_EMIT requestWidgetControlToTakeFocus(); });
 }
 
 void TBossTrackerWidgetController::setStorage(bossbestiary::TBossTrackerStorage* const storage)
@@ -291,7 +294,7 @@ void TBossTrackerWidgetController::onBossTrackingEntriesChanged()
     for (const bossbestiary::TBossTrackerEntry& entry : m_storage->entries()) {
         TBossTrackerListModel::Row row;
         row.entry = entry;
-        row.outfit = outfitForRace(entry.raceId, m_model);
+        row.outfit = entry.outfit.get();
         rows.push_back(std::move(row));
     }
     m_model->setRows(std::move(rows));

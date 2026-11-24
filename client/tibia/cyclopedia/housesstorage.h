@@ -3,6 +3,7 @@
 #include "client/gamecore.h"
 
 #include "cyclopedia/staticcontentinformation.h"
+#include "worldmap/coordinates.h"
 
 #include <client/staticdata.h>
 
@@ -41,6 +42,8 @@ struct THouseInformation
     int x = 0;
     int y = 0;
     int z = 0;
+    /// The house entrance.
+    worldmap::TWorldMapCoordinate entrance() const { return worldmap::TWorldMapCoordinate(x, y, z); }
 
     /// Auction (state 0).
     QString bidderName;
@@ -149,17 +152,6 @@ public:
 
     /// Every house back to "updating".
     void reset();
-
-    /// The client messages. The town
-    /// "houses_my_houses_town_name" asks for the character's own houses.
-    void requestTown(const QString& town);
-    void bid(quint32 houseId, quint64 limit);
-    void moveOut(quint32 houseId, quint32 timestamp);
-    void transfer(quint32 houseId, quint32 timestamp, const QString& newOwner, quint64 price);
-    void cancelMoveOut(quint32 houseId);
-    void cancelTransfer(quint32 houseId);
-    void acceptTransfer(quint32 houseId);
-    void rejectTransfer(quint32 houseId);
 
     /// The static house data message: the character's houses, the limits
     /// and the two house lists (the six counts in message order).

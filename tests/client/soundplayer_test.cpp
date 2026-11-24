@@ -5,6 +5,7 @@
 #include "sound/soundplayermanager.h"
 
 #include "readonlymemoryblob.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <cmath>
 
@@ -56,6 +57,20 @@ std::optional<TSoundMetadata> TSoundMetadataManager::sound(uint16_t) const { ret
 std::optional<TSoundMetadata> TSoundMetadataManager::soundByFileName(const QString&) const { return std::nullopt; }
 QString soundDisplayName(const TSoundMetadata& sound) { return sound.fileName; }
 
+}
+
+namespace tibia::shared {
+TTibiaFileSystemHelper::TTibiaFileSystemHelper() = default;
+TTibiaFileSystemHelper::~TTibiaFileSystemHelper() = default;
+bool TTibiaFileSystemHelper::fileExists(const std::string& fileName) const { return fileName == "/sounds/present.ogg"; }
+}
+
+namespace tibia::files {
+shared::TTibiaFileSystemHelper& data()
+{
+    static shared::TTibiaFileSystemHelper helper;
+    return helper;
+}
 }
 
 namespace tibia::shared {
@@ -111,10 +126,33 @@ TEST(TPlayableSound, RegistersAndReleasesItsUse)
         EXPECT_TRUE(first.isReady());
     }
     EXPECT_TRUE(entry.users.empty());
+    // CipSoft counts a sound whose data is still loading as ready; the player waits for it.
     entry.playableData = ESoundDataState::Loading;
     TPlayableSound loading = playable(entry);
-    EXPECT_FALSE(loading.isReady());
+    EXPECT_TRUE(loading.isReady());
     EXPECT_TRUE(loading.isLoading());
+}
+
+TEST(TPlayableSound, IsReadyVisitsThePlayableData)
+{
+    TSoundCacheEntry entry = readyEntry(9);
+    const auto ready = [&entry](TPlayableSoundData data) {
+        entry.playableData = std::move(data);
+        return playable(entry).isReady();
+    };
+    EXPECT_FALSE(ready(ESoundDataState::Unloaded));
+    EXPECT_FALSE(ready(ESoundDataState::Unavailable));
+    EXPECT_TRUE(ready(ESoundDataState::Loading));
+    EXPECT_TRUE(ready(TSoundFile{ "/sounds/present.ogg" }));
+    EXPECT_FALSE(ready(TSoundFile{ "/sounds/missing.ogg" }));
+    EXPECT_TRUE(ready(QByteArray("ogg")));
+    EXPECT_FALSE(ready(QByteArray()));
+    EXPECT_FALSE(ready(TSoundBuffer{}));
+    EXPECT_FALSE(ready(TSoundBuffer{ std::make_shared<TRawSoundSamples>() }));
+
+    // A sound without an id is never ready.
+    entry.playableData = ESoundDataState::Loading;
+    EXPECT_FALSE(TPlayableSound(&entry, TSoundMetadata{}).isReady());
 }
 
 TEST(TSoundPlayerManager, HandsOutFreePlayersAndTakesThemBack)

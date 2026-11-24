@@ -168,10 +168,6 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     // CIP launcher authenticates before the game window; local client-start
     // shows the login mask until setAuthenticated(true).
     m_isAuthenticated = false;
-    // CIP: /images/skin/classic/client-dragon-logo-regular.png — product logo in
-    // the same dragonLogo AnimatedImage (visible with the login mask).
-    m_dragonLogoSource = QStringLiteral("qrc:/images/skin/classic/client-dragon-logo-regular.png");
-    m_createAccountEnabled = true;
     const QJsonObject options = app::ClientOptions::load().options();
     m_upperPaneHeight = static_cast<uint>(options.value(QLatin1String(UpperPaneHeight)).toInt());
     m_lowerPaneHeight = static_cast<uint>(options.value(QLatin1String(LowerPaneHeight)).toInt());
@@ -212,6 +208,17 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     connect(&m_eventsSchedulePreviewTimer, &QTimer::timeout, this,
             &TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout);
     m_eventsSchedulePreviewTimer.start();
+}
+
+QString TGameWindowController::dragonLogoSource() const
+{
+    // Host: the qrc scheme, so pack QML loaded from disk resolves it too.
+    return QStringLiteral("qrc:/images/skin/classic/client-dragon-logo-regular.png");
+}
+
+bool TGameWindowController::createAccountEnabled() const
+{
+    return true;
 }
 
 TGameWindowController::~TGameWindowController()

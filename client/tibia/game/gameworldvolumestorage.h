@@ -25,8 +25,12 @@ class TWorldMapRenderProvider;
 }
 namespace tibia::worldmap {
 class TAmbientLightStorage;
+class TWorldMapCuboid;
 class TWorldMapStorage;
 class TWorldMapViewport;
+}
+namespace tibia::protobuf::protocol {
+class MapFields;
 }
 
 namespace tibia::game {
@@ -52,6 +56,15 @@ public:
     virtual std::shared_ptr<creatures::TCreatureStorage> creatureStorage() const;
     virtual std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory() const;
     virtual std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider() const;
+
+    /// The volume holds the fields of `area` (a house's area of the static map
+    /// data): the storage keeps that box (with its margins), the viewport takes
+    /// the box's sheared envelope (in pixels) centred on the envelope's first
+    /// field, and every field of `fields` (column first, the floors from the
+    /// box's first floor down; each field's skip leaves out that many fields)
+    /// that the storage holds gets its objects; creatures are left out. Throws
+    /// std::runtime_error when the fields do not cover the box.
+    void fillFromArea(const worldmap::TWorldMapCuboid& area, const protobuf::protocol::MapFields& fields);
 
     /// Fits the viewport to the camera: once the camera shows any field, the
     /// viewport takes the camera's volume (in pixels) and centre, the render

@@ -58,9 +58,7 @@ void TAssetHandler::handleAssetData(const TAsset& Asset, const std::shared_ptr<t
     case TAsset::Appearances: {
         if (!m_pSpritesheetsMetadataManager)
             throw std::runtime_error("m_pSpritesheetsMetadataManager == nullptr");
-        // qtclient's appearances manager reads the same spritesheet metadata
-        // through the sprite system.
-        m_pAppearancesManager->initialize(pData->getData().toStdString());
+        m_pAppearancesManager->initialize(pData->getData().toStdString(), m_pSpritesheetsMetadataManager);
         m_pAppearancesManager->postprocessAppearances();
         const TAppearanceTypeList objectTypes = m_pAppearancesManager->getNpcSaleObjectTypes();
         m_pTraderStorage->addAppearanceTypes(std::vector<const appearances::TAppearanceType*>(objectTypes.begin(), objectTypes.end()));

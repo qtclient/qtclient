@@ -35,12 +35,24 @@
 #include <tibia/game/thingsession_forward.h>
 #include "protocol/clientmessages.h"
 #include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include "network/networkqualityprotocolmessagehandler.h"
 
 namespace tibia {
 namespace game {
 
 namespace gameclient = ::tibia::protocol::gameclient;
+
+namespace {
+
+/// The current session's cyclopedia protocol handler; null between sessions.
+cyclopedia::TCyclopediaProtocolMessageHandler* cyclopediaHandler()
+{
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
+}
+
+} // namespace
 
 void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount)
 {
@@ -269,7 +281,8 @@ void inspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t
     if (!canPerformGameAction())
         return;
     if (inspectionType == tibia::client::INSPECT_CYCLOPEDIA) {
-        cyclopedia::TCyclopediaProtocolMessageHandler::sendInspectCyclopediaObject(itemId);
+        if (auto* handler = cyclopediaHandler())
+            handler->sendInspectCyclopediaObject(itemId);
         return;
     }
     gameclient::sendInspectionObject(inspectionType, itemId, itemCount);
@@ -372,29 +385,25 @@ void reportBugCip(uint8_t category, std::string_view comment, std::string_view t
     gameclient::sendBugReport(category, comment, typoSpeaker, typoText, position);
 }
 
-void reportRuleViolationCip(uint8_t type, uint8_t reason, std::string_view name, std::string_view comment, std::string_view translation, uint32_t id)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRuleViolationReport(type, reason, name, comment, translation, id);
-}
-
 void requestBestiary()
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopedia();
+    if (auto* handler = cyclopediaHandler())
+        handler->requestMonsterCyclopedia();
 }
 
 void requestBestiaryOverview(std::string_view catName, bool search, std::vector<uint16_t> raceIds)
 {
     if (!canPerformGameAction())
         return;
+    auto* handler = cyclopediaHandler();
+    if (!handler)
+        return;
     if (search)
-        cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaMonsters(raceIds);
+        handler->requestMonsterCyclopediaMonsters(raceIds);
     else
-        cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaMonsters(
-            QString::fromUtf8(catName.data(), static_cast<qsizetype>(catName.size())));
+        handler->requestMonsterCyclopediaMonsters(QString::fromUtf8(catName.data(), static_cast<qsizetype>(catName.size())));
 }
 
 void requestBossSlootInfo()
@@ -493,12 +502,14 @@ void requestSendBuyCharmRune(uint8_t runeId, uint8_t action, uint16_t raceId)
 {
     if (!canPerformGameAction())
         return;
-    using H = cyclopedia::TCyclopediaProtocolMessageHandler;
+    auto* handler = cyclopediaHandler();
+    if (!handler)
+        return;
     switch (action) {
-        case 0: H::sendUnlockCharm(runeId); break;
-        case 1: H::sendAssignCharm(runeId, raceId); break;
-        case 2: H::sendRemoveCharm(runeId); break;
-        case 3: H::sendResetAllCharms(); break;
+        case 0: handler->sendUnlockCharm(runeId); break;
+        case 1: handler->sendAssignCharm(runeId, raceId); break;
+        case 2: handler->sendRemoveCharm(runeId); break;
+        case 3: handler->sendResetAllCharms(); break;
         default: break;
     }
 }
@@ -507,29 +518,33 @@ void requestSendCharacterInfo(uint32_t playerId, tibia::client::CyclopediaCharac
 {
     if (!canPerformGameAction())
         return;
-    using H = cyclopedia::TCyclopediaProtocolMessageHandler;
+    auto* handler = cyclopediaHandler();
+    if (!handler)
+        return;
     if (characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS ||
         characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS)
-        H::sendOpenCharacterInfo(playerId, characterInfoType, entriesPerPage, page);
+        handler->sendOpenCharacterInfo(playerId, characterInfoType, entriesPerPage, page);
     else
-        H::sendOpenCharacterInfo(playerId, characterInfoType);
+        handler->sendOpenCharacterInfo(playerId, characterInfoType);
 }
 
 void requestSendCyclopediaHouseAuction(tibia::client::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp, uint64_t bidValue, std::string_view name)
 {
     if (!canPerformGameAction())
         return;
-    using H = cyclopedia::TCyclopediaProtocolMessageHandler;
+    auto* H = cyclopediaHandler();
+    if (!H)
+        return;
     const QString text = QString::fromUtf8(name.data(), static_cast<qsizetype>(name.size()));
     switch (type) {
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE: H::sendRequestTownHouses(text); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID: H::sendHouseBid(houseId, bidValue); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT: H::sendHouseMoveOut(houseId, timestamp); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER: H::sendHouseTransfer(houseId, timestamp, text, bidValue); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT: H::sendHouseCancelMoveOut(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER: H::sendHouseCancelTransfer(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER: H::sendHouseAcceptTransfer(houseId); break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER: H::sendHouseRejectTransfer(houseId); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE: H->sendRequestTownHouses(text); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID: H->sendHouseBid(houseId, bidValue); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT: H->sendHouseMoveOut(houseId, timestamp); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER: H->sendHouseTransfer(houseId, timestamp, text, bidValue); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT: H->sendHouseCancelMoveOut(houseId); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER: H->sendHouseCancelTransfer(houseId); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER: H->sendHouseAcceptTransfer(houseId); break;
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER: H->sendHouseRejectTransfer(houseId); break;
     }
 }
 
@@ -547,12 +562,6 @@ void requestStoreOffers(const std::string_view categoryName, const std::string_v
     gameclient::sendRequestStoreOffers(categoryName, subCategory, sortOrder, serviceType);
 }
 
-void requestTextForReport(const Position& position, uint16_t typeId, uint8_t stackPosition)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendGetTextForReport(position, typeId, stackPosition);
-}
 void requestTradeAt(const Position& position, const uint16_t itemId, const int stackPos, const uint32_t creatureId)
 {
     if (!canPerformGameAction() || itemId == 0 || stackPos < 0 || !creatureId)
@@ -621,21 +630,24 @@ void sendCyclopediaMapDonate(uint16_t areaId, uint32_t amount)
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendMapDonation(areaId, amount);
+    if (auto* handler = cyclopediaHandler())
+        handler->sendMapDonation(areaId, amount);
 }
 
 void sendCyclopediaMapResetViewpoints(uint16_t subAreaId)
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendResetMapAreaViewpoints(subAreaId);
+    if (auto* handler = cyclopediaHandler())
+        handler->sendResetMapAreaViewpoints(subAreaId);
 }
 
 void sendCyclopediaMapRequestArea(uint16_t subAreaId)
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendRequestMapArea(subAreaId);
+    if (auto* handler = cyclopediaHandler())
+        handler->sendRequestMapArea(subAreaId);
 }
 void sendExivaOptions(const bool allowAll, const bool allowOwnGuild, const bool allowOwnParty, const bool allowVipList, const bool allowPlayerWhitelist, const bool allowGuildWhitelist, const std::vector<std::string>& characterWhiteList, const std::vector<std::string>& removeCharacter, const std::vector<std::string>& guildWhiteList, const std::vector<std::string>& removeGuild)
 {
@@ -665,14 +677,16 @@ void sendPartyAnalyzerPriceType(const int lootType)
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendPartyHuntLootType(lootType);
+    if (auto* handler = cyclopediaHandler())
+        handler->sendPartyHuntLootType(lootType);
 }
 
 void sendPartyAnalyzerReset()
 {
     if (!canPerformGameAction())
         return;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendResetPartyHuntAnalyser();
+    if (auto* handler = cyclopediaHandler())
+        handler->sendResetPartyHuntAnalyser();
 }
 
 void sendQuickLootAt(uint8_t variant, const Position& position, uint16_t itemId, int stackPos)
@@ -809,14 +823,6 @@ void soulsealFightAction(const uint16_t raceId)
     gameclient::sendSoulSealsAction(raceId);
 }
 
-void stop()
-{
-    if (!canPerformGameAction())
-        return;
-
-    // STOP_ATTACKING_FOLLOWING_WALKING: clear attack, follow and the path, then Cancel.
-    gameSessionState().cancelAttackAndFollow();
-}
 void talkChannel(const tibia::client::MessageMode mode, const uint16_t channelId, const std::string_view message)
 {
     if (!canPerformGameAction() || message.empty())

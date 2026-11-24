@@ -62,7 +62,7 @@ public:
         Outfit outfit;
     };
 
-    using cip::TBossSkinModel::TBossSkinModel;
+    explicit TBossSkinModel(QObject* parent = nullptr);
 
     void setEntries(QList<Entry> entries);
     const QList<Entry>& entries() const { return m_entries; }

@@ -800,6 +800,7 @@ if(TIBIA_WITH_GAMECORE)
     appearances/spriteinfo.cpp appearances/spriteinfo.h
     appearances/worldmaphighlightbaseplate.cpp appearances/worldmaphighlightbaseplate.h
     appearances/creatureplaceholderappearanceinstance.cpp appearances/creatureplaceholderappearanceinstance.h
+    appearances/useableappearances.h
     animation/animator.h
     animation/worldmaplinearmovementtween.cpp animation/worldmaplinearmovementtween.h
     animation/animationinfo.h
@@ -833,6 +834,8 @@ if(TIBIA_WITH_GAMECORE)
     sprites/spriteidentifier.cpp sprites/spriteidentifier.h
     sprites/spritesystem.cpp sprites/spritesystem.h
     sprites/resourcespritesmanager.cpp sprites/resourcespritesmanager.h
+    sprites/qttextureatlastexturecreator.cpp sprites/qttextureatlastexturecreator.h
+    sprites/spritesheetdecompressorconcurrentexception.h
     shared/cip_typed.h
     shared/tibiaclipboardhelper.cpp shared/tibiaclipboardhelper.h
     shared/experiencegainchangetracker.h

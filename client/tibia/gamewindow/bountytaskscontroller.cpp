@@ -27,6 +27,13 @@ constexpr int RerollTokenLimit = 10;
 /// The level the adept, expert and master difficulties need.
 constexpr int RequiredLevelForDifficulty[] = { 30, 150, 400 };
 
+/// The session's task board protocol handler; null without a game session.
+taskboard::TTaskboardProtocolMessageHandler* taskboardHandler(const std::shared_ptr<game::IGameSession>& session)
+{
+    const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
+    return base ? base->taskboardProtocolMessageHandler() : nullptr;
+}
+
 /// The bonus of a talisman level in per cent: 2.5% plus 0.5% per level up to
 /// level 15, 0.25% per level up to 55 and 0.1% per level up to 355.
 double talismanPerCent(const int level)
@@ -112,7 +119,7 @@ TBountyTasksController::TBountyTasksController(QQmlEngine* engine, QQuickItem* d
     m_preferredSlotData = m_preferredModel;
     m_rerollConfirmation.setCloseOnButtonClicked(true);
     connect(&m_rerollConfirmation, &TMessageDialogController::acceptClicked, this,
-            [this] { sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks(); }); });
+            [this] { sendRequest([this] { if (auto* handler = taskboardHandler(m_gameSession)) handler->rerollBountyTasks(); }); });
 }
 
 void TBountyTasksController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -362,8 +369,8 @@ QObject* TBountyTasksController::preferredSlotData() const { return m_preferredM
 
 void TBountyTasksController::showDialogTab()
 {
-    if (m_gameSession)
-        taskboard::TTaskboardProtocolMessageHandler::requestBountyTasks();
+    if (auto* handler = taskboardHandler(m_gameSession))
+        handler->requestBountyTasks();
 }
 
 void TBountyTasksController::hideDialogTab()
@@ -391,7 +398,8 @@ void TBountyTasksController::selectDifficulty(const int difficulty, const bool e
     m_selectedDifficulty = difficulty;
     m_selectedElite = elite;
     m_hasSelection = true;
-    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(difficulty, elite);
+    if (auto* handler = taskboardHandler(m_gameSession))
+        handler->setBountyTaskDifficulty(difficulty, elite);
 }
 
 void TBountyTasksController::setBountyTaskDifficulty(const int Difficulty)
@@ -424,47 +432,47 @@ void TBountyTasksController::rerollTasksAction()
         m_rerollConfirmation.showMessage(qtTrId("taskboard_reroll_confirmation_caption"), qtTrId("taskboard_reroll_confirmation_text"));
         return;
     }
-    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks(); });
+    sendRequest([this] { if (auto* handler = taskboardHandler(m_gameSession)) handler->rerollBountyTasks(); });
 }
 
 void TBountyTasksController::acceptBountyTask(const int TaskIndex)
 {
-    sendRequest([TaskIndex] { taskboard::TTaskboardProtocolMessageHandler::acceptBountyTask(TaskIndex); });
+    sendRequest([this, TaskIndex] { if (auto* handler = taskboardHandler(m_gameSession)) handler->acceptBountyTask(TaskIndex); });
 }
 
 void TBountyTasksController::claimReward()
 {
-    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::claimBountyReward(); });
+    sendRequest([this] { if (auto* handler = taskboardHandler(m_gameSession)) handler->claimBountyReward(); });
 }
 
 void TBountyTasksController::upgradeBountyTalisman(const int BountyTalismanIndex)
 {
-    sendRequest([BountyTalismanIndex] { taskboard::TTaskboardProtocolMessageHandler::upgradeBountyTalisman(BountyTalismanIndex); });
+    sendRequest([this, BountyTalismanIndex] { if (auto* handler = taskboardHandler(m_gameSession)) handler->upgradeBountyTalisman(BountyTalismanIndex); });
 }
 
 void TBountyTasksController::unlockPreferredMonsterSlot()
 {
-    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::unlockPreferredMonsterSlot(); });
+    sendRequest([this] { if (auto* handler = taskboardHandler(m_gameSession)) handler->unlockPreferredMonsterSlot(); });
 }
 
 void TBountyTasksController::clearPreferredMonster(const int slotIndex)
 {
-    sendRequest([slotIndex] { taskboard::TTaskboardProtocolMessageHandler::clearPreferredMonster(slotIndex); });
+    sendRequest([this, slotIndex] { if (auto* handler = taskboardHandler(m_gameSession)) handler->clearPreferredMonster(slotIndex); });
 }
 
 void TBountyTasksController::clearAvoidedMonster(const int slotIndex)
 {
-    sendRequest([slotIndex] { taskboard::TTaskboardProtocolMessageHandler::clearAvoidedMonster(slotIndex); });
+    sendRequest([this, slotIndex] { if (auto* handler = taskboardHandler(m_gameSession)) handler->clearAvoidedMonster(slotIndex); });
 }
 
 void TBountyTasksController::assignPreferredMonster(const int slotIndex, const int RaceId)
 {
-    sendRequest([slotIndex, RaceId] { taskboard::TTaskboardProtocolMessageHandler::assignPreferredMonster(slotIndex, RaceId); });
+    sendRequest([this, slotIndex, RaceId] { if (auto* handler = taskboardHandler(m_gameSession)) handler->assignPreferredMonster(slotIndex, RaceId); });
 }
 
 void TBountyTasksController::assignAvoidedMonster(const int slotIndex, const int RaceId)
 {
-    sendRequest([slotIndex, RaceId] { taskboard::TTaskboardProtocolMessageHandler::assignAvoidedMonster(slotIndex, RaceId); });
+    sendRequest([this, slotIndex, RaceId] { if (auto* handler = taskboardHandler(m_gameSession)) handler->assignAvoidedMonster(slotIndex, RaceId); });
 }
 
 /// Also forgets the creature picked for a preferred / avoided slot.

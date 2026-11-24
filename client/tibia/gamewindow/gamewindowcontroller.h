@@ -74,6 +74,12 @@ public:
                           std::shared_ptr<shared::IClockService> ClockService, QObject* parent = nullptr);
     ~TGameWindowController() override;
 
+    /// CIP: build-flavour constants. qtclient ships as a release build: the
+    /// regular dragon logo (test-server builds show the test-server logo) and
+    /// account creation on (off in test-server builds).
+    QString dragonLogoSource() const override;
+    bool createAccountEnabled() const override;
+
     /// CIP: hands the session to the status bar controller (the game window
     /// controller's own, made with the client options).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);

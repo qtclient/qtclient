@@ -94,6 +94,12 @@ void TSpriteSystem::setAssetLoader(std::shared_ptr<tibia::assets::TAssetAsyncLoa
     m_assetLoader = std::move(assetLoader);
 }
 
+void TSpriteSystem::withMetadataLocked(const std::function<void()>& use)
+{
+    const QMutexLocker lock(&metadataMutex());
+    use();
+}
+
 TSpriteFromSpritesheetInfo TSpriteSystem::spriteInfo(const uint32_t spriteId, const bool opaque)
 {
     TSpritesheetMetadata metadata;

@@ -340,6 +340,10 @@ public:
     /// Keeps the meta info and builds the session's protocol message queue
     /// from its configuration.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
+    /// CIP v16: the premium protocol message handler, the VIP widget and generic
+    /// object game action providers, the item tracking storage and the skill
+    /// wheel game action handler follow `premiumTimeStorage`.
+    void setPremiumTimeStorage(const std::shared_ptr<TPremiumTimeStorage>& premiumTimeStorage) override;
 
     /// Host: the world map's session state (aware range, pruning) starts once
     /// the session's map storage is its class's instance().
@@ -829,6 +833,10 @@ protected:
     /// and what publishes game actions to it.
     virtual void connectGameActionHandlers();
 
+    /// The action bar's game action handler: the game server session makes it
+    /// in its initialize (CIP +0xc60); other sessions have none.
+    std::shared_ptr<input::TActionButtonGameActionHandler> m_actionButtonGameActionHandler;
+
 private:
     void releaseStorages();
 
@@ -887,7 +895,6 @@ private:
     std::shared_ptr<input::TGatherAllProtocolMessageHandler> m_gatherAllProtocolMessageHandler;
     std::shared_ptr<quickloot::TQuickLootGameActionHandler> m_quickLootGameActionHandler;
     std::shared_ptr<input::TGatherAllGameActionHandler> m_gatherAllGameActionHandler;
-    std::shared_ptr<input::TActionButtonGameActionHandler> m_actionButtonGameActionHandler;
     std::shared_ptr<prey::TPreyStorage> m_preyStorage;
     std::shared_ptr<imbuing::TImbuingStorage> m_imbuingStorage;
     std::shared_ptr<imbuing::TImbuementDurationsStorage> m_imbuementDurationsStorage;

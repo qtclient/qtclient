@@ -1,23 +1,29 @@
 #include "bossbestiary/bosstrackerstorage.h"
 
-#include "cyclopedia/cyclopediaciptypes.h"
+#include "qmlcomponents/qmlcomponentsciptypes.h"
 
-#include <client/staticdata.h>
+#include <client/outfit.h>
 
 #include <QDateTime>
+#include <QQmlEngine>
 
 #include <algorithm>
-#include <set>
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::bossbestiary {
 
-namespace {
-
-using Args = std::vector<std::any>;
-
-} // namespace
+TBossTrackerEntry::TBossTrackerEntry(const int raceId, QString name, const Outfit& outfit, const qint64 cooldownUntil)
+    : raceId(raceId)
+    , name(std::move(name))
+    , cooldownUntil(cooldownUntil)
+{
+    // An object outfit shows the object's appearance.
+    const bool objectOutfit = outfit.getId() == 0 && outfit.getAuxId() != 0;
+    const auto outfitId = static_cast<uint16_t>(objectOutfit ? outfit.getAuxId() : outfit.getId());
+    auto* model = new qmlcomponents::TOutfitQmlModel(outfitId, outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet(),
+                                                     (outfit.getAddons() & 1) != 0, (outfit.getAddons() & 2) != 0, objectOutfit, nullptr);
+    QQmlEngine::setObjectOwnership(model, QQmlEngine::CppOwnership);
+    this->outfit.reset(model);
+}
 
 bool TBossTrackerEntry::hasCooldown() const { return cooldownUntil > 0; }
 
@@ -26,66 +32,33 @@ bool TBossTrackerEntry::cooldownExpired() const
     return hasCooldown() && cooldownUntil <= QDateTime::currentSecsSinceEpoch();
 }
 
+bool TBossTrackerEntry::operator==(const TBossTrackerEntry& other) const
+{
+    return raceId == other.raceId && name == other.name && outfit == other.outfit && cooldownUntil == other.cooldownUntil;
+}
+
+bool TBossTrackerEntry::operator!=(const TBossTrackerEntry& other) const
+{
+    return !(*this == other);
+}
+
 TBossTrackerStorage::TBossTrackerStorage(QObject* parent)
     : cip::tibia::bossbestiary::TBossTrackerStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossCooldown", [this](GameObject*, const Args& args) {
-        const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<BossCooldownData>>(&args[0]);
-        m_cooldownUntil.clear();
-        if (list) {
-            for (const BossCooldownData& data : *list)
-                m_cooldownUntil.insert(static_cast<int>(data.bossRaceId), static_cast<qint64>(data.cooldownTime));
-        }
-        rebuild();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseSendBosstiary", [this](GameObject*, const Args& args) {
-        const auto* bosses = args.empty() ? nullptr : std::any_cast<std::vector<BosstiaryData>>(&args[0]);
-        m_unlocked.clear();
-        if (bosses) {
-            for (const BosstiaryData& boss : *bosses) {
-                if (boss.kills == 0)
-                    continue;
-                const int raceId = static_cast<int>(boss.raceId);
-                m_unlocked.insert(raceId, cyclopedia::bossName(raceId));
-            }
-        }
-        rebuild();
-        return std::any{};
-    });
 }
 
-void TBossTrackerStorage::rebuild()
+void TBossTrackerStorage::setEntries(std::vector<TBossTrackerEntry> entries)
 {
-    std::set<int> raceIds;
-    for (auto it = m_unlocked.cbegin(); it != m_unlocked.cend(); ++it)
-        raceIds.insert(it.key());
-    for (auto it = m_cooldownUntil.cbegin(); it != m_cooldownUntil.cend(); ++it)
-        raceIds.insert(it.key());
-
-    std::vector<TBossTrackerEntry> next;
-    next.reserve(raceIds.size());
-    for (const int raceId : raceIds) {
-        TBossTrackerEntry entry;
-        entry.raceId = raceId;
-        entry.name = m_unlocked.value(raceId);
-        if (entry.name.isEmpty())
-            entry.name = cyclopedia::bossName(raceId);
-        entry.cooldownUntil = m_cooldownUntil.value(raceId);
-        next.push_back(std::move(entry));
-    }
-    std::ranges::stable_sort(next, [](const TBossTrackerEntry& a, const TBossTrackerEntry& b) {
-        return QString::localeAwareCompare(a.name, b.name) < 0;
-    });
-
-    const bool changed = next.size() != m_entries.size()
-        || !std::equal(next.begin(), next.end(), m_entries.begin(), [](const TBossTrackerEntry& a, const TBossTrackerEntry& b) {
-               return a.raceId == b.raceId && a.cooldownUntil == b.cooldownUntil && a.name == b.name;
-           });
-    if (!changed)
+    if (entries == m_entries)
         return;
-    m_entries = std::move(next);
+    m_entries = std::move(entries);
     Q_EMIT bossEntriesChanged();
+}
+
+qint64 TBossTrackerStorage::cooldownUntil(const int raceId) const
+{
+    const auto it = std::ranges::find(m_entries, raceId, &TBossTrackerEntry::raceId);
+    return it == m_entries.end() ? 0 : it->cooldownUntil;
 }
 
 } // namespace tibia::bossbestiary

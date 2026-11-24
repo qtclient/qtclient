@@ -84,6 +84,14 @@ void TSmokeActions::runStep(const std::size_t index)
             qInfo().noquote() << "smoke: game action OPEN_STORE (premium page)";
             publish(std::make_shared<input::TGameActionOpenStore>(
                 store::TStoreOpenParameters{ .openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0 }));
+        } else if (action == EGameAction::OPEN_CYCLOPEDIA) {
+            // The Cyclopedia on its bestiary tab (the ShowBestiary hotkey).
+            qInfo().noquote() << "smoke: game action OPEN_CYCLOPEDIA (bestiary)";
+            publish(std::make_shared<input::TGameActionOpenCyclopedia>(1));
+        } else if (action == EGameAction::TOGGLE_WIDGET) {
+            // The boss tracker widget (TSidebarWidgetsManager::BossCooldowns).
+            qInfo().noquote() << "smoke: game action TOGGLE_WIDGET (boss tracker)";
+            publish(std::make_shared<input::TGameActionToggleWidget>(13));
         } else {
             qInfo().noquote() << "smoke: game action" << QMetaEnum::fromType<EGameAction>().valueToKey(int(action));
             publish(std::make_shared<input::gameactions::TGameActionSimple>(action));

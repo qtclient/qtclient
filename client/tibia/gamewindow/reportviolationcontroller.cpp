@@ -80,9 +80,10 @@ bool TReportViolationController::handleAction(const input::IGameAction& action)
         return true;
     case A::GET_TEXT_FOR_REPORT:
         if (const auto* request = input::gameActionAs<input::TGameActionGetTextForReport>(&action)) {
-            const input::TObjectGameActionContext& object = request->object();
-            tibia::game::requestTextForReport(object.position(), object.objectClientId(),
-                                              static_cast<uint8_t>(std::max(object.stackPosition(), 0)));
+            if (reporting::TRuleViolationProtocolMessageHandler* handler = ruleViolationProtocolMessageHandler()) {
+                const input::TObjectGameActionContext& object = request->object();
+                handler->requestTextForReport(object.position(), object.objectClientId(), std::max(object.stackPosition(), 0));
+            }
         }
         return true;
     default:
@@ -145,12 +146,39 @@ QString TReportViolationController::selectedReportReasonName() const
     return m_reason.caption ? qtTrId(m_reason.caption) : QString();
 }
 
-/// A bot report carries no translation.
+reporting::TRuleViolationProtocolMessageHandler* TReportViolationController::ruleViolationProtocolMessageHandler() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->ruleViolationProtocolMessageHandler().get() : nullptr;
+}
+
+/// The session's report of the dialog's type: a bot report carries no
+/// translation; statement, hireling name and text reports their id.
 void TReportViolationController::submitReport(const QString& Comment, const QString& Translation)
 {
-    const std::string translation = m_type == Bot ? std::string() : Translation.toStdString();
-    tibia::game::reportRuleViolationCip(static_cast<uint8_t>(m_type), static_cast<uint8_t>(m_reasonId), m_reportedCharacterName.toStdString(),
-                                  Comment.toStdString(), translation, m_id);
+    reporting::TRuleViolationProtocolMessageHandler* handler = ruleViolationProtocolMessageHandler();
+    if (!handler) {
+        dialog()->close();
+        return;
+    }
+    const auto reason = static_cast<uint32_t>(m_reasonId);
+    switch (m_type) {
+    case Name:
+        handler->reportName(reason, m_reportedCharacterName, Comment, Translation);
+        break;
+    case Statement:
+        handler->reportStatement(reason, m_reportedCharacterName, Comment, Translation, m_id);
+        break;
+    case Bot:
+        handler->reportBot(reason, m_reportedCharacterName, Comment);
+        break;
+    case Hireling:
+        handler->reportHirelingName(reason, m_reportedCharacterName, Comment, Translation, m_id);
+        break;
+    case Text:
+        handler->reportText(reason, m_reportedCharacterName, Comment, Translation, m_id);
+        break;
+    }
     m_lastReport = m_clockService->currentDateTime();
     dialog()->close();
 }

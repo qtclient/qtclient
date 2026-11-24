@@ -3,6 +3,8 @@
 #include "analysers/itempricestorage.h"
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
+#include "container/containerslotinformation.h"
+#include "container/qmlitemslotdata.h"
 #include "cyclopedia/itemtrackingstorage.h"
 #include "game/playerdata.h"
 #include "platform/platform.h"
@@ -100,9 +102,39 @@ int TAppearanceTypeListModel::rowCount(const QModelIndex& parent) const
 
 int TAppearanceTypeListModel::count(const TAppearanceTypeEntry& entry) const
 {
+    // CIP: a list showing display type ids counts the type itself, any other
+    // list counts the type's cyclopedia type.
+    const uint16_t typeId = m_useDisplayTypeId ? entry.typeId : cyclopediaTypeID(entry);
     if (m_objectCountStorage)
-        return static_cast<int>(objectCount(entry.typeId, entry.hasTier ? std::optional<uint8_t>(entry.tier) : std::nullopt));
-    return m_counts ? m_counts(entry.typeId, entry.tier) : 0;
+        return static_cast<int>(objectCount(typeId, entry.hasTier ? std::optional<uint8_t>(entry.tier) : std::nullopt));
+    return m_counts ? m_counts(typeId, entry.tier) : 0;
+}
+
+bool TAppearanceTypeListModel::hasCounts() const
+{
+    // Host: owners without an object count storage count through m_counts.
+    return m_objectCountStorage || m_counts;
+}
+
+uint16_t TAppearanceTypeListModel::cyclopediaTypeID(const TAppearanceTypeEntry& entry) const
+{
+    const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+    return type ? static_cast<uint16_t>(type->getCyclopediaType()) : 0;
+}
+
+QString TAppearanceTypeListModel::lootValueImageSource(const TAppearanceTypeEntry& entry, const int style) const
+{
+    // CIP: the price storage's loot value level of the cyclopedia type, shown
+    // under (style 1) or over (style 2) the object as the options' loot style
+    // says. Host: a list without client options shows none.
+    if (m_itemPriceStorage == nullptr)
+        return QString();
+    const int level = m_itemPriceStorage->lootValueLevel(cyclopediaTypeID(entry));
+    if (level == 0 || m_clientOptions == nullptr || m_clientOptions->colorizeLootStyle() != style)
+        return QString();
+    return QStringLiteral("image://%1/%2")
+        .arg(style == 1 ? QStringLiteral("containerslot-glowingborders") : QStringLiteral("containerslot-coloredges"))
+        .arg(level - 1);
 }
 
 uint16_t TAppearanceTypeListModel::displayTypeID(const TAppearanceTypeEntry& entry) const
@@ -118,75 +150,69 @@ uint16_t TAppearanceTypeListModel::displayTypeID(const TAppearanceTypeEntry& ent
 
 QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role) const
 {
+    using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
     if (!index.isValid() || index.row() >= static_cast<int>(m_entries.size()))
         return {};
     const TAppearanceTypeEntry& entry = m_entries[index.row()];
+    // CIP: the count of the type (or of its tier) comes first, 0 without a count storage.
+    const uint n = hasCounts() ? static_cast<uint>(count(entry)) : 0u;
     switch (role) {
     case TypeID:
-        return entry.typeId;
+        return static_cast<int>(entry.typeId);
     case DisplayTypeID:
-        return displayTypeID(entry);
+        return static_cast<int>(displayTypeID(entry));
     case CumulativeCount:
-        return std::min(count(entry), 255);
+        return std::min(n, 255u);
     case TypeCount:
-        return count(entry);
-    case CountString: {
-        const int n = count(entry);
-        if (n < 10000)
-            return QString::number(n);
-        if (n < MaximumShownCount)
-            return QStringLiteral("%1k").arg(n / 1000);
-        return QStringLiteral("65k+");
-    }
+        return n;
+    case CountString:
+        if (!hasCounts())
+            return QString();
+        return m_firstDisplayFlag ? container::ammoText(n) : container::countVariants(n);
     case CountAndNameTooltip: {
         if (entry.name.isEmpty())
             return QString();
-        const int n = count(entry);
-        const QString amount = n > MaximumShownCount ? QStringLiteral("65k+") : formatAmount(static_cast<qulonglong>(n));
+        if (!hasCounts())
+            return entry.name;
+        const QString amount =
+            n > static_cast<uint>(MaximumShownCount) && m_firstDisplayFlag ? QStringLiteral("65k+") : formatAmount(n);
         return QStringLiteral("%1x %2").arg(amount, entry.name);
     }
     case TypeName:
         return entry.name.isEmpty() ? qtTrId("dummy_unknown") : entry.name;
     case LiquideType:
+        return QVariant::fromValue(static_cast<Info::ELiquidType>(0));
     case HookDirection:
-    case DecoItemObjectID:
-        return 0;
-    case TradeableInMarket: {
-        // The market trades the type under its own id.
-        const TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem);
-        return type != nullptr && type->isMarketable();
-    }
-    case MarketAverageValue: {
-        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
-        return prices ? QVariant::fromValue<quint64>(prices->marketPrice(entry.typeId)) : QVariant::fromValue<quint64>(0);
-    }
-    case NpcSellValue: {
-        const analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
-        return prices ? static_cast<int>(prices->npcBuyPrice(entry.typeId)) : 0;
-    }
-    case ProficiencyXP: {
-        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
-        return proficiencies ? static_cast<int>(proficiencies->xp(entry.typeId)) : 0;
-    }
-    case ProficiencyLevel: {
-        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
-        return proficiencies ? proficiencies->decorationLevel(entry.typeId) : 0;
-    }
+        return QVariant::fromValue(static_cast<Info::EHookDirection>(0));
     case LootvalueImageSourceUnderItem:
+        return lootValueImageSource(entry, 1);
     case LootvalueImageSourceOverItem:
-        return QString();
+        return lootValueImageSource(entry, 2);
     case HighlightText:
-        return false;
-    case HasProficiencyMastery: {
-        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
-        return proficiencies && proficiencies->hasMastery(entry.typeId);
-    }
+        return m_secondDisplayFlag && m_itemTrackingStorage && m_itemTrackingStorage->isTracked(cyclopediaTypeID(entry));
     case Classification:
         return entry.classification;
     case UpgradeTier:
-        return entry.tier;
+        return entry.hasTier ? static_cast<int>(entry.tier) : 0;
     case MarketCategory:
         return entry.marketCategory;
+    case DecoItemObjectID:
+        return 0u;
+    case TradeableInMarket: {
+        // The type has market properties.
+        const TAppearanceTypePtr type = tibia::game::thingType(entry.typeId, ThingCategoryItem);
+        return type != nullptr && type->marketProperties() != nullptr;
+    }
+    case MarketAverageValue:
+        return QVariant::fromValue<qulonglong>(m_itemPriceStorage != nullptr ? m_itemPriceStorage->marketPrice(entry.typeId) : 0);
+    case NpcSellValue:
+        return m_itemPriceStorage != nullptr ? static_cast<uint>(m_itemPriceStorage->npcBuyPrice(entry.typeId)) : 0u;
+    case ProficiencyXP:
+        return m_proficiencyStorage != nullptr ? static_cast<uint>(m_proficiencyStorage->xp(entry.typeId)) : 0u;
+    case ProficiencyLevel:
+        return m_proficiencyStorage != nullptr ? static_cast<uint>(m_proficiencyStorage->decorationLevel(entry.typeId)) : 0u;
+    case HasProficiencyMastery:
+        return m_proficiencyStorage != nullptr && m_proficiencyStorage->hasMastery(entry.typeId);
     default:
         return {};
     }
@@ -250,10 +276,33 @@ void TAppearanceTypeListModel::setItems(std::vector<TAppearanceTypeEntry> entrie
 {
     // Kept rows are the same type and tier; a row whose tier presence or tier
     // differs is copied and reported changed.
-    const auto equal = [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) {
-        return a.typeId == b.typeId && a.hasTier == b.hasTier && (!a.hasTier || a.tier == b.tier);
-    };
-    mergeSortedItems(m_entries, std::move(entries), lessThan, sameKey, equal);
+    if (hasSameItems(entries))
+        return;
+    mergeSortedItems(m_entries, std::move(entries), lessThan, sameKey, sameItem);
+}
+
+bool TAppearanceTypeListModel::sameItem(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right)
+{
+    return left.typeId == right.typeId && left.hasTier == right.hasTier && (!left.hasTier || left.tier == right.tier);
+}
+
+bool TAppearanceTypeListModel::hasSameItems(const std::vector<TAppearanceTypeEntry>& entries) const
+{
+    // CIP: the same items in the same order, or the same items once `entries`
+    // is sorted.
+    if (m_entries.size() != entries.size())
+        return false;
+    if (std::equal(m_entries.begin(), m_entries.end(), entries.begin(), sameItem))
+        return true;
+    std::vector<size_t> order(entries.size());
+    for (size_t i = 0; i < order.size(); ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(), [&entries](const size_t a, const size_t b) { return lessThan(entries[a], entries[b]); });
+    for (size_t i = 0; i < order.size(); ++i) {
+        if (!sameItem(m_entries[i], entries[order[i]]))
+            return false;
+    }
+    return true;
 }
 
 void TAppearanceTypeListModel::notifyRolesChanged(const QList<int>& roles)

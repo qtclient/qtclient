@@ -4,6 +4,7 @@
 #include "client/gamecore.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -11,11 +12,15 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -189,9 +194,13 @@ class TDamageInputWidgetController final
     Q_OBJECT
 
 public:
-    TDamageInputWidgetController(TDamageInputStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// The widget's models and item; the values come with the game session.
+    TDamageInputWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
-    void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's damage input storage and sidebar options feed the
+    /// widget (its lists, graph and configuration refresh at once); null
+    /// leaves it empty.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool showDamageGraph() const override;
     bool showDamageTypeList() const override;
@@ -250,7 +259,10 @@ private:
     void updateGraph();
     QString exportText() const;
 
-    TDamageInputStorage* m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's storage (null without a session).
+    TDamageInputStorage* m_storage = nullptr;
     TDamageSourceModel* m_sources;
     TDamageTypedModel* m_types;
     TDamageTypedModel* m_fromSource;

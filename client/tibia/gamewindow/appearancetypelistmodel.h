@@ -131,6 +131,11 @@ public:
     /// (type, tier) order; an entry without a tier sorts as tier 0.
     static bool lessThan(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right);
     static bool sameKey(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right);
+    /// Same type, same tier presence and tier.
+    static bool sameItem(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right);
+    /// CIP: `entries` holds the shown items (in the shown order, or once
+    /// sorted), so setting them changes nothing.
+    bool hasSameItems(const std::vector<TAppearanceTypeEntry>& entries) const;
     /// The entry of `row`, or an empty one for a row out of range.
     const TAppearanceTypeEntry& entry(int row) const;
     int size() const { return static_cast<int>(m_entries.size()); }
@@ -148,6 +153,12 @@ private:
     /// dataChanged over every row for `roles`.
     void notifyRolesChanged(const QList<int>& roles);
     int count(const TAppearanceTypeEntry& entry) const;
+    /// Whether the list has counts (CIP: an object count storage).
+    bool hasCounts() const;
+    /// The type's cyclopedia type (0 without one).
+    uint16_t cyclopediaTypeID(const TAppearanceTypeEntry& entry) const;
+    /// The loot value frame under (style 1) or over (2) the type.
+    QString lootValueImageSource(const TAppearanceTypeEntry& entry, int style) const;
     /// The type the row shows: with useDisplayTypeId, the market's show-as
     /// type of a market object; otherwise the type's cyclopedia type, or the
     /// type itself without one.

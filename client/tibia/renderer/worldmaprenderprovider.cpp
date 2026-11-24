@@ -1482,16 +1482,7 @@ void TWorldMapRenderProvider::addObject(const FieldEntry& field, const int stack
     const uint8_t lift = type->isOnTop() ? 0 : appearance->elevation();
     const QPoint at(dest.x() - lift, dest.y() - lift);
     const SpriteRecord::Highlight highlight = itemHighlightOf(tile->getPosition(), stackIndex, appearance->id());
-    m_objectCounter.addObject(field.coordinate, type->getId());
-    const size_t firstRecord = m_records.size();
-    addItemFromAppearance(appearance, at, highlight, lift, tile, castHeight);
-    // An opaque object drawn at its field's corner hides the lower floors
-    // under the whole fields it covers.
-    if (type->isOpaque() && lift == 0 && type->getDisplacement().isNull()) {
-        for (size_t i = firstRecord; i < m_records.size(); ++i)
-            occlude(grid, m_records[i], m_floor);
-    }
-    m_frameTypes.insert(type);
+    addRenderInfos(*appearance, field.coordinate, at, highlight, lift, tile, castHeight, grid);
     m_key = DrawKey{ .group = 2, .x = x, .y = y, .z = m_floor };
     elevation = tile->objectElevation();
 }
@@ -1505,76 +1496,69 @@ void TWorldMapRenderProvider::pushRecord(SpriteRecord record)
     m_records.push_back(std::move(record));
 }
 
-void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                                      const QPoint& dest, const SpriteRecord::Highlight highlight)
+void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInstance& instance,
+                                             const worldmap::TWorldMapCoordinate& coordinate, const QPoint& dest,
+                                             const SpriteRecord::Highlight highlight, const uint8_t lift,
+                                             tibia::worldmap::TWorldMapField* tile, const bool castHeight,
+                                             TOcclusionGrid& grid)
 {
-    addItemFromAppearance(appearance, dest, highlight, 0, nullptr, true);
-}
-
-void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                                      const QPoint& dest, const SpriteRecord::Highlight highlight,
-                                                      const uint8_t lift, tibia::worldmap::TWorldMapField* tile,
-                                                      const bool castHeight)
-{
-    if (!appearance)
-        return;
-
-    TAppearanceType* type = appearance->thingType();
+    TAppearanceType* type = instance.thingType();
     if (!type)
         return;
-
-    const auto* object = dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get());
+    const auto* object = dynamic_cast<const appearances::TObjectAppearanceInstance*>(&instance);
+    // Host: an object the server marked undrawable draws nothing.
     if (object && !object->drawable())
         return;
 
-    int xPattern = 0;
-    int yPattern = 0;
-    int zPattern = 0;
+    // What the instance draws on its field.
+    renderer::TRenderInfoList infos;
     if (object) {
-        xPattern = object->patternX();
-        yPattern = object->patternY();
-        zPattern = object->patternZ();
+        object->appendRenderInfos(coordinate, infos);
+    } else {
+        infos.push_back({ .type = type, .spriteInfo = instance.currentSpriteInfo(), .coordinate = coordinate,
+                          .displacement = instance.displacement(), .movementOffset = instance.movementOffset(),
+                          .kind = renderer::TRenderInfo::Self, .isCreature = instance.isCreature() });
     }
 
-    // The object's sprite sequence holds its pattern's sprites per phase; its
-    // animator picks the phase.
-    const appearances::TAppearanceInstanceSpriteSequence* sequence = object ? object->spriteSequence().get() : nullptr;
+    // Host (pack lighting): the object's own sprite stamps the phase the
+    // lighting asks for, with the object's pattern.
+    const appearances::TAppearanceInstanceSpriteSequence* sequence = instance.spriteSequence().get();
     const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
         : object                                       ? object->calculateAnimationPhase()
                                                        : 0;
-    // Objects draw their sequence's current sprite; without one the type's pattern.
-    const auto addObjectSprite = [&] {
-        if (sequence)
-            addSequenceSprite(*appearance, dest, phase, xPattern, 1.f, 0, highlight);
-        else
-            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
-    };
+    const int xPattern = object ? object->patternX() : 0;
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile, castHeight)))
         : std::nullopt;
 
-    if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
-        // The socket's render infos: the socket itself while it is shown, then
-        // the figure's mount and outfit.
-        renderer::TRenderInfoList infos;
-        showOff->appendRenderInfos(tile ? tile->coordinate() : worldmap::TWorldMapCoordinate(), infos);
-        for (const renderer::TRenderInfo& info : infos) {
-            if (info.kind != renderer::TRenderInfo::Self) {
-                addRenderInfo(info, dest, highlight);
-                continue;
-            }
-            addObjectSprite();
-            if (objectShines(*type, *appearance))
-                addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
+    using EKind = appearances::IAppearanceInstanceSpriteInfo::EKind;
+    for (const renderer::TRenderInfo& info : infos) {
+        if (!info.spriteInfo || !info.type)
+            continue;
+        m_objectCounter.addObject(coordinate, info.type->getId());
+        // Creature marks and the highlight baseplate are never tinted.
+        const EKind kind = info.spriteInfo->kind();
+        const SpriteRecord::Highlight shown =
+            kind != EKind::CreatureMark && kind != EKind::HighlightBaseplate ? highlight : SpriteRecord::NoHighlight;
+        const size_t firstRecord = m_records.size();
+        if (sequence && info.kind == renderer::TRenderInfo::Self && info.spriteInfo == sequence->currentSpriteInfo())
+            addSequenceSprite(instance, dest, phase, xPattern, 1.f, 0, shown);
+        else
+            addRenderInfo(info, dest, shown);
+        // A shining type lights the map.
+        if (objectShines(*info.type, instance))
+            addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), info.type->getLight().intensity,
+                     info.type->getLight().color);
+        // An opaque sprite drawn at its field's corner hides the lower floors
+        // under the whole fields it covers.
+        const worldmap::TWorldMapSubfieldExtent offset = info.drawPosition().offset;
+        if (info.type->isOpaque() && offset.width == 0 && offset.height == 0 && offset.depth == 0) {
+            for (size_t i = firstRecord; i < m_records.size(); ++i)
+                occlude(grid, m_records[i], m_floor);
         }
-        return;
+        m_frameTypes.insert(info.type);
     }
-
-    addObjectSprite();
-    if (objectShines(*type, *appearance))
-        addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
-
 
 void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                               const tibia::creatures::TCreature& stored, const QPoint& dest,

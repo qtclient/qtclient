@@ -378,11 +378,15 @@ private:
     /// Key for a creature or top object of `field` at draw-grid (x, y): moved
     /// into the slot of a lying object down or right of it.
     DrawKey slotKey(const worldmap::TWorldMapCoordinate& field, int x, int y, uint8_t layer, uint8_t index) const;
-    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
-                               SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
-    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
-                               SpriteRecord::Highlight highlight, uint8_t lift, tibia::worldmap::TWorldMapField* tile,
-                               bool castHeight = true);
+    /// What one instance on `coordinate` draws, render info by render info:
+    /// each info with a sprite counts its type near the player, draws with the
+    /// current key at `dest` (the field's corner lifted by `lift`), tinted by
+    /// `highlight` unless it is a creature mark or the baseplate, lights the
+    /// map when its type shines, hides the lower floors under the fields an
+    /// opaque sprite at its field's corner covers, and keeps its type.
+    void addRenderInfos(const appearances::TAppearanceInstance& instance, const worldmap::TWorldMapCoordinate& coordinate,
+                        const QPoint& dest, SpriteRecord::Highlight highlight, uint8_t lift,
+                        tibia::worldmap::TWorldMapField* tile, bool castHeight, TOcclusionGrid& grid);
     /// CIP v10: mouse-target tint when stack entry matches hover object id (not creature).
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
     void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,

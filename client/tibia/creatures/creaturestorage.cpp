@@ -587,10 +587,19 @@ void TCreature::hideStaticSquare()
     m_marks.staticSquare.setAlpha(0);
 }
 
+namespace {
+qint64 g_timedSquareDuration = 1000;
+}
+
+void TCreature::setTimedSquareDuration(const qint64 Milliseconds)
+{
+    g_timedSquareDuration = Milliseconds;
+}
+
 void TCreature::addTimedSquare(const QColor& color, const qint64 nowMs)
 {
     m_marks.timedSquare = color;
-    m_marks.timedSquareEndMs = nowMs + tibia::config::volatileSquareDuration();
+    m_marks.timedSquareEndMs = nowMs + g_timedSquareDuration;
     m_marks.timedSquareShown = true;
 }
 

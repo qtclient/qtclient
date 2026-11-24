@@ -26,6 +26,10 @@ namespace tibia::protobuf::appearances {
 class Appearance;
 class SpriteInfo;
 }
+namespace tibia::sprites {
+class TSpritesheetsMetadataManager;
+struct TSpriteFromSpritesheetInfo;
+}
 
 namespace tibia::appearances {
 
@@ -65,10 +69,20 @@ class TAppearanceTypeSpriteInfo
 {
 public:
     TAppearanceTypeSpriteInfo() = default;
+    /// One sprite of the group: where it lives in its spritesheet.
+    using TSpritePtr = std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>;
+
     /// Builds the frame group from its protobuf description; the sprites' pixel
-    /// size is the one of the first sprite.
+    /// size is the one of the first sprite. With `metadataManager` every
+    /// sprite id is resolved to its spritesheet and cell now.
     static TAppearanceTypeSpriteInfo fromProtobuf(const tibia::protobuf::appearances::SpriteInfo& message,
-                                                  const TSpriteSizeLookup& spriteSize);
+                                                  const TSpriteSizeLookup& spriteSize,
+                                                  sprites::TSpritesheetsMetadataManager* metadataManager = nullptr);
+    /// The sprites of `message`'s sprite ids, in order: each in the spritesheet
+    /// the metadata names for it, at its cell there, opaque when the frame
+    /// group is.
+    static std::vector<TSpritePtr> spritesFromProtobuf(const tibia::protobuf::appearances::SpriteInfo& message,
+                                                       sprites::TSpritesheetsMetadataManager& metadataManager);
 
     /// The sprite count is a non-zero multiple of the patterns times the layers.
     bool isValid() const;
@@ -88,6 +102,9 @@ public:
     /// The bounding box per direction (one per x pattern at least).
     const std::vector<QRect>& boundingBoxes() const { return m_boundingBoxes; }
     const std::vector<uint32_t>& spriteIds() const { return m_spriteIds; }
+    /// The resolved sprites, one per sprite id (empty when the group was built
+    /// without spritesheet metadata).
+    const std::vector<TSpritePtr>& sprites() const { return m_sprites; }
     /// The pixel size of the group's sprites (from its first sprite).
     QSize spriteSize() const { return m_spriteSize; }
     bool isAnimated() const { return m_animated; }
@@ -109,6 +126,7 @@ private:
     uint32_t m_layers = 1;
     std::vector<QRect> m_boundingBoxes;
     std::vector<uint32_t> m_spriteIds;
+    std::vector<TSpritePtr> m_sprites;
     bool m_animated = false;
     bool m_opaque = false;
     std::optional<tibia::animation::TAnimationInfo> m_animation;
@@ -145,7 +163,8 @@ public:
     /// Converts one protobuf appearance of `category`.
     static TAppearanceType fromProtobuf(EAppearanceCategory category,
                                         const tibia::protobuf::appearances::Appearance& appearance,
-                                        const TSpriteSizeLookup& spriteSize);
+                                        const TSpriteSizeLookup& spriteSize,
+                                        sprites::TSpritesheetsMetadataManager* metadataManager = nullptr);
 
     // Identity.
     uint16_t getId() const { return m_id; }

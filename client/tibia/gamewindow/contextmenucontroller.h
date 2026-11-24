@@ -11,6 +11,7 @@
 #include <QTimer>
 
 #include <functional>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -19,6 +20,7 @@ class QQuickItem;
 
 namespace tibia {
 namespace input {
+class TEventFilterManager;
 class TGameActionMapper;
 }
 }
@@ -48,10 +50,18 @@ class TContextMenuController final : public cip::tibia::gamewindow::TContextMenu
 {
     Q_OBJECT
 public:
-    TContextMenuController(QQmlEngine* engine, QQuickItem* root, QObject* parent = nullptr);
+    /// CIP: the menu's items over `root`; it shows and hides through
+    /// `eventFilterManager`.
+    TContextMenuController(QQmlEngine* engine, QQuickItem* root, std::shared_ptr<input::TEventFilterManager> eventFilterManager,
+                           QObject* parent = nullptr);
     ~TContextMenuController() override;
 
     static TContextMenuController* instance();
+    /// CIP: the process-wide context menu over `root` (replaces the previous
+    /// one).
+    static void createInstance(QQmlEngine* engine, QQuickItem* root, std::shared_ptr<input::TEventFilterManager> eventFilterManager);
+    /// CIP: releases the process-wide context menu.
+    static void resetInstance();
 
     /// CIP : one entry per action (CONTEXT_MENU_SEPARATOR is a
     /// separator); the first action a Shift, Ctrl or Alt left click would run
@@ -102,6 +112,7 @@ private:
     void requestShow();
 
     QPointer<QQuickItem> m_root;
+    std::shared_ptr<input::TEventFilterManager> m_eventFilterManager;
     QPointer<QQuickItem> m_shield;
     QPointer<QQuickItem> m_menu;
     QTimer m_showTimer;

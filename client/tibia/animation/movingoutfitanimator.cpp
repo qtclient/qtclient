@@ -4,9 +4,18 @@
 
 namespace tibia::animation {
 
+TAnimationInfo TMovingOutfitAnimator::singlePhaseInfo()
+{
+    TAnimationInfo info;
+    info.phases.push_back({ 0, 0 });
+    info.finish();
+    return info;
+}
+
 TMovingOutfitAnimator::TMovingOutfitAnimator(const quint32 phaseCount, const bool pingPong, const qint64 minimumCycleMs,
                                              const qint64 maximumCycleMs)
-    : m_phaseCount(phaseCount)
+    : TAnimator(singlePhaseInfo(), 0)
+    , m_phaseCount(phaseCount)
     , m_pingPong(pingPong)
     , m_minimumCycle(minimumCycleMs)
     , m_maximumCycle(maximumCycleMs)
@@ -66,7 +75,7 @@ void TMovingOutfitAnimator::update(const qint64 nowMs)
     const qint64 elapsed = std::max<qint64>(0, nowMs - m_keyStart) + m_accumulated;
     const qint64 duration = std::max<qint64>(1, phaseDuration());
     const auto index = static_cast<quint32>(elapsed / duration);
-    m_phase = m_pingPong ? pingPongPhase(m_phaseCount, index) : index % m_divisor;
+    m_phase = static_cast<int>(m_pingPong ? pingPongPhase(m_phaseCount, index) : index % m_divisor);
     m_fraction = phaseFraction(nowMs);
 }
 

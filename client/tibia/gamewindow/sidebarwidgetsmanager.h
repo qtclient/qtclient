@@ -167,6 +167,9 @@ public:
     /// the bosstiary tracker's cooldowns, the containers' clocks and the
     /// imbuement tracker's countdown.
     void updateWithTimestamp(qint64 TimestampMilliseconds);
+    /// The game session the widgets follow (null without one); widgets made
+    /// on toggle connect to it.
+    const std::shared_ptr<game::IGameSession>& gameSession() const { return m_gameSession; }
     TBattleListControllerStorage* battleLists() const { return m_battleLists.get(); }
     /// The widgets the manager keeps by type (host: their qtclient managers).
     TVipWidgetManager* vipWidget() const { return m_vip.get(); }

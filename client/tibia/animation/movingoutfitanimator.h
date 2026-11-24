@@ -1,5 +1,7 @@
 #pragma once
 
+#include "animation/phaseanimator.h"
+
 #include <QtGlobal>
 
 namespace tibia::animation {
@@ -7,8 +9,9 @@ namespace tibia::animation {
 /// Phase of a walking outfit. The phase duration follows the duration of the
 /// current step (its "key"), clamped so a full cycle takes between the minimum
 /// and maximum total; when the key changes the clock is rebased so the phase
-/// and the progress within it carry over.
-class TMovingOutfitAnimator
+/// and the progress within it carry over. It is an animator of one fixed
+/// phase of no duration whose phase it computes itself.
+class TMovingOutfitAnimator : public TAnimator
 {
 public:
     static constexpr qint64 kMinimumCycleMs = 280;
@@ -18,7 +21,7 @@ public:
                           qint64 maximumCycleMs = kMaximumCycleMs);
 
     /// Recompute the phase at `nowMs`.
-    void update(qint64 nowMs);
+    void update(qint64 nowMs) override;
     void setDivisor(quint32 divisor);
     /// Start a step of `keyMs` at `nowMs` (no effect when the key is unchanged).
     void setKey(qint64 keyMs, qint64 nowMs);
@@ -29,7 +32,6 @@ public:
     qint64 minimumPhaseDuration() const { return m_minimumPhase; }
     qint64 maximumPhaseDuration() const { return m_maximumPhase; }
 
-    quint32 phase() const { return m_phase; }
     quint32 phaseCount() const { return m_phaseCount; }
     bool isPingPong() const { return m_pingPong; }
 
@@ -37,7 +39,9 @@ public:
     static quint32 pingPongPhase(quint32 count, quint32 index);
 
 private:
-    quint32 m_phase = 0;
+    /// The base animator's info: one fixed phase of no duration.
+    static TAnimationInfo singlePhaseInfo();
+
     qint64 m_key = 0;
     qint64 m_keyStart = 0;
     qint64 m_accumulated = 0;

@@ -82,11 +82,27 @@ void TSidebarWidget::createItemFromUrl(const QUrl& url)
 
 void TSidebarWidget::show()
 {
+    if (m_showOverride)
+        m_showOverride();
+    else
+        showItem();
+}
+
+void TSidebarWidget::hide()
+{
+    if (m_hideOverride)
+        m_hideOverride();
+    else
+        hideItem();
+}
+
+void TSidebarWidget::showItem()
+{
     if (m_item)
         m_item->setVisible(true);
 }
 
-void TSidebarWidget::hide()
+void TSidebarWidget::hideItem()
 {
     if (m_item)
         m_item->setVisible(false);

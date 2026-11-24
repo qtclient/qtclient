@@ -16,6 +16,9 @@
 namespace tibia::game {
 class IGameSession;
 }
+namespace tibia::reporting {
+class TRuleViolationProtocolMessageHandler;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -74,6 +77,8 @@ public:
 private:
     bool handleAction(const input::IGameAction& action);
     void open(EType type, const QString& name, const QString& statement, uint32_t id);
+    /// The session's rule violation handler (null without a session).
+    reporting::TRuleViolationProtocolMessageHandler* ruleViolationProtocolMessageHandler() const;
 
     /// The time of the last report and the cooldown are read from it.
     std::shared_ptr<shared::IClockService> m_clockService;

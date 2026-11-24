@@ -1,5 +1,6 @@
 #include "appearances/appearanceinstancespritesequence.h"
 
+#include "animation/movingoutfitanimator.h"
 #include "appearances/appearancetype.h"
 #include "sprites/spritesystem.h"
 
@@ -63,6 +64,17 @@ bool TAppearanceInstanceSpriteSequence::update(const qint64 nowMs)
     return m_animator->phase() != before;
 }
 
+void TAppearanceInstanceSpriteSequence::setAnimatorKey(const qint64 keyMs, const qint64 nowMs)
+{
+    if (!m_animator)
+        return;
+    if (auto* moving = dynamic_cast<animation::TMovingOutfitAnimator*>(m_animator.get())) {
+        // The animator stays alive while it takes the key.
+        const std::shared_ptr<animation::TAnimator> keep = m_animator;
+        moving->setKey(keyMs, nowMs);
+    }
+}
+
 std::vector<std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>>
 TAppearanceInstanceSpriteSequence::phaseSprites(const TAppearanceTypeSpriteInfo& spritesInfo, const TAppearancePattern& pattern,
                                                 const int layer)
@@ -71,11 +83,12 @@ TAppearanceInstanceSpriteSequence::phaseSprites(const TAppearanceTypeSpriteInfo&
     static const auto invalid =
         std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(0, QString::fromUtf8(""), QRect(), false);
     std::vector<std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>> sprites;
-    const auto& ids = spritesInfo.spriteIds();
+    // The frame group's sprites were placed in their spritesheets at load.
+    const auto& resolved = spritesInfo.sprites();
     const uint32_t frame = spritesInfo.patternWidth() * spritesInfo.patternHeight() * spritesInfo.patternDepth() * spritesInfo.layers();
     if (frame == 0)
         return sprites;
-    const size_t phases = ids.size() / frame;
+    const size_t phases = resolved.size() / frame;
     sprites.reserve(phases);
     for (size_t phase = 0; phase < phases; ++phase) {
         const size_t index = (((spritesInfo.patternDepth() * phase + pattern.z) * spritesInfo.patternHeight() + pattern.y)
@@ -83,9 +96,8 @@ TAppearanceInstanceSpriteSequence::phaseSprites(const TAppearanceTypeSpriteInfo&
                               + pattern.x)
                 * spritesInfo.layers()
             + layer;
-        if (index < ids.size())
-            sprites.push_back(std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(
-                sprites::TSpriteSystem::instance().spriteInfo(ids[index], spritesInfo.isOpaque())));
+        if (index < resolved.size())
+            sprites.push_back(resolved[index]);
         else
             sprites.push_back(invalid);
     }
@@ -97,7 +109,7 @@ QRect TAppearanceInstanceSpriteSequence::boundingBox(const TAppearanceTypeSprite
     const auto& boxes = spritesInfo.boundingBoxes();
     if (x >= 0 && static_cast<size_t>(x) < boxes.size())
         return boxes[static_cast<size_t>(x)];
-    if (!spritesInfo.spriteIds().empty() && spritesInfo.spriteSize().isValid())
+    if (!spritesInfo.sprites().empty() && spritesInfo.spriteSize().isValid())
         return QRect(QPoint(0, 0), spritesInfo.spriteSize());
     return QRect(0, 0, 32, 32);
 }
@@ -110,23 +122,22 @@ std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> patternSprite(const T
                                                                          const TAppearancePattern& pattern, const int layer,
                                                                          const size_t phase)
 {
-    const auto& ids = spritesInfo.spriteIds();
+    const auto& resolved = spritesInfo.sprites();
     const size_t index = (((spritesInfo.patternDepth() * phase + pattern.z) * spritesInfo.patternHeight() + pattern.y)
                               * spritesInfo.patternWidth()
                           + pattern.x)
             * spritesInfo.layers()
         + layer;
-    if (index >= ids.size())
+    if (index >= resolved.size())
         return nullptr;
-    return std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(
-        sprites::TSpriteSystem::instance().spriteInfo(ids[index], spritesInfo.isOpaque()));
+    return resolved[index];
 }
 
 /// The frame group's phases.
 size_t phaseCount(const TAppearanceTypeSpriteInfo& spritesInfo)
 {
     const uint32_t frame = spritesInfo.patternWidth() * spritesInfo.patternHeight() * spritesInfo.patternDepth() * spritesInfo.layers();
-    return frame == 0 ? 0 : spritesInfo.spriteIds().size() / frame;
+    return frame == 0 ? 0 : spritesInfo.sprites().size() / frame;
 }
 
 } // namespace

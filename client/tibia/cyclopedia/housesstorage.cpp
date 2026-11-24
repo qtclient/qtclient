@@ -302,45 +302,4 @@ void THousesStorage::reset()
     Q_EMIT houseInformationChanged();
 }
 
-void THousesStorage::requestTown(const QString& town)
-{
-    const QString name = town == qtTrId("houses_my_houses_town_name") ? QString() : town;
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE, 0, 0, 0, name.toStdString());
-}
-
-void THousesStorage::bid(const quint32 houseId, const quint64 limit)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID, houseId, 0, limit);
-}
-
-void THousesStorage::moveOut(const quint32 houseId, const quint32 timestamp)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT, houseId, timestamp);
-}
-
-void THousesStorage::transfer(const quint32 houseId, const quint32 timestamp, const QString& newOwner, const quint64 price)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER, houseId, timestamp, price, newOwner.toStdString());
-}
-
-void THousesStorage::cancelMoveOut(const quint32 houseId)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT, houseId);
-}
-
-void THousesStorage::cancelTransfer(const quint32 houseId)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER, houseId);
-}
-
-void THousesStorage::acceptTransfer(const quint32 houseId)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER, houseId);
-}
-
-void THousesStorage::rejectTransfer(const quint32 houseId)
-{
-    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER, houseId);
-}
-
 }

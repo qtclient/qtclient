@@ -47,6 +47,10 @@ void TCreaturesGameActionHandler::handleGameAction(const tibia::input::IGameActi
     case A::FOLLOW_CREATURE:
         follow(pGameAction);
         break;
+    case A::STOP_ATTACKING_FOLLOWING_WALKING:
+        stopAttacking();
+        stopFollowing();
+        break;
     case A::STOP_FOLLOWING_CREATURE:
         stopFollowing();
         break;

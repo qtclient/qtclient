@@ -1,6 +1,7 @@
 #include "gamewindow/infobannercontroller.h"
 
 #include "config/clientoptions.h"
+#include "game/gamesessionbase.h"
 
 #include <QVariantMap>
 
@@ -48,6 +49,13 @@ void TInfoBannerController::onShowInfoBannerOptionChanged()
     m_showInfoBanner = m_clientOptions->boolOption(config::EClientOption::gameWindowShowInfoBanner);
     if (!m_showInfoBanner)
         Q_EMIT clearInfoBannerQueue();
+}
+
+void TInfoBannerController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
+        m_cyclopediaMapStorage = session->cyclopediaMapStorage();
 }
 
 }

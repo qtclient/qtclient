@@ -871,7 +871,13 @@ void sendRuleViolationReport(const uint8_t type, const uint8_t reason, const std
     m->set_name(std::string(name));
     m->set_comment(std::string(comment));
     m->set_translation(std::string(translation));
-    m->set_statement_id(id);
+    // CIP: one id field per report type (statement 1, hireling name 3, text 4).
+    if (type == 3)
+        m->set_hireling_id(id);
+    else if (type == 4)
+        m->set_text_id(id);
+    else
+        m->set_statement_id(id);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1455,6 +1461,8 @@ void sendPreyAction(const uint8_t slot, const uint8_t actionType, const uint16_t
     m->set_action(actionType);
     if (actionType == 4)
         m->set_race_id(index);
+    else if (actionType == 5)
+        m->set_automatic_extend_type(static_cast<uint8_t>(index));
     else
         m->set_index(static_cast<uint8_t>(index));
     tibia::protocol::sendGameclientMessage(std::move(message));

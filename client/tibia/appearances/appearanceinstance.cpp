@@ -482,19 +482,35 @@ void TEffectInstance::setSource(const tibia::client::MagicEffectSources source)
     m_opacity = spellEffectOpacityFor(source);
 }
 
-void TEffectInstance::start(const Position& field, const qint64 nowMs)
+TEffectInstance::TEffectInstance(TAppearanceType* type, const qint64 animationStartMs)
+    : TPatternObjectAppearanceInstance(type, animationStartMs)
+    , m_startMs(animationStartMs)
+    , m_nowMs(animationStartMs)
 {
-    m_fieldPosition = field;
-    m_startMs = nowMs;
-    m_nowMs = nowMs;
-    // The pattern follows the field's coordinate; the sequence's animation
-    // starts now.
-    if (m_type) {
-        m_patternX = static_cast<int>(static_cast<uint32_t>(field.x) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternX())));
-        m_patternY = static_cast<int>(static_cast<uint32_t>(field.y) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternY())));
-    }
-    m_animationStartMs = nowMs;
-    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
+}
+
+TEffectInstance::TEffectInstance(TAppearanceType* type, const Position& field, const qint64 animationStartMs)
+    : TPatternObjectAppearanceInstance(type, field, animationStartMs)
+    , m_startMs(animationStartMs)
+    , m_nowMs(animationStartMs)
+    , m_fieldPosition(field)
+{
+}
+
+TFieldEffectInstance::TFieldEffectInstance(TAppearanceType* type, const Position& field, const uint8_t elevation,
+                                           const qint64 animationStartMs, const double opacity)
+    : TEffectInstance(type, field, animationStartMs)
+    , m_subfieldCoordinate(worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(worldmap::TWorldMapCoordinate(field),
+                                                                                    elevation))
+{
+    m_opacity = static_cast<float>(opacity);
+}
+
+void TDelayedEffectInstance::appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate,
+                                               renderer::TRenderInfoList& infos) const
+{
+    if (isShown())
+        m_effect->appendRenderInfos(coordinate, infos);
 }
 
 void TEffectInstance::update(const qint64 nowMs)
@@ -520,6 +536,7 @@ TDelayedEffectInstance::TDelayedEffectInstance(std::shared_ptr<TEffectInstance> 
     m_spriteSequence = m_effect->spriteSequence();
     m_patternX = m_effect->patternX();
     m_patternY = m_effect->patternY();
+    m_patternZ = m_effect->patternZ();
     m_startMs = createdMs;
     m_nowMs = createdMs;
     setSource(m_effect->source());
@@ -561,8 +578,9 @@ bool TDelayedEffectInstance::isFinished() const
     return m_effect->isFinished();
 }
 
-TTutorialFieldEffectInstance::TTutorialFieldEffectInstance(TAppearanceType* type)
-    : TEffectInstance(type)
+TTutorialFieldEffectInstance::TTutorialFieldEffectInstance(TAppearanceType* type, const Position& field,
+                                                           const uint8_t elevation, const qint64 animationStartMs)
+    : TFieldEffectInstance(type, field, elevation, animationStartMs, 1.0)
 {
     if (m_spriteSequence && m_spriteSequence->animator())
         m_spriteSequence->animator()->setAlwaysLoop(true);
@@ -600,6 +618,13 @@ bool TEffectInstance::isTopEffectType() const
     return m_type && m_type->isTopEffect();
 }
 
+qint64 TMissileEffectInstance::s_millisecondsPerField = 150;
+
+void TMissileEffectInstance::setMillisecondsPerField(const qint64 Milliseconds)
+{
+    s_millisecondsPerField = Milliseconds;
+}
+
 float TMissileEffectInstance::setPath(const Position& from, const Position& to, const qint64 nowMs)
 {
     m_pathFrom = from;
@@ -609,18 +634,19 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_nowMs = nowMs;
     const QPoint delta(to.x - from.x, to.y - from.y);
     // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
-    static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
     const double distance = std::sqrt(static_cast<double>(delta.x() * delta.x() + delta.y() * delta.y()));
-    m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
+    m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * s_millisecondsPerField);
     // The path runs between the top-left sub-fields of both fields (no elevation:
     // the host passes no elevation for either end).
     m_tween = std::make_shared<tibia::animation::TWorldMapLinearMovementTween>(
         nowMs, nowMs + static_cast<qint64>(m_flightDuration),
         tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(from), 0),
         tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(to), 0));
-    directionPattern(fieldDirection(delta.x(), delta.y()), m_patternX, m_patternY);
+    int patternX = 0;
+    int patternY = 0;
+    directionPattern(fieldDirection(delta.x(), delta.y()), patternX, patternY);
     m_animationStartMs = nowMs;
-    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
+    setDrawPatterns(static_cast<uint8_t>(patternX), static_cast<uint8_t>(patternY), 0);
     return m_flightDuration;
 }
 
@@ -680,11 +706,15 @@ void directionPattern(const int direction, int& patternX, int& patternY)
     }
 }
 
-void TDirectionalFieldEffectInstance::start(const Position& field, const qint64 nowMs, const int direction)
+TDirectionalFieldEffectInstance::TDirectionalFieldEffectInstance(TAppearanceType* type, const Position& field,
+                                                                 const uint8_t elevation, const int direction,
+                                                                 const qint64 animationStartMs)
+    : TFieldEffectInstance(type, field, elevation, animationStartMs, 1.0)
 {
-    TEffectInstance::start(field, nowMs);
-    directionPattern(direction, m_patternX, m_patternY);
-    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
+    int patternX = 0;
+    int patternY = 0;
+    directionPattern(direction, patternX, patternY);
+    setDrawPatterns(static_cast<uint8_t>(patternX), static_cast<uint8_t>(patternY), 0);
 }
 
 template <class T, class... Args>
@@ -815,7 +845,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType
         case ThingCategoryCreature:
             return createOutfit(type, Outfit(), 2);
         case ThingCategoryEffect:
-            return makeTracked<TFieldEffectInstance>(type);
+            return makeTracked<TFieldEffectInstance>(type, Position(0, 0, 0), uint8_t{ 0 }, qint64{ 0 }, 1.0);
         case ThingCategoryMissile:
             return makeTracked<TMissileEffectInstance>(type);
         case ThingCategoryItem:
@@ -885,9 +915,12 @@ TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int6
 std::shared_ptr<TFieldEffectInstance> TAppearanceInstanceFactory::createFieldEffect(const uint16_t id, const Position& field,
                                                                                    const uint8_t source, const qint64 nowMs)
 {
-    auto effect = makeTracked<TFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
-    effect->setSource(static_cast<tibia::client::MagicEffectSources>(source));
-    effect->start(field, nowMs);
+    // Host: the effect lies on its field (no elevation is passed in); its
+    // opacity is its source's.
+    const auto from = static_cast<tibia::client::MagicEffectSources>(source);
+    auto effect = makeTracked<TFieldEffectInstance>(appearanceType(ThingCategoryEffect, id), field, uint8_t{ 0 }, nowMs,
+                                                    static_cast<double>(tibia::client::magicEffectOpacity(from)));
+    effect->setSource(from);
     return effect;
 }
 
@@ -895,9 +928,8 @@ std::shared_ptr<TDirectionalFieldEffectInstance>
 TAppearanceInstanceFactory::createDirectionalFieldEffect(const uint16_t id, const Position& field, const int direction,
                                                          const qint64 nowMs)
 {
-    auto effect = makeTracked<TDirectionalFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
-    effect->start(field, nowMs, direction);
-    return effect;
+    return makeTracked<TDirectionalFieldEffectInstance>(appearanceType(ThingCategoryEffect, id), field, uint8_t{ 0 },
+                                                        direction, nowMs);
 }
 
 std::shared_ptr<TMissileEffectInstance> TAppearanceInstanceFactory::createMissile(const uint16_t id, const Position& from,
@@ -1077,9 +1109,8 @@ std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::create
                                                                                                     const Position& field)
 {
     TAppearanceType* type = m_pAppearancesManager->getRawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
-    auto effect = makeTracked<TTutorialFieldEffectInstance>(type);
-    effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
-    return effect;
+    return makeTracked<TTutorialFieldEffectInstance>(type, field, uint8_t{ 0 },
+                                                     static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, TAppearanceType* type)

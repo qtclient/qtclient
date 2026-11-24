@@ -1,11 +1,13 @@
 
 #include "bossbestiary/bossbestiaryciptypes.h"
+#include "bossbestiary/bosstrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
 #include "input/gameaction.h"
 #include <tibia/game/gamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 #include <protocol.pb.h>
 
 #include <QCoreApplication>
@@ -140,6 +142,17 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage(const 
 void TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage)
 {
     using namespace ::tibia::protobuf::protocol;
+    // Each tracked race with its capitalised name, its outfit and the cooldown end.
+    std::vector<TBossTrackerEntry> entries;
+    for (const ProtocolBossCooldown& cooldown : BossTrackingMessage.cooldowns()) {
+        const auto raceId = static_cast<uint16_t>(cooldown.race_id());
+        const RaceType& race = tibia::game::raceData(raceId);
+        entries.emplace_back(raceId, cyclopedia::capitalizeWords(QString::fromStdString(race.name)), race.outfit,
+                             static_cast<qint64>(static_cast<int32_t>(cooldown.cooldown())));
+    }
+    if (m_pBossTrackerStorage)
+        m_pBossTrackerStorage->setEntries(std::move(entries));
+    // Host: the pack ABI reads the cooldowns through "onBossCooldown".
     std::vector<BossCooldownData> cooldowns;
     for (const auto& e : BossTrackingMessage.cooldowns())
         cooldowns.emplace_back(e.race_id(), e.cooldown());

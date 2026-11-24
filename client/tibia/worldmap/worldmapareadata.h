@@ -126,11 +126,31 @@ struct TWorldMapAreaElement
 
 /// The pieces of one kind of map data, found by the fields they cover (CIP: a
 /// boost r-tree of 2D boxes from each piece's origin to its end, both edges
-/// included). Host: a list in insertion order; queries return their matches in
-/// that order.
+/// included, sheared by the floor: a coordinate sits at (x + z, y + z)).
+/// Host: a list in insertion order; queries return their matches in that order.
 class TWorldMapAreaIndex
 {
 public:
+    /// The index's 2D position of a coordinate: x + z and y + z.
+    static int shearedX(const TWorldMapCoordinate& coordinate) { return coordinate.x + coordinate.z; }
+    static int shearedY(const TWorldMapCoordinate& coordinate) { return coordinate.y + coordinate.z; }
+
+    /// A cuboid's 2D box: from its sheared origin to that plus its width and height.
+    struct TBox
+    {
+        int minX = 0;
+        int minY = 0;
+        int maxX = 0;
+        int maxY = 0;
+    };
+    static TBox shearedBox(const TWorldMapCuboid& cuboid)
+    {
+        const int x = shearedX(cuboid.getOrigin());
+        const int y = shearedY(cuboid.getOrigin());
+        const TWorldMapExtent extent = cuboid.getExtent();
+        return TBox{ x, y, x + extent.width, y + extent.height };
+    }
+
     void insert(const TWorldMapCuboid& area, TGenericWorldMapAreaData data)
     {
         m_elements.push_back(TWorldMapAreaElement{ area, std::move(data) });
@@ -141,12 +161,12 @@ public:
     std::vector<TWorldMapAreaElement> query(const TWorldMapCuboid& cuboid, const int floors) const
     {
         std::vector<TWorldMapAreaElement> found;
+        const TBox box = shearedBox(cuboid);
         for (const TWorldMapAreaElement& element : m_elements) {
-            const TWorldMapCuboid& area = element.area;
-            if (cuboid.origin.x > area.end.x || area.origin.x > cuboid.end.x || cuboid.origin.y > area.end.y
-                || area.origin.y > cuboid.end.y)
+            const TBox area = shearedBox(element.area);
+            if (box.minX > area.maxX || area.minX > box.maxX || box.minY > area.maxY || area.minY > box.maxY)
                 continue;
-            if (cuboid.origin.z <= area.origin.z && area.origin.z < cuboid.origin.z + floors)
+            if (cuboid.origin.z <= element.area.origin.z && element.area.origin.z < cuboid.origin.z + floors)
                 found.push_back(element);
         }
         return found;

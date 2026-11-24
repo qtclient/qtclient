@@ -1,5 +1,6 @@
 #include "appearancetype.h"
 
+#include "sprites/spritefromspritesheetinfo.h"
 #include "sprites/spritesheetsmetadatamanager.h"
 
 #include <appearances.pb.h>
@@ -95,11 +96,28 @@ EFixedFrameGroup fixedFrameGroupFromProtobuf(const uint32_t value)
 
 // TAppearanceTypeSpriteInfo
 
+std::vector<TAppearanceTypeSpriteInfo::TSpritePtr>
+TAppearanceTypeSpriteInfo::spritesFromProtobuf(const tibia::protobuf::appearances::SpriteInfo& message,
+                                               sprites::TSpritesheetsMetadataManager& metadataManager)
+{
+    std::vector<TSpritePtr> sprites;
+    for (const uint32_t spriteId : message.sprite_id()) {
+        const sprites::TSpritesheetMetadata metadata = metadataManager.getMetadataForSprite(spriteId);
+        const QRect cell = sprites::TSpriteFromSpritesheetInfo::cellInSpritesheet(metadata, spriteId);
+        sprites.push_back(std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(spriteId, metadata.spritesheetId, cell,
+                                                                                      message.is_opaque()));
+    }
+    return sprites;
+}
+
 TAppearanceTypeSpriteInfo TAppearanceTypeSpriteInfo::fromProtobuf(const tibia::protobuf::appearances::SpriteInfo& message,
-                                                                  const TSpriteSizeLookup& spriteSize)
+                                                                  const TSpriteSizeLookup& spriteSize,
+                                                                  sprites::TSpritesheetsMetadataManager* metadataManager)
 {
     TAppearanceTypeSpriteInfo info;
     info.m_spriteIds.assign(message.sprite_id().begin(), message.sprite_id().end());
+    if (metadataManager)
+        info.m_sprites = spritesFromProtobuf(message, *metadataManager);
     if (!info.m_spriteIds.empty() && spriteSize)
         info.m_spriteSize = spriteSize(info.m_spriteIds.front());
 
@@ -196,7 +214,8 @@ QString TNpcTradeData::currencyQuestFlagName() const
 
 TAppearanceType TAppearanceType::fromProtobuf(const EAppearanceCategory category,
                                               const tibia::protobuf::appearances::Appearance& appearance,
-                                              const TSpriteSizeLookup& spriteSize)
+                                              const TSpriteSizeLookup& spriteSize,
+                                              sprites::TSpritesheetsMetadataManager* metadataManager)
 {
     using tibia::protobuf::appearances::AppearanceFlags;
 
@@ -282,7 +301,7 @@ TAppearanceType TAppearanceType::fromProtobuf(const EAppearanceCategory category
     // is replaced by the empty default.
     bool opaque = true;
     for (const auto& group : appearance.frame_group()) {
-        TAppearanceTypeSpriteInfo info = TAppearanceTypeSpriteInfo::fromProtobuf(group.sprite_info(), spriteSize);
+        TAppearanceTypeSpriteInfo info = TAppearanceTypeSpriteInfo::fromProtobuf(group.sprite_info(), spriteSize, metadataManager);
         if (!info.isValid())
             info = TAppearanceTypeSpriteInfo();
         const EFixedFrameGroup fixed = fixedFrameGroupFromProtobuf(static_cast<uint32_t>(group.fixed_frame_group()));

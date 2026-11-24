@@ -73,7 +73,7 @@ void TCyclopediaMapStaticDataStorage::setHousesStorage(const THousesStorage* hou
         return;
     for (const THouseInformation& house : houses->houses()) {
         const TStaticHouseMapArea area = houseMapArea(house.id);
-        addHouseMarkers(house.id, house.listing, worldmap::TWorldMapCoordinate(house.x, house.y, house.z), area.area);
+        addHouseMarkers(house.id, house.listing, house.entrance(), area.area);
     }
 }
 

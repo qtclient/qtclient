@@ -5,6 +5,9 @@
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "client/gameclient.h"
+#include "game/gameservergamesessionmetainfo.h"
+#include "shared/tibiafilesystemhelper.h"
+#include "iclockservice.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/npcdialogcontroller.h"
@@ -18,7 +21,6 @@
 #include <QClipboard>
 #include <QDateTime>
 #include <QDir>
-#include <QFile>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QLocale>
@@ -26,7 +28,6 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <QTextDocument>
 #include <QJsonObject>
 #include <QTextLayout>
@@ -100,6 +101,15 @@ QString ownName()
     return QString::fromStdString(tibia::game::characterName());
 }
 
+/// CIP: the password in the live session's login data (none for other
+/// sessions or a launcher login).
+QString sessionPassword(const std::shared_ptr<game::IGameSession>& session)
+{
+    const auto* base = dynamic_cast<const game::TGameSessionBase*>(session.get());
+    const auto* metaInfo = base ? dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(base->metaInfo().get()) : nullptr;
+    return metaInfo ? metaInfo->loginData.password : QString();
+}
+
 void own(QObject* object)
 {
     QQmlEngine::setObjectOwnership(object, QQmlEngine::CppOwnership);
@@ -110,10 +120,20 @@ void own(QObject* object)
 // ---------------------------------------------------------------------------
 // TChatChannelController
 
-TChatChannelController::TChatChannelController(QObject* parent)
+TChatChannelController::TChatChannelController(std::shared_ptr<config::TClientOptions> ClientOptions,
+                                               std::shared_ptr<input::TGameActionMapper> GameActionMapper, const int Kind,
+                                               QObject* parent)
     : cip::tibia::gamewindow::TChatChannelController(parent)
+    , m_clientOptions(std::move(ClientOptions))
+    , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_kind(Kind)
     , m_filter(this, this)
 {
+    onEntryFormatChanged(m_clientOptions->boolOption(config::EClientOption::consoleShowTimestamps),
+                         m_clientOptions->boolOption(config::EClientOption::consoleShowTimestampsSeconds),
+                         m_clientOptions->boolOption(config::EClientOption::consoleShowLevels));
+    connect(m_clientOptions.get(), &config::TClientOptions::chatChannelControllerOptionsChanged, this,
+            &TChatChannelController::onChatChannelControllerOptionsChanged);
 }
 
 void TChatChannelController::setChannel(chat::TChatChannel* channel)
@@ -315,10 +335,9 @@ QString TChatChannelController::channelName() const
 
 void TChatChannelController::onChatChannelControllerOptionsChanged()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    onEntryFormatChanged(options.value(QLatin1String("consoleShowTimestamps")).toBool(true),
-                         options.value(QLatin1String("consoleShowTimestampsSeconds")).toBool(false),
-                         options.value(QLatin1String("consoleShowLevels")).toBool(true));
+    onEntryFormatChanged(m_clientOptions->boolOption(config::EClientOption::consoleShowTimestamps),
+                         m_clientOptions->boolOption(config::EClientOption::consoleShowTimestampsSeconds),
+                         m_clientOptions->boolOption(config::EClientOption::consoleShowLevels));
 }
 
 void TChatChannelController::onEntryFormatChanged(const bool showTimestamp, const bool showTimestampSeconds, const bool showLevel)
@@ -987,8 +1006,8 @@ void TChatChannelTabController::onEntryAddedToChatChannel(const chat::TChatChann
 // ---------------------------------------------------------------------------
 // TOpenChatChannelDialogController
 
-TOpenChatChannelDialogController::TOpenChatChannelDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("OpenChatChannelDialog.qml"), parent)
+TOpenChatChannelDialogController::TOpenChatChannelDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("OpenChatChannelDialog.qml"), engine, dialogParentItem, parent)
 {}
 
 void TOpenChatChannelDialogController::open(const std::vector<chat::TChatChannelIdentifier>& channels)
@@ -1037,13 +1056,28 @@ void TOpenChatChannelDialogController::onOpenPrivateChannelTo(const QString& rec
 // ---------------------------------------------------------------------------
 // TChatController
 
-TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& gameClient, QObject* parent)
+TChatController::TChatController(const uint MaxChatInputHistoryLength, QQuickItem* DialogParentItem, QQuickItem* ChatItem,
+                                 QQmlEngine* Engine, std::shared_ptr<config::TClientOptions> ClientOptions,
+                                 std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                 std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                 std::shared_ptr<shared::IClockService> ClockService,
+                                 std::shared_ptr<shared::TTibiaUrlTools> TibiaUrlTools,
+                                 std::shared_ptr<chat::TChatModeManager> ChatModeManager, QObject* parent)
     : cip::tibia::gamewindow::TChatController(parent)
-    , m_chatItem(chatItem)
-    , m_mapper(config::controlSchemeForListModelIndex(
-          app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0)))
-    , m_gameClient(gameClient)
-    , m_maxChatInputHistoryLength(chat::chatSetting(QStringLiteral("maxChatInputHistoryLength"), 1000, 1))
+    , m_chatItem(ChatItem)
+    , m_clientOptions(std::move(ClientOptions))
+    , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_pTibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
+    , m_pClockService(std::move(ClockService))
+    , m_pTibiaUrlTools(std::move(TibiaUrlTools))
+    , m_pChatModeManager(std::move(ChatModeManager))
+    , m_primary(m_clientOptions, m_pGameActionMapper, 0)
+    , m_secondary(m_clientOptions, m_pGameActionMapper, 1)
+    , m_openDialog(Engine, DialogParentItem)
+    , m_inviteDialog(qtTrId("chat_invite_player_caption"), qtTrId("chat_enter_character_name"), 29, Engine, DialogParentItem)
+    , m_excludeDialog(qtTrId("chat_exclude_player_caption"), qtTrId("chat_enter_character_name"), 29, Engine, DialogParentItem)
+    , m_messageDialog(Engine, DialogParentItem)
+    , m_maxChatInputHistoryLength(MaxChatInputHistoryLength)
 {
     own(this);
     own(&m_primary);
@@ -1069,9 +1103,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
 
     for (TGenericEnterTextDialogController* prompt : { &m_inviteDialog, &m_excludeDialog }) {
         const bool exclude = prompt == &m_excludeDialog;
-        prompt->setCaption(qtTrId(exclude ? "chat_exclude_player_caption" : "chat_invite_player_caption"));
-        prompt->setDescription(qtTrId("chat_enter_character_name"));
-        prompt->setMaxInputLength(29);
         connect(prompt, &TGenericEnterTextDialogController::textEntered, this,
                 exclude ? &TChatController::onPlayerNameToExcludeFromChatChannelReceived
                         : &TChatController::onPlayerNameToInviteToChatChannelReceived);
@@ -1079,7 +1110,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     m_messageDialog.setButtons(okDialogButtons());
     m_messageDialog.setCloseOnButtonClicked(true);
 
-    connect(&m_mode, &chat::TChatModeManager::chatModeChanged, this, &TChatController::chatModeChanged);
+    connect(m_pChatModeManager.get(), &chat::TChatModeManager::chatModeChanged, this, &TChatController::chatModeChanged);
     connect(&m_tabs, &TChatChannelTabController::currentChannelChanged, &m_primary, &TChatChannelController::setChannel);
     connect(&m_tabs, &TChatChannelTabController::tabClicked, this, &TChatController::onChatChannelTabClicked);
     for (TChatChannelController* model : { &m_primary, &m_secondary }) {
@@ -1100,7 +1131,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
             [](const QString& name) { tibia::game::openPrivateChannel(name.toStdString()); });
 
-    connect(&gameClient, &client::TGameClient::worldEntered, this, &TChatController::onWorldEntered);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {
@@ -1120,6 +1150,9 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
 
     m_primary.setChannel(m_tabs.currentChannel());
     bindItem();
+    // CIP: the chat mode starts as the options store it.
+    m_pChatModeManager->setChatMode(m_clientOptions->chatOptions().chatModeOn ? chat::TChatModeManager::CHAT_ON
+                                                                                : chat::TChatModeManager::CHAT_OFF);
 }
 
 TChatController::~TChatController()
@@ -1163,18 +1196,11 @@ void TChatController::reloadOptions()
     const QJsonObject values = options.options();
     if (m_chatProtocolMessageHandler)
         m_chatProtocolMessageHandler->setOptions(values);
-    const bool timestamps = values.value(QLatin1String("consoleShowTimestamps")).toBool(true);
-    const bool seconds = values.value(QLatin1String("consoleShowTimestampsSeconds")).toBool(true);
-    const bool levels = values.value(QLatin1String("consoleShowLevels")).toBool(true);
-    m_primary.onEntryFormatChanged(timestamps, seconds, levels);
-    m_secondary.onEntryFormatChanged(timestamps, seconds, levels);
 }
 
 void TChatController::onOptionChanged(const QString& name)
 {
-    if (name == QLatin1String("controlSchemeIndex"))
-        m_mapper.setControlScheme(config::controlSchemeForListModelIndex(app::ClientOptions::load().options().value(name).toInt(0)));
-    else if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow")) || name == QLatin1String("openNewPrivateMessagesInNewTab"))
+    if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow")) || name == QLatin1String("openNewPrivateMessagesInNewTab"))
         reloadOptions();
 }
 
@@ -1271,7 +1297,8 @@ void TChatController::onExivaSuppressedFlashTimeout()
 
 bool TChatController::exivaOptionsAvailable() const
 {
-    return m_gameClient.worldType() == WorldTypeOptionalPvp;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session && static_cast<int>(session->worldType()) == WorldTypeOptionalPvp;
 }
 
 void TChatController::openWhiteBlacklistDialog()
@@ -1291,31 +1318,21 @@ void TChatController::saveChannel(chat::TChatChannel* channel)
     const TChatChannelController* model = m_primary.channel() == channel ? &m_primary : nullptr;
     if (!model && m_secondary.channel() == channel)
         model = &m_secondary;
-    TChatChannelController hidden;
+    TChatChannelController hidden(m_clientOptions, m_pGameActionMapper, 0);
     if (!model) {
-        const QJsonObject values = app::ClientOptions::load().options();
-        hidden.onEntryFormatChanged(values.value(QLatin1String("consoleShowTimestamps")).toBool(true),
-                                    values.value(QLatin1String("consoleShowTimestampsSeconds")).toBool(true),
-                                    values.value(QLatin1String("consoleShowLevels")).toBool(true));
         hidden.setChannel(channel);
         model = &hidden;
     }
     const QString name = channel->name();
-    const QString stamp = QLocale(QLocale::English, QLocale::UnitedStates).toString(QDateTime::currentDateTime(), QStringLiteral("ddd MMM dd hh:mm:ss yyyy"));
+    const QString stamp = QLocale(QLocale::English, QLocale::UnitedStates).toString(m_pClockService->currentDateTime(), QStringLiteral("ddd MMM dd hh:mm:ss yyyy"));
     QStringList lines;
     for (int row = model->rowCount() - 1; row >= 0; --row)
         lines.append(model->plainTextAt(row));
     const QString header = qtTrId("chat_save_contents").arg(name, stamp) + QLatin1Char('\n');
     const QString content = QStringLiteral("%1\n%2").arg(header, lines.join(QLatin1Char('\n')) + QLatin1Char('\n'));
 
-    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/log");
-    QDir().mkpath(directory);
-    const QString path = QDir(directory).filePath(QStringLiteral("%1.txt").arg(name));
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
-        return;
-    file.write(content.toUtf8());
-    file.close();
+    m_pTibiaFileSystemHelper->appendToLogFile(name, content);
+    const QString path = m_pTibiaFileSystemHelper->getLogFilePathForName(name);
     if (tibia::game::isOnline())
         m_chatChannelStorage->addServerLogEntry(chat::consoleColor(30), qtTrId("chat_append_contents").arg(name, QDir::toNativeSeparators(path)));
 }
@@ -1414,7 +1431,7 @@ TChatController::EInput TChatController::parseInput(QString& text, QString& reci
 
 QString TChatController::sendChatMessage(const QString& chatMessage, const int chatVolume)
 {
-    m_mode.onMessageSent();
+    m_pChatModeManager->onMessageSent();
     return sendChatMessage(chatMessage, chatVolume, false, 0);
 }
 
@@ -1452,7 +1469,7 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
     if (!m_chatChannelStorage)
         return keep;
     addEntryToChatInputHistory(chatMessage);
-    if (const QString& password = m_gameClient.accountPassword(); !password.isEmpty() && chatMessage.contains(password)) {
+    if (const QString password = sessionPassword(m_gameSession); !password.isEmpty() && chatMessage.contains(password)) {
         m_messageDialog.showMessage(qtTrId("chat_account_warning_caption"), qtTrId("chat_account_warning_description"));
         return keep;
     }
@@ -1575,7 +1592,7 @@ void TChatController::setInputText(const QString& text, const bool sendDirectly)
 /// The chat mode learns that a line was sent without the chat input.
 void TChatController::onChatMessageSendDirectly()
 {
-    m_mode.onMessageSent();
+    m_pChatModeManager->onMessageSent();
 }
 
 namespace {
@@ -1638,12 +1655,12 @@ void TChatController::addEntryToChatInputHistory(const QString& chatInputText)
 
 void TChatController::onChatModeButtonClicked()
 {
-    m_mode.onChatModeButtonClicked();
+    m_pChatModeManager->onChatModeButtonClicked();
 }
 
 void TChatController::onChatInputClicked()
 {
-    m_mode.onChatInputClicked();
+    m_pChatModeManager->onChatInputClicked();
 }
 
 void TChatController::onRequestCloseChannel(chat::TChatChannel* channel)
@@ -1771,7 +1788,7 @@ bool TChatController::handleAction(const input::IGameAction& action)
         // CIP Enter-from-chat-off → ChatModeTemporaryOn. With an NPC dialog open,
         // focus that input instead of opening HudChat (bubble stays closed).
         const auto* mode = input::gameActionAs<input::TGameActionSwitchChatMode>(&action);
-        m_mode.handleGameAction(action);
+        m_pChatModeManager->handleGameAction(action);
         if (mode && mode->chatMode() == chat::TChatModeManager::CHAT_TEMPORARY_ON && m_npcDialog && m_npcDialog->isShown())
             m_npcDialog->takeFocus();
         return true;
@@ -1864,7 +1881,7 @@ void TChatController::onChatChannelTabClicked(chat::TChatChannel* channel, const
     if (!channel) {
         // The empty tab bar: every channel to pick as the secondary one.
         auto* menu = TContextMenuController::instance();
-        if (!menu || m_mapper.map(candidates, ChatTabContext, static_cast<Qt::MouseButton>(button), modifiers) == nullptr)
+        if (!menu || m_pGameActionMapper->map(candidates, ChatTabContext, static_cast<Qt::MouseButton>(button), modifiers) == nullptr)
             return;
         menu->beginCustomMenu();
         for (const input::IGameActionPtr& candidate : candidates) {
@@ -1885,7 +1902,7 @@ void TChatController::onChatChannelTabClicked(chat::TChatChannel* channel, const
 void TChatController::showMenu(const input::TGameActionList& candidates, const std::span<const input::EGameAction> order, const int context,
                                const int button, const int modifiers, TChatChannelController* model, chat::TChatChannel* channel)
 {
-    const input::IGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
+    const input::IGameActionPtr picked = m_pGameActionMapper->map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
     if (!picked)
         return;
     if (picked->gameActionType() != A::CONTEXT_MENU) {
@@ -1969,7 +1986,7 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
     m_gameSessionConnections.clear();
     m_tabs.setChannelStorage(nullptr);
     m_tabs.setMakeNewTabsCurrent(false);
-    m_mode.onGameSessionDisconnected();
+    m_pChatModeManager->onGameSessionDisconnected();
     m_channelListRequested = false;
     m_actionProvider.reset();
     m_chatProtocolMessageHandler.reset();
@@ -1993,6 +2010,8 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
         m_makeNewTabsCurrentTimer.start();
         m_gameSessionConnections.push_back(
             connect(m_gameSession.get(), &game::IGameSession::worldTypeSet, this, &TChatController::exivaOptionsAvailableChanged));
+        m_gameSessionConnections.push_back(
+            connect(m_gameSession.get(), &game::IGameSession::worldEntered, this, &TChatController::onWorldEntered));
     } else {
         m_channelsFromConfigOpened = false;
     }

@@ -28,6 +28,7 @@ public:
 
 Q_SIGNALS:
     void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+    void sendCancel();
 
 public Q_SLOTS:
     /// CIP v15. Connected to the router's publishGameActionInternal.

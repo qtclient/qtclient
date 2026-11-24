@@ -3,10 +3,12 @@
 #include "sound/sounddecompressorthreadpool.h"
 
 #include "readonlymemoryblob.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QLoggingCategory>
 
 #include <algorithm>
+#include <type_traits>
 
 Q_LOGGING_CATEGORY(lcSoundTokens, "sound.tokens", QtFatalMsg)
 
@@ -93,11 +95,25 @@ void TPlayableSound::release()
     m_ticket = 0;
 }
 
+/// A file is ready when it exists, bytes when there are any, a buffer when it
+/// holds samples, and no data while it is loading (CipSoft: state 1).
 bool TPlayableSound::isReady() const
 {
     if (m_metadata.id == 0 || !m_entry)
         return false;
-    return !std::holds_alternative<ESoundDataState>(m_entry->playableData);
+    return std::visit(
+        [](const auto& data) -> bool {
+            using T = std::decay_t<decltype(data)>;
+            if constexpr (std::is_same_v<T, TSoundFile>)
+                return tibia::files::data().fileExists(data.virtualPath);
+            else if constexpr (std::is_same_v<T, QByteArray>)
+                return data.size() != 0;
+            else if constexpr (std::is_same_v<T, TSoundBuffer>)
+                return data.samples && data.samples->samples.data() != nullptr;
+            else
+                return data == ESoundDataState::Loading;
+        },
+        m_entry->playableData);
 }
 
 bool TPlayableSound::isLoading() const

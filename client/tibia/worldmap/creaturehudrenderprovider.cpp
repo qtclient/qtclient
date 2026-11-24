@@ -2,6 +2,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "config/clientoptions.h"
+#include "dailyreward/dailyrewardciptypes.h"
 #include "game/playerdata.h"
 #include "protocol/protocolcodes.h"
 #include "renderer/rendervolumeprovider.h"
@@ -67,7 +68,9 @@ TCreatureHUDRenderProvider::TCreatureHUDRenderProvider(std::shared_ptr<TWorldMap
                                                        std::shared_ptr<TWorldMapViewport> worldMapViewport,
                                                        std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider,
                                                        std::shared_ptr<game::TPlayerData> playerData,
-                                                       config::TClientOptions* clientOptions, QObject* parent)
+                                                       config::TClientOptions* clientOptions,
+                                                       std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> dailyRewardProtocolMessageHandler,
+                                                       QObject* parent)
     : cip::tibia::worldmap::TCreatureHUDRenderProvider(parent)
     , m_worldMapStorage(std::move(worldMapStorage))
     , m_creatureStorage(std::move(creatureStorage))
@@ -75,6 +78,7 @@ TCreatureHUDRenderProvider::TCreatureHUDRenderProvider(std::shared_ptr<TWorldMap
     , m_worldMapRenderProvider(std::move(worldMapRenderProvider))
     , m_playerData(std::move(playerData))
     , m_clientOptions(clientOptions)
+    , m_dailyRewardProtocolMessageHandler(std::move(dailyRewardProtocolMessageHandler))
     , m_playerStates(config::SpecialConditionsFilter::HUD)
 {
     if (m_clientOptions) {
@@ -82,6 +86,11 @@ TCreatureHUDRenderProvider::TCreatureHUDRenderProvider(std::shared_ptr<TWorldMap
                 &TCreatureHUDRenderProvider::readOptions);
     }
     readOptions();
+    if (m_dailyRewardProtocolMessageHandler) {
+        connect(m_dailyRewardProtocolMessageHandler.get(),
+                &dailyreward::TDailyRewardProtocolMessageHandler::restingAreaStateChanged, this,
+                &TCreatureHUDRenderProvider::setInRestingArea);
+    }
 }
 
 void TCreatureHUDRenderProvider::readOptions()

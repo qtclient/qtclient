@@ -28,20 +28,6 @@ int checkedEnumValue(const uint32_t value, const uint32_t maxValue)
     return static_cast<int>(value);
 }
 
-void sendCommand(const GameclientMessageTaskboard& command)
-{
-    auto message = tibia::protocol::newGameclientMessage(95);
-    *message->MutableExtension(GameclientMessageTaskboard::gameclient_message_taskboard) = command;
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
-void sendOption(const int option)
-{
-    GameclientMessageTaskboard command;
-    command.set_option(static_cast<uint32_t>(option));
-    sendCommand(command);
-}
-
 TShopReward shopReward(const ProtocolTaskboardOffer& offer)
 {
     TShopReward reward;
@@ -200,6 +186,18 @@ void TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage(
     for (const uint32_t raceId : SoulSealsMessage.race_ids())
         raceIds.push_back(static_cast<uint16_t>(raceId));
     Q_EMIT openSoulSealsDialog(raceIds);
+}
+
+void TTaskboardProtocolMessageHandler::sendCommand(const GameclientMessageTaskboard& command)
+{
+    Q_EMIT sendTaskboardCommand(command);
+}
+
+void TTaskboardProtocolMessageHandler::sendOption(const int option)
+{
+    GameclientMessageTaskboard command;
+    command.set_option(static_cast<uint32_t>(option));
+    sendCommand(command);
 }
 
 void TTaskboardProtocolMessageHandler::requestBountyTasks() { sendOption(0); }

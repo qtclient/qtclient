@@ -659,7 +659,8 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
     uint32_t characterId = m_characterId;
     if (characterId == 0)
         characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    skillwheel::TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(characterId);
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
+        session->skillWheelProtocolMessageHandler()->requestCharacterSkillWheel(characterId);
 }
 
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)

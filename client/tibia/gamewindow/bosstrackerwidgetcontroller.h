@@ -110,6 +110,13 @@ public:
     QQuickItem* gameWindowQuickItem() const override;
     /// CIP TSidebarWidgetControllerWithFocusHandling.
     bool hasFocus() const override;
+    /// CIP TSidebarWidgetControllerWithFocusHandling's hide: the focus goes
+    /// back, then the item hides.
+    void hide();
+    /// CIP TSidebarWidgetControllerWithFocusHandling's show: the item shows and
+    /// takes the focus; on the next event loop pass the widget asks its
+    /// control to take the focus too.
+    void show();
 
 public Q_SLOTS:
     void saveWidgetOptions() override;

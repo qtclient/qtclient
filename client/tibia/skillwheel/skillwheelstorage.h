@@ -166,8 +166,8 @@ private:
     int m_greaterFragments = 0;
     TGemMods m_temporaryReshapedGem;
     TGemMods m_gemModsBeforeReshape;
-    int m_reshapeModIdx = 0;
-    int m_reshapeGemId = 0;
+    int m_reshapeModIdx = -1;
+    int m_reshapeGemId = -1;
 };
 
 }

@@ -79,10 +79,8 @@ void TPreyProtocolMessageHandler::setAutomaticExtendType(const int preyId, const
 {
     if (static_cast<unsigned>(option) >= 3)
         throw std::invalid_argument("Invalid enum value");
-    // CipSoft's message has a fifth field for the option; qtclient's schema
-    // carries it in the index (the writer sends the index for action 5).
     auto message = preyActionMessage(preyId, 5);
-    message.set_index(static_cast<uint32_t>(option));
+    message.set_automatic_extend_type(static_cast<uint32_t>(option));
     Q_EMIT sendPreyAction(message);
 }
 

@@ -224,7 +224,7 @@ void TGenericGameActionHandler::handleRotateAction(const TGameActionRotate& acti
 
 void TGenericGameActionHandler::handleQuitGameAction()
 {
-    Q_EMIT sendQuitGame();
+    Q_EMIT sendQuitGame(::tibia::protobuf::protocol::GameclientMessageQuitGame());
 }
 
 void TGenericGameActionHandler::handleChangeCharacterAction()

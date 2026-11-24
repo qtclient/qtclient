@@ -54,6 +54,9 @@ public:
     virtual const std::shared_ptr<animation::TAnimator>& animator() const { return m_animator; }
     /// Advances the animator to `nowMs`; true when the phase changed.
     virtual bool update(qint64 nowMs);
+    /// CIP v9: a walking outfit's animator starts a step of `keyMs` at `nowMs`
+    /// (nothing for any other animator).
+    virtual void setAnimatorKey(qint64 keyMs, qint64 nowMs);
     /// The frame group the sequence draws.
     const std::shared_ptr<const TAppearanceTypeSpriteInfo>& typeSpritesInfo() const { return m_spritesInfo; }
 

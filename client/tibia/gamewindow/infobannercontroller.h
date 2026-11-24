@@ -7,8 +7,18 @@
 
 class QQmlEngine;
 
+#include <memory>
+
 namespace tibia::config {
 class TClientOptions;
+}
+
+namespace tibia::cyclopedia {
+class TCyclopediaMapStorage;
+}
+
+namespace tibia::game {
+class IGameSession;
 }
 
 namespace tibia::gamewindow {
@@ -27,6 +37,9 @@ public:
                           QObject* parent = nullptr);
 
     Q_INVOKABLE QQuickItem* mapWindowPane() override;
+    /// CIP: keeps the current session and its Cyclopedia map storage (null:
+    /// none; the previous storage stays).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// Reads the option; off clears the queue.
@@ -42,6 +55,8 @@ private:
     QPointer<QQuickItem> m_mapWindowPane;
     QPointer<QQuickItem> m_infoBannerWrapper;
     bool m_showInfoBanner = true;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStorage> m_cyclopediaMapStorage;
 };
 
 }

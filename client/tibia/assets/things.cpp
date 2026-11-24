@@ -9,6 +9,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
+#include "appearances/useableappearances.h"
 #include "sprites/appearancetypespritesheetmapping.h"
 #include "sprites/spritesystem.h"
 
@@ -21,6 +22,7 @@
 
 #include <appearances.pb.h>
 #include <staticdata.pb.h>
+#include <protocol.pb.h>
 
 #include <QCoreApplication>
 #include <QDir>
@@ -127,6 +129,7 @@ void TAppearancesManager::setInstance(TAppearancesManager* manager)
 
 TAppearancesManager::TAppearancesManager()
     : m_spritesheetMapping(std::make_shared<sprites::TAppearanceTypeSpritesheetMapping>())
+    , m_useableAppearances(std::make_shared<TUseableAppearances>())
 {
     // Every category exists from the start, empty until the appearances load.
     for (const EAppearanceCategory category :
@@ -153,7 +156,8 @@ void TAppearancesManager::terminate()
     tibia::sprites::TSpriteSystem::instance().clear();
 }
 
-void TAppearancesManager::initialize(const std::string& bytes)
+void TAppearancesManager::initialize(const std::string& bytes,
+                                     const std::shared_ptr<sprites::TSpritesheetsMetadataManager>& metadataManager)
 {
     tibia::protobuf::appearances::Appearances appearances;
     if (!appearances.ParseFromString(bytes))
@@ -171,25 +175,37 @@ void TAppearancesManager::initialize(const std::string& bytes)
 
     // Each bank is converted into a map by id (a later duplicate id replaces the
     // earlier one) and added to the types of its category without replacing any.
-    // The sprites' pixel sizes come from their spritesheets.
-    const TSpriteSizeLookup spriteSize = [](const uint32_t spriteId) {
-        return tibia::sprites::TSpriteSystem::instance().spriteSize(spriteId);
+    // Every sprite is placed in its spritesheet now; the sprites' pixel sizes
+    // come from their spritesheets.
+    sprites::TSpritesheetsMetadataManager* metadata = metadataManager.get();
+    const TSpriteSizeLookup spriteSize = [metadata](const uint32_t spriteId) {
+        if (!metadata)
+            return tibia::sprites::TSpriteSystem::instance().spriteSize(spriteId);
+        const sprites::TSpritesheetMetadata found = metadata->getMetadataForSprite(spriteId);
+        return found.isValid() ? sprites::spriteSizeOfLayout(found.getLayout()) : QSize();
     };
-    const auto convert = [this, &spriteSize](const EAppearanceCategory category,
-                                             const google::protobuf::RepeatedPtrField<tibia::protobuf::appearances::Appearance>& bank) {
+    const auto convert = [this, &spriteSize, metadata](const EAppearanceCategory category,
+                                                       const google::protobuf::RepeatedPtrField<tibia::protobuf::appearances::Appearance>& bank) {
         std::map<uint16_t, TAppearanceType> types;
         for (const auto& appearance : bank) {
-            TAppearanceType type = TAppearanceType::fromProtobuf(category, appearance, spriteSize);
+            TAppearanceType type = TAppearanceType::fromProtobuf(category, appearance, spriteSize, metadata);
             types.insert_or_assign(type.getId(), std::move(type));
         }
         auto& target = m_appearanceTypes[category];
         for (auto& [id, type] : types)
             target.try_emplace(id, std::move(type));
     };
-    convert(EAppearanceCategory::Effect, appearances.effect());
-    convert(EAppearanceCategory::Missile, appearances.missile());
-    convert(EAppearanceCategory::Object, appearances.object());
-    convert(EAppearanceCategory::Outfit, appearances.outfit());
+    const auto convertAll = [&] {
+        convert(EAppearanceCategory::Effect, appearances.effect());
+        convert(EAppearanceCategory::Missile, appearances.missile());
+        convert(EAppearanceCategory::Object, appearances.object());
+        convert(EAppearanceCategory::Outfit, appearances.outfit());
+    };
+    // Host: the sprite system shares the metadata with the renderer's lookups.
+    if (metadata)
+        tibia::sprites::TSpriteSystem::instance().withMetadataLocked(convertAll);
+    else
+        convertAll();
     collectObjectLists();
     linkExpireCounterparts();
 }
@@ -327,6 +343,25 @@ TStaticInformation TAppearancesManager::parseStaticInformation(const std::string
     return information;
 }
 
+namespace {
+
+/// The house's MapFields bytes. The static map data's MapArea keeps its fields
+/// as a MapFieldData (as the protocol's MapArea field 3): the packed fields are
+/// the MapFields bytes selectHouse parses; a plain fields branch is serialized again.
+std::string houseMapFieldsBytes(const std::string& fieldData)
+{
+    ::tibia::protobuf::protocol::MapFieldData data;
+    if (fieldData.empty() || !data.ParseFromString(fieldData))
+        return fieldData;
+    if (data.has_packed_fields())
+        return data.packed_fields();
+    if (data.has_fields())
+        return data.fields().SerializeAsString();
+    return fieldData;
+}
+
+} // namespace
+
 std::vector<THouseMapArea> TAppearancesManager::parseStaticMapData(const std::string& bytes)
 {
     tibia::protobuf::staticdata::StaticMapData message;
@@ -339,7 +374,7 @@ std::vector<THouseMapArea> TAppearancesManager::parseStaticMapData(const std::st
         areas.push_back({ house.house_id(),
                           Position(static_cast<uint16_t>(area.top_left().x()), static_cast<uint16_t>(area.top_left().y()),
                                    static_cast<uint8_t>(area.top_left().z())),
-                          area.extent().width(), area.extent().height(), area.extent().depth(), area.fields() });
+                          area.extent().width(), area.extent().height(), area.extent().depth(), houseMapFieldsBytes(area.fields()) });
     }
     return areas;
 }

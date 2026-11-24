@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/spritetexturecache.h"
+#include "sprites/qttextureatlastexturecreator.h"
 
 #include <cip_gen.h>
 
@@ -27,6 +28,7 @@ class TSpriteTextureProvider final : public cip::tibia::renderer::TSpriteTexture
     Q_OBJECT
 public:
     explicit TSpriteTextureProvider(QQuickWindow* window, bool allowEvict = true, QObject* parent = nullptr);
+    ~TSpriteTextureProvider() override;
 
     /// CIP v12: the texture of `identifier`'s sprite, scaled `scale` times with
     /// `mode` (1 keeps the sprite's size). Unless `bypassCache`, a stored texture
@@ -40,6 +42,12 @@ public:
     {
         return texture(identifier, 1, Qt::FastTransformation, false);
     }
+    /// CIP v14: the texture of a null image, made once by the texture factory
+    /// and kept (null while the factory cannot make one).
+    TSpriteTexture emptyTexture();
+    /// The factory the textures are made with: the window (CIP: the provider's
+    /// texture creator).
+    QQuickWindow* textureFactory() const { return m_window; }
     /// The texture of `identifier` with every pixel in `color` (software renderer
     /// highlight); null until the sprite is resolved.
     QSGTexture* highlightedTexture(const SpriteIdentifier& identifier, const QColor& color);
@@ -73,6 +81,10 @@ private:
 
     QQuickWindow* m_window = nullptr;
     std::unique_ptr<qmlcomponents::TSpriteTextureCache> m_cache;
+    /// Makes the window's textures (null without a window).
+    std::unique_ptr<sprites::TQtTextureAtlasTextureCreator> m_textureCreator;
+    /// The empty texture, once made (released with the scene graph).
+    TSpriteTexture m_emptyTexture;
 };
 
 /// Shared UI texture providers per window (CIP: TSpriteTextureProviderManager).

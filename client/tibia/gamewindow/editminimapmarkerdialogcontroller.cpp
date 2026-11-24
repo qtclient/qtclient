@@ -1,5 +1,6 @@
 #include "editminimapmarkerdialogcontroller.h"
 
+#include "game/igamesession.h"
 #include "input/gameaction.h"
 #include "minimap/minimapmarkerstorage.h"
 
@@ -81,5 +82,10 @@ void TEditMinimapMarkerDialogController::onOkClicked(const QString& Text, const 
 }
 
 void TEditMinimapMarkerDialogController::onControllerFinished() { dialog()->close(); }
+
+void TEditMinimapMarkerDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+}
 
 }

@@ -16,6 +16,7 @@
 #include "qmlcomponents/speechbubbleoverlay.h"
 #include "renderer/lightmappainteditem.h"
 #include "renderer/mapscale.h"
+#include "renderer/worldmapcamera.h"
 #include "renderer/worldmapquickitem.h"
 #include "worldmap/creaturehudoverlaycontroller.h"
 #include "worldmap/creaturehudrenderprovider.h"
@@ -242,6 +243,18 @@ void TMapWindowController::refreshClassicView()
     m_classicView = classic;
     Q_EMIT classicViewChanged();
     syncFov();
+}
+
+void TMapWindowController::onFullscreenModeEntered()
+{
+    // The session's camera takes the pane's scale again; the creature HUDs
+    // are laid out anew.
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        if (m_pane && session->worldMapCamera())
+            session->worldMapCamera()->setScaleFactor(m_pane->property("mapWindowScaleFactor").toFloat());
+    }
+    if (m_creatureHuds)
+        m_creatureHuds->refreshCreatureHUDs();
 }
 
 void TMapWindowController::syncFov()

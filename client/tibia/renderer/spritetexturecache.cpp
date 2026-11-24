@@ -42,20 +42,13 @@ TSpriteTextureCache::TSpriteTextureCache(QQuickWindow* window, const bool allowE
 {
 }
 
-TSpriteTextureCache::~TSpriteTextureCache()
-{
-    for (const Entry& entry : std::as_const(m_textures))
-        delete entry.texture;
-    for (QSGTexture* texture : std::as_const(m_retired))
-        delete texture;
-    for (QSGTexture* texture : std::as_const(m_graveyard))
-        delete texture;
-}
+// The texture creator deletes every texture once its last owner lets it go.
+TSpriteTextureCache::~TSpriteTextureCache() = default;
 
-void TSpriteTextureCache::retire(QSGTexture* texture)
+void TSpriteTextureCache::retire(std::shared_ptr<QSGTexture> texture)
 {
     if (texture)
-        m_retired.append(texture);
+        m_retired.append(std::move(texture));
 }
 
 void TSpriteTextureCache::markSceneDirty() const
@@ -85,30 +78,9 @@ void TSpriteTextureCache::flushRetired()
         }
         return;
     }
-    if (!m_graveyard.isEmpty()) {
-        if (m_window) {
-            struct DeleteTextures final : QRunnable
-            {
-                explicit DeleteTextures(QVector<QSGTexture*> textures)
-                    : m_textures(std::move(textures))
-                {
-                    setAutoDelete(true);
-                }
-                void run() override
-                {
-                    for (QSGTexture* texture : m_textures)
-                        delete texture;
-                }
-                QVector<QSGTexture*> m_textures;
-            };
-            // AfterSwap: Metal may still sample the previous frame until present completes.
-            m_window->scheduleRenderJob(new DeleteTextures(std::move(m_graveyard)), QQuickWindow::AfterSwapStage);
-        } else {
-            for (QSGTexture* texture : std::as_const(m_graveyard))
-                delete texture;
-        }
-        m_graveyard.clear();
-    }
+    // Letting the last owners go makes the texture creator delete the
+    // textures on the render thread before the next frame synchronizes.
+    m_graveyard.clear();
     m_graveyard = std::move(m_retired);
     m_retired.clear();
 }
@@ -116,7 +88,7 @@ void TSpriteTextureCache::flushRetired()
 void TSpriteTextureCache::clear()
 {
     for (Entry& entry : m_textures) {
-        retire(entry.texture);
+        retire(std::move(entry.owner));
         entry.texture = nullptr;
     }
     m_textures.clear();
@@ -152,12 +124,12 @@ TSpriteTexture TSpriteTextureCache::lookup(const SpriteIdentifier& identifier, b
         return {};
     if (it->budgeted)
         it->frame = m_frame;
-    return { it->texture, it->rect };
+    return { it->texture, it->rect, it->owner };
 }
 
 void TSpriteTextureCache::insert(const SpriteIdentifier& identifier, const TSpriteTexture& texture)
 {
-    Entry entry{ .texture = texture.texture, .rect = texture.rect, .frame = m_frame };
+    Entry entry{ .texture = texture.texture, .rect = texture.rect, .frame = m_frame, .owner = texture.owner };
     // A sprite that does not exist is remembered so it is not looked up again.
     if (!entry.texture) {
         m_textures.insert(identifier, entry);
@@ -199,7 +171,7 @@ void TSpriteTextureCache::remove(const SpriteIdentifier& identifier)
         return;
     if (!it->budgeted && !it->texture)
         return;
-    retire(it->texture);
+    retire(it->owner);
     m_textures.erase(it);
 }
 
@@ -207,7 +179,7 @@ void TSpriteTextureCache::removeAll()
 {
     for (auto it = m_textures.begin(); it != m_textures.end();) {
         if (it->budgeted || it->texture) {
-            retire(it->texture);
+            retire(it->owner);
             it = m_textures.erase(it);
         } else {
             ++it;
@@ -268,7 +240,7 @@ void TSpriteTextureCache::evict(const double share)
                 if (entry->texture && entry->budgeted && entry->frame <= oldest) {
                     m_budgetedPixels -= entry->pixels;
                     dropped += entry->pixels;
-                    retire(entry->texture);
+                    retire(entry->owner);
                     entry = m_textures.erase(entry);
                 } else {
                     ++entry;
@@ -280,7 +252,7 @@ void TSpriteTextureCache::evict(const double share)
     const double used = m_budget != 0 ? static_cast<float>(m_budgetedPixels) / static_cast<float>(m_budget) : 0.0;
     for (auto it = m_textures.begin(); it != m_textures.end();) {
         if (used < 0.9 && it->texture && !it->budgeted && it->frame < m_frame - 50u) {
-            retire(it->texture);
+            retire(it->owner);
             it = m_textures.erase(it);
         } else {
             ++it;

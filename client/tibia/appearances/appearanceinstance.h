@@ -245,8 +245,9 @@ private:
 };
 
 /// An object whose pattern follows the field it lies on, so multi-pattern
-/// grounds (e.g. cobbled pavement) tile as connected variants.
-class TPatternObjectAppearanceInstance final : public TObjectAppearanceInstance
+/// grounds (e.g. cobbled pavement) tile as connected variants. Effects are
+/// pattern objects too: they draw the pattern of the field they are shown on.
+class TPatternObjectAppearanceInstance : public TObjectAppearanceInstance
 {
 public:
     using TObjectAppearanceInstance::TObjectAppearanceInstance;
@@ -395,6 +396,13 @@ public:
     const TAppearanceInstanceSpriteInfoPtr& previewSpriteInfo() const { return m_previewSpriteInfo; }
     /// CIP v16: advances the idle and / or moving sequence; true when a phase changed.
     bool updateSequences(qint64 nowMs, bool idle, bool moving);
+    /// CIP v17: the moving sequence's walking animator starts a step of
+    /// `keyMs` at `nowMs`.
+    void setMovingAnimatorKey(qint64 keyMs, qint64 nowMs)
+    {
+        if (m_movingSequence)
+            m_movingSequence->setAnimatorKey(keyMs, nowMs);
+    }
     /// CIP v5.
     bool updateAnimation(qint64 nowMs) override { return updateSequences(nowMs, true, true); }
     /// CIP v18 / v19 / v20.
@@ -472,13 +480,17 @@ public:
     using TAppearanceInstance::TAppearanceInstance;
 };
 
-class TEffectInstance : public TAppearanceInstance
+/// An effect: a pattern object that is not part of a field's objects.
+class TEffectInstance : public TPatternObjectAppearanceInstance
 {
 public:
-    using TAppearanceInstance::TAppearanceInstance;
+    /// An effect of `type` placed nowhere yet (a missile takes its place from
+    /// its path).
+    explicit TEffectInstance(TAppearanceType* type, qint64 animationStartMs = 0);
+    /// An effect of `type` on `field`, drawing the field's pattern, whose
+    /// animation starts at `animationStartMs`.
+    TEffectInstance(TAppearanceType* type, const Position& field, qint64 animationStartMs);
 
-    /// Place the effect on `field`, created at `nowMs`.
-    void start(const Position& field, qint64 nowMs);
     /// Advance to `nowMs`: the clock, then the animation (updateAnimation).
     virtual void update(qint64 nowMs);
     /// The animation played its cycles, or there is none (TFieldEffectInstance::v14).
@@ -489,8 +501,6 @@ public:
     bool getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const;
     /// The field the effect is on (TFieldEffectInstance::v13).
     virtual const Position& field() const { return m_fieldPosition; }
-    int patternX() const { return m_patternX; }
-    int patternY() const { return m_patternY; }
     /// The animation's phase, 0 without one.
     int phase() const;
     bool underCreatures() const { return m_underCreatures; }
@@ -513,15 +523,24 @@ protected:
     tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
     bool m_underCreatures{ false };
     Position m_fieldPosition;
-    int m_patternX{ 0 };
-    int m_patternY{ 0 };
     float m_opacity{ 1.f };
 };
 
-class TFieldEffectInstance final : public TEffectInstance
+/// An effect shown on a field: it draws the field's pattern, from the field's
+/// top-left sub-field lifted by an elevation, with an opacity.
+class TFieldEffectInstance : public TEffectInstance
 {
 public:
-    using TEffectInstance::TEffectInstance;
+    /// Effect `type` on `field` lifted by `elevation` sub-fields, whose
+    /// animation starts at `animationStartMs`, drawn with `opacity`.
+    TFieldEffectInstance(TAppearanceType* type, const Position& field, uint8_t elevation, qint64 animationStartMs,
+                         double opacity);
+
+    /// The field's top-left sub-field, lifted by the effect's elevation.
+    const worldmap::TWorldMapSubfieldCoordinate& subfieldCoordinate() const { return m_subfieldCoordinate; }
+
+private:
+    worldmap::TWorldMapSubfieldCoordinate m_subfieldCoordinate;
 };
 
 class TMissileEffectInstance final : public TEffectInstance
@@ -539,8 +558,12 @@ public:
     void update(qint64 nowMs) override;
     /// The flight is over (TMissileEffectInstance::v14).
     bool isFinished() const override { return m_nowMs >= m_startMs + static_cast<qint64>(m_flightDuration); }
+    /// CIP: the flight time per whole unit of the square root of the distance
+    /// in fields (the game client sets it from the client settings).
+    static void setMillisecondsPerField(qint64 Milliseconds);
 
 private:
+    static qint64 s_millisecondsPerField;
     Position m_pathFrom;
     Position m_pathTo;
     std::shared_ptr<animation::TWorldMapLinearMovementTween> m_tween;
@@ -568,6 +591,9 @@ public:
     const Position& field() const override;
     /// CIP v14: the wrapped effect finished.
     bool isFinished() const override;
+    /// CIP v12: once shown, what the wrapped effect draws on `coordinate`;
+    /// nothing before.
+    void appendRenderInfos(const worldmap::TWorldMapCoordinate& coordinate, renderer::TRenderInfoList& infos) const override;
     /// The delay has passed since the effect was created.
     bool isShown() const override { return m_delayMs + m_createdMs < m_currentMs; }
 
@@ -590,24 +616,26 @@ int fieldDirection(int dx, int dy);
 void directionPattern(int direction, int& patternX, int& patternY);
 
 /// A field effect drawn in a direction (the attack animation on a creature).
-class TDirectionalFieldEffectInstance final : public TEffectInstance
+class TDirectionalFieldEffectInstance final : public TFieldEffectInstance
 {
 public:
-    using TEffectInstance::TEffectInstance;
-
-    /// Place the effect on `field` at `nowMs`, drawn towards `direction`.
-    void start(const Position& field, qint64 nowMs, int direction);
+    /// Effect `type` on `field` lifted by `elevation`, fully opaque, drawing
+    /// the pattern of `direction` instead of the field's.
+    TDirectionalFieldEffectInstance(TAppearanceType* type, const Position& field, uint8_t elevation, int direction,
+                                    qint64 animationStartMs);
 };
 
 /// A tutorial field marker: shown until the tutorial removes its markers.
-class TTutorialFieldEffectInstance final : public TEffectInstance
+class TTutorialFieldEffectInstance final : public TFieldEffectInstance
 {
 public:
-    /// A tutorial marker of `type`: its animation loops until it is stopped.
-    explicit TTutorialFieldEffectInstance(TAppearanceType* type);
+    /// A fully opaque tutorial marker of `type` on `field` lifted by
+    /// `elevation`: its animation loops until it is stopped.
+    TTutorialFieldEffectInstance(TAppearanceType* type, const Position& field, uint8_t elevation,
+                                 qint64 animationStartMs);
 
     void stop() { m_stopped = true; }
-    bool isFinished() const override { return m_stopped || TEffectInstance::isFinished(); }
+    bool isFinished() const override { return m_stopped || TFieldEffectInstance::isFinished(); }
 
 private:
     bool m_stopped = false;

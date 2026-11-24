@@ -72,6 +72,8 @@ qtclient_add_port_test(client_creaturemovement_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementspeedcalculator.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementtween.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
 )
 find_package(Qt6 REQUIRED COMPONENTS Network Test Gui Qml Quick)
 qtclient_add_port_test(client_experiencecalculator_tests
@@ -363,6 +365,7 @@ if(TARGET cip_messages)
     qtclient_add_port_test(client_appearancetype_tests
         appearancetype_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
     )
     target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
@@ -371,6 +374,7 @@ if(TARGET cip_messages)
     qtclient_add_port_test(client_appearancetypeframegroups_tests
         appearancetypeframegroups_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
     )
     target_link_libraries(client_appearancetypeframegroups_tests PRIVATE cip_messages Qt6::Gui)
@@ -383,6 +387,7 @@ if(TARGET cip_messages)
     qtclient_add_port_test(client_appearanceinstancetracker_tests
         appearanceinstancetracker_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearanceinstancetracker.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearanceinstancetracker.h
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/appearancetypespritesheetmapping.cpp
@@ -556,6 +561,7 @@ if(TARGET cip_messages)
         traderstorage_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/game/traderstorage.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
     )
     target_link_libraries(client_traderstorage_tests PRIVATE cip_messages Qt6::Gui)
@@ -717,6 +723,13 @@ qtclient_add_port_test(client_proficiencyshapeoptions_tests
 # Wave 16: TAnimator's process-wide random number generator.
 qtclient_add_port_test(client_animatorrandomsource_tests
     animatorrandomsource_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
+)
+# Wave 17: TMovingOutfitAnimator is a TAnimator.
+qtclient_add_port_test(client_movingoutfitanimatorbase_tests
+    movingoutfitanimatorbase_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
     ${CMAKE_SOURCE_DIR}/shared/src/randomnumbergenerator.cpp
 )

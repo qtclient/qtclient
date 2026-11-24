@@ -170,13 +170,18 @@ private:
     /// A copy of the client's options with every page's pending values.
     std::unique_ptr<config::TClientOptions> pendingOptions() const;
     TMessageDialogController* makeMessageDialog(QQmlEngine* Engine, QQuickItem* DialogParentItem);
-    /// CIP : conf, characterdata and minimap files from the archive.
+    /// The import confirmation's accept: unpacks conf, characterdata and
+    /// minimap files from the archive, reloads the minimap, the options, the
+    /// pages and the character's configuration, then reports the result
+    /// (a restart prompt when the renderer options changed).
     void importArchive();
     /// The controls page's rotate modifiers go to the hotkeys page.
     void onControlOptionsChanged();
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
     /// The info message with the OK button.
     void showInfoMessage(const QString& caption, const QString& text);
+    /// The restart message with its "Restart" button.
+    void showRestartMessage(const QString& caption, const QString& text);
     /// CIP : GameclientMessageSetClientOptions with alwaysTurnTowardsMoveDirection.
     void sendTurnTowardsMoveDirection(bool enabled);
     /// The hotkey page loses the button mappings of every action bar whose

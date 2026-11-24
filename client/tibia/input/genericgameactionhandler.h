@@ -71,8 +71,8 @@ Q_SIGNALS:
     void sendLook(const ::tibia::protobuf::protocol::GameclientMessageLook& LookMessage);
     void sendBrowseField(const ::tibia::protobuf::protocol::GameclientMessageBrowseField& BrowseFieldMessage);
     void sendMoveObject(const ::tibia::protobuf::protocol::GameclientMessageMoveObject& MoveObjectMessage);
-    /// QUIT_GAME: the session logs the character out.
-    void sendQuitGame();
+    /// QUIT_GAME: the game server session sends it to the server (logout).
+    void sendQuitGame(const ::tibia::protobuf::protocol::GameclientMessageQuitGame& QuitGameMessage);
     void sendConfigureShowOffSocket(
         const ::tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket& ConfigureShowOffSocketMessage);
     void sendRequestResourceBalance(

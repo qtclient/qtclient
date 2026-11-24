@@ -2,6 +2,7 @@
 #include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
+#include "exaltation/exaltationprotocolmessagehandler.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
@@ -193,6 +194,13 @@ exaltation::TExaltationStorage* exaltationStorageOf(const std::shared_ptr<game::
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
     return session ? session->exaltationStorage().get() : nullptr;
+}
+
+/// The session's exaltation protocol handler, or null without a session.
+exaltation::TExaltationProtocolMessageHandler* exaltationHandlerOf(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->exaltationProtocolMessageHandler().get() : nullptr;
 }
 
 }
@@ -716,17 +724,20 @@ bool TExaltationForgeConversionPageController::maxDustLimitReached() const
 
 void TExaltationForgeConversionPageController::convertDust()
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::DUST2SLIVER);
+    if (auto* handler = exaltationHandlerOf(m_gameSession))
+        handler->requestDustToSliversConversion();
 }
 
 void TExaltationForgeConversionPageController::convertSlivers()
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::SLIVER2CORE);
+    if (auto* handler = exaltationHandlerOf(m_gameSession))
+        handler->requestSliversToCoreConversion();
 }
 
 void TExaltationForgeConversionPageController::increaseDustLimit()
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::INCREASELIMIT);
+    if (auto* handler = exaltationHandlerOf(m_gameSession))
+        handler->requestDustLimitIncrease();
 }
 
 void TExaltationForgeConversionPageController::showDialogTab()

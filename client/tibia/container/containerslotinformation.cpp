@@ -273,6 +273,7 @@ TSlotInfo TContainerRenderProvider::inventorySlotInfo(const int slotId, const bo
     info.text = slotText(info.appearance, showExpire, showExpireWhenUnused);
     info.acceptsDrop = true;
     info.isUpdatable = !info.appearance.empty();
+    info.isInventorySlot = true;
     info.managedContainerTooltip = managedContainerTooltip(info.appearance);
     return info;
 }

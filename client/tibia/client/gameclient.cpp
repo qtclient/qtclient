@@ -79,6 +79,8 @@
 #include "qmlcomponents/lenshelpmanager.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "config/configciptypes.h"
+#include "config/tibiaconfig.h"
+#include "appearances/appearanceinstance.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
 #include "authentication/authenticationciptypes.h"
 #include "authentication/cloudflarechallengecontroller.h"
@@ -87,6 +89,7 @@
 #include "assets/assetsciptypes.h"
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
+#include "gamewindow/contextmenucontroller.h"
 #include "creatures/vipstorage.h"
 #include "trade/tradeciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
@@ -554,6 +557,8 @@ authentication::TLoginRequestUploader* TGameClient::loginRequestUploader() const
 
 TGameClient::~TGameClient()
 {
+    // CIP: first the process-wide context menu goes.
+    gamewindow::TContextMenuController::resetInstance();
     // The session's manager saves the character's configuration through
     // storages the game window owns: save before the game window goes.
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
@@ -1196,9 +1201,6 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    if (auto* base = dynamic_cast<game::TGameSessionBase*>(current))
-        connect(base->genericGameActionHandler().get(), &input::TGenericGameActionHandler::sendQuitGame, this,
-                [this] { requestLogoutOrShowStartScreen(nullptr); });
     const auto outOfDate = [this] {
         Q_EMIT clientOutOfDate();
         fail(tr("The game server needs a newer client."));
@@ -1230,6 +1232,7 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         if (previous) {
             previous->setMinimapStorages(nullptr, nullptr, nullptr);
             previous->setWhiteBlacklist(nullptr);
+            previous->setPremiumTimeStorage(nullptr);
         }
         // A retired session no longer follows the game's notifications.
         disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
@@ -1248,10 +1251,6 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         next->initializeWorldMapSessionState();
     }
     connectGameWindowControllersToGameSession(GameSession);
-    // CIP: the login's controller follows the session (its player's level and
-    // data, and the login request uploader's character list).
-    if (m_authentication)
-        m_authentication->connectToGameSession(std::dynamic_pointer_cast<game::TGameSessionBase>(GameSession));
     m_currentGameSession = GameSession;
     // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
     game::setCurrentGameSession(m_currentGameSession);
@@ -1263,6 +1262,7 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
             linkGameActionRouters(*m_pGameActionRouter, *current);
             current->setWhiteBlacklist(m_pWhiteBlacklist.get());
+            current->setPremiumTimeStorage(m_pPremiumTimeStorage);
             current->setMinimapStorages(minimapTileStorage(), minimapMarkerStorage(), cyclopediaMapStaticDataStorage());
         }
         setMinimapWorldmapProtocolHandler(worldmapProtocol());
@@ -1535,6 +1535,19 @@ void TGameClient::initializeClientObjects()
     connect(clientOptions(), &config::TClientOptions::controlOrLootSchemeOptionsChanged, this,
             &TGameClient::onControlOrLootSchemeOptionsChanged);
     onControlOrLootSchemeOptionsChanged();
+    // CIP: the client's premium time storage; each current session gets it.
+    m_pPremiumTimeStorage = std::make_shared<game::TPremiumTimeStorage>();
+    // CIP: the [GRAPHICS] timings are taken from the client settings once: a
+    // missile's flight per field, how long numerical effects show and merge,
+    // and how long a creature's temporary mark shows.
+    const std::shared_ptr<config::TTibiaConfig> settings = tibiaConfig();
+    const QString graphics = QStringLiteral("GRAPHICS");
+    appearances::TMissileEffectInstance::setMillisecondsPerField(
+        settings->clientSetting(graphics, QStringLiteral("missileFlyDelayMsec"), 150));
+    effects::TNumericalEffect::setDuration(settings->clientSetting(graphics, QStringLiteral("numericalEffectDisplayDurationMsec"), 1000));
+    effects::TNumericalEffect::setMergeDuration(settings->clientSetting(graphics, QStringLiteral("numericalEffectMergeDurationMsec"), 100));
+    creatures::TCreature::setTimedSquareDuration(
+        settings->clientSetting(graphics, QStringLiteral("temporaryMarkDisplayDurationMsec"), 1000));
 }
 
 void TGameClient::onControlOrLootSchemeOptionsChanged()
