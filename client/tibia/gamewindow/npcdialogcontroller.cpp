@@ -74,20 +74,27 @@ void TNpcDialogOutfit::setOutfit(const Outfit& outfit)
     Q_EMIT changed();
 }
 
-TNpcDialogController::TNpcDialogController(QObject* parent)
-    : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), parent)
+TNpcDialogController::TNpcDialogController(config::TClientOptions* ClientOptions, TChatController* ChatController, QQmlEngine* Engine,
+                                           QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), Engine, DialogParentItem, parent)
+    , m_trade(DialogParentItem, Engine)
     , m_chat(this)
     , m_filter(&m_chat, this)
+    , m_chatControl(ChatController)
+    , m_clientOptions(ClientOptions)
 {
     connect(&m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
     m_chatChannelModel = QVariant::fromValue<QObject*>(&m_filter);
     m_tradeController = &m_trade;
     m_npcOutfit = &m_outfit;
     m_keywordButtonsModel = &m_keywordButtons;
+    // CIP: the chat controller knows the dialog (its chat input yields to the dialog's).
+    m_chatController = ChatController;
+    if (ChatController)
+        ChatController->setNpcDialog(this);
     m_positionAndSize = QRect(-1, -1, 0, 0);
-    connect(config::TClientOptions::instance(), &config::TClientOptions::npcDialogOptionsChanged, this,
-            &TNpcDialogController::onNpcDialogOptionsChanged);
-    if (config::TClientOptions::instance()->npcDialogOptions().isValid())
+    connect(m_clientOptions, &config::TClientOptions::npcDialogOptionsChanged, this, &TNpcDialogController::onNpcDialogOptionsChanged);
+    if (m_clientOptions->npcDialogOptions().isValid())
         onNpcDialogOptionsChanged();
     // CIP / : while the trade has the keyboard the dialog's chat input lets go of it.
     m_tradeFocus.setActive(false);
@@ -386,16 +393,6 @@ void TNpcDialogController::onRequestCloseNPCTrade()
         dialog()->close();
 }
 
-void TNpcDialogController::setChatController(TChatController* controller)
-{
-    if (m_chatControl || !controller)
-        return;
-    m_chatControl = controller;
-    m_chatController = controller;
-    controller->setNpcDialog(this);
-    bindNpcChannel();
-}
-
 void TNpcDialogController::bindNpcChannel()
 {
     if (m_chatStorage)
@@ -443,7 +440,7 @@ void TNpcDialogController::setShowTrade(const bool show)
 void TNpcDialogController::onPositionChanged(const int x, const int y)
 {
     // CIP: the client options keep the dialog's rectangle.
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_clientOptions;
     QRect rect = options->npcDialogOptions();
     rect.moveTo(x, y);
     options->setNpcDialogOptions(rect);
@@ -451,7 +448,7 @@ void TNpcDialogController::onPositionChanged(const int x, const int y)
 
 void TNpcDialogController::onNpcDialogOptionsChanged()
 {
-    const QRect rect = config::TClientOptions::instance()->npcDialogOptions();
+    const QRect rect = m_clientOptions->npcDialogOptions();
     if (rect == m_positionAndSize)
         return;
     m_positionAndSize = rect;
@@ -462,7 +459,7 @@ void TNpcDialogController::onSizeChanged(const int NewDialogWidth, const int New
 {
     if (!dialog()->item())
         return;
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_clientOptions;
     QRect rect = options->npcDialogOptions();
     rect.setSize(QSize(NewDialogWidth, NewContentHeight));
     options->setNpcDialogOptions(rect);

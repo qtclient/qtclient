@@ -4084,7 +4084,9 @@ message GameclientMessageQuitGame {
 
 // client opcode 0x1C (28) — ConnectionPingBack
 // classic: empty
+// CipSoft TNetworkQualityProtocolMessageHandler::v18: the connection the answered ping came on (0 primary, 1 secondary); TProtocolClientMessageProcessor sends the message on that connection only. Not on the wire.
 message GameclientMessageConnectionPingBack {
+  optional int32 connection_type = 1;
   extend GameclientMessage {
     optional GameclientMessageConnectionPingBack gameclient_message_connection_ping_back = 28;
   }

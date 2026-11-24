@@ -8,10 +8,16 @@
 #include "input/keyboardstatusstorage.h"
 
 #include <array>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
+
+namespace tibia::chat {
+class TChatModeManager;
+}
+namespace tibia::config {
+class TClientOptions;
+}
 
 namespace tibia {
 namespace input {
@@ -31,8 +37,11 @@ class TPlayerMovementInputInterpreter final : public cip::tibia::input::TPlayerM
     Q_OBJECT
 
 public:
-    /// `chatMode`: tibia::chat::EChatMode (0 off).
-    TPlayerMovementInputInterpreter(std::shared_ptr<TKeyboardStatusStorage> pKeyboardStatusStorage, std::function<int()> chatMode,
+    /// Keeps the key status, the client options (the hotkey preset, the
+    /// rotateWith* options) and the chat mode manager, and takes the walk keys
+    /// again when the hotkeys, the rotate options or the chat mode change.
+    TPlayerMovementInputInterpreter(std::shared_ptr<TKeyboardStatusStorage> pKeyboardStatusStorage,
+                                    config::TClientOptions* pClientOptions, chat::TChatModeManager* pChatModeManager,
                                     QObject* parent = nullptr);
     ~TPlayerMovementInputInterpreter() override;
 
@@ -56,15 +65,14 @@ public:
     bool rotatesWest() const { return turns(tibia::client::West); }
 
 public Q_SLOTS:
-    /// The walk keys of the preset and chat mode; the status tracks them.
+    /// The walk keys of the preset and chat mode and the enabled rotate
+    /// modifiers; the status tracks them.
     void onHotkeyOptionsChanged();
 
 private:
     using TKey = TKeyboardStatusStorage::TKey;
     /// tibia::client::North .. tibia::client::NorthWest.
     using TDirectionKeys = std::array<std::vector<TKey>, 8>;
-
-    void onOptionsChanged();
 
     /// The newest held walk key of the status.
     std::optional<TKey> newestWalkKey() const;
@@ -81,7 +89,8 @@ private:
     bool rotates() const;
 
     std::shared_ptr<TKeyboardStatusStorage> m_pKeyboardStatusStorage;
-    std::function<int()> m_chatMode;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    chat::TChatModeManager* m_pChatModeManager = nullptr;
     /// [chat off, chat on].
     std::array<TDirectionKeys, 2> m_directions;
     bool m_rotateWithCtrl = true;

@@ -4,6 +4,8 @@
 #include "sound/sounddecompressorthreadpool.h"
 #include "sound/soundplayermanager.h"
 
+#include "readonlymemoryblob.h"
+
 #include <cmath>
 
 // The test builds the players alone: a silent audio source and no decoder.
@@ -42,11 +44,22 @@ TPlayableSoundData TSoundDecompressorThreadpool::toPlayableSoundData(const TSoun
     return ESoundDataState::Unavailable;
 }
 TSoundData TSoundDecompressorThreadpool::toSoundData(const TSoundData& data, ESoundLoadTarget) { return data; }
+TPlayableSoundData TSoundDecompressorThreadpool::playableSoundData(TSoundEffectID, const TSoundData&, ESoundLoadTarget)
+{
+    return ESoundDataState::Unavailable;
+}
+TSoundData TSoundDecompressorThreadpool::soundData(TSoundEffectID, const TSoundData& data, ESoundLoadTarget) { return data; }
 
 TSoundMetadataManager::TSoundMetadataManager(QObject* parent, float)
     : cip::tibia::sound::TSoundMetadataManager(parent) {}
 std::optional<TSoundMetadata> TSoundMetadataManager::sound(uint16_t) const { return std::nullopt; }
+std::optional<TSoundMetadata> TSoundMetadataManager::soundByFileName(const QString&) const { return std::nullopt; }
 
+}
+
+namespace tibia::shared {
+QByteArray TReadOnlyMemoryBlob::getData() const { return m_data; }
+QString TReadOnlyMemoryBlob::getFilePath() const { return m_filePath; }
 }
 
 using namespace tibia::sound;

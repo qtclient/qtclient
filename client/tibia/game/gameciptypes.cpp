@@ -68,8 +68,6 @@ using ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange;
 using ::tibia::protobuf::protocol::GameserverMessageClientCheck;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
 using ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered;
-using ::tibia::protobuf::protocol::GameserverMessagePing;
-using ::tibia::protobuf::protocol::GameserverMessagePingBack;
 using ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart;
 using ::tibia::protobuf::protocol::GameserverMessageSessionEndInformation;
 using ::tibia::protobuf::protocol::GameserverMessageDead;
@@ -283,16 +281,6 @@ void TGameProtocolMessageHandler::handleWorldEnteredMessage(const GameserverMess
     processWorldEntered();
 }
 
-void TGameProtocolMessageHandler::handlePingMessage(const GameserverMessagePing&)
-{
-    processPing();
-}
-
-void TGameProtocolMessageHandler::handlePingBackMessage(const GameserverMessagePingBack&)
-{
-    processPingBack();
-}
-
 void TGameProtocolMessageHandler::handleSpellDataModificationMessage(const GameserverMessageSpellDataModification& m)
 {
     // The first entry's spell and modification.
@@ -301,12 +289,22 @@ void TGameProtocolMessageHandler::handleSpellDataModificationMessage(const Games
     tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
 }
 
-TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, const bool allowAllToInspectPlayer,
-                                                             QObject* parent)
+TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(
+    std::shared_ptr<TPlayerData> PlayerData, std::shared_ptr<TPlayerSkillStats> PlayerSkillStats,
+    std::shared_ptr<tibia::creatures::TCreatureStorage> CreatureStorage, std::shared_ptr<TCooldownStorage> CooldownStorage,
+    std::shared_ptr<TOutfitDialogStorage> OutfitDialogStorage, tibia::spells::TSpellInfoStorage* SpellInfoStorage,
+    std::shared_ptr<tibia::shared::IClockService> ClockService, const bool AllowAllToInspectPlayer, QObject* parent)
     : cip::tibia::game::TPlayerProtocolMessageHandler(parent)
-    , m_cooldownStorage(cooldownStorage)
-    , m_allowAllToInspectPlayer(allowAllToInspectPlayer)
+    , m_playerData(std::move(PlayerData))
+    , m_playerSkillStats(std::move(PlayerSkillStats))
+    , m_creatureStorage(std::move(CreatureStorage))
+    , m_cooldownStorage(std::move(CooldownStorage))
+    , m_outfitDialogStorage(std::move(OutfitDialogStorage))
+    , m_spellInfoStorage(SpellInfoStorage)
+    , m_clockService(std::move(ClockService))
+    , m_allowAllToInspectPlayer(AllowAllToInspectPlayer)
 {
+    qRegisterMetaType<std::shared_ptr<TSelectOutfitDialogData>>("std::shared_ptr<tibia::game::TSelectOutfitDialogData>");
 }
 
 void TPlayerProtocolMessageHandler::handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered&)
@@ -319,7 +317,7 @@ void TPlayerProtocolMessageHandler::handleWorldEnteredMessage(const ::tibia::pro
 
 void TPlayerProtocolMessageHandler::handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message)
 {
-    TPlayerData* playerData = TPlayerData::liveInstance();
+    TPlayerData* playerData = m_playerData.get();
     if (!playerData)
         return;
     playerData->setExpertPvpMode(message.expert_pvp() != 0);
@@ -335,7 +333,7 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
     if (message.vocation() >= 6) {
         return;
     }
-    if (TPlayerData* data = TPlayerData::liveInstance()) {
+    if (TPlayerData* data = m_playerData.get()) {
         const uint8_t oldVocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
         const std::vector<uint16_t> oldSpells = data->spells();
         data->setVocation(static_cast<uint8_t>(message.vocation()));
@@ -384,10 +382,10 @@ void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
             throw std::runtime_error("unhandled enum value");
         specialMagicLevels.emplace_back(boost.type(), boost.value());
     }
-    if (TPlayerData* data = currentPlayerData())
+    if (TPlayerData* data = m_playerData.get())
         data->setSpecialMagicLevels(specialMagicLevels);
     // CipSoft: TPlayerSkillStats keeps the message (offence / defence / misc stats).
-    if (TPlayerSkillStats* stats = tibia::game::currentPlayerSkillStats())
+    if (TPlayerSkillStats* stats = m_playerSkillStats.get())
         stats->setPlayerSkills(message);
 }
 
@@ -417,7 +415,7 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
     tibia::game::localPlayerSetStoreExpBoostPurchasable(message.store_xp_boost_purchasable());
     tibia::game::localPlayerSetDailyRewardExpBoostTime(static_cast<uint16_t>(message.daily_reward_xp_boost_seconds()));
     tibia::game::localPlayerSetManaShield(message.mana_shield(), message.max_mana_shield());
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+    if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
         storage->syncLocalPlayerStatsFromMap();
 }
 
@@ -425,7 +423,7 @@ void TPlayerProtocolMessageHandler::handlePlayerStateMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message)
 {
     const uint64_t oldStates = tibia::game::localPlayerStates();
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = m_playerData.get())
         data->setStates(std::bitset<30>(message.states() & 0x3fffffff), static_cast<int>(message.counter()));
     tibia::game::localPlayerSetStatesAndRottenBlood(message.states(), static_cast<uint8_t>(message.counter()));
     if (const uint64_t states = tibia::game::localPlayerStates(); states != oldStates)
@@ -439,7 +437,7 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
     if (message.pvp_mode() >= 4) {
         return;
     }
-    if (TPlayerData* data = TPlayerData::liveInstance()) {
+    if (TPlayerData* data = m_playerData.get()) {
         data->setChaseOpponents(message.chase_opponents());
         data->setSecureMode(message.secure_mode());
         data->setPvpMode(static_cast<int>(message.pvp_mode()));
@@ -449,7 +447,7 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
 void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageSpellDelay& message)
 {
-    TCooldownStorage* storage = m_cooldownStorage;
+    TCooldownStorage* storage = m_cooldownStorage.get();
     if (!storage)
         return;
     const auto spellId = static_cast<uint16_t>(message.spell_id());
@@ -464,7 +462,7 @@ void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
 void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageSpellGroupDelay& message)
 {
-    if (TCooldownStorage* storage = m_cooldownStorage) {
+    if (TCooldownStorage* storage = m_cooldownStorage.get()) {
         const qint64 now = TCooldownStorage::now();
         storage->setSpellGroupCooldown(static_cast<uint8_t>(message.group_id()), now, now + message.delay());
     }
@@ -473,7 +471,7 @@ void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
 void TPlayerProtocolMessageHandler::handleMultiUseDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message)
 {
-    if (TCooldownStorage* storage = m_cooldownStorage) {
+    if (TCooldownStorage* storage = m_cooldownStorage.get()) {
         const qint64 now = TCooldownStorage::now();
         storage->setMultiUseCooldown(now, now + message.delay());
     }
@@ -483,7 +481,7 @@ void TPlayerProtocolMessageHandler::handleResourceBalanceMessage(
     const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
 {
     // Bank, inventory and guild bank gold; other resources have their own handlers.
-    TPlayerData* data = TPlayerData::liveInstance();
+    TPlayerData* data = m_playerData.get();
     if (!data)
         return;
     switch (message.resource_type()) {
@@ -504,7 +502,7 @@ void TPlayerProtocolMessageHandler::handleResourceBalanceMessage(
 void TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePassiveAbilityData& message)
 {
-    TCooldownStorage* storage = m_cooldownStorage;
+    TCooldownStorage* storage = m_cooldownStorage.get();
     if (!storage)
         return;
     const auto ability = static_cast<uint8_t>(message.ability());
@@ -522,12 +520,12 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
     switch (m.data_type()) {
     case tibia::client::TYPES_MONK_HARMONY:
         tibia::game::localPlayerSetHarmony(static_cast<uint8_t>(m.harmony()));
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
             storage->syncLocalPlayerStatsFromMap();
         break;
     case tibia::client::TYPES_MONK_SERENE:
         tibia::game::localPlayerSetSerene(m.serene());
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
             storage->syncLocalPlayerStatsFromMap();
         break;
     case tibia::client::TYPES_MONK_VIRTUE: {
@@ -591,7 +589,7 @@ void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::pr
     // The player's own speed also goes to the player data.
     if (m.creature().id() != localPlayerId())
         return;
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = m_playerData.get())
         data->setSpeed(static_cast<uint16_t>(m.creature().speed()));
 }
 

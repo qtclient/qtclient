@@ -20,6 +20,15 @@ public:
     /// v13: `soundData` converted to `target` as source data.
     void convertSoundData(TSoundEffectID soundId, const TSoundData& soundData, ESoundLoadTarget target);
 
+    /// `data` as playable data of `target`: Unavailable without data; the
+    /// data itself when it already is in that form (raw samples as a buffer);
+    /// else Loading, the conversion runs (convertToPlayableSoundData).
+    TPlayableSoundData playableSoundData(TSoundEffectID soundId, const TSoundData& data, ESoundLoadTarget target);
+    /// `data` as source data of `target`: Unavailable without data; the
+    /// data itself when it already is in that form (raw samples for a buffer);
+    /// else Loading, the conversion runs (convertSoundData).
+    TSoundData soundData(TSoundEffectID soundId, const TSoundData& data, ESoundLoadTarget target);
+
     static TPlayableSoundData toPlayableSoundData(const TSoundData& soundData, ESoundLoadTarget target);
     static TSoundData toSoundData(const TSoundData& soundData, ESoundLoadTarget target);
 

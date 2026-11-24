@@ -12,7 +12,6 @@ namespace tibia::authentication {
 
 namespace {
 
-constexpr int SolveTimeoutMs = 120000;
 constexpr auto ClearanceCookieName = "cf_clearance";
 
 }
@@ -73,31 +72,30 @@ void TCloudflareChallengeController::cancel()
     cancel(QString());
 }
 
-void TCloudflareChallengeController::startChallenge(const QUrl& url)
+void TCloudflareChallengeController::start(const int Timeout)
 {
+    // A running challenge is cancelled first.
     if (m_running)
-        cancel(QStringLiteral("restart"));
-
-    m_clearance = {};
+        cancel(QStringLiteral("Restarted"));
+    m_clearance = TCloudflareChallengeClearanceInfo{ QNetworkCookie(), QString() };
     m_error.reset();
-    m_errorReason.clear();
-    setTargetUrl(url);
 
 #if !defined(TIBIA_DESKTOP_WEBENGINE)
     failWithoutSolver();
     return;
 #else
-    if (!m_profile || !url.isValid()) {
+    if (!m_profile || !m_targetUrl.isValid()) {
         failWithoutSolver();
         return;
     }
-
-    m_clearance.userAgent = m_profile->httpUserAgent();
-    Q_EMIT userAgentChanged();
     m_running = true;
-    m_timeout.start(SolveTimeoutMs);
-    Q_EMIT challengeSolveStarted(url);
+    // The solver starts without cookies.
+    if (QWebEngineCookieStore* store = m_profile->cookieStore())
+        store->deleteAllCookies();
+    m_timeout.start(Timeout);
+    dialog()->create();
     dialog()->show();
+    Q_EMIT challengeSolveStarted(m_targetUrl);
 #endif
 }
 
@@ -106,7 +104,7 @@ void TCloudflareChallengeController::onCookieAdded(const QNetworkCookie& Cookie)
     // Only the clearance cookie is kept; succeed() ignores it unless a challenge runs.
     if (Cookie.name() != QByteArray(ClearanceCookieName))
         return;
-    m_clearance.cookies = { Cookie };
+    m_clearance.cookie = Cookie;
     succeed();
 }
 
@@ -122,21 +120,20 @@ void TCloudflareChallengeController::onSolveTimeout()
     fail(TCloudflareChallengeError::Timeout, QString());
 }
 
-void TCloudflareChallengeController::fail(const TCloudflareChallengeError error, const QString& reason)
+void TCloudflareChallengeController::fail(const int code, const QString& reason)
 {
     if (!m_running)
         return;
     stopAndCloseDialog();
-    m_error = error;
-    m_errorReason = reason;
-    Q_EMIT challengeSolveFailed(error);
+    m_error = TCloudflareChallengeError{ code, reason };
+    Q_EMIT challengeSolveFailed(*m_error);
 }
 
 void TCloudflareChallengeController::failWithoutSolver()
 {
     // Host: no WebEngine solver (browser build) or no usable target; the challenge fails at once.
-    m_error = TCloudflareChallengeError::Unknown;
-    Q_EMIT challengeSolveFailed(TCloudflareChallengeError::Unknown);
+    m_error = TCloudflareChallengeError{};
+    Q_EMIT challengeSolveFailed(*m_error);
 }
 
 void TCloudflareChallengeController::succeed()

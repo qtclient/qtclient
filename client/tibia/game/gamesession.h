@@ -249,8 +249,6 @@ void safeLogout();
 /// Prefer over raw `g_game` in protocol translators.
 void processGameStart();
 void processWorldEntered();
-void processPing();
-void processPingBack();
 void processLoginError(std::string_view error);
 void processLoginAdvice(std::string_view message);
 void processLoginWait(std::string_view message, uint8_t time);

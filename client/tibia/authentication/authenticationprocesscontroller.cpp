@@ -29,6 +29,13 @@ namespace tibia::authentication {
 using EState = TAuthenticationProcessController::EState;
 using ETrigger = TAuthenticationProcessController::ETrigger;
 
+namespace {
+
+/// How long the player has to solve a Cloudflare challenge, in milliseconds.
+constexpr int SolveCloudflareChallengeTimeout = 30000;
+
+}
+
 TAuthenticationProcessController::TAuthenticationProcessController(
     std::shared_ptr<gamewindow::TCharacterSelectionController> CharacterSelectionController,
     std::shared_ptr<TLoginRequestUploader> LoginRequestUploader,
@@ -372,7 +379,7 @@ void TAuthenticationProcessController::resetSessionData()
     m_loginData.loginConfirmationToken = QString();
     // A clearance survives unless it expires within two minutes.
     if (m_loginData.cloudflareClearance) {
-        const QNetworkCookie cookie = cloudflareClearanceCookie(*m_loginData.cloudflareClearance);
+        const QNetworkCookie& cookie = m_loginData.cloudflareClearance->cookie;
         const bool valid =
             cookie.isSessionCookie() || cookie.expirationDate() > QDateTime::currentDateTimeUtc().addSecs(120);
         if (!valid)
@@ -831,7 +838,7 @@ void TAuthenticationProcessController::onSolveCloudflareChallengeStateEntered()
 {
     // A new challenge for the login service; its clearance replaces the old one.
     m_loginData.cloudflareClearance.reset();
-    m_pCloudflareChallengeController->startChallenge(m_pCloudflareChallengeController->targetUrl());
+    m_pCloudflareChallengeController->start(SolveCloudflareChallengeTimeout);
 }
 
 void TAuthenticationProcessController::onShowCloudflareChallengeFailedStateEntered()
@@ -839,9 +846,9 @@ void TAuthenticationProcessController::onShowCloudflareChallengeFailedStateEnter
     // Why the challenge failed; OK aborts the login.
     QString message = qtTrId("cloudflare_challenge_error_unknown");
     if (const std::optional<TCloudflareChallengeError>& error = m_pCloudflareChallengeController->error()) {
-        if (*error == TCloudflareChallengeError::Cancelled)
+        if (error->code == TCloudflareChallengeError::Cancelled)
             message = qtTrId("cloudflare_challenge_error_cancelled");
-        else if (*error == TCloudflareChallengeError::Timeout)
+        else if (error->code == TCloudflareChallengeError::Timeout)
             message = qtTrId("cloudflare_challenge_error_timeout");
     }
     m_pMessageDialogController->setButtons(gamewindow::okDialogButtons());

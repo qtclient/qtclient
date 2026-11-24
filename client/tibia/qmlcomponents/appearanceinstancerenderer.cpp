@@ -209,7 +209,7 @@ uint32_t TOutfitAppearanceInstanceQmlType::colors() const
 }
 
 TAppearanceInstanceRenderer::TAppearanceInstanceRenderer(QQuickItem* parent)
-    : cip::tibia::qmlcomponents::TAppearanceInstanceRenderer(parent)
+    : TAppearanceInstanceRendererBaseOfRenderer(parent)
 {
     // CIP qmlcomponents helpers owned for the renderer lifetime (empty-moc / service surfaces).
     new TAppearanceTypeHelperQmlService(this);
@@ -218,11 +218,6 @@ TAppearanceInstanceRenderer::TAppearanceInstanceRenderer(QQuickItem* parent)
     m_scaleFactor = 1.f;
     setFlag(ItemHasContents);
     m_sinceLayout.start();
-}
-
-void TAppearanceInstanceRenderer::componentComplete()
-{
-    cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::componentComplete();
 }
 
 /// The race's appearance as a QML instance owned by the renderer: an object
@@ -271,13 +266,13 @@ void TAppearanceInstanceRenderer::append(QQmlListProperty<InstanceBase>* list, I
     if (!instance)
         return;
     self->m_appearanceInstances.append(instance);
-    const auto changed = [self] { self->polish(); };
+    const auto changed = [self] { self->requestDrawCommandsUpdate(); };
     connect(instance, &InstanceBase::positionChanged, self, changed);
     connect(instance, &InstanceBase::typeIDChanged, self, changed);
     connect(instance, &InstanceBase::appearanceInstancePropertyChanged, self, changed);
     connect(instance, &QObject::destroyed, self, [self, instance] {
         self->m_appearanceInstances.removeAll(instance);
-        self->polish();
+        self->requestDrawCommandsUpdate();
     });
     if (auto* outfit = qobject_cast<cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType*>(instance)) {
         connect(outfit, &cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::outfitConfigurationChanged, self, changed);
@@ -286,7 +281,7 @@ void TAppearanceInstanceRenderer::append(QQmlListProperty<InstanceBase>* list, I
     }
     if (auto* object = qobject_cast<ObjectInfo*>(instance))
         connect(object, &ObjectInfo::propertyChanged, self, changed);
-    self->polish();
+    self->requestDrawCommandsUpdate();
 }
 
 qsizetype TAppearanceInstanceRenderer::count(QQmlListProperty<InstanceBase>* list)
@@ -305,7 +300,7 @@ void TAppearanceInstanceRenderer::clear(QQmlListProperty<InstanceBase>* list)
     for (InstanceBase* instance : std::as_const(self->m_appearanceInstances))
         disconnect(instance, nullptr, self, nullptr);
     self->m_appearanceInstances.clear();
-    self->polish();
+    self->requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setCameraPosition(const QPoint& v)
@@ -313,7 +308,7 @@ void TAppearanceInstanceRenderer::setCameraPosition(const QPoint& v)
     if (v == m_cameraPosition)
         return;
     m_cameraPosition = v;
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setCenter(const bool v)
@@ -321,7 +316,7 @@ void TAppearanceInstanceRenderer::setCenter(const bool v)
     if (v == m_center)
         return;
     m_center = v;
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setShrinkToFit(const bool v)
@@ -329,7 +324,7 @@ void TAppearanceInstanceRenderer::setShrinkToFit(const bool v)
     if (v == m_shrinkToFit)
         return;
     m_shrinkToFit = v;
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setAnimated(const bool v)
@@ -338,7 +333,8 @@ void TAppearanceInstanceRenderer::setAnimated(const bool v)
         return;
     cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::setAnimated(v);
     watchFrames();
-    polish();
+    requestStorageEnabledUpdate();
+    requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setScaleFactor(const float v)
@@ -346,7 +342,7 @@ void TAppearanceInstanceRenderer::setScaleFactor(const float v)
     if (v == m_scaleFactor)
         return;
     cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::setScaleFactor(v);
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 void TAppearanceInstanceRenderer::setSmoothTextureFiltering(const bool v)
@@ -355,13 +351,6 @@ void TAppearanceInstanceRenderer::setSmoothTextureFiltering(const bool v)
         return;
     cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::setSmoothTextureFiltering(v);
     update();
-}
-
-void TAppearanceInstanceRenderer::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
-{
-    cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::geometryChange(newGeometry, oldGeometry);
-    if (newGeometry.size() != oldGeometry.size())
-        polish();
 }
 
 void TAppearanceInstanceRenderer::itemChange(const ItemChange change, const ItemChangeData& value)
@@ -378,142 +367,43 @@ void TAppearanceInstanceRenderer::watchFrames()
     if (!window() || !m_animated)
         return;
     m_frameConnection = connect(window(), &QQuickWindow::afterAnimating, this, [this] {
-        if (m_sinceLayout.elapsed() >= 50
-            && (!m_appearanceInstances.isEmpty() || !m_effects.isEmpty()))
-            polish();
+        if (m_sinceLayout.elapsed() >= 50 && (!m_appearanceInstances.isEmpty() || m_effectsActive))
+            requestDrawCommandsUpdate();
     });
 }
 
-void TAppearanceInstanceRenderer::refreshAppearanceInstances()
+void TAppearanceInstanceRenderer::addEffects()
 {
-    refreshAppearanceInstances(false);
-}
-
-void TAppearanceInstanceRenderer::refreshAppearanceInstances(const bool keepEffects)
-{
-    // CIP KeepEffects: MagicalArchiveSpellPreview clears the instance list then
-    // calls refresh(true) so in-flight field/missile FX survive the layout pass.
-    if (!keepEffects)
-        m_effects.clear();
-    polish();
-}
-
-void TAppearanceInstanceRenderer::missilePatterns(const QPoint& from, const QPoint& to, int& patternX,
-                                                  int& patternY)
-{
-    const int dx = to.x() - from.x();
-    const int dy = to.y() - from.y();
-    // Same 3×3 missile pattern grid as TMissileEffectInstance::setDirection.
-    if (dx < 0 && dy < 0) {
-        patternX = 0;
-        patternY = 0;
-    } else if (dx == 0 && dy < 0) {
-        patternX = 1;
-        patternY = 0;
-    } else if (dx > 0 && dy < 0) {
-        patternX = 2;
-        patternY = 0;
-    } else if (dx > 0 && dy == 0) {
-        patternX = 2;
-        patternY = 1;
-    } else if (dx > 0 && dy > 0) {
-        patternX = 2;
-        patternY = 2;
-    } else if (dx == 0 && dy > 0) {
-        patternX = 1;
-        patternY = 2;
-    } else if (dx < 0 && dy > 0) {
-        patternX = 0;
-        patternY = 2;
-    } else if (dx < 0 && dy == 0) {
-        patternX = 0;
-        patternY = 1;
-    } else {
-        patternX = 1;
-        patternY = 1;
-    }
-}
-
-void TAppearanceInstanceRenderer::showGraphicalEffect(const int AppearanceTypeID,
-                                                      const QPoint& SubfieldCoordinate)
-{
-    const uint16_t id = tibia::game::resolveEffectId(static_cast<uint16_t>(std::max(0, AppearanceTypeID)));
-    TAppearanceType* type = thingType(id, ThingCategoryEffect);
-    if (!type)
+    if (!m_pAppearanceInstanceStorage)
         return;
-
-    TransientEffect effect;
-    effect.kind = TransientEffect::Kind::Field;
-    effect.type = type;
-    effect.fieldTopLeft = SubfieldCoordinate;
-    effect.instance = std::dynamic_pointer_cast<tibia::appearances::TEffectInstance>(
-        tibia::appearances::TAppearanceInstanceFactory::fromThingType(type));
-    if (!effect.instance)
-        return;
-    // The field pattern follows the preview field, the player standing at 0,0.
-    effect.instance->start(Position(SubfieldCoordinate.x() / FieldSize, SubfieldCoordinate.y() / FieldSize, 0),
-                           static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
-    m_effects.push_back(effect);
-    watchFrames();
-    polish();
-}
-
-void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
-                                                    const QPoint& SourceCoordinate,
-                                                    const QPoint& DestinationCoordinate)
-{
-    TAppearanceType* type = thingType(AppearanceTypeID, ThingCategoryMissile);
-    if (!type)
-        return;
-
-    TransientEffect effect;
-    effect.kind = TransientEffect::Kind::Missile;
-    effect.type = type;
-    effect.missileFrom = SourceCoordinate;
-    effect.missileTo = DestinationCoordinate;
-    missilePatterns(SourceCoordinate, DestinationCoordinate, effect.patternX, effect.patternY);
-    auto missile = std::dynamic_pointer_cast<tibia::appearances::TMissileEffectInstance>(
-        tibia::appearances::TAppearanceInstanceFactory::fromThingType(type));
-    if (!missile)
-        return;
-    missile->setPath(Position(SourceCoordinate.x() / FieldSize, SourceCoordinate.y() / FieldSize, 0),
-                     Position(DestinationCoordinate.x() / FieldSize, DestinationCoordinate.y() / FieldSize, 0),
-                     static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
-    effect.instance = std::move(missile);
-    m_effects.push_back(effect);
-    watchFrames();
-    polish();
-}
-
-void TAppearanceInstanceRenderer::purgeExpiredEffects()
-{
     const qint64 now = static_cast<qint64>(tibia::shared::TClockService::frameMillis());
-    for (TransientEffect& effect : m_effects) {
-        if (effect.instance)
-            effect.instance->update(now);
-    }
-    m_effects.removeIf([](const TransientEffect& effect) { return !effect.instance || effect.instance->isFinished(); });
-}
-
-void TAppearanceInstanceRenderer::addTransientEffects()
-{
-    purgeExpiredEffects();
-    for (TransientEffect& effect : m_effects) {
-        if (!effect.type)
+    for (const auto& [serialNumber, instance] : m_pAppearanceInstanceStorage->appearanceInstances()) {
+        const auto effect = std::dynamic_pointer_cast<tibia::appearances::TEffectInstance>(instance);
+        if (!effect)
             continue;
-        if (effect.kind == TransientEffect::Kind::Missile) {
-            const auto* missile = static_cast<const tibia::appearances::TMissileEffectInstance*>(effect.instance.get());
+        TAppearanceType* type = effect->thingType();
+        if (!type || type->isNull())
+            continue;
+        if (auto* missile = dynamic_cast<tibia::appearances::TMissileEffectInstance*>(effect.get())) {
+            // Host: qtclient's missile advances its flight in update(); the
+            // storages manager only steps the animation.
+            if (m_animated)
+                missile->update(now);
+            if (missile->isFinished())
+                continue;
+            const Position& from = missile->pathFrom();
             const QPoint offset = missile->flightOffset();
-            addSprites(effect.type, effect.missileFrom + QPoint(offset.x(), offset.y()), effect.patternX, effect.patternY, 0,
-                       m_animated ? missile->phase() : 0);
+            addSprites(type, QPoint(from.x * FieldSize, from.y * FieldSize) + offset, missile->patternX(),
+                       missile->patternY(), 0, m_animated ? missile->phase() : 0);
             continue;
         }
         int phase = 0;
         int xPattern = 0;
         int yPattern = 0;
-        if (!effect.instance->getFieldDrawFrame(phase, xPattern, yPattern))
+        if (!effect->getFieldDrawFrame(phase, xPattern, yPattern))
             continue;
-        addSprites(effect.type, effect.fieldTopLeft, xPattern, yPattern, 0, m_animated ? phase : 0);
+        const Position& field = effect->field();
+        addSprites(type, QPoint(field.x * FieldSize, field.y * FieldSize), xPattern, yPattern, 0, m_animated ? phase : 0);
     }
 }
 
@@ -632,7 +522,7 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
 /// completeBoundingRect, then the scale and camera. Center / shrinkToFit use the
 /// opaque protobuf boxes when present (same as inventory slots) so outfits with
 /// different transparent padding stay aligned in UI cells.
-void TAppearanceInstanceRenderer::updatePolish()
+void TAppearanceInstanceRenderer::updateDrawCommands()
 {
     m_sinceLayout.restart();
     m_sprites.clear();
@@ -666,8 +556,8 @@ void TAppearanceInstanceRenderer::updatePolish()
             opaqueBounds |= opaqueLayoutBounds(object->type(), object->position(), xPattern);
         }
     }
-    // Magical Archive / tutorial FX sit above the static instance list.
-    addTransientEffects();
+    // The storage's effects sit above the instance list.
+    addEffects();
 
     QRect bounds = opaqueBounds;
     if (bounds.isEmpty()) {

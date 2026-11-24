@@ -13,6 +13,12 @@
 #include "game/traderstorage.h"
 #include "proficiency/proficiencystorage.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
+#include "minimap/minimapdiskio.h"
+#include "minimap/minimapmanager.h"
+#include "minimap/minimapmarkerstorage.h"
+#include "minimap/minimaptilemanager.h"
+#include "minimap/minimaptilestorage.h"
+#include "minimap/minimapworldfeed.h"
 #include "renderer/spritetextureprovider.h"
 #include "sound/soundconfiguration.h"
 #include "sound/soundcontroller.h"
@@ -26,6 +32,9 @@
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesheetmanager.h"
 #include "sprites/spritesystem.h"
+#include "assets/assethandler.h"
+#include "worldmap/worldmapprotocolmessagehandler.h"
+#include "worldmap/worldmapstorage.h"
 
 #include <QObject>
 #include <QQmlContext>
@@ -53,6 +62,14 @@ TGameClientBase::TGameClientBase(QQmlEngine* Engine,
 
 TGameClientBase::~TGameClientBase()
 {
+    if (m_pMinimapTileStorage) {
+        setMinimapWorldmapProtocolHandler(nullptr);
+        sprites::TSpriteSystem::instance().resolver().setMinimapTileManager(nullptr);
+        m_pMinimapWorldFeed.reset();
+        minimap::TMinimapMarkerStorage::setActive(nullptr);
+        m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(nullptr);
+        saveMinimapToDisk();
+    }
     if (m_pSpellInfoStorage)
         spells::TSpellInfoStorage::setInstance(nullptr);
     game::TPassiveAbilityInfoStorage::setInstance(nullptr);
@@ -68,6 +85,7 @@ void TGameClientBase::initialize()
     initializeAssets();
     initializeSpriteResolver();
     initializeAppearanceInstanceFactory();
+    initializeMinimap();
     emitInitialized();
 }
 
@@ -97,7 +115,91 @@ void TGameClientBase::initializeStorages()
 {
     m_pTraderStorage = std::make_shared<game::TTraderStorage>();
     m_pResourceSpritesManager = std::make_shared<sprites::TResourceSpritesManager>();
+    m_pMinimapTileStorage = std::make_shared<minimap::TMinimapTileStorage>();
+    m_pMinimapMarkerStorage = std::make_shared<minimap::TMinimapMarkerStorage>();
+    m_pMinimapTileManagerDiskIO = std::make_shared<minimap::TMinimapDiskIOAsync>(
+        tibiaFileSystemHelper()->getMinimapDirectory().absolutePath());
+    m_pMinimapTileManager = std::make_shared<minimap::TMinimapTileManager>(m_pMinimapTileManagerDiskIO, m_pMinimapTileStorage);
+    // Host: the code that still reaches the markers through these finds them.
+    minimap::TMinimapMarkerStorage::setActive(m_pMinimapMarkerStorage.get());
+    m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(m_pMinimapMarkerStorage.get());
     createSpellInfoStorage();
+}
+
+void TGameClientBase::initializeMinimap()
+{
+    m_pMinimapTileDiskIO =
+        std::make_shared<minimap::TMinimapDiskIOAsync>(tibiaFileSystemHelper()->getMinimapDirectory().absolutePath());
+    // Host: CipSoft's bundled minimap (Resources/minimap, next to the assets)
+    // is copied in while the user's minimap has no tiles; reads fall back to
+    // it. getRealPath, not getRealDir plus a name: a "/" search root must not
+    // become "//..." (the WASM file system rejects that).
+    std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
+    if (defaultMinimapPath.empty())
+        defaultMinimapPath = tibia::files::data().getRealPath(gamecore::assetsRoot(ClientVersion) + "minimap");
+    if (!defaultMinimapPath.empty()) {
+        const QString defaultTilesDir = QString::fromStdString(defaultMinimapPath);
+        m_pMinimapTileDiskIO->importDefaultTiles(defaultTilesDir);
+        m_pMinimapTileDiskIO->waitForDone();
+        m_pMinimapTileManagerDiskIO->setDefaultTilesDir(defaultTilesDir);
+    }
+    m_pMinimapManager = std::make_shared<minimap::TMinimapManager>(cyclopediaMapStaticDataStorage());
+    m_pMinimapManager->registerInQmlContext(m_pEngine->rootContext());
+    m_minimapMarkerStorageTimer.setSingleShot(true);
+
+    minimap::TMinimapMarkerStorage* markerStorage = minimapMarkerStorage().get();
+    minimap::TMinimapTileStorage* tileStorage = minimapTileStorage().get();
+    minimap::TMinimapDiskIOAsync* diskIO = minimapTileDiskIO().get();
+    QObject::connect(markerStorage, &minimap::TMinimapMarkerStorage::requestDelayedCallback, &m_minimapMarkerStorageTimer,
+                     qOverload<>(&QTimer::start));
+    QObject::connect(&m_minimapMarkerStorageTimer, &QTimer::timeout, markerStorage,
+                     &minimap::TMinimapMarkerStorage::onDelayedCallback);
+    QObject::connect(markerStorage, &minimap::TMinimapMarkerStorage::startSavingMinimapMarkerFileContentToDisk, diskIO,
+                     &minimap::TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk);
+    QObject::connect(tileStorage, &minimap::TMinimapTileStorage::startLoadingMinimapTileFromDisk, diskIO,
+                     &minimap::TMinimapDiskIOAsync::loadTile);
+    QObject::connect(tileStorage, &minimap::TMinimapTileStorage::startSavingMinimapTileToDisk, diskIO,
+                     &minimap::TMinimapDiskIOAsync::saveTile);
+    QObject::connect(diskIO, &minimap::TMinimapDiskIOAsync::loadingSucceeded, tileStorage,
+                     &minimap::TMinimapTileStorage::onLoadingSucceeded, Qt::QueuedConnection);
+    QObject::connect(diskIO, &minimap::TMinimapDiskIOAsync::loadingFailed, tileStorage,
+                     &minimap::TMinimapTileStorage::onLoadingFailed);
+    QObject::connect(diskIO, &minimap::TMinimapDiskIOAsync::loadingMinimapMarkersSucceeded, markerStorage,
+                     &minimap::TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile);
+
+    // Host: the tile storage reads the current session's fields.
+    m_pMinimapWorldFeed = std::make_unique<minimap::TMinimapWorldFeed>(*tileStorage);
+}
+
+void TGameClientBase::setMinimapWorldmapProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* Handler)
+{
+    if (m_pMinimapWorldmapProtocolHandler == Handler)
+        return;
+    if (m_pMinimapWorldmapProtocolHandler)
+        m_pMinimapWorldmapProtocolHandler->setMinimapTileStorage(nullptr);
+    m_pMinimapWorldmapProtocolHandler = Handler;
+    if (!Handler || !m_pMinimapTileStorage)
+        return;
+    Handler->setMinimapTileStorage(m_pMinimapTileStorage.get());
+    // The handler can hold a map already: take the floor and unseen fields of
+    // its area as it would have.
+    if (worldmap::TWorldMapStorage* storage = Handler->storage()) {
+        const Position center = storage->sessionState().getCentralPosition();
+        if (center.isValid()) {
+            m_pMinimapTileStorage->setPlayerZ(center.z);
+            m_pMinimapTileStorage->markUnseen();
+        }
+    }
+}
+
+void TGameClientBase::saveMinimapToDisk()
+{
+    if (m_pMinimapMarkerStorage)
+        m_pMinimapMarkerStorage->onDelayedCallback();
+    if (m_pMinimapTileStorage)
+        m_pMinimapTileStorage->saveAllTilesToDisk();
+    if (m_pMinimapTileDiskIO)
+        m_pMinimapTileDiskIO->waitForDone();
 }
 
 void TGameClientBase::initializeSpriteResolver()
@@ -105,6 +207,9 @@ void TGameClientBase::initializeSpriteResolver()
     QObject::connect(&sprites::TSpriteSystem::instance().spritesheets(),
                      &sprites::TSpritesheetManager::spritesheetUncompressFailed, m_pResourceSpritesManager.get(),
                      [this](const sprites::TSpritesheetID& SpritesheetID) { onSpritesheetUncompressFailed(SpritesheetID); });
+    // Host: qtclient's resolver is the sprite system's; it draws the
+    // minimap tiles of the client's tile manager.
+    sprites::TSpriteSystem::instance().resolver().setMinimapTileManager(minimapTileManager());
     m_pEngine->rootContext()->setContextProperty(QStringLiteral("ResourceSpritesManager"), m_pResourceSpritesManager.get());
 }
 
@@ -134,13 +239,14 @@ void TGameClientBase::initializeQmlContext()
 
 void TGameClientBase::initializeAssets()
 {
-    cyclopedia::TCyclopediaMapStaticDataStorage* mapStaticData = cyclopediaMapStaticDataStorage().get();
-    // CIP: the storage's asset requests go to the client's asset loading.
-    QObject::connect(mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::newAssetDataToLoad, mapStaticData,
-                     [](const tibia::assets::TAsset& asset, const bool prioritized) {
-                         if (auto* loader = sprites::TSpriteSystem::instance().assetLoader())
-                             loader->load(asset, prioritized);
-                     });
+    const std::shared_ptr<appearances::TAppearancesManager> appearances = appearancesManager();
+    m_pAssetHandler = std::make_shared<assets::TAssetHandler>(
+        sprites::TSpriteSystem::instance().sharedSpritesheets(), appearances, m_pSoundMetadataManager, m_pSoundManager,
+        m_pTraderStorage, m_pProficiencyStorage.get(),
+        [appearances](auto information) { appearances->setStaticInformation(std::move(information)); },
+        [](auto areas) { appearances::TAppearancesManager::setStaticMapData(std::move(areas)); },
+        cyclopediaMapStaticDataStorage());
+    sprites::TSpriteSystem::instance().setAssetHandler(m_pAssetHandler.get());
     gamecore::setClientVersion(ClientVersion);
     QString error;
     if (!gamecore::loadAssets(ClientVersion, &error))
@@ -150,8 +256,10 @@ void TGameClientBase::initializeAssets()
 void TGameClientBase::initializeSpriteTextureProviderManager()
 {
     // Host: qtclient's providers live in a process-wide registry, so the
-    // manager needs neither the sprite resolver nor a QML context property.
+    // manager does not take the sprite resolver.
     m_pSpriteTextureProviderManager = std::make_shared<renderer::TSpriteTextureProviderManager>();
+    m_pEngine->rootContext()->setContextProperty(QStringLiteral("SpriteTextureProviderManager"),
+                                                 m_pSpriteTextureProviderManager.get());
 }
 
 void TGameClientBase::connectToGameActionRouter()
@@ -159,10 +267,15 @@ void TGameClientBase::connectToGameActionRouter()
     game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
     sprites::TSpriteResolver* spriteResolver = &sprites::TSpriteSystem::instance().resolver();
     cyclopedia::TCyclopediaMapStaticDataStorage* mapStaticData = cyclopediaMapStaticDataStorage().get();
+    minimap::TMinimapTileManager* tileManager = minimapTileManager().get();
+    QObject::connect(tileManager, &minimap::TMinimapTileManager::publishGameAction, router,
+                     &game::TInternalGameActionRouter::handleGameActionInternal);
     QObject::connect(spriteResolver, &sprites::TSpriteResolver::publishGameAction, router,
                      &game::TInternalGameActionRouter::handleGameActionInternal);
     QObject::connect(mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::publishGameAction, router,
                      &game::TInternalGameActionRouter::handleGameActionInternal);
+    QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, tileManager,
+                     &minimap::TMinimapTileManager::handleGameAction);
     QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal,
                      m_pSpriteTextureProviderManager.get(), &renderer::TSpriteTextureProviderManager::handleGameAction);
     QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, spriteResolver,
@@ -172,6 +285,9 @@ void TGameClientBase::connectToGameActionRouter()
     if (m_pSoundController)
         QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, m_pSoundController.get(),
                          &sound::TSoundController::handleGameAction);
+    // Host: qtclient's marker storage handles the marker dialog's actions.
+    QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, minimapMarkerStorage().get(),
+                     qOverload<const input::IGameActionPtr&>(&minimap::TMinimapMarkerStorage::handleGameAction));
 }
 
 void TGameClientBase::createSpellInfoStorage()
@@ -220,6 +336,34 @@ std::shared_ptr<game::TGameActionRouter> TGameClientBase::gameActionRouter() con
     if (!m_pGameActionRouter)
         throw std::logic_error("m_pGameActionRouter was not initialized yet");
     return m_pGameActionRouter;
+}
+
+std::shared_ptr<minimap::TMinimapDiskIOAsync> TGameClientBase::minimapTileDiskIO() const
+{
+    if (!m_pMinimapTileDiskIO)
+        throw std::logic_error("m_pMinimapTileDiskIO was not initialized yet");
+    return m_pMinimapTileDiskIO;
+}
+
+std::shared_ptr<minimap::TMinimapTileStorage> TGameClientBase::minimapTileStorage() const
+{
+    if (!m_pMinimapTileStorage)
+        throw std::logic_error("m_pMinimapTileStorage was not initialized yet");
+    return m_pMinimapTileStorage;
+}
+
+std::shared_ptr<minimap::TMinimapMarkerStorage> TGameClientBase::minimapMarkerStorage() const
+{
+    if (!m_pMinimapMarkerStorage)
+        throw std::logic_error("m_pMinimapMarkerStorage was not initialized yet");
+    return m_pMinimapMarkerStorage;
+}
+
+std::shared_ptr<minimap::TMinimapTileManager> TGameClientBase::minimapTileManager() const
+{
+    if (!m_pMinimapTileManager)
+        throw std::logic_error("m_pMinimapTileManager was not initialized yet");
+    return m_pMinimapTileManager;
 }
 
 gamewindow::TStoreAndResourceBalanceHelperController* TGameClientBase::storeAndResourceBalanceHelperController() const

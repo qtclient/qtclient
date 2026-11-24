@@ -21,21 +21,6 @@ using A = EGameAction;
 using CastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 
 
-/// An object as the ObjectPosition and ObjectIdentifier of a client message
-/// (TGameActionContextHelper); no location is anywhere the player has the
-/// object (as TLocationUnknownContext).
-void fillObject(const TObjectGameActionContext& object, tibia::protobuf::protocol::ObjectPosition* objectPosition,
-                tibia::protobuf::protocol::ObjectIdentifier* objectIdentifier)
-{
-    const tibia::protocol::TGameActionContextHelper helper;
-    if (object.location())
-        helper.fillObjectPosition(object.location(), objectPosition);
-    else
-        objectPosition->set_unknown_position(true);
-    if (object.object())
-        helper.fillObjectIdentifier(object.object(), objectIdentifier);
-}
-
 /// CIP's location kinds a use with can target: the inventory, a container
 /// slot, a world map object, a depot search item.
 bool isUseTwoObjectsTarget(const EGameActionContextType type)
@@ -54,9 +39,23 @@ bool isUseTwoObjectsTarget(const EGameActionContextType type)
 
 }
 
-TUseWithGameActionHandler::TUseWithGameActionHandler(QObject* parent)
+TUseWithGameActionHandler::TUseWithGameActionHandler(std::shared_ptr<protocol::TGameActionContextHelper> pGameActionContextHelper,
+                                                     QObject* parent)
     : cip::tibia::input::TUseWithGameActionHandler(parent)
+    , m_pGameActionContextHelper(std::move(pGameActionContextHelper))
 {
+}
+
+void TUseWithGameActionHandler::fillObject(const TObjectGameActionContext& object,
+                                           tibia::protobuf::protocol::ObjectPosition* objectPosition,
+                                           tibia::protobuf::protocol::ObjectIdentifier* objectIdentifier) const
+{
+    if (object.location())
+        m_pGameActionContextHelper->fillObjectPosition(object.location(), objectPosition);
+    else
+        objectPosition->set_unknown_position(true);
+    if (object.object())
+        m_pGameActionContextHelper->fillObjectIdentifier(object.object(), objectIdentifier);
 }
 
 TUseWithGameActionHandler::~TUseWithGameActionHandler() = default;

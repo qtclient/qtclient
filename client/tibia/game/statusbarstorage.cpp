@@ -136,8 +136,6 @@ void TStatusbarStorage::setStyle(const int style)
 
 void TStatusbarStorage::setShown(const Entry entry, const bool shown)
 {
-    if (m_shown[entry] == shown)
-        return;
     m_shown[entry] = shown;
     modified();
 }

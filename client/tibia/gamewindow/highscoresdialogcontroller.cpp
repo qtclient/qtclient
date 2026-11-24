@@ -2,6 +2,7 @@
 
 #include "gamewindow/waitdialogcontroller.h"
 #include "game/gamesessionbase.h"
+#include "iclockservice.h"
 
 #include "protocol/protocolciptypes.h"
 
@@ -102,8 +103,12 @@ QHash<int, QByteArray> THighscoresWorldTypeModel::roleNames() const
     return { { NameRole, "name" }, { CheckedRole, "checked" }, { WorldTypeRole, "worldType" } };
 }
 
-THighscoresDialogController::THighscoresDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("HighscorePage.qml"), parent)
+THighscoresDialogController::THighscoresDialogController(config::TClientOptions* ClientOptions,
+                                                         std::shared_ptr<shared::IClockService> ClockService,
+                                                         QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("HighscorePage.qml"), Engine, DialogParentItem, parent)
+    , m_pClientOptions(ClientOptions)
+    , m_pClockService(std::move(ClockService))
 {
     m_showLoadingComponent = true;
     m_dataAvailable = true;
@@ -227,7 +232,9 @@ QString THighscoresDialogController::dataActualisationText() const
 {
     if (!m_storage)
         return {};
-    const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - static_cast<qint64>(m_storage->lastUpdate()) * 1000;
+    const qint64 now = m_pClockService ? m_pClockService->currentDateTime().toMSecsSinceEpoch()
+                                       : QDateTime::currentMSecsSinceEpoch();
+    const qint64 elapsed = now - static_cast<qint64>(m_storage->lastUpdate()) * 1000;
     return qtTrId("highscores_refreshtext").arg(formatRemainingTime(elapsed));
 }
 
@@ -323,6 +330,13 @@ void THighscoresDialogController::sendHighscoresRequest(const int action, const 
 void THighscoresDialogController::requestPage(const int page)
 {
     sendHighscoresRequest(0, page, selectedCategoryId(), selectedWorldName(), selectedVocationId(), m_selectedWorldTypes, selectedBattlEyeValue());
+}
+
+void THighscoresDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (!pGameAction || pGameAction->gameActionType() != input::EGameAction::OPEN_HIGHSCORES_DIALOG)
+        return;
+    openDialog();
 }
 
 void THighscoresDialogController::openDialog()

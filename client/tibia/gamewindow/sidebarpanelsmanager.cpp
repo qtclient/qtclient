@@ -9,6 +9,8 @@
 #include "gamewindow/premiumpanelcontroller.h"
 #include "gamewindow/sidebarmanager.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
+#include "gamewindow/socialdialogcontroller.h"
+#include "input/gameactionmapper.h"
 
 #include <QQuickItem>
 
@@ -32,52 +34,71 @@ constexpr std::array DefaultPanelsOrder = {
 
 }
 
-TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngine* engine, QObject* parent)
+TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, config::TClientOptions* ClientOptions,
+                                             std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                             TSocialDialogController* SocialDialog, QQuickItem* DialogParentItem,
+                                             QQmlEngine* Engine, QObject* parent)
     : cip::tibia::gamewindow::TSidebarPanelsManager(parent)
-    , m_sidebars(sidebars)
+    , m_pClientOptions(ClientOptions)
+    , m_sidebars(SidebarManager)
 {
-    connect(sidebars, &TSidebarManager::panelConfigurationChanged, this, &TSidebarPanelsManager::saveCurrentOpenPanels);
+    // Host: the minimap and the inventory still keep their own control and
+    // loot scheme (the game client sets them); CipSoft hands them the mapping.
+    Q_UNUSED(GameActionMapper);
+    // Host: the button bar's dialogs come with its button controllers.
+    Q_UNUSED(DialogParentItem);
 
-    // CIP .
-    m_minimapItem = createQuickItem(engine, QStringLiteral("MinimapPanel.qml"));
+    // CIP: the panels in this order, each with its item.
+    m_minimapItem = createQuickItem(Engine, QStringLiteral("MinimapPanel.qml"));
     if (m_minimapItem) {
         m_minimap = std::make_unique<TMinimapController>();
         m_minimap->setPanelItem(m_minimapItem);
-        sidebars->addPanel(m_minimap.get(), m_minimapItem);
     }
 
-    m_inventoryItem = createQuickItem(engine, QStringLiteral("inventory.qml"));
+    m_inventoryItem = createQuickItem(Engine, QStringLiteral("inventory.qml"));
     if (m_inventoryItem) {
         m_inventory = std::make_unique<TPlayerInventoryAndStatusController>();
         connect(m_inventory.get(), &TPlayerInventoryAndStatusController::publishGameAction, this,
                 &TSidebarPanelsManager::publishGameAction);
         m_inventory->setPanelItem(m_inventoryItem);
-        sidebars->addPanel(m_inventory.get(), m_inventoryItem);
     }
 
-    m_hitpointManabarItem = createQuickItem(engine, QStringLiteral("HitpointsManaPanel.qml"));
+    m_hitpointManabarItem = createQuickItem(Engine, QStringLiteral("HitpointsManaPanel.qml"));
     if (m_hitpointManabarItem) {
         m_hitpointManabar = std::make_unique<THitpointManabarController>();
         m_hitpointManabar->setPanelItem(m_hitpointManabarItem);
-        sidebars->addPanel(m_hitpointManabar.get(), m_hitpointManabarItem);
     }
 
+    m_buttonBarItem = createQuickItem(Engine, QStringLiteral("ButtonBarPanel.qml"));
     m_buttonBar = std::make_unique<TButtonBarController>();
-    connect(m_buttonBar.get(), &TButtonBarController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);
-    m_buttonBarItem = createQuickItem(engine, QStringLiteral("ButtonBarPanel.qml"));
-    if (m_buttonBarItem) {
+    if (SocialDialog)
+        m_buttonBar->setSocialButtonController(SocialDialog->socialButton());
+    if (m_buttonBarItem)
         m_buttonBar->setPanelItem(m_buttonBarItem);
-        sidebars->addPanel(m_buttonBar.get(), m_buttonBarItem);
-    }
+    connect(m_buttonBar.get(), &TButtonBarController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);
 
-    // CIP.
-    m_premiumPanelItem = createQuickItem(engine, QStringLiteral("PremiumPanel.qml"));
+    m_premiumPanelItem = createQuickItem(Engine, QStringLiteral("PremiumPanel.qml"));
     if (m_premiumPanelItem) {
         m_premiumPanel = std::make_unique<TPremiumPanelController>();
-        sidebars->addPanel(m_premiumPanel.get(), m_premiumPanelItem);
         m_premiumPanel->setPanelItem(m_premiumPanelItem);
         connect(m_premiumPanel.get(), &TPremiumPanelController::isVisibleChanged, this, &TSidebarPanelsManager::premiumPanelIsVisibleChanged);
     }
+
+    // CIP: with a sidebar manager, a changed panel configuration is saved and
+    // the five panels go into it.
+    if (!SidebarManager)
+        return;
+    connect(SidebarManager, &TSidebarManager::panelConfigurationChanged, this, &TSidebarPanelsManager::saveCurrentOpenPanels);
+    if (m_minimapItem)
+        SidebarManager->addPanel(m_minimap.get(), m_minimapItem);
+    if (m_inventoryItem)
+        SidebarManager->addPanel(m_inventory.get(), m_inventoryItem);
+    if (m_hitpointManabarItem)
+        SidebarManager->addPanel(m_hitpointManabar.get(), m_hitpointManabarItem);
+    if (m_buttonBarItem)
+        SidebarManager->addPanel(m_buttonBar.get(), m_buttonBarItem);
+    if (m_premiumPanelItem)
+        SidebarManager->addPanel(m_premiumPanel.get(), m_premiumPanelItem);
 }
 
 // The panel controllers delete their items (CIP: TSidebarPanelControllerBase).

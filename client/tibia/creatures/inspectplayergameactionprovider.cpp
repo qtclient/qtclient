@@ -1,15 +1,21 @@
 #include "creatures/inspectplayergameactionprovider.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "creatures/creaturestorage.h"
 
 namespace tibia::creatures {
 
-void TInspectPlayerGameActionProvider::appendActions(input::TGameActionList& actions, const uint32_t creatureId)
+TInspectPlayerGameActionProvider::TInspectPlayerGameActionProvider(std::shared_ptr<TCreatureStorage> creatureStorage,
+                                                                   const config::TClientOptions* options)
+    : m_creatureStorage(std::move(creatureStorage))
+    , m_options(options)
+{
+}
+
+void TInspectPlayerGameActionProvider::appendActions(input::TGameActionList& actions, const uint32_t creatureId) const
 {
     using input::EGameAction;
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    const std::shared_ptr<TCreature> creature = storage ? storage->creatureAt(creatureId) : nullptr;
+    const std::shared_ptr<TCreature> creature = m_creatureStorage ? m_creatureStorage->creatureAt(creatureId) : nullptr;
     if (!creature || !creature->isPlayer())
         return;
     const auto push = [&](const EGameAction type) { actions.push_back(input::makeCreatureAction(type, creatureId)); };
@@ -18,8 +24,8 @@ void TInspectPlayerGameActionProvider::appendActions(input::TGameActionList& act
         return;
     }
     push(creature->canBeInspected() ? EGameAction::INSPECT_PLAYER : EGameAction::ASK_TO_INSPECT_PLAYER);
-    // Option allowAllToInspectPlayer: nobody needs an invitation.
-    if (app::ClientOptions::load().options().value(QLatin1String("inspectPlayerAllowAllEnabled")).toBool())
+    // Everyone may inspect the local player: nobody needs an invitation.
+    if (m_options && m_options->boolOption(config::EClientOption::inspectPlayerAllowAllEnabled))
         return;
     if (creature->requestsInspection()) {
         push(EGameAction::ALLOW_INSPECT_PLAYER);

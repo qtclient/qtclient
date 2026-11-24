@@ -254,6 +254,14 @@ void TBattleListDataModelSortFilterProxy::setOptions(const BattleListOptions& op
     invalidate();
 }
 
+void TBattleListDataModelSortFilterProxy::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_creatureStorage.reset();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get()))
+        m_creatureStorage = session->creatureStorage();
+    invalidate();
+}
+
 bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     QAbstractItemModel* source = sourceModel();
@@ -262,7 +270,7 @@ bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, 
     const QModelIndex index = source->index(sourceRow, 0, sourceParent);
     if (!index.isValid())
         return false;
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    creatures::TCreatureStorage* storage = m_creatureStorage.get();
     if (!storage)
         return true;
     const auto creatureId = static_cast<creatures::TCreatureID>(source->data(index, 0x101).toUInt());
@@ -432,6 +440,7 @@ bool TBattleListController::handleGameActionAtMouseCursor(const input::TGameActi
     if (!target || !target->creatureId())
         return false;
     Q_EMIT m_storage->publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+    action.setHandled();
     return true;
 }
 
@@ -450,6 +459,11 @@ bool TBattleListController::handleGameActionCastSpellAtMouseCursor(const input::
     tibia::game::setNextTalkAimMode(2);
     tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
     return true;
+}
+
+void TBattleListController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_proxy->connectToGameSession(GameSession);
 }
 
 void TBattleListController::attachSidebarOptions(config::TSidebarOptions* options)
@@ -761,10 +775,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     // CIP forwards the at-mouse-cursor actions to every list; the hovered one
     // takes it.
     for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR }) {
-        m_gameActions.on(type, [this](const input::IGameAction& action) {
-            if (handleGameAction(action))
-                Q_EMIT atMouseCursorGameActionTaken();
-        });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { handleGameAction(action); });
     }
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
@@ -913,6 +924,7 @@ void TBattleListControllerStorage::openBattleList(const uint8_t sidebarId, const
     auto* controller = new TBattleListController(battleListId, this, &m_dataModel, m_gameWindowItem, m_engine);
     controller->setControlScheme(m_controlScheme);
     controller->setPremiumTimeStorage(m_premiumTimeStorage);
+    controller->connectToGameSession(m_gameSession);
     connect(controller, &TBattleListController::battleListClosed, this, &TBattleListControllerStorage::onBattleListClosed,
             Qt::QueuedConnection);
     maximizeIfLoggedIn(controller);
@@ -1088,6 +1100,8 @@ void TBattleListControllerStorage::onLoginRampUpFinished()
 void TBattleListControllerStorage::setGameSession(std::shared_ptr<game::IGameSession> GameSession)
 {
     m_gameSession = std::move(GameSession);
+    for (const auto& [id, controller] : m_controllers)
+        controller->connectToGameSession(m_gameSession);
 }
 
 void TBattleListControllerStorage::triggerUpdate()

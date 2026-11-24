@@ -181,8 +181,6 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         connect(pane, &QQuickItem::widthChanged, this, &TMapWindowController::syncFov);
         connect(pane, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
     }
-    for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TMapWindowController::~TMapWindowController()
@@ -203,22 +201,26 @@ void TMapWindowController::applyTargetHighlightOption()
 
 void TMapWindowController::updateTrackedUseAtMouseCursor()
 {
-    // A use at the mouse no handler took: on the second frame the status line says so.
-    if (m_unhandledAtMouseFrames < 0 || ++m_unhandledAtMouseFrames < 2)
+    // A use at the mouse no window took: on the second frame the status line says so.
+    if (!m_trackedUseAtMouseCursor || m_trackedUseAtMouseCursorFrames++ <= 0)
         return;
+    if (!m_trackedUseAtMouseCursor->isHandled()) {
+        auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("actionbar_action_no_target"));
+        Q_EMIT publishGameAction(status);
+    }
     clearTrackedUseAtMouseCursorGameAction();
-    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("actionbar_action_no_target"));
-    Q_EMIT publishGameAction(status);
 }
 
-void TMapWindowController::trackUseAtMouseCursorGameAction()
+void TMapWindowController::trackUseAtMouseCursorGameAction(const std::shared_ptr<const input::TGameActionUseAtMouseCursor>& action)
 {
-    m_unhandledAtMouseFrames = 0;
+    clearTrackedUseAtMouseCursorGameAction();
+    m_trackedUseAtMouseCursor = action;
 }
 
 void TMapWindowController::clearTrackedUseAtMouseCursorGameAction()
 {
-    m_unhandledAtMouseFrames = -1;
+    m_trackedUseAtMouseCursor.reset();
+    m_trackedUseAtMouseCursorFrames = 0;
 }
 
 bool TMapWindowController::classicView() const
@@ -733,13 +735,16 @@ void TMapWindowController::onMapWindowTargetSelected(const int mouseX, const int
         Q_EMIT publishGameAction(target);
 }
 
-bool TMapWindowController::handleGameAction(const input::IGameAction& action)
+void TMapWindowController::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action))
-        handleGameActionAtMouseCursor(*use);
-    else if (const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action))
+    if (!pGameAction)
+        return;
+    if (pGameAction->gameActionType() == input::EGameAction::USE_AT_MOUSECURSOR) {
+        if (auto use = std::dynamic_pointer_cast<const input::TGameActionUseAtMouseCursor>(pGameAction))
+            handleGameActionAtMouseCursor(use);
+    } else if (const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(pGameAction)) {
         handleGameActionCastSpellAtMouseCursor(*spell);
-    return true;
+    }
 }
 
 QPointF TMapWindowController::mouseCursorPosition(bool& onMap) const
@@ -754,27 +759,28 @@ QPointF TMapWindowController::mouseCursorPosition(bool& onMap) const
     return point;
 }
 
-void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action)
+void TMapWindowController::handleGameActionAtMouseCursor(const std::shared_ptr<const input::TGameActionUseAtMouseCursor>& action)
 {
-    // The use waits a frame for a handler; off the map the battle lists may take it.
-    trackUseAtMouseCursorGameAction();
+    // The use waits a frame for a window to take it; off the map the battle lists may.
+    trackUseAtMouseCursorGameAction(action);
     Cursor* cursor = Cursor::instance();
     if (!cursor || cursor->topRegion() != Cursor::MapWindow)
         return;
-    clearTrackedUseAtMouseCursorGameAction();
+    // Over the map the map window takes it, with or without a target there.
     bool onMap = false;
     const QPointF point = mouseCursorPosition(onMap);
-    if (!onMap)
+    const input::TTargetSelectedPtr target = onMap ? targetAt(point) : nullptr;
+    if (!target) {
+        action->setHandled();
         return;
+    }
     // The use goes to the TARGET_SELECTED under the mouse: on a creature, or
     // with the object there.
-    const input::TTargetSelectedPtr target = targetAt(point);
-    if (!target)
-        return;
     if (target->creatureId())
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action->context(), target->creatureId()));
     else
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseWith>(action.context(), target->context()));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseWith>(action->context(), target->context()));
+    action->setHandled();
 }
 
 void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)

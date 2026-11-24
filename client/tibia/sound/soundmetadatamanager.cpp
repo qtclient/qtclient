@@ -171,8 +171,10 @@ void TSoundMetadataManager::initialize(const QByteArray& bankData)
         Q_UNUSED(id);
         if (sound.loadType != 1 && sound.loadType != 2)
             continue;
-        const bool streamed = sound.memoryPriority == kPriorityEffect && sound.loadType == 2;
-        Q_EMIT newAssetDataToLoad(sound.fileName, streamed, false);
+        tibia::assets::TAsset asset(tibia::assets::TAsset::Sound, sound.fileName);
+        if (sound.memoryPriority == kPriorityEffect)
+            asset.setLoadErrorReported(sound.loadType == 2);
+        Q_EMIT newAssetDataToLoad(asset, false);
     }
 #endif
 }

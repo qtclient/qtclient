@@ -2,7 +2,6 @@
 
 #include "gamewindow/bountytaskscontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
-#include "gamewindow/remainingdialogs.h"
 #include "gamewindow/taskboardshopcontroller.h"
 #include "gamewindow/weeklytaskscontroller.h"
 #include "input/gameactionhandlers.h"
@@ -27,7 +26,6 @@
 #include <string>
 #include <vector>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -40,10 +38,6 @@ using U32MapList = std::vector<U32Map>;
 using StrMap = std::map<std::string, std::string>;
 using StrMapList = std::vector<StrMap>;
 
-QString formatBalance(const uint64_t value)
-{
-    return QLocale(QLocale::English).toString(static_cast<qulonglong>(value));
-}
 
 }
 
@@ -70,32 +64,23 @@ namespace {
 
 }
 
-TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("taskboard/TaskboardDialog.qml"), parent)
-    , m_bounty(new TBountyTasksController(this))
+TTaskboardDialogController::TTaskboardDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem)
+    : TDialogController(QStringLiteral("taskboard/TaskboardDialog.qml"), engine, dialogParentItem)
+    , m_bounty(new TBountyTasksController(engine, dialogParentItem, this))
     , m_weekly(new TWeeklyTasksController(this))
-    , m_shop(new TTaskboardShopController(this))
-    , m_notOnMain(new TMessageDialogController(this))
+    , m_shop(new TTaskboardShopController(engine, dialogParentItem, this))
+    , m_notOnMain(new TMessageDialogController(engine, dialogParentItem, this))
 {
     m_bountyTaskController = m_bounty;
     m_weeklyTaskController = m_weekly;
-    connect(m_weekly, &TWeeklyTasksController::publishGameAction, this, &TTaskboardDialogController::publishGameAction);
     m_rewardShopController = m_shop;
-    new TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(this);
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this]() { refreshFromResourceBalance(); });
-
     m_notOnMain->setCloseOnButtonClicked(true);
-    // The action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
-    m_gameActions.on(A::OPEN_TASKBOARD_DIALOG, [this](const input::gameactions::TGameActionOpenTaskboardDialog& action) {
-        if (action.tab() == 0)
-            showDialog(BountyTasks);
-        else if (action.tab() == 1)
-            showDialog(WeeklyTasks);
-        return true;
-    });
+    connect(m_weekly, &TWeeklyTasksController::publishGameAction, this, &TTaskboardDialogController::publishGameAction);
 }
+
+QObject* TTaskboardDialogController::bountyTaskController() const { return m_bounty; }
+QObject* TTaskboardDialogController::weeklyTaskController() const { return m_weekly; }
+QObject* TTaskboardDialogController::rewardShopController() const { return m_shop; }
 
 TTaskboardDialogController::~TTaskboardDialogController()
 {
@@ -123,30 +108,32 @@ void TTaskboardDialogController::connectTabsToGameSession()
 {
     m_bounty->connectToGameSession(m_gameSession);
     m_weekly->connectToGameSession(m_gameSession);
-    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
-    if (!session)
-        return;
-    taskboard::TTaskboardShopStorage* shop = session->taskboardShopStorage().get();
-    m_gameSessionConnections.add(connect(shop, &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this,
-                                         [this, shop]() { m_shop->setRewards(shop->shopRewardData()); }));
+    m_shop->connectToGameSession(m_gameSession);
 }
 
 QString TTaskboardDialogController::bountyPointsString() const
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->bountyPoints()) : 0);
+    if (!session)
+        return QStringLiteral("0");
+    return QLocale(QLocale::English).toString(static_cast<qlonglong>(session->taskboardCurrenciesStorage()->bountyPoints()));
 }
 
 QString TTaskboardDialogController::preyHuntingTaskTokensString() const
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->preyHuntingTaskTokensAmount()) : 0);
+    if (!session)
+        return QStringLiteral("0");
+    return QLocale(QLocale::English)
+        .toString(static_cast<qulonglong>(static_cast<uint32_t>(session->taskboardCurrenciesStorage()->preyHuntingTaskTokensAmount())));
 }
 
 QString TTaskboardDialogController::soulSealsString() const
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->soulSealsAmount()) : 0);
+    if (!session)
+        return QStringLiteral("0");
+    return QLocale(QLocale::English).toString(static_cast<qlonglong>(session->taskboardCurrenciesStorage()->soulSealsAmount()));
 }
 
 /// Reopens the dialog on `Tab`; before the character reached the main land
@@ -160,13 +147,7 @@ void TTaskboardDialogController::showDialog(const DialogTab& Tab)
         m_notOnMain->showMessage(qtTrId("taskboard_need_to_reach_main_caption"), qtTrId("taskboard_need_to_reach_main_text"));
         return;
     }
-    m_dialogCreating = true;
     dialog()->show();
-    m_dialogCreating = false;
-    if (m_pendingResourceRefresh) {
-        m_pendingResourceRefresh = false;
-        refreshFromResourceBalance();
-    }
     switchToTab(Tab);
 }
 
@@ -232,14 +213,18 @@ void TTaskboardDialogController::switchToTab(const DialogTab tab)
     }
 }
 
-void TTaskboardDialogController::refreshFromResourceBalance()
+/// The task board action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
+void TTaskboardDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    if (m_dialogCreating) {
-        m_pendingResourceRefresh = true;
+    if (!pGameAction || pGameAction->gameActionType() != A::OPEN_TASKBOARD_DIALOG)
         return;
-    }
-    if (m_shop)
-        m_shop->refreshHuntingTaskPoints();
+    const auto* action = input::gameActionAs<input::gameactions::TGameActionOpenTaskboardDialog>(pGameAction);
+    if (!action)
+        return;
+    if (action->tab() == 0)
+        showDialog(BountyTasks);
+    else if (action->tab() == 1)
+        showDialog(WeeklyTasks);
 }
 
 }

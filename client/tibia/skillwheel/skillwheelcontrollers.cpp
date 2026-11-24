@@ -4,6 +4,7 @@
 
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
+#include "game/gameciptypes.h"
 
 #include <QCollator>
 #include <string_view>
@@ -1797,6 +1798,17 @@ TSkillWheelDialogController::~TSkillWheelDialogController()
 
 /// CIP: a new session closes the dialog (the pages follow the session's storage).
 void TSkillWheelDialogController::connectToGameSession() { closeDialog(); }
+
+void TSkillWheelDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TSkillWheelDialogController::premiumStatusChanged);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                &TSkillWheelDialogController::premiumStatusChanged);
+}
 
 void TSkillWheelDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {

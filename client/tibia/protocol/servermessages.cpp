@@ -43,10 +43,6 @@ bool readExtendedOpcode(ClassicReader& packet)
             processor->setProductTransportEnabled(true);
         return true;
     }
-    if (opcode == 2) {
-        tibia::game::processPingBack();
-        return true;
-    }
     ExtendedOpcodeReader::instance().publish(opcode, buffer);
     return true;
 }

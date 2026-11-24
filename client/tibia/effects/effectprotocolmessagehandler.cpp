@@ -34,6 +34,26 @@ uint32_t effectSource(const uint32_t source)
     throw std::runtime_error("unhandled enum value");
 }
 
+/// The protocol's sound type: 0 plays with the message, 1 and 2 are queued
+/// behind it; any other value is an error.
+uint32_t soundType(const uint32_t type)
+{
+    if (type <= 2)
+        return type;
+    throw std::runtime_error("unhandled enum value");
+}
+
+/// The protocol's sound source (0 to 4): a boss's sound plays as a
+/// creature's; any other value is an error.
+int soundSource(const uint32_t source)
+{
+    if (source <= 3)
+        return static_cast<int>(source);
+    if (source == 4)
+        return 3;
+    throw std::runtime_error("unhandled enum value");
+}
+
 /// An effect from a source shown at less than 1% is not created.
 bool visible(const uint32_t source)
 {
@@ -78,6 +98,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
     const qint64 now = static_cast<qint64>(tibia::shared::TClockService::frameMillis());
     worldmap::TWorldMapStorage* map = m_worldMapStorage.get();
     std::vector<sound::TSoundToPlay> sounds;
+    std::vector<sound::TSoundToPlay> queuedSounds;
     for (const auto& entry : message.entries()) {
         const Position at = positionOf(entry.coordinate());
         switch (entry.kind()) {
@@ -98,16 +119,25 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
             break;
         }
         case 2:
-        case 3:
-            sounds.push_back({ static_cast<uint16_t>(entry.sound_id()), at, static_cast<int>(entry.sound_source()), now });
+        case 3: {
+            // The main sound (kind 2) has type 0; a secondary sound carries its type.
+            const uint32_t type = soundType(entry.kind() == 2 ? 0 : entry.sound_enum());
+            const sound::TSoundToPlay toPlay{ static_cast<uint16_t>(entry.sound_id()), at,
+                                              soundSource(entry.sound_source()), now };
+            (type == 0 ? sounds : queuedSounds).push_back(toPlay);
             break;
+        }
         default:
             break;
         }
     }
-    // The message's sound effects play together (CIP: TSoundStorage).
-    if (!sounds.empty() && m_soundStorage)
+    // The message's sounds of type 0 play together; the others are queued
+    // behind them (only when the message has sounds to play now).
+    if (!sounds.empty() && m_soundStorage) {
         m_soundStorage->setSoundsToPlay(std::move(sounds), now);
+        if (!queuedSounds.empty())
+            m_soundStorage->queueSoundsToPlay(std::move(queuedSounds), now);
+    }
 }
 
 void TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage(const GameserverMessageRemoveGraphicalEffect& message)

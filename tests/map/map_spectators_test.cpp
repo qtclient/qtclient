@@ -36,8 +36,17 @@ void placeCreature(tibia::worldmap::TWorldMapField& tile,
                    tibia::creatures::TCreatureStorage& storage,
                    const uint32_t id)
 {
-    storage.getOrCreate(id);
-    tile.addCreatureId(id, -1);
+    (void)tile.addObject(storage.getOrCreate(id)->placeholderAppearance());
+}
+
+int stackPositionOfCreature(const tibia::worldmap::TWorldMapField& tile, const uint32_t id)
+{
+    const auto& stack = tile.appearances();
+    for (int i = 0; i < static_cast<int>(stack.size()); ++i) {
+        if (stack[i]->creatureId() == id)
+            return i;
+    }
+    return -1;
 }
 
 std::vector<uint32_t> creatureIdsOnField(const tibia::worldmap::TWorldMapField& tile)
@@ -54,8 +63,7 @@ TEST(TileSpectators, CreatureIdsTrackStackOrder)
 {
     StorageScope scope;
     const Position position(100, 100, 7);
-    tibia::worldmap::TWorldMapField tile;
-    tile.setCoordinate(tibia::worldmap::TWorldMapCoordinate(position));
+    tibia::worldmap::TWorldMapField tile(tibia::worldmap::TWorldMapCoordinate(position), 10);
 
     EXPECT_FALSE(tile.hasCreatures());
     EXPECT_TRUE(tile.stackCreatureEntries().empty());
@@ -71,21 +79,61 @@ TEST(TileSpectators, RemovingCreatureIdsClearsField)
 {
     StorageScope scope;
     const Position position(210, 210, 7);
-    tibia::worldmap::TWorldMapField tile;
-    tile.setCoordinate(tibia::worldmap::TWorldMapCoordinate(position));
+    tibia::worldmap::TWorldMapField tile(tibia::worldmap::TWorldMapCoordinate(position), 10);
 
     placeCreature(tile, scope.storage(), 1);
     placeCreature(tile, scope.storage(), 2);
     ASSERT_TRUE(tile.hasCreatures());
     EXPECT_EQ((std::vector<uint32_t>{ 1, 2 }), creatureIdsOnField(tile));
 
-    ASSERT_TRUE(tile.removeCreatureById(1));
+    ASSERT_TRUE(tile.removeObject(static_cast<uint8_t>(stackPositionOfCreature(tile, 1))));
     EXPECT_TRUE(tile.hasCreatures());
     EXPECT_EQ((std::vector<uint32_t>{ 2 }), creatureIdsOnField(tile));
 
-    ASSERT_TRUE(tile.removeCreatureById(2));
+    ASSERT_TRUE(tile.removeObject(static_cast<uint8_t>(stackPositionOfCreature(tile, 2))));
     EXPECT_FALSE(tile.hasCreatures());
     EXPECT_TRUE(tile.stackCreatureEntries().empty());
+}
+
+TEST(TileSpectators, StackLimitRejectsAndDrops)
+{
+    StorageScope scope;
+    tibia::worldmap::TWorldMapField tile(tibia::worldmap::TWorldMapCoordinate(Position(300, 300, 7)), 3);
+    for (uint32_t id = 1; id <= 3; ++id)
+        EXPECT_EQ(nullptr, tile.addObject(scope.storage().getOrCreate(id)->placeholderAppearance()));
+    // A creature sorts after the creatures: past the limit the field does not
+    // take it and hands it back, yet it counts as placed on a field.
+    const auto fourth = scope.storage().getOrCreate(4);
+    EXPECT_EQ(fourth->placeholderAppearance(), tile.addObject(fourth->placeholderAppearance()));
+    EXPECT_TRUE(fourth->isPlacedOnField());
+    EXPECT_EQ((std::vector<uint32_t>{ 1, 2, 3 }), creatureIdsOnField(tile));
+    // Inserted at the bottom, the last object drops off and keeps its flag.
+    const auto fifth = scope.storage().getOrCreate(5);
+    const auto dropped = tile.insertObject(fifth->placeholderAppearance(), 0);
+    EXPECT_EQ(scope.storage().getOrCreate(3)->placeholderAppearance(), dropped);
+    EXPECT_TRUE(scope.storage().getOrCreate(3)->isPlacedOnField());
+    EXPECT_EQ((std::vector<uint32_t>{ 5, 1, 2 }), creatureIdsOnField(tile));
+}
+
+TEST(TileSpectators, SetObjectsReplacesTheStack)
+{
+    StorageScope scope;
+    tibia::worldmap::TWorldMapField tile(tibia::worldmap::TWorldMapCoordinate(Position(310, 310, 7)), 2);
+    const auto a = scope.storage().getOrCreate(1);
+    const auto b = scope.storage().getOrCreate(2);
+    const auto c = scope.storage().getOrCreate(3);
+    placeCreature(tile, scope.storage(), 1);
+    tile.setObjects({ b->placeholderAppearance(), c->placeholderAppearance(), a->placeholderAppearance() });
+    // The old creature left the field first; the third object did not fit.
+    EXPECT_EQ((std::vector<uint32_t>{ 2, 3 }), creatureIdsOnField(tile));
+    EXPECT_TRUE(b->isPlacedOnField());
+    EXPECT_TRUE(c->isPlacedOnField());
+    EXPECT_EQ(2u, tile.drawList().size());
+    // removeObject past the stack is null; replaceObject hands back what left.
+    EXPECT_EQ(nullptr, tile.removeObject(5));
+    EXPECT_EQ(c->placeholderAppearance(), tile.replaceObject(a->placeholderAppearance(), 1));
+    EXPECT_FALSE(c->isPlacedOnField());
+    EXPECT_EQ((std::vector<uint32_t>{ 2, 1 }), creatureIdsOnField(tile));
 }
 
 TEST(StorageSpectators, RangeFiltering)

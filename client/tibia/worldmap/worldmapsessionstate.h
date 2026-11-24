@@ -87,9 +87,16 @@ public:
     void cleanTexts() { m_animatedTexts.clear(); m_staticTexts.clear(); }
 
     // thing related
-    /// Place a protocol-decoded item appearance (no ephemeral Item).
-    bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos,
-                         int16_t stackPos = -1);
+    /// The field at `pos` holds `objects` in their order (creatures are their
+    /// placeholders); a field left without objects is dropped.
+    void setFieldObjects(const Position& pos, const std::vector<tibia::appearances::TAppearanceInstancePtr>& objects);
+    /// Puts an object on the field at `pos`, at `stackPos` or, for 0xff (or
+    /// a negative position), where its kind sorts.
+    bool insertObjectAt(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos, int stackPos);
+    /// The object at `stackPos` leaves the field at `pos` and `object` takes its place.
+    bool replaceObjectAt(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos, int stackPos);
+    /// Takes the object at `stackPos` off the field at `pos`; null when none is there.
+    tibia::appearances::TAppearanceInstancePtr removeObjectAt(const Position& pos, int stackPos);
     void addStaticText(const StaticTextPtr& txt, const Position& pos);
     bool removeStaticText(const StaticTextPtr& txt);
 
@@ -118,7 +125,6 @@ public:
     /// stands on. `fireLocalDisappear`: DeleteOnMap and unaware fields only.
     bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
                                   bool fireLocalDisappear = true);
-    bool placeCreatureId(uint32_t creatureId, const Position& pos, int16_t stackPos = -1);
 
     /// MoveCreature. `byId`: the message names the creature instead of its field and slot.
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack,
@@ -209,6 +215,9 @@ private:
     /// The local player's creature left its field; unless it reappears before
     /// the event loop turns, it counts as off the map and its step stops.
     void localPlayerDisappeared();
+    /// A field at `pos` took `object`: the field announces the change, and the
+    /// local player's placeholder places the local player there.
+    void objectPlaced(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos);
     /// Packed cover-probe flags for one build (see beginCoverProbeBatch).
     uint8_t probeCoverTile(const Position& pos);
 

@@ -293,6 +293,8 @@ private:
     /// Cool outdoor cells from active weather (D).
     void applyWeatherAmbientTint();
     void loadLightOptions();
+    /// gameWindowShowLootHighlighting: containers draw their field effect.
+    void loadLootHighlightOption();
     /// The options that decide which frames creatures show.
     void loadMarkOptions();
     /// The colours of the frames around a creature, outer to inner; all 0
@@ -315,6 +317,7 @@ private:
     void addTileCreatures(const FieldEntry& field, const QPoint& dest, uint8_t elevation);
     void addTileEffects(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
     void addTileTop(const FieldEntry& field, const QPoint& dest, TOcclusionGrid& grid);
+    void addLootHighlight(const FieldEntry& field, const QPoint& dest);
     /// One object of a field: its draw commands with their key, its light,
     /// the fields it hides, its count near the player and its type.
     void addObject(const FieldEntry& field, int stackIndex, const QPoint& dest, uint8_t& elevation, bool castHeight,
@@ -428,6 +431,7 @@ private:
     std::set<const TAppearanceType*> m_frameTypes;
     std::vector<light::PointLight> m_lights;
     light::LightOptions m_lightOptions;
+    bool m_showLootHighlighting{ true };
     uint32_t m_coverRevision = 0;
     qint64 m_buildNs = 0;
     qint64 m_tilesNs = 0;

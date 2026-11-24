@@ -306,13 +306,7 @@ constexpr B GameplayBindings[] = {
 
 constexpr B EffectsBindings[] = {
     { "lightEffects", O::lightEffectsEnabled, B::Bool },
-    { "ambientLightLevel", O::lightAmbientLevel, B::Percent },
-    { "levelSeparatorLevel", O::lightLevelSeparatorLevel, B::Percent },
     { "lightAttenuationCloudsIndoor", O::lightAttenuationCloudsIndoor, B::CloudsIndex },
-    { "ownEffectsOpacity", O::ownEffectsOpacity, B::Percent },
-    { "otherPlayersEffectsOpacity", O::otherPlayersEffectsOpacity, B::Percent },
-    { "monsterEffectsOpacity", O::monsterEffectsOpacity, B::Percent },
-    { "monsterBossAreaEffectsOpacity", O::monsterBossAreaEffectsOpacity, B::Percent },
 };
 
 constexpr B ScreenshotsBindings[] = {
@@ -781,6 +775,16 @@ void TEffectsOptionsPage::load(const TClientOptions& options)
 {
     TBoundOptionsPage::load(options);
     m_lightEffects = options.boolOption(O::lightEffectsEnabled);
+    for (const auto& [member, option] : { std::pair{ &TEffectsOptionsPage::m_ambientLightLevelFraction, O::lightAmbientLevel },
+                                          std::pair{ &TEffectsOptionsPage::m_levelSeparatorLevelFraction, O::lightLevelSeparatorLevel },
+                                          std::pair{ &TEffectsOptionsPage::m_ownEffectsOpacityFraction, O::ownEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_otherPlayersEffectsOpacityFraction, O::otherPlayersEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_monsterEffectsOpacityFraction, O::monsterEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_monsterBossAreaEffectsOpacityFraction,
+                                                     O::monsterBossAreaEffectsOpacity } }) {
+        if (options.hasOption(option))
+            this->*member = options.floatOption(option);
+    }
     Q_EMIT changed();
 }
 
@@ -788,6 +792,84 @@ void TEffectsOptionsPage::apply(TClientOptions& options) const
 {
     TBoundOptionsPage::apply(options);
     options.setBoolOption(O::lightEffectsEnabled, m_lightEffects);
+    for (const auto& [member, option] : { std::pair{ &TEffectsOptionsPage::m_ambientLightLevelFraction, O::lightAmbientLevel },
+                                          std::pair{ &TEffectsOptionsPage::m_levelSeparatorLevelFraction, O::lightLevelSeparatorLevel },
+                                          std::pair{ &TEffectsOptionsPage::m_ownEffectsOpacityFraction, O::ownEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_otherPlayersEffectsOpacityFraction, O::otherPlayersEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_monsterEffectsOpacityFraction, O::monsterEffectsOpacity },
+                                          std::pair{ &TEffectsOptionsPage::m_monsterBossAreaEffectsOpacityFraction,
+                                                     O::monsterBossAreaEffectsOpacity } }) {
+        if (options.hasOption(option))
+            options.setFloatOption(option, this->*member);
+    }
+}
+
+void TEffectsOptionsPage::setFraction(float& fraction, const uint percent)
+{
+    if (percentOf(fraction) == percent)
+        return;
+    fraction = fractionOf(percent);
+    Q_EMIT changed();
+}
+
+uint TEffectsOptionsPage::ambientLightLevel() const
+{
+    return percentOf(m_ambientLightLevelFraction);
+}
+
+void TEffectsOptionsPage::setAmbientLightLevel(const uint percent)
+{
+    setFraction(m_ambientLightLevelFraction, percent);
+}
+
+uint TEffectsOptionsPage::levelSeparatorLevel() const
+{
+    return percentOf(m_levelSeparatorLevelFraction);
+}
+
+void TEffectsOptionsPage::setLevelSeparatorLevel(const uint percent)
+{
+    setFraction(m_levelSeparatorLevelFraction, percent);
+}
+
+uint TEffectsOptionsPage::ownEffectsOpacity() const
+{
+    return percentOf(m_ownEffectsOpacityFraction);
+}
+
+void TEffectsOptionsPage::setOwnEffectsOpacity(const uint percent)
+{
+    setFraction(m_ownEffectsOpacityFraction, percent);
+}
+
+uint TEffectsOptionsPage::otherPlayersEffectsOpacity() const
+{
+    return percentOf(m_otherPlayersEffectsOpacityFraction);
+}
+
+void TEffectsOptionsPage::setOtherPlayersEffectsOpacity(const uint percent)
+{
+    setFraction(m_otherPlayersEffectsOpacityFraction, percent);
+}
+
+uint TEffectsOptionsPage::monsterEffectsOpacity() const
+{
+    return percentOf(m_monsterEffectsOpacityFraction);
+}
+
+void TEffectsOptionsPage::setMonsterEffectsOpacity(const uint percent)
+{
+    setFraction(m_monsterEffectsOpacityFraction, percent);
+}
+
+uint TEffectsOptionsPage::monsterBossAreaEffectsOpacity() const
+{
+    return percentOf(m_monsterBossAreaEffectsOpacityFraction);
+}
+
+void TEffectsOptionsPage::setMonsterBossAreaEffectsOpacity(const uint percent)
+{
+    setFraction(m_monsterBossAreaEffectsOpacityFraction, percent);
 }
 
 bool TEffectsOptionsPage::lightEffects() const

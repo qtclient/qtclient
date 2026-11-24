@@ -147,7 +147,9 @@ void TProtocolMessageQueue::fireEmitSignalForNewClientProtocolMessage()
         Q_EMIT clientMessageReadyToProcess(message);
         const int opcode = message && message->has_type() ? message->type()
                                                           : (wire.isEmpty() ? -1 : int(uint8_t(wire[0])));
+        m_clientMessageBeingSent = message;
         Q_EMIT clientMessageEnqueued(opcode, wire);
+        m_clientMessageBeingSent.reset();
     }
 }
 

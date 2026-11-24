@@ -1,99 +1,126 @@
 #include "taskboardshopcontroller.h"
 #include "colorhelper.h"
 
+#include "appearances/appearanceinstance.h"
+#include "creatures/creaturestorage.h"
+#include "game/gamesessionbase.h"
 #include "taskboard/taskboardciptypes.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
+#include "taskboard/taskboardshopstorage.h"
 
-#include <client/const.h>
 #include <client/outfit.h>
-
-#include <QLocale>
-
-#include <algorithm>
-#include <climits>
-#include <cstdlib>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
-namespace {
-
-QColor outfitColor(const int index)
+TTaskboardShopController::TTaskboardShopController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : cip::tibia::gamewindow::TTaskboardShopController(parent)
+    , m_rewardsModel(new taskboard::TTaskboardRewardListModel(this))
+    , m_purchaseConfirmationDialog(engine, dialogParentItem)
 {
+    m_rewardList = m_rewardsModel;
+    // CipSoft connects the confirmation on every session change; a repeated
+    // confirmation finds no remembered offer, so one connection behaves alike.
+    connect(&m_purchaseConfirmationDialog,
+            &TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::confirmPurchase, this,
+            &TTaskboardShopController::onPurchaseConfirmed);
+}
+
+void TTaskboardShopController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    hideDialogTab();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    if (taskboard::TTaskboardShopStorage* shopStorage = session->taskboardShopStorage().get())
+        m_gameSessionConnections.add(connect(shopStorage, &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this,
+                                             &TTaskboardShopController::updateRewardList));
+    if (taskboard::TTaskboardCurrenciesStorage* currencies = session->taskboardCurrenciesStorage().get())
+        m_gameSessionConnections.add(connect(currencies,
+                                             &taskboard::TTaskboardCurrenciesStorage::preyHuntingTaskTokensAmountChanged,
+                                             this, &TTaskboardShopController::huntingTaskPointsChanged));
+}
+
+int TTaskboardShopController::huntingTaskPoints() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->taskboardCurrenciesStorage())
+        return 0;
+    return session->taskboardCurrenciesStorage()->preyHuntingTaskTokensAmount();
+}
+
+QObject* TTaskboardShopController::rewardList() const { return m_rewardsModel; }
+
+QColor TTaskboardShopController::playerOutfitColor(const int part) const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return Qt::white;
+    const std::shared_ptr<creatures::TCreature> player = session->playerCreature().lock();
+    if (!player)
+        return Qt::white;
+    const auto outfit = std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(player->outfitAppearance());
+    if (!outfit)
+        return Qt::white;
+    const Outfit& look = outfit->outfit();
+    const int index = part == 0 ? look.getHead() : part == 1 ? look.getBody() : part == 2 ? look.getLegs() : look.getFeet();
     const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
-uint64_t huntingPoints()
-{
-    return tibia::game::hasLocalPlayer()
-               ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_TASK_HUNTING)
-               : 0;
-}
+QColor TTaskboardShopController::headColor() const { return playerOutfitColor(0); }
 
-}
+QColor TTaskboardShopController::torsoColor() const { return playerOutfitColor(1); }
 
-TTaskboardShopController::TTaskboardShopController(QObject* parent)
-    : cip::tibia::gamewindow::TTaskboardShopController(parent)
-    , m_rewardsModel(new taskboard::TTaskboardRewardListModel(this))
-{
-    m_rewardList = m_rewardsModel;
-    syncPlayerColors();
-    refreshHuntingTaskPoints();
-}
+QColor TTaskboardShopController::legsColor() const { return playerOutfitColor(2); }
+
+QColor TTaskboardShopController::detailColor() const { return playerOutfitColor(3); }
 
 void TTaskboardShopController::showDialogTab()
 {
-    syncPlayerColors();
-    refreshHuntingTaskPoints();
-    taskboard::TTaskboardProtocolMessageHandler::requestShopRewards();
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->taskboardProtocolMessageHandler())
+        return;
+    session->taskboardProtocolMessageHandler()->requestShopRewards();
 }
 
-void TTaskboardShopController::hideDialogTab() {}
+// The session's connections stay while the tab is hidden; only a new session
+// drops them.
+void TTaskboardShopController::hideDialogTab() { m_purchaseConfirmationDialog.dialog()->close(); }
 
 void TTaskboardShopController::updateRewardList()
 {
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_rewardsModel->setItems(session->taskboardShopStorage()->shopRewardData());
     Q_EMIT rewardListChanged();
 }
 
 void TTaskboardShopController::requestBuyOffer(const int Index)
 {
-    const std::vector<taskboard::TShopReward>& rewards = m_rewardsModel->items();
+    m_offerToBuyIndex = Index;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    const std::vector<taskboard::TShopReward>& rewards = session->taskboardShopStorage()->shopRewardData();
     if (Index < 0 || Index >= static_cast<int>(rewards.size()))
         return;
     const taskboard::TShopReward& reward = rewards[static_cast<size_t>(Index)];
-    if (reward.status != taskboard::EShopRewardStatus::Available)
-        return;
-    if (huntingPoints() < static_cast<uint64_t>(reward.price))
-        return;
-    taskboard::TTaskboardProtocolMessageHandler::buyShopReward(std::clamp(Index, 0, 0xffff));
+    if (reward.type == taskboard::EShopRewardType::Outfit)
+        m_purchaseConfirmationDialog.showDialog(reward, headColor(), torsoColor(), legsColor(), detailColor());
+    else
+        m_purchaseConfirmationDialog.showDialog(reward);
 }
 
-void TTaskboardShopController::refreshHuntingTaskPoints()
+void TTaskboardShopController::onPurchaseConfirmed()
 {
-    const int points = static_cast<int>(std::min<uint64_t>(huntingPoints(), INT_MAX));
-    if (points == m_huntingTaskPoints)
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || m_offerToBuyIndex < 0 || !session->taskboardProtocolMessageHandler())
         return;
-    m_huntingTaskPoints = points;
-    Q_EMIT huntingTaskPointsChanged();
-}
-
-void TTaskboardShopController::syncPlayerColors()
-{
-    if (!tibia::game::hasLocalPlayer())
-        return;
-    const Outfit& outfit = tibia::game::localPlayerOutfit();
-    m_headColor = outfitColor(outfit.getHead());
-    m_torsoColor = outfitColor(outfit.getBody());
-    m_legsColor = outfitColor(outfit.getLegs());
-    m_detailColor = outfitColor(outfit.getFeet());
-}
-
-void TTaskboardShopController::setRewards(const std::vector<taskboard::TShopReward>& rewards)
-{
-    refreshHuntingTaskPoints();
-    syncPlayerColors();
-    m_rewardsModel->setItems(rewards);
-    Q_EMIT rewardListChanged();
+    session->taskboardProtocolMessageHandler()->buyShopReward(m_offerToBuyIndex);
+    m_offerToBuyIndex = -1;
 }
 
 }

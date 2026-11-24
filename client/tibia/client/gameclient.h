@@ -40,7 +40,7 @@ namespace tibia {
 namespace authentication {
 class TCloudflareChallengeController;
 struct TCloudflareChallengeClearanceInfo;
-enum class TCloudflareChallengeError : int;
+struct TCloudflareChallengeError;
 }
 }
 namespace tibia {
@@ -49,24 +49,37 @@ class TBlessingsDialogController;
 class TBossDifficultySelectionDialogController;
 class TBugReportDialogController;
 class TCharacterSelectionController;
+class TConfigureCreaturePodiumDialogController;
 class TCreateAccountDialogController;
 class TCreateCharacterDialogController;
 class TCrashReportDialogController;
+class TCyclopediaDialogController;
 class TDeathDialogController;
+class TEditTextController;
 class TExaltationForgeDialogController;
 class TGameSessionDisconnectReactionController;
 class TGameWindowController;
+class THighscoresDialogController;
+class TInfoBannerController;
+class TLinkCopyWarningDialogController;
 class TMarketController;
 class TMessageDialogController;
 class TMultiOfflineTrainingDialogController;
 class TNaggingMessageDialogController;
 class TOutfitMemorialDialogController;
+class TPreyDialogController;
+class TQuestLogController;
 class TReportViolationController;
 class TRewardWallDialogController;
 class TSelectObjectAmountDialogController;
+class TSelectOutfitDialogController;
+class TServerModalDialogController;
 class TShowImageDialogController;
 class TShowSpellBookDialogController;
 class TSoulSealsDialogController;
+class TStashDialogController;
+class TTaskboardDialogController;
+class TConfirmMoveObjectToStashDialogController;
 class TStoreDialogController;
 }
 namespace proficiency {
@@ -98,6 +111,7 @@ namespace network {
 class ExtendedOpcodeRouter;
 }
 namespace input {
+class TGameActionMapper;
 class TKeyboardStatusStorage;
 }
 }
@@ -279,8 +293,6 @@ public:
     config::TActionBarOptions* actionBarOptions() const;
     /// The current session's; null without one.
     config::TCharacterConfigurationManager* characterConfigurationManager() const;
-    /// The session's minimap; null outside the world.
-    minimap::TMinimapManager* minimap() const { return m_minimap.get(); }
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
     /// v147 with worldTypeSet): the login service's raw pvptype,
     /// 0 open, 1 optional, 2 hardcore PvP; -1 before a character is chosen.
@@ -400,6 +412,9 @@ public Q_SLOTS:
     /// CIP: during a live session a changed walk key state becomes the
     /// player's movement intent (SET_PLAYER_MOVEMENT_INTENT).
     void onKeyboardStatusStorageChanged();
+    /// CIP: the keyboard status storage asks for its state to be read again
+    /// after `DelayMillis` (onKeyboardStatusStorageChanged then).
+    void checkKeyboardStatusStorageAfterDelay(int DelayMillis);
     /// CIP: with FPS tracking on, samples the frame rate every
     /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
     /// (and when the session ends or the client closes); off drops both.
@@ -433,6 +448,7 @@ private:
     void requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen);
     /// CIP TGameClientBase's sound system, plus the connections qtclient
     /// makes with it here (the router, the sound metadata, the title music).
+    void initialize() override;
     void initializeSound() override;
     void emitInitialized() override;
     void emitMainWindowInitialized() override;
@@ -541,7 +557,6 @@ private:
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
-    std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
@@ -572,12 +587,32 @@ private:
     std::unique_ptr<proficiency::TWeaponProficiencyShapeDialogController> m_pWeaponProficiencyShapeDialogController;
     std::unique_ptr<proficiency::TWeaponProficiencyShapeOptionsDialogController> m_pWeaponProficiencyShapeOptionsDialogController;
     std::unique_ptr<gamewindow::TSoulSealsDialogController> m_pSoulSealsDialogController;
+    std::shared_ptr<gamewindow::TTaskboardDialogController> m_pTaskboardDialogController;
     std::unique_ptr<gamewindow::TBossDifficultySelectionDialogController> m_pBossDifficultySelectionDialogController;
+    std::unique_ptr<gamewindow::TStashDialogController> m_pStashDialogController;
+    std::unique_ptr<gamewindow::TConfirmMoveObjectToStashDialogController> m_pConfirmMoveObjectToStashDialogController;
+    /// CIP: the client's mouse mapping (control and loot scheme), shared by the
+    /// controllers that map clicks to game actions.
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     std::unique_ptr<qmlcomponents::TLenshelpManager> m_pLenshelpManager;
     std::unique_ptr<gamewindow::TOutfitMemorialDialogController> m_pOutfitMemorialDialogController;
     std::unique_ptr<gamewindow::TRewardWallDialogController> m_pRewardWallDialogController;
     std::unique_ptr<gamewindow::TCreateAccountDialogController> m_pCreateAccountDialogController;
     std::unique_ptr<gamewindow::TCreateCharacterDialogController> m_pCreateCharacterDialogController;
+    /// CIP: the quest log, the server's modal dialogs, the text windows, the
+    /// info banner, the link copy warning, the Cyclopedia, the outfit and
+    /// creature podium dialogs, the prey dialog and the highscores (CipSoft's
+    /// member order).
+    std::unique_ptr<gamewindow::TQuestLogController> m_pQuestLogController;
+    std::unique_ptr<gamewindow::TServerModalDialogController> m_pServerModalDialogController;
+    std::unique_ptr<gamewindow::TEditTextController> m_pEditTextController;
+    std::unique_ptr<gamewindow::TInfoBannerController> m_pInfoBannerController;
+    std::unique_ptr<gamewindow::TLinkCopyWarningDialogController> m_pLinkCopyWarningDialogController;
+    std::unique_ptr<gamewindow::TCyclopediaDialogController> m_pCyclopediaDialogController;
+    std::unique_ptr<gamewindow::TSelectOutfitDialogController> m_pSelectOutfitDialogController;
+    std::unique_ptr<gamewindow::TConfigureCreaturePodiumDialogController> m_pConfigureCreaturePodiumDialogController;
+    std::unique_ptr<gamewindow::TPreyDialogController> m_pPreyDialogController;
+    std::unique_ptr<gamewindow::THighscoresDialogController> m_pHighscoresDialogController;
     /// "Connecting to the game world" (Cancel aborts).
     std::unique_ptr<gamewindow::TMessageDialogController> m_pConnectingDialogController;
     /// The exit confirmation (Exit / Logout / Cancel, or Exit / Cancel in the tutorial).

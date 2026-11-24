@@ -1,9 +1,5 @@
 #pragma once
 
-#include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
-#include "input/gameaction.h"
-
 #include <cip_gen.h>
 
 #include <QString>
@@ -92,9 +88,7 @@ struct TExaltationBaseData
     std::vector<TTierCores> transferCores;
 };
 
-/// The exaltation forge's game data (CIP: exaltation::TExaltationStorage),
-/// filled the way TExaltationProtocolMessageHandler does, and the forge's
-/// game actions 293-299 (CIP: TExaltationGameActionHandler).
+/// The exaltation forge's game data, filled by TExaltationProtocolMessageHandler.
 class TExaltationStorage final : public cip::tibia::exaltation::TExaltationStorage
 {
     Q_OBJECT
@@ -156,28 +150,11 @@ public:
     void setCoresBalance(uint16_t balance);
     uint16_t coresBalance() const { return m_coresBalance; }
 
+    /// The last fusion or transfer (CIP: the data of SHOW_EXALTATION_RESULT_DIALOG).
     const TExaltationResult& lastResult() const { return m_lastResult; }
-
-Q_SIGNALS:
-    /// The protocol handler's actions (CIP: TExaltationProtocolMessageHandler's
-    /// publishGameAction; qtclient handles those messages here).
-    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    void setLastResult(const TExaltationResult& result) { m_lastResult = result; }
 
 private:
-    /// CIP TExaltationProtocolMessageHandler::handleResourceBalanceMessage.
-    void handleResourceBalanceMessage(int type, qint64 balance);
-    /// CIP TExaltationProtocolMessageHandler::handleShowMessageDialogMessage.
-    void handleShowMessageDialogMessage(int type, const QString& message);
-
-    /// CIP TExaltationGameActionHandler.
-    bool handleGameAction(const input::IGameAction& action);
-    void handleExaltationForgeDialogClosedGameAction();
-    void handleExaltationForgeFusionGameAction(const input::TGameActionExaltationForgeFusion& action);
-    void handleExaltationForgeConvergenceFusionGameAction(const input::TGameActionExaltationForgeConvergenceFusion& action);
-    void handleExaltationForgeTransferGameAction(const input::TGameActionExaltationForgeTransfer& action);
-    void handleExaltationForgeHistoryNextPageGameAction();
-    void handleExaltationForgeHistoryPreviousPageGameAction();
-
     uint8_t m_dustLimitRaw = 0;
     std::map<uint8_t, std::map<uint8_t, uint64_t>> m_classPrices;
     std::map<uint8_t, uint64_t> m_convergenceFusionPrices;
@@ -194,18 +171,6 @@ private:
     uint16_t m_sliversBalance = 0;
     uint16_t m_coresBalance = 0;
     TExaltationResult m_lastResult;
-    std::vector<client::gamecore::Hook> m_hooks;
-
-public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

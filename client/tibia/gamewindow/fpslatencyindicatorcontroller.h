@@ -12,6 +12,9 @@ class QQuickItem;
 class QQuickWindow;
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
@@ -25,12 +28,12 @@ class TFrameDurationRing;
 namespace tibia {
 namespace gamewindow {
 
-/// FpsLatencyIndicator.qml (CIP TFPSLatencyIndicatorController):
-/// currentFrameRate = TFrameDurationRing effective FPS as QString::number(d,'f',2)
-/// ; ping from tibia::game::getPing; optimizedConnectionStability
-/// from connectionStabilityOptimizationEnabled; visibility from showFpsLagIndicator /
-/// TOGGLE_FPS_LATENCY_INDICATOR (Alt+F8).
-/// product also exposes worldmapBuildUs for the override HUD.
+/// FpsLatencyIndicator.qml (CIP TFPSLatencyIndicatorController): the frame
+/// rate, frame count, latency (and its band) and the connection stability
+/// optimisation the game client hands it; visible while the client options'
+/// showFpsLagIndicator is set (TOGGLE_FPS_LATENCY_INDICATOR flips it).
+/// Host: a one-second timer samples the values while visible, and the
+/// product reads worldmapBuildUs for its HUD.
 class TFPSLatencyIndicatorController final : public cip::tibia::gamewindow::TFPSLatencyIndicatorController
 {
     Q_OBJECT
@@ -38,16 +41,19 @@ class TFPSLatencyIndicatorController final : public cip::tibia::gamewindow::TFPS
 public:
     /// CIP: the indicator item shows this controller; a destroyed item lets go of it.
     void setWidgetItem(QQuickItem* item);
-    explicit TFPSLatencyIndicatorController(QObject* parent = nullptr);
+    /// CIP: made with the client options; their FPS lag indicator options
+    /// signal the visibility.
+    explicit TFPSLatencyIndicatorController(config::TClientOptions* ClientOptions, QObject* parent = nullptr);
     ~TFPSLatencyIndicatorController() override;
+
+    /// CIP: the client options' showFpsLagIndicator (false without options).
+    bool visible() const override;
 
     void setWindow(QQuickWindow* window);
     /// Optional: game client's tick-to-swap ring for currentFrameCount.
     void setFrameDurations(worldmap::TFrameDurationRing* ring);
     void setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider);
     QString worldmapBuildUs() const { return m_worldmapBuildUs; }
-    void toggle();
-    void setVisibleFromOptions(bool on);
     /// CIP: the game client's values before a frame renders; each property
     /// signals when it changed (the frame count silently).
     void update(double frameRate, qint64 latencyMs, bool latencyMeasured, bool optimizedConnectionStability, int frameCount);
@@ -62,10 +68,11 @@ private:
     /// CIP: the destroyed item is forgotten.
     void onWidgetQuickItemDestroyed();
     QPointer<QQuickItem> m_widgetItem;
-    void applyVisible(bool on);
+    /// Host: the sample timer runs while the indicator is visible.
+    void onVisibilityChanged();
     void tick();
-    void syncOptimizedConnectionStability();
 
+    config::TClientOptions* m_pClientOptions = nullptr;
     QPointer<QQuickWindow> m_window;
     worldmap::TFrameDurationRing* m_frameDurations = nullptr;
     qmlcomponents::TWorldMapRenderProvider* m_provider = nullptr;
@@ -74,7 +81,6 @@ private:
     std::atomic<int> m_frames { 0 };
     QString m_worldmapBuildUs { QStringLiteral("0") };
     double m_frameRate = 0.0;
-    bool m_stabilityOption = false;
     bool m_latencyMeasured = true;
     /// The frame count of the last update.
     int m_frameCount = 0;

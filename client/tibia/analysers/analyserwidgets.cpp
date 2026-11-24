@@ -626,7 +626,12 @@ TProgressWidgetController::TProgressWidgetController(TProgressStorage* storage, 
         connect(item, &QObject::destroyed, this, &TProgressWidgetController::onWidgetQuickItemDestroyed);
 }
 
-TProgressWidgetController::~TProgressWidgetController() { delete m_targetDialog; }
+TProgressWidgetController::~TProgressWidgetController()
+{
+    // CIP: the gauge target dialog is closed (dialogClosed) before it goes.
+    m_targetDialog->dialog()->close();
+    delete m_targetDialog;
+}
 
 void TProgressWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {

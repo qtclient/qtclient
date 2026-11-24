@@ -39,13 +39,19 @@ EGameAction shieldAction(const uint8_t own, const uint8_t other)
 
 }
 
-void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, const uint32_t creatureId)
+TPartyGameActionProvider::TPartyGameActionProvider(std::shared_ptr<TCreatureStorage> creatureStorage,
+                                                   std::shared_ptr<game::TPlayerData> playerData)
+    : m_creatureStorage(std::move(creatureStorage))
+    , m_playerData(std::move(playerData))
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
+}
+
+void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, const uint32_t creatureId) const
+{
+    if (!m_creatureStorage)
         return;
-    const std::shared_ptr<TCreature> player = storage->creatureAt(game::localPlayerId());
-    const std::shared_ptr<TCreature> creature = storage->creatureAt(creatureId);
+    const std::shared_ptr<TCreature> player = m_creatureStorage->creatureAt(game::localPlayerId());
+    const std::shared_ptr<TCreature> creature = m_creatureStorage->creatureAt(creatureId);
     if (!player || !creature)
         return;
     const auto push = [&](const EGameAction type) { actions.push_back(input::makeCreatureAction(type, creatureId)); };
@@ -54,8 +60,7 @@ void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, co
         if (const EGameAction type = shieldAction(player->shield(), creature->shield()); type != EGameAction::UNKNOWN)
             push(type);
     }
-    const game::TPlayerData* playerData = game::TPlayerData::liveInstance();
-    if (creature->isLocalPlayer() && player->isInParty() && !(playerData && playerData->isFighting())) {
+    if (creature->isLocalPlayer() && player->isInParty() && !(m_playerData && m_playerData->isFighting())) {
         if (player->isPartyLeader()) {
             auto shared = std::make_shared<input::TGameActionSetSharedExperience>(!player->isSharingExperience());
             actions.push_back(shared);

@@ -591,23 +591,6 @@ private:
     quint32 m_date = 0;
 };
 
-/// CIP TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController.
-class TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController>
-{
-    Q_OBJECT
-public:
-    explicit TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(QObject* parent = nullptr);
-
-    void prepare(int appearanceId, int optionalId, const QString& title, const QString& cost, const QVariant& rewardType);
-
-    Q_INVOKABLE void purchaseRequested() override;
-    Q_INVOKABLE void closeRequested() override;
-
-Q_SIGNALS:
-    void purchaseAccepted(int optionalId);
-};
-
 /// CIP TTutorialOverlayItemController.
 class TTutorialOverlayItemController final : public cip::tibia::gamewindow::TTutorialOverlayItemController
 {

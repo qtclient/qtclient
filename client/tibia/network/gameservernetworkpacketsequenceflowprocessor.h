@@ -45,8 +45,8 @@ public:
 
 Q_SIGNALS:
     void packetReady(tibia::network::TGameserverNetworkPacket NetworkPacket);
-    /// Answer a connection ping on connection `ConnectionType` (0 primary, 1 secondary).
-    void sendConnectionPing(int ConnectionType);
+    /// Answer a connection ping on connection `ConnectionType`.
+    void sendConnectionPing(tibia::network::EConnectionType ConnectionType);
 
 private:
     /// A packet that was taken off connection `connectionIndex`.

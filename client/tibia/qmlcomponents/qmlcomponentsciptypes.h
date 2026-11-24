@@ -41,13 +41,6 @@ public:
     using cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType::TAppearanceInstanceInfoQmlType;
 };
 
-class TAppearanceInstanceRendererBase final : public cip::tibia::qmlcomponents::TAppearanceInstanceRendererBase
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TAppearanceInstanceRendererBase::TAppearanceInstanceRendererBase;
-};
-
 /// QML singleton AppearanceTypeHelper — item name / description / id lookup.
 class TAppearanceTypeHelperQmlService final : public cip::tibia::qmlcomponents::TAppearanceTypeHelperQmlService
 {

@@ -15,9 +15,15 @@
 #include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace analysers {
 class TAnalyserStorages;
+}
+namespace config {
+class TClientOptions;
 }
 namespace quickloot {
 class TQuickLootBlackWhitelistStorage;
@@ -82,7 +88,11 @@ public:
     /// CIP Unassigned / market_category_default.
     static constexpr int UnassignedCategory = 31;
 
-    explicit TManageLootContainerDialogController(QObject* parent = nullptr);
+    /// CipSoft's arguments: the dialog and its message dialogs are made with
+    /// `Engine` under `DialogParentItem`; `ClientOptions` goes to the item list
+    /// model (qtclient's model counts through its provider instead).
+    TManageLootContainerDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, config::TClientOptions* ClientOptions,
+                                         QObject* parent = nullptr);
     ~TManageLootContainerDialogController() override;
 
     void setUseMainBackpackAsFallback(bool v) override;
@@ -139,6 +149,9 @@ private:
     std::shared_ptr<quickloot::TManagedContainerStorage> m_containers;
     TAppearanceTypeListModel m_listModel;
     TAppearanceTypeListModelSortFilterProxy m_listProxy;
+    /// CIP +0x80: the invalid container message; closing it shows the dialog again.
+    TMessageDialogController* m_info = nullptr;
+    /// CIP +0xe8: the clear list confirmation.
     TMessageDialogController* m_confirm = nullptr;
     PickMode m_pick = PickMode::None;
     int m_pickCategory = 0;

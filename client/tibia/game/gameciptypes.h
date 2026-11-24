@@ -107,12 +107,23 @@ class TSystemSurveyValueRetriever;
 
 namespace tibia::creatures {
 class TCreatureMovementSpeedCalculator;
+class TCreatureStorage;
+}
+
+namespace tibia::spells {
+class TSpellInfoStorage;
+}
+
+namespace tibia::shared {
+class IClockService;
 }
 
 namespace tibia {
 namespace game {
 
 class TCooldownStorage;
+class TPlayerData;
+class TPlayerSkillStats;
 class TSelectOutfitDialogData;
 
 /// Own CIP-named types under `parent` (live session / feature owner).
@@ -240,8 +251,6 @@ public:
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
     void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
-    void handlePingMessage(const ::tibia::protobuf::protocol::GameserverMessagePing& message);
-    void handlePingBackMessage(const ::tibia::protobuf::protocol::GameserverMessagePingBack& message);
     void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 
 Q_SIGNALS:
@@ -317,12 +326,19 @@ class TPlayerProtocolMessageHandler final : public cip::tibia::game::TPlayerProt
 {
     Q_OBJECT
 public:
-    /// Spell, spell group, multi-use and passive ability delays go to
-    /// `cooldownStorage` (the session's).
-    /// `allowAllToInspectPlayer`: the client option the server learns when the
-    /// world is entered.
-    explicit TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, bool allowAllToInspectPlayer = false,
-                                           QObject* parent = nullptr);
+    /// The session's player data, skill stats, creature storage, cooldown
+    /// storage (spell, spell group, multi-use and passive ability delays),
+    /// outfit dialog storage, the client's spell info storage and the
+    /// session's clock. `AllowAllToInspectPlayer`: the client option the
+    /// server learns when the world is entered. Registers the outfit dialog
+    /// data's shared pointer as a meta type.
+    TPlayerProtocolMessageHandler(std::shared_ptr<TPlayerData> PlayerData, std::shared_ptr<TPlayerSkillStats> PlayerSkillStats,
+                                  std::shared_ptr<::tibia::creatures::TCreatureStorage> CreatureStorage,
+                                  std::shared_ptr<TCooldownStorage> CooldownStorage,
+                                  std::shared_ptr<TOutfitDialogStorage> OutfitDialogStorage,
+                                  ::tibia::spells::TSpellInfoStorage* SpellInfoStorage,
+                                  std::shared_ptr<::tibia::shared::IClockService> ClockService, bool AllowAllToInspectPlayer,
+                                  QObject* parent = nullptr);
 
     /// Publishes ALLOW_ALL_TO_INSPECT_PLAYER or WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER
     /// from the option, then emits worldEntered.
@@ -402,10 +418,15 @@ Q_SIGNALS:
     void showHirelingNameChangeConfiguration(quint32 CreatureID, quint32 ObjectID);
 
 private:
-    TCooldownStorage* m_cooldownStorage = nullptr;
+    std::shared_ptr<TPlayerData> m_playerData;
+    std::shared_ptr<TPlayerSkillStats> m_playerSkillStats;
+    std::shared_ptr<::tibia::creatures::TCreatureStorage> m_creatureStorage;
+    std::shared_ptr<TCooldownStorage> m_cooldownStorage;
     std::shared_ptr<TOutfitDialogStorage> m_outfitDialogStorage;
-    QPointer<::tibia::input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
+    ::tibia::spells::TSpellInfoStorage* m_spellInfoStorage = nullptr;
+    std::shared_ptr<::tibia::shared::IClockService> m_clockService;
     bool m_allowAllToInspectPlayer = false;
+    QPointer<::tibia::input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
 };
 
 /// The account's premium state: the flag, the server time it ends at (0 for

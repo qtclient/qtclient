@@ -124,11 +124,16 @@ public:
     TWorldMapSessionState& sessionState() { return m_sessionState; }
     const TWorldMapSessionState& sessionState() const { return m_sessionState; }
 
-    /// CIP field mutates — protocol / handlers prefer sessionState / storage APIs at call sites.
-    void clearField(const Position& position);
-    bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position,
-                         int stackPos = -1);
-    bool placeCreatureId(uint32_t creatureId, const Position& position, int stackPos = -1);
+    /// The field at `position` holds `objects` in their order; without
+    /// objects it leaves the storage (see TWorldMapSessionState::setFieldObjects).
+    void setFieldObjects(const Position& position, const std::vector<appearances::TAppearanceInstancePtr>& objects);
+    /// Puts an object on the field at `position`: at `stackPos`, or where its
+    /// kind sorts for 0xff.
+    bool insertObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position, int stackPos);
+    /// The object at `stackPos` of the field at `position` makes way for `object`.
+    bool replaceObjectAt(const appearances::TAppearanceInstancePtr& object, const Position& position, int stackPos);
+    /// Takes the object at `stackPos` off the field at `position`; null when none is there.
+    appearances::TAppearanceInstancePtr removeObjectAt(const Position& position, int stackPos);
     bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
                                   bool fireLocalDisappear = true);
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack, const Position& newPos,

@@ -12,7 +12,6 @@
 #include "gamewindow/aboutdialogcontroller.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
-#include "minimap/minimapmanager.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -106,9 +105,11 @@ QString localFile(const QString& url)
 
 }
 
-TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
-    , m_clientOptionsModeSwitcher(config::TClientOptions::instance(), this)
+TOptionsMenuDialogController::TOptionsMenuDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                                           QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clientOptions(ClientOptions)
+    , m_clientOptionsModeSwitcher(ClientOptions, this)
     , m_optionPageQmlWrapperBase(this)
 {
     auto* actionBars = new config::TActionBarsOptionsPage(config::actionBarsBindings(), this);
@@ -166,13 +167,13 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
         { UISounds, uiSounds },
     };
 
-    m_ruleViolationsMessage = makeMessageDialog();
-    m_restartMessage = makeMessageDialog();
-    m_rotationKeysMessage = makeMessageDialog();
-    m_resetPageMessage = makeMessageDialog();
-    m_resetAllMessage = makeMessageDialog();
-    m_infoMessage = makeMessageDialog();
-    m_importMessage = makeMessageDialog();
+    m_ruleViolationsMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_restartMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_rotationKeysMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_resetPageMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_resetAllMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_infoMessage = makeMessageDialog(Engine, DialogParentItem);
+    m_importMessage = makeMessageDialog(Engine, DialogParentItem);
     m_about = new TAboutDialogController(this);
     connect(m_about, &TAboutDialogController::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     connect(m_importMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::importArchive);
@@ -187,7 +188,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
 
     // (connected when the game connection is set): the current value at login.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
-        sendTurnTowardsMoveDirection(config::TClientOptions::instance()->boolOption(O::alwaysTurnTowardsMoveDirection));
+        sendTurnTowardsMoveDirection(m_clientOptions->boolOption(O::alwaysTurnTowardsMoveDirection));
     });
 
 
@@ -261,12 +262,12 @@ void TOptionsMenuDialogController::closeSubDialogs()
     if (m_about->dialog()->item())
         m_about->dialog()->close();
     m_hotkeys->closeDialogs();
-    config::TClientOptions::instance()->saveToJsonFile();
+    m_clientOptions->saveToJsonFile();
 }
 
-TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()
+TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog(QQmlEngine* Engine, QQuickItem* DialogParentItem)
 {
-    auto* message = new TMessageDialogController(this);
+    auto* message = new TMessageDialogController(Engine, DialogParentItem, this);
     message->setCloseOnButtonClicked(true);
     return message;
 }
@@ -291,7 +292,7 @@ void TOptionsMenuDialogController::open(const int category)
     }
     setDialogCategory(target);
 
-    const config::TClientOptions& options = *config::TClientOptions::instance();
+    const config::TClientOptions& options = *m_clientOptions;
     for (const Page& page : m_pages)
         page.page->load(options);
     dialog()->show();
@@ -388,7 +389,7 @@ void TOptionsMenuDialogController::cancelButtonClicked()
 std::unique_ptr<config::TClientOptions> TOptionsMenuDialogController::pendingOptions() const
 {
     auto options = std::make_unique<config::TClientOptions>();
-    options->assignFrom(*config::TClientOptions::instance());
+    options->assignFrom(*m_clientOptions);
     for (const Page& page : m_pages)
         page.page->apply(*options);
     return options;
@@ -396,7 +397,7 @@ std::unique_ptr<config::TClientOptions> TOptionsMenuDialogController::pendingOpt
 
 void TOptionsMenuDialogController::applyButtonClicked()
 {
-    const config::TClientOptions& current = *config::TClientOptions::instance();
+    const config::TClientOptions& current = *m_clientOptions;
 
     // The server learns the "allow all to inspect" switch.
     if (m_gameplay->allowAllToInspectPlayer() != current.boolOption(O::inspectPlayerAllowAllEnabled))
@@ -551,15 +552,15 @@ void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputF
 
 void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFilename)
 {
-    if (minimap::TMinimapManager* minimap = m_gameClient ? m_gameClient->minimap() : nullptr)
-        minimap->flushToDisk();
+    if (m_gameClient)
+        m_gameClient->saveMinimapToDisk();
     exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
 }
 
 void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
-    const TRendererOptions before(*config::TClientOptions::instance());
+    const TRendererOptions before(*m_clientOptions);
     std::optional<config::TConfigBackupReader> reader;
     try {
         reader.emplace(files::data().getFileSystemHelper(), localFile(m_importFile),
@@ -582,7 +583,7 @@ void TOptionsMenuDialogController::importArchive()
             app::ClientOptions::storeAll(imported);
     }
 
-    const config::TClientOptions& after = *config::TClientOptions::instance();
+    const config::TClientOptions& after = *m_clientOptions;
     for (const Page& page : m_pages)
         page.page->load(after);
     const bool same = TRendererOptions(after) == before;

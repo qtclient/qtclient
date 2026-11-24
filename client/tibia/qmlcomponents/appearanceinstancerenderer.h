@@ -3,6 +3,7 @@
 #include <cip_gen.h>
 
 #include "animation/animator.h"
+#include "qmlcomponents/appearanceinstancerendererbase.h"
 #include "appearances/appearanceinstance.h"
 #include "renderer/spritetexturecache.h"
 
@@ -72,7 +73,7 @@ public:
 /// as OutfitPreviewPanel bake shift into position). cameraPosition is the world pixel
 /// at the item's top-left; with center / shrinkToFit the opaque protobuf bounding
 /// boxes (else the sprite union) are centered / scaled down (never past scaleFactor).
-class TAppearanceInstanceRenderer : public cip::tibia::qmlcomponents::TAppearanceInstanceRenderer
+class TAppearanceInstanceRenderer : public TAppearanceInstanceRendererBaseOfRenderer
 {
     Q_OBJECT
 public:
@@ -86,23 +87,14 @@ public:
     void setAnimated(bool v) override;
     void setScaleFactor(float v) override;
     void setSmoothTextureFiltering(bool v) override;
-    void refreshAppearanceInstances() override;
-    void refreshAppearanceInstances(bool keepEffects) override;
-    /// Magical Archive / tutorial: CIP transient field effect (ThingCategoryEffect).
-    void showGraphicalEffect(int AppearanceTypeID, const QPoint& SubfieldCoordinate) override;
-    /// Magical Archive: CIP transient missile flight (ThingCategoryMissile).
-    void showMissileEffect(int AppearanceTypeID, const QPoint& SourceCoordinate,
-                           const QPoint& DestinationCoordinate) override;
     /// RaceAppearanceInstanceRenderer.qml: the race's outfit (or object) from the static race
     /// data. The previous instance this renderer made is released.
     cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* createAppearanceInstanceByRaceID(int RaceID) override;
     QString getRaceName(int RaceID) override;
 
 protected:
-    void componentComplete() override;
-    void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;
-    void updatePolish() override;
+    void updateDrawCommands() override;
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 
 private:
@@ -112,21 +104,6 @@ private:
         /// Bottom-right corner in world pixels.
         QPoint anchor;
         QSize size;
-    };
-
-    /// Transient CIP preview FX (not in appearanceInstances; KeepEffects retains them).
-    struct TransientEffect
-    {
-        enum class Kind { Field, Missile };
-        Kind kind{ Kind::Field };
-        TAppearanceType* type{ nullptr };
-        QPoint fieldTopLeft;
-        QPoint missileFrom;
-        QPoint missileTo;
-        /// The field effect or the missile, advanced each frame.
-        std::shared_ptr<tibia::appearances::TEffectInstance> instance;
-        int patternX{ 0 };
-        int patternY{ 0 };
     };
 
     static void append(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list, cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* instance);
@@ -139,13 +116,12 @@ private:
     void addSprites(TAppearanceType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase);
     void addOutfit(const TOutfitAppearanceInstanceQmlType& instance);
     void addObject(const TObjectAppearanceInstanceInfoQmlType& instance);
-    void addTransientEffects();
-    void purgeExpiredEffects();
+    /// The storage's running effects: field effects on their field, missiles
+    /// along their flight.
+    void addEffects();
     int outfitPhase(TAppearanceType* type, bool moving, int millisecondsPerField) const;
-    static void missilePatterns(const QPoint& from, const QPoint& to, int& patternX, int& patternY);
 
     QList<Sprite> m_sprites;
-    QList<TransientEffect> m_effects;
     /// Standing animators of the shown types, started at time 0.
     mutable tibia::animation::TIdleAnimators m_idleAnimators;
     /// Item pixel = (world pixel - m_origin) * m_scale.

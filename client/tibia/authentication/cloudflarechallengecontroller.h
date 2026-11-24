@@ -38,17 +38,17 @@ public:
     Q_INVOKABLE void cancel(const QString& Reason) override;
     Q_INVOKABLE void cancel() override;
 
-    /// Start the challenge for `url` (login reply URL / cf-mitigated target).
-    void startChallenge(const QUrl& url);
-    /// CIP: why the last challenge failed (none while it runs or after a success).
+    /// CIP: starts the challenge for the target URL in the dialog's web view,
+    /// failing after `Timeout` milliseconds; a running one is cancelled first.
+    void start(int Timeout);
+    /// CIP: why the last challenge failed, with the reason cancel was given
+    /// with (none while it runs or after a success).
     const std::optional<TCloudflareChallengeError>& error() const { return m_error; }
-    /// CIP: the reason cancel was given with (empty for a timeout).
-    const QString& errorReason() const { return m_errorReason; }
 
 Q_SIGNALS:
     /// Skipped in cipgen (ClearanceInfo / Error types); qtclient owns these.
     void challengeSolveSuccess(const tibia::authentication::TCloudflareChallengeClearanceInfo& CloudflareClearanceResult);
-    void challengeSolveFailed(tibia::authentication::TCloudflareChallengeError Error);
+    void challengeSolveFailed(const tibia::authentication::TCloudflareChallengeError& Error);
 
 public Q_SLOTS:
     void onCookieAdded(const QNetworkCookie& Cookie);
@@ -57,7 +57,7 @@ public Q_SLOTS:
 
 private:
     /// Ends a running challenge: stops and closes, keeps the error and its reason, emits failed.
-    void fail(TCloudflareChallengeError error, const QString& reason);
+    void fail(int code, const QString& reason);
     void failWithoutSolver();
     /// Ends a running challenge with the clearance cookie and the profile's user agent.
     void succeed();
@@ -69,7 +69,6 @@ private:
     bool m_running = false;
     TCloudflareChallengeClearanceInfo m_clearance;
     std::optional<TCloudflareChallengeError> m_error;
-    QString m_errorReason;
 };
 
 }

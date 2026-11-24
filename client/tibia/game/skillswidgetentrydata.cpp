@@ -102,6 +102,19 @@ TSkillsWidgetEntryData::TSkillsWidgetEntryData(QObject* parent)
     m_entryVisible = true;
 }
 
+TSkillsWidgetEntryData::TSkillsWidgetEntryData(const SkillType Type, const ESeparatorType Separator, QObject* parent)
+    : cip::tibia::game::TSkillsWidgetEntryData(parent)
+    , m_type(Type)
+{
+    m_caption = skillName(Type);
+    m_progressBarVisible = skillHasProgressBar(Type);
+    m_separatorType = Separator;
+    m_entryVisible = true;
+    m_entry.caption = m_caption;
+    m_entry.progressBarVisible = m_progressBarVisible;
+    m_entry.separatorType = Separator;
+}
+
 void TSkillsWidgetEntryData::assign(const SkillsWidgetEntry& entry)
 {
     if (entry == m_entry)

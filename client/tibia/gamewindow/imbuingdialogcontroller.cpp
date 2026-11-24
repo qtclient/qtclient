@@ -297,13 +297,17 @@ input::IGameActionPtr openPremiumStoreAction()
 
 bool TImbuingDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
-TImbuingDialogController::TImbuingDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ImbuingDialog.qml"), parent)
+TImbuingDialogController::TImbuingDialogController(
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory, config::TClientOptions* ClientOptions,
+    QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ImbuingDialog.qml"), Engine, DialogParentItem, parent)
+    , m_pClientOptions(ClientOptions)
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
     , m_available(new imbuing::TAvailableImbuementsListModel(this))
     , m_slotsModel(new imbuing::TImbuementSlotsListModel(this))
-    , m_resultMessage(new TMessageDialogController(this))
-    , m_imbueConfirm(new TMessageDialogController(this))
-    , m_clearConfirm(new TMessageDialogController(this))
+    , m_resultMessage(new TMessageDialogController(Engine, DialogParentItem, this))
+    , m_imbueConfirm(new TMessageDialogController(Engine, DialogParentItem, this))
+    , m_clearConfirm(new TMessageDialogController(Engine, DialogParentItem, this))
 {
     m_availableImbuements = m_available;
     m_imbuementSlots = m_slotsModel;

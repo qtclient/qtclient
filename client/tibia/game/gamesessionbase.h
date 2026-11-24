@@ -3,6 +3,7 @@
 #include "config/characterconfigurationmanager.h"
 #include "game/igamesession.h"
 #include "game/tgamenotify.h"
+#include "network/dualconnectionurlinfo.h"
 
 #include <memory>
 #include <vector>
@@ -11,8 +12,12 @@ namespace tibia {
 namespace gamewindow {
 class TBattleListGameActionHandler;
 }
+namespace client {
+class TAntiCheatController;
+}
 namespace chat {
 class TGameMessageHandler;
+class TTextOverlayRenderProvider;
 class TChatChannelStorage;
 class TChatGameActionHandler;
 class TChatGameActionProvider;
@@ -52,6 +57,8 @@ class TBattleListRenderProvider;
 class TCreatureMovementSpeedCalculator;
 class TCreatureProtocolMessageHandler;
 class TCreatureStorage;
+class TInspectPlayerGameActionProvider;
+class TPartyGameActionProvider;
 class TUnjustifiedPointsStorage;
 class TVipGameActionHandler;
 class TVipProtocolMessageHandler;
@@ -117,6 +124,7 @@ class TDailyRewardProtocolMessageHandler;
 class TDailyRewardStorage;
 }
 namespace exaltation {
+class TExaltationGameActionHandler;
 class TExaltationProtocolMessageHandler;
 class TExaltationStorage;
 }
@@ -201,6 +209,7 @@ class TTaskboardShopStorage;
 class TTaskboardWeeklyTasksStorage;
 }
 namespace effects {
+class TNumericalEffectRenderProvider;
 class TEffectGameActionHandler;
 class TEffectProtocolMessageHandler;
 class TEffectStorage;
@@ -330,6 +339,17 @@ public:
     {
         return m_worldMapRenderProvider;
     }
+    /// The rising numbers over the world map, grouped by field.
+    const std::shared_ptr<effects::TNumericalEffectRenderProvider>& numericalEffectRenderProvider() const
+    {
+        return m_numericalEffectRenderProvider;
+    }
+    /// The status, look, centre and private message lines and the speech
+    /// bubbles over the world map.
+    const std::shared_ptr<chat::TTextOverlayRenderProvider>& textOverlayRenderProvider() const
+    {
+        return m_textOverlayRenderProvider;
+    }
     /// The creature HUD anchors of the last frame.
     const std::shared_ptr<worldmap::TCreatureHUDRenderProvider>& creatureHUDRenderProvider() const
     {
@@ -359,6 +379,13 @@ public:
     const std::shared_ptr<input::TGenericChatGameActionProvider>& genericChatGameActionProvider() const
     {
         return m_genericChatGameActionProvider;
+    }
+    /// The party actions a creature offers.
+    const std::shared_ptr<creatures::TPartyGameActionProvider>& partyGameActionProvider() const { return m_partyGameActionProvider; }
+    /// The inspection actions a player offers.
+    const std::shared_ptr<creatures::TInspectPlayerGameActionProvider>& inspectPlayerGameActionProvider() const
+    {
+        return m_inspectPlayerGameActionProvider;
     }
     /// The actions of a chat tab or of a chat entry.
     const std::shared_ptr<chat::TChatGameActionProvider>& chatGameActionProvider() const { return m_chatGameActionProvider; }
@@ -618,6 +645,17 @@ public:
     /// The own creature, once the creature storage added it.
     std::weak_ptr<creatures::TCreature> playerCreature() const { return m_playerCreature; }
 
+    /// Nothing for the base session: only a live session has an anti-cheat
+    /// controller.
+    virtual void setAntiCheatController(const std::shared_ptr<client::TAntiCheatController>& antiCheatController)
+    {
+        Q_UNUSED(antiCheatController);
+    }
+    /// The base session reports the secondary connection in use.
+    virtual network::EConnectionsUsed connectionsUsed() const { return network::EConnectionsUsed::Secondary; }
+    /// How many frames the session prepared.
+    int preparedFrameCount() const { return m_preparedFrameCount; }
+
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
     void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
@@ -666,6 +704,7 @@ private:
     bool m_canChangePvPFrameSetting = false;
     std::weak_ptr<creatures::TCreature> m_playerCreature;
     bool m_worldInitialized = false;
+    int m_preparedFrameCount = 0;
     std::vector<QMetaObject::Connection> m_queueConnections;
     std::shared_ptr<const TGameSessionMetaInfo> m_metaInfo;
     std::shared_ptr<protocol::TProtocolMessageQueue> m_protocolMessageQueue;
@@ -715,19 +754,24 @@ private:
     std::shared_ptr<imbuing::TImbuingProtocolMessageHandler> m_imbuingProtocolMessageHandler;
     std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> m_dailyRewardProtocolMessageHandler;
     std::shared_ptr<exaltation::TExaltationProtocolMessageHandler> m_exaltationProtocolMessageHandler;
+    std::shared_ptr<exaltation::TExaltationGameActionHandler> m_exaltationGameActionHandler;
     std::shared_ptr<dailyreward::TDailyRewardGameActionHandler> m_dailyRewardGameActionHandler;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
     std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::shared_ptr<worldmap::TWorldMapPicker> m_worldMapPicker;
+    std::shared_ptr<effects::TNumericalEffectRenderProvider> m_numericalEffectRenderProvider;
     std::shared_ptr<worldmap::TCreatureHUDRenderProvider> m_creatureHUDRenderProvider;
+    std::shared_ptr<chat::TTextOverlayRenderProvider> m_textOverlayRenderProvider;
     std::shared_ptr<creatures::TBattleListRenderProvider> m_battleListRenderProvider;
     std::shared_ptr<gamewindow::TBattleListGameActionHandler> m_battleListGameActionHandler;
     std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
     std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     std::shared_ptr<renderer::TNextFrameUpdater> m_nextFrameUpdater;
     std::shared_ptr<input::TGenericChatGameActionProvider> m_genericChatGameActionProvider;
+    std::shared_ptr<creatures::TPartyGameActionProvider> m_partyGameActionProvider;
+    std::shared_ptr<creatures::TInspectPlayerGameActionProvider> m_inspectPlayerGameActionProvider;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_worldMapGameActionProvider;
     std::shared_ptr<chat::TChatGameActionProvider> m_chatGameActionProvider;
     std::shared_ptr<creatures::TVipWidgetGameActionProvider> m_vipWidgetGameActionProvider;

@@ -265,6 +265,34 @@ public:
     bool lightEffects() const override;
     /// Ignored while the software renderer limits the options.
     void setLightEffects(bool enabled) override;
+
+    // The six percent sliders keep the option's 0..1 fraction: a getter shows
+    // it as a rounded percent (at most 100), a setter that changes the shown
+    // percent stores percent / 100 clamped to 0..1.
+    uint ambientLightLevel() const override;
+    void setAmbientLightLevel(uint percent) override;
+    uint levelSeparatorLevel() const override;
+    void setLevelSeparatorLevel(uint percent) override;
+    uint ownEffectsOpacity() const override;
+    void setOwnEffectsOpacity(uint percent) override;
+    uint otherPlayersEffectsOpacity() const override;
+    void setOtherPlayersEffectsOpacity(uint percent) override;
+    uint monsterEffectsOpacity() const override;
+    void setMonsterEffectsOpacity(uint percent) override;
+    uint monsterBossAreaEffectsOpacity() const override;
+    void setMonsterBossAreaEffectsOpacity(uint percent) override;
+
+private:
+    /// Stores `percent` as `fraction` when the shown percent differs, then
+    /// signals the change.
+    void setFraction(float& fraction, uint percent);
+
+    float m_ambientLightLevelFraction = 0.f;
+    float m_levelSeparatorLevelFraction = 0.f;
+    float m_ownEffectsOpacityFraction = 0.f;
+    float m_otherPlayersEffectsOpacityFraction = 0.f;
+    float m_monsterEffectsOpacityFraction = 0.f;
+    float m_monsterBossAreaEffectsOpacityFraction = 0.f;
 };
 
 /// OptionsPageControls.qml: the control and loot schemes (kept as schemes,

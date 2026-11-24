@@ -6,9 +6,14 @@
 
 #include <cip_gen.h>
 
+#include <QPointer>
 #include <QTimer>
 
 #include <optional>
+
+namespace tibia::game {
+class TPremiumTimeStorage;
+}
 
 namespace tibia {
 namespace skillwheel {
@@ -386,6 +391,9 @@ public:
     void requestSkillWheelPreview() override;
 
     void onPremiumChanged() { Q_EMIT premiumStatusChanged(); }
+    /// CIP: the client's premium time; a change of it is the dialog's
+    /// premium status change.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
 
 private:
     /// What the dialog's message box asks (CIP: the box's mode).
@@ -403,6 +411,7 @@ private:
     void clearSkipNextOpenForOwnPlayer();
 
     TSkillWheelStorage* m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     TSkillWheelPageController* m_page;
     TGemAtelierPageController* m_atelier;
     TFragmentWorkshopPageController* m_workshop;

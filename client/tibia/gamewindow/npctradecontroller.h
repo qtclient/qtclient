@@ -11,6 +11,9 @@
 
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
 namespace game {
 class IGameSession;
@@ -120,7 +123,9 @@ class TNPCTradeController final : public cip::tibia::gamewindow::TNPCTradeContro
 {
     Q_OBJECT
 public:
-    explicit TNPCTradeController(QObject* parent = nullptr);
+    /// CipSoft's arguments: the large-trade confirmation is made with `Engine`
+    /// under `DialogParentItem`.
+    TNPCTradeController(QQuickItem* DialogParentItem, QQmlEngine* Engine, QObject* parent = nullptr);
     ~TNPCTradeController() override;
 
     /// The trade follows `GameSession`'s NPC trade (attached when the NPC opens it).

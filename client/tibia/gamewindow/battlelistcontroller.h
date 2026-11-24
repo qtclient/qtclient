@@ -112,6 +112,9 @@ public:
 
     /// Takes the list's options and re-filters and re-sorts when they changed.
     void setOptions(const BattleListOptions& options);
+    /// Takes the session's creature storage (none without a session) and
+    /// re-filters.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -119,6 +122,7 @@ protected:
 
 private:
     BattleListOptions m_options;
+    std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
 };
 
 /// One battle list widget, battlelist.qml (CIP: TBattleListController,
@@ -137,6 +141,8 @@ public:
     /// The list follows its entry in `options`: it reads it now and on every
     /// change of its id (nullptr detaches).
     void attachSidebarOptions(config::TSidebarOptions* options);
+    /// The list's rows filter with the session's creatures.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The list's premium state follows `storage` (premiumTimeChanged on
     /// every change and once now).
     void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
@@ -317,9 +323,6 @@ public Q_SLOTS:
     void onBattleListClosed(int battleListId);
 
 Q_SIGNALS:
-    /// A list took a USE_AT_MOUSECURSOR / SPELL_AT_MOUSE_CURSOR (the map window
-    /// then does not report it unhandled).
-    void atMouseCursorGameActionTaken();
     /// EWidgetType 1 (primary list) and 2 (party list).
     void widgetVisible(int widgetType);
     void widgetHidden(int widgetType);

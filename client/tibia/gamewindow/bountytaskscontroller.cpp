@@ -103,11 +103,12 @@ std::vector<uint16_t> pickableRaceIds()
 
 }
 
-TBountyTasksController::TBountyTasksController(QObject* parent)
+TBountyTasksController::TBountyTasksController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TBountyTasksController(parent)
     , m_tasksModel(new taskboard::TBountyTasksListModel(this))
     , m_monsterFilter(new taskboard::TMonsterListModelSortFilterProxy({}, this))
     , m_preferredModel(new taskboard::TBountyTasksPreferredMonsterListModel(this))
+    , m_rerollConfirmation(engine, dialogParentItem)
 {
     m_bountyTasks = m_tasksModel;
     m_monsterList = m_monsterFilter;

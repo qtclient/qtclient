@@ -132,31 +132,37 @@ void TSessiondumpGameSession::replay(const QString& file)
 
 void TSessiondumpGameSession::replayDmpd(const QString& file)
 {
-    // CipSoft's v158: a loader for the file and a player on the session's
-    // progress clock; the player's server messages go straight into the
-    // session's protocol queue.
+    // A loader for the dump and a player on the session's progress clock.
     m_sessiondumpLoader = std::make_shared<sessiondump::TSessiondumpAsyncLoader>(QUrl::fromLocalFile(file));
-    m_sessiondumpPlayer = std::make_shared<sessiondump::TSessiondumpPlayer>(m_sessiondumpLoader, m_sessiondumpProgressClock);
-    sessiondump::TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
+    m_sessiondumpPlayer = std::make_shared<sessiondump::TSessiondumpPlayer>(m_sessiondumpLoader, sessiondumpProgressClock());
+    using sessiondump::TSessiondumpPlayer;
+    TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
+    connect(player, &TSessiondumpPlayer::finished, this, &TSessiondumpGameSession::onSessiondumpFinished);
+    // Host: the replay timer stops and the classic session state ends the replay
+    // (after the session's own slot: stopDmpd drops the player's links to it).
+    connect(player, &TSessiondumpPlayer::finished, this, [this] {
+        stopDmpd();
+        tibia::game::finishDecodedReplay();
+    });
+    // The player's server messages go into the session's protocol queue.
     // Host: the classic session state enters the game on PendingStateEntered;
     // a dump that starts at WorldEntered gets one first.
     m_sawPendingStateEntered = false;
-    connect(player, &sessiondump::TSessiondumpPlayer::gameserverMessageAvailable, this,
+    connect(player, &TSessiondumpPlayer::gameserverMessageAvailable, this,
             [this](const sessiondump::TGameserverMessagePointer& message) { enqueueGameserverMessage(message); });
+    connect(player, &TSessiondumpPlayer::requestResetOfStorages, this, &TSessiondumpGameSession::onRequestResetOfStorages);
+    connect(player, &TSessiondumpPlayer::sessiondumpLoadingError, this, &TSessiondumpGameSession::connectionError);
+    // The game actions reach the player (pause, resume, skip to) and the
+    // player's reach the router.
+    TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, player, &TSessiondumpPlayer::handleGameAction);
+    connect(player, &TSessiondumpPlayer::publishGameAction, router, &TInternalGameActionRouter::handleGameActionInternal);
+    // Host: a dump with a session key announces it (qtclient's sessionDumpStart).
     connect(m_sessiondumpLoader.get(), &sessiondump::TSessiondumpAsyncLoader::sessiondumpMetadataLoaded, this, [this] {
         const auto& metadata = m_sessiondumpLoader->metadata();
         if (!metadata.sessionKey.isEmpty())
             Q_EMIT sessionDumpStart(metadata.sessionKey);
     });
-    connect(player, &sessiondump::TSessiondumpPlayer::requestResetOfStorages, this,
-            &TSessiondumpGameSession::onRequestResetOfStorages);
-    connect(player, &sessiondump::TSessiondumpPlayer::finished, this, [this] {
-        stopDmpd();
-        tibia::game::finishDecodedReplay();
-        onSessiondumpFinished();
-    });
-    connect(player, &sessiondump::TSessiondumpPlayer::sessiondumpLoadingError, this,
-            [this](const QString& message) { Q_EMIT connectionError(message); });
     m_sessiondumpTimer.setParent(this);
     // Host: a periodic timer stands in for CipSoft's per-frame restart of its
     // zero-interval single-shot timer.
@@ -312,20 +318,6 @@ void TSessiondumpGameSession::startHintsForDump(const QString& dumpPath)
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(gameActionRouter()->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_hints.get(),
             &tutorial::TSessiondumpHintsProcessor::handleGameAction);
-    // CipSoft's tutorial session tick: the dump pauses at the next hint until the
-    // hints due by then are processed (a condition stays due until it is met).
-    connect(&m_sessiondumpTimer, &QTimer::timeout, m_hints.get(), [this] {
-        if (!m_hints || !m_sessiondumpPlayer)
-            return;
-        m_sessiondumpPlayer->setPauseAt(m_hints->nextHintTimestamp());
-        const int64_t progress = m_sessiondumpPlayer->progress();
-        if (m_hints->hasHintToProcess(progress)) {
-            m_sessiondumpPlayer->pause();
-            m_hints->processHints(progress);
-        }
-        if (!m_hints->hasHintToProcess(progress) && !m_sessiondumpPlayer->isRunning())
-            m_sessiondumpPlayer->resume();
-    });
     if (!m_sessiondumpPlayer) {
         // Text dumps: no player to pause; the hints follow the replay clock.
         connect(&m_replayTimer, &QTimer::timeout, m_hints.get(), [this] {
@@ -347,6 +339,9 @@ void TSessiondumpGameSession::requestLogout()
 
 void TSessiondumpGameSession::disconnectNow()
 {
+    // The dump's clock stands still.
+    m_sessiondumpProgressClock->pause();
+    // Host: the replay stops and the classic session state lets go of it.
     stopReplay();
     stopHints();
     hubDisconnectNow();
@@ -381,8 +376,26 @@ void TSessiondumpGameSession::onRequestResetOfStorages()
     chatChannelStorage()->clearAllChannels();
 }
 
+void TSessiondumpGameSession::processHintsTick()
+{
+    // CipSoft's tutorial session tick: the dump pauses at the next hint until the
+    // hints due by then are processed (a condition stays due until it is met).
+    m_sessiondumpPlayer->setPauseAt(m_hints->nextHintTimestamp());
+    const int64_t progress = m_sessiondumpPlayer->progress();
+    if (m_hints->hasHintToProcess(progress)) {
+        m_sessiondumpPlayer->pause();
+        m_hints->processHints(progress);
+    }
+    if (!m_hints->hasHintToProcess(progress) && !m_sessiondumpPlayer->isRunning())
+        m_sessiondumpPlayer->resume();
+}
+
 void TSessiondumpGameSession::onSessiondumpTimerElapsed()
 {
+    // The hints due by now run before the dump goes on (CipSoft's tutorial
+    // session tick runs ahead of the player's processing).
+    if (m_hints)
+        processHintsTick();
     m_sessiondumpPlayer->processSessiondump();
 }
 

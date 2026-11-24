@@ -121,14 +121,25 @@ void TLootContainerQMLInfo::onClearObtainContainerClicked() { Q_EMIT requestClea
 
 void TLootContainerQMLInfo::onOpenObtainContainerClicked() { Q_EMIT requestOpenObtainContainer(m_category); }
 
-TManageLootContainerDialogController::TManageLootContainerDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), parent)
+TManageLootContainerDialogController::TManageLootContainerDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                                                           config::TClientOptions* ClientOptions, QObject* parent)
+    : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), Engine, DialogParentItem, parent)
     , m_lootBlackWhitelist(analysers::TAnalyserStorages::instance() ? analysers::TAnalyserStorages::instance()->lootBlackWhitelist() : nullptr)
     , m_listModel([](uint16_t, uint8_t) { return 1; }, this)
     , m_listProxy(&m_listModel, this)
 {
     m_listItems = &m_listProxy;
-    m_confirm = new TMessageDialogController(this);
+    (void)ClientOptions;
+    m_info = new TMessageDialogController(Engine, DialogParentItem, this);
+    m_info->setCloseOnButtonClicked(true);
+    connect(m_info, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, this, [this] {
+        // CIP: the container pick is over; the dialog comes back while it exists.
+        if (!dialog()->item())
+            return;
+        m_pick = PickMode::None;
+        dialog()->show();
+    });
+    m_confirm = new TMessageDialogController(Engine, DialogParentItem, this);
     m_confirm->setCloseOnButtonClicked(true);
     connect(m_confirm, &cip::tibia::gamewindow::TMessageDialogController::acceptClicked, this,
             [this](bool) { onClearItemBlackWhitelistConfirmed(); });
@@ -439,9 +450,9 @@ void TManageLootContainerDialogController::finishPick(const input::TTargetSelect
                 mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
                 target->context()));
         } else {
-            m_confirm->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                             QKeySequence(QStringLiteral("Return"))) });
-            m_confirm->showMessage(qtTrId("managecontainer_invalid_container_caption"), qtTrId("managecontainer_invalid_container_text"));
+            m_info->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
+                                                          QKeySequence(QStringLiteral("Return"))) });
+            m_info->showMessage(qtTrId("managecontainer_invalid_container_caption"), qtTrId("managecontainer_invalid_container_text"));
         }
     }
     if (tibia::game::isOnline())

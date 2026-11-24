@@ -20,6 +20,8 @@
 #include <memory>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
 class QQuickWindow;
 
 namespace tibia {
@@ -45,7 +47,13 @@ class TOptionsMenuDialogController final : public TDialogController<cip::tibia::
 {
     Q_OBJECT
 public:
-    explicit TOptionsMenuDialogController(QObject* parent = nullptr);
+    /// CipSoft's client options, QML engine and dialog parent item (the dialog
+    /// and its message dialogs are made with them). CipSoft's ctor also takes
+    /// the game client's file system helper, appearance instance factory,
+    /// minimap disk IO and tile storage, spell info storage and two more client
+    /// members; qtclient's pages reach those through the client (setGameClient).
+    TOptionsMenuDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                 QObject* parent = nullptr);
     ~TOptionsMenuDialogController() override;
 
     /// OPEN_OPTIONS_MENU_DIALOG (CIP , action 0x54): the page of
@@ -140,7 +148,7 @@ private:
     void resetBasicPage();
     /// A copy of the client's options with every page's pending values.
     std::unique_ptr<config::TClientOptions> pendingOptions() const;
-    TMessageDialogController* makeMessageDialog();
+    TMessageDialogController* makeMessageDialog(QQmlEngine* Engine, QQuickItem* DialogParentItem);
     /// CIP : conf, characterdata and minimap files from the archive.
     void importArchive();
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
@@ -157,6 +165,8 @@ private:
     void onBeforeRenderFrame();
     void setFrameRate(double frameRate);
 
+    /// CIP +0x80.
+    config::TClientOptions* m_clientOptions;
     /// CIP config surfaces owned for the options dialog lifetime.
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;

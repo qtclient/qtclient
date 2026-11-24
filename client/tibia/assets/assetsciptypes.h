@@ -15,13 +15,6 @@ namespace assets {
 void ownProductSurface(QObject* parent);
 
 
-class TAssetHandler final : public cip::tibia::assets::TAssetHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::assets::TAssetHandler::TAssetHandler;
-};
-
 }
 }
 

@@ -56,13 +56,13 @@ bool readSkills(ClassicReader& r, GameserverMessagePlayerSkills* m)
     m->set_attack_damage_type(attackDamageType);
     double converted = 0;
     uint8_t convertedDamageType = 0;
-    if (!r.real(converted) || !r.u8(convertedDamageType))
+    if (!r.readDouble(converted) || !r.u8(convertedDamageType))
         return false;
     m->mutable_damage_conversion()->set_value(converted);
     m->mutable_damage_conversion()->set_damage_type(convertedDamageType);
     double lifeLeech = 0, manaLeech = 0, criticalChance = 0, criticalExtraDamage = 0, onslaught = 0;
-    if (!r.real(lifeLeech) || !r.real(manaLeech) || !r.real(criticalChance) || !r.real(criticalExtraDamage)
-        || !r.real(onslaught))
+    if (!r.readDouble(lifeLeech) || !r.readDouble(manaLeech) || !r.readDouble(criticalChance) || !r.readDouble(criticalExtraDamage)
+        || !r.readDouble(onslaught))
         return false;
     m->set_life_leech(lifeLeech);
     m->set_mana_leech(manaLeech);
@@ -71,7 +71,7 @@ bool readSkills(ClassicReader& r, GameserverMessagePlayerSkills* m)
     m->set_onslaught(onslaught);
     uint16_t defence = 0, armor = 0, mantra = 0, reflection = 0;
     double mitigation = 0, dodge = 0;
-    if (!r.u16(defence) || !r.u16(armor) || !r.u16(mantra) || !r.real(mitigation) || !r.real(dodge)
+    if (!r.u16(defence) || !r.u16(armor) || !r.u16(mantra) || !r.readDouble(mitigation) || !r.readDouble(dodge)
         || !r.u16(reflection))
         return false;
     m->set_defence(defence);
@@ -86,14 +86,14 @@ bool readSkills(ClassicReader& r, GameserverMessagePlayerSkills* m)
     for (uint8_t i = 0; i < reductions; ++i) {
         uint8_t damageType = 0;
         double value = 0;
-        if (!r.u8(damageType) || !r.real(value))
+        if (!r.u8(damageType) || !r.readDouble(value))
             return false;
         EquipmentDamageReduction* reduction = m->add_damage_reductions();
         reduction->set_damage_type(damageType);
         reduction->set_value(value);
     }
     double momentum = 0, transcendence = 0, amplification = 0;
-    if (!r.real(momentum) || !r.real(transcendence) || !r.real(amplification))
+    if (!r.readDouble(momentum) || !r.readDouble(transcendence) || !r.readDouble(amplification))
         return false;
     m->set_momentum(momentum);
     m->set_transcendence(transcendence);

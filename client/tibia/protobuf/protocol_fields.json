@@ -6352,8 +6352,16 @@
     "note": "CIP RE maturity doc"
   },
   "GameclientMessageConnectionPingBack": {
-    "fields": [],
-    "classic": "empty"
+    "fields": [
+      {
+        "name": "connection_type",
+        "type": "int32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "empty",
+    "note": "CipSoft TNetworkQualityProtocolMessageHandler::v18: the connection the answered ping came on (0 primary, 1 secondary); TProtocolClientMessageProcessor sends the message on that connection only. Not on the wire."
   },
   "GameserverMessageMoveCreature": {
     "fields": [

@@ -34,7 +34,6 @@ std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> g_lastServerMess
 struct CipTypedKeep {
     TProtobufClientMessageTranslator tProtobufClientMessageTranslator;
     TProtobufServerMessageTranslator tProtobufServerMessageTranslator;
-    TProtocolClientMessageProcessor tProtocolClientMessageProcessor;
     TProtocolReader tProtocolReader;
     TProtocolServerMessageProcessor tProtocolServerMessageProcessor;
     TProtocolWriter tProtocolWriter;
@@ -114,7 +113,7 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         uint32_t playerId = 0;
         uint16_t beat = 0;
         double a = 0, b = 0, c = 0;
-        if (!r.u32(playerId) || !r.u16(beat) || !r.otDouble(a) || !r.otDouble(b) || !r.otDouble(c))
+        if (!r.u32(playerId) || !r.u16(beat) || !r.readDouble(a) || !r.readDouble(b) || !r.readDouble(c))
             return 0;
         m->set_player_id(playerId);
         m->set_beat_duration(beat);
@@ -194,11 +193,11 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         if (r.u16(beat))
             m->set_beat_duration(beat);
         double a = 0, b = 0, c = 0;
-        if (r.otDouble(a))
+        if (r.readDouble(a))
             m->set_speed_a(a);
-        if (r.otDouble(b))
+        if (r.readDouble(b))
             m->set_speed_b(b);
-        if (r.otDouble(c))
+        if (r.readDouble(c))
             m->set_speed_c(c);
         uint8_t canChangePvpFrameSetting = 0;
         if (r.u8(canChangePvpFrameSetting))

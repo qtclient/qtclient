@@ -4,6 +4,7 @@
 
 #include "gamewindow/dialogmanager.h"
 #include "highscores/highscoresciptypes.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -16,6 +17,12 @@
 
 namespace tibia::game {
 class IGameSession;
+}
+namespace tibia::config {
+class TClientOptions;
+}
+namespace tibia::shared {
+class IClockService;
 }
 
 namespace tibia {
@@ -87,12 +94,17 @@ class THighscoresDialogController final : public TDialogController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    explicit THighscoresDialogController(QObject* parent = nullptr);
+    /// CIP: made with the client options, the client's clock (the data
+    /// actualisation text's now), the engine and the dialog parent item.
+    THighscoresDialogController(config::TClientOptions* ClientOptions, std::shared_ptr<shared::IClockService> ClockService,
+                                QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~THighscoresDialogController() override;
 
     /// CIP connector: follows the session's storage: closes the dialog and listens to answers.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    /// OPEN_HIGHSCORES_DIALOG: shows the dialog and asks for the own character's page.
+    /// The router's game actions: OPEN_HIGHSCORES_DIALOG opens the dialog.
+    void handleGameAction(const input::IGameActionPtr& pGameAction);
+    /// Shows the dialog and asks for the own character's page.
     void openDialog();
 
     QStringList availableWorlds() const override;
@@ -150,6 +162,8 @@ private:
     /// The five world types, checked (and selected) as the storage's answer was filtered.
     void updateWorldTypes();
 
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<shared::IClockService> m_pClockService;
     QPointer<highscores::THighscoresStorage> m_storage;
     std::vector<int> m_selectedWorldTypes;
     THighscoresWorldTypeModel m_worldTypes;

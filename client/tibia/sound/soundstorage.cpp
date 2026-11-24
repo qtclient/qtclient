@@ -32,6 +32,15 @@ void TSoundStorage::queueSound(const TSoundToPlay& sound)
     m_queuedSounds.push_back(sound);
 }
 
+void TSoundStorage::queueSoundsToPlay(std::vector<TSoundToPlay> sounds, const int64_t timestampMs)
+{
+    m_timestampMs = timestampMs;
+    for (TSoundToPlay& sound : sounds) {
+        sound.timestampMs = timestampMs + m_maxSoundCount;
+        m_queuedSounds.push_back(std::move(sound));
+    }
+}
+
 void TSoundStorage::update(const int64_t nowMs)
 {
     const auto due = std::stable_partition(m_queuedSounds.begin(), m_queuedSounds.end(),

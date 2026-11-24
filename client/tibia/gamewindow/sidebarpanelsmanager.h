@@ -18,6 +18,12 @@ class IGameSession;
 namespace tibia::minimap {
 class TMinimapTileStorage;
 }
+namespace tibia::config {
+class TClientOptions;
+}
+namespace tibia::input {
+class TGameActionMapper;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -29,6 +35,7 @@ class TPlayerInventoryAndStatusController;
 class TPremiumPanelController;
 class TSidebarManager;
 class TSidebarWidgetsManager;
+class TSocialDialogController;
 
 /// The panels in the main sidebar's upper pane (CIP: TSidebarPanelsManager,
 /// ctor): minimap, inventory, hit points and mana, the button bar
@@ -37,7 +44,12 @@ class TSidebarPanelsManager final : public cip::tibia::gamewindow::TSidebarPanel
 {
     Q_OBJECT
 public:
-    TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CIP: made with the sidebar manager, the client options, the client's
+    /// mouse mapping, the social dialog (its button goes on the button bar;
+    /// may be null), the dialog parent item and the engine.
+    TSidebarPanelsManager(TSidebarManager* SidebarManager, config::TClientOptions* ClientOptions,
+                          std::shared_ptr<input::TGameActionMapper> GameActionMapper, TSocialDialogController* SocialDialog,
+                          QQuickItem* DialogParentItem, QQmlEngine* Engine, QObject* parent = nullptr);
     ~TSidebarPanelsManager() override;
 
     /// The character's options; null while no character is in the world.
@@ -73,6 +85,7 @@ private:
     /// panelsOrder, then the missing default panels.
     QList<config::SidebarPanelType> fullPanelsOrder() const;
 
+    config::TClientOptions* m_pClientOptions = nullptr;
     QPointer<TSidebarManager> m_sidebars;
     QPointer<config::TSidebarOptions> m_options;
     std::unique_ptr<TMinimapController> m_minimap;

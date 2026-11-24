@@ -16,6 +16,7 @@
 #include "bossbestiary/bosstrackerstorage.h"
 #include "client/gamecore.h"
 #include "config/characterconfigurationmanager.h"
+#include "config/clientoptions.h"
 #include "config/optionspages.h"
 #include "controllers/characterselectioncontroller.h"
 #include "cyclopedia/creaturetrackerstorage.h"
@@ -63,7 +64,11 @@
 #include "worldmap/worldmapviewport.h"
 #include "gamewindow/imbuementtrackerwidgetcontroller.h"
 #include "gamewindow/imbuingdialogcontroller.h"
-#include "gamewindow/informationdialogs.h"
+#include "gamewindow/infobannercontroller.h"
+#include "gamewindow/linkcopywarningdialogcontroller.h"
+#include "gamewindow/servermodaldialogcontroller.h"
+#include "prey/preyciptypes.h"
+#include "qmlcomponents/minimaprendererquickitem.h"
 #include "gamewindow/killtrackerwidgetcontroller.h"
 #include "gamewindow/loottrackingwidgetcontroller.h"
 #include "gamewindow/managelootcontainerdialogcontroller.h"
@@ -113,6 +118,7 @@
 #include "input/eventfiltermanager.h"
 #include "input/eventfilters.h"
 #include "input/gameactionhandlers.h"
+#include "input/gameactionmapper.h"
 #include "input/genericgameactionhandler.h"
 #include "input/keyboardshortcuthandler.h"
 #include "input/keyboardstatusstorage.h"
@@ -120,7 +126,6 @@
 #include "input/keyeventhandler.h"
 #include "input/playermovementinputinterpreter.h"
 #include "input/recordkeyboardshortcuthandler.h"
-#include "minimap/minimapmanager.h"
 #include "mods/pack_host_abi.h"
 #include "mods/registry.h"
 #include "proficiency/proficiencystorage.h"
@@ -129,6 +134,7 @@
 #include "qmlcomponents/soundhelper.h"
 #include "screenshot/screenshotciptypes.h"
 #include "skillwheel/skillwheelmanager.h"
+#include "spells/spellinfostorage.h"
 #include "store/dynamicallyloadedimage.h"
 
 #include "clockservice.h"
@@ -138,6 +144,9 @@
 #include <qtclient/pack_host.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
+#include <client/outfit.h>
+#include <client/position.h>
+#include <tibia/game/thingsession_forward.h>
 
 #include <QCoreApplication>
 #include <QEvent>
@@ -153,10 +162,62 @@
 #include <QSaveFile>
 #include <QTimer>
 
+#include <algorithm>
+#include <any>
 #include <exception>
 
 namespace tibia {
 namespace client {
+
+namespace {
+
+template<class T>
+const T* notifyArg(const gamecore::Args& args, const size_t index)
+{
+    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
+}
+
+/// Host: the server's modal dialogs and the creature podium still arrive on
+/// the game notify bus; each block feeds one controller until it follows the
+/// session's protocol handler itself.
+void hookDialogsToGameNotify(std::vector<gamecore::Hook>& hooks, gamewindow::TServerModalDialogController* modalDialog,
+                             gamewindow::TConfigureCreaturePodiumDialogController* podiumDialog,
+                             gamewindow::TQuestLogController* questLog)
+{
+    using gamecore::argInt;
+    using gamecore::argString;
+
+    // TServerModalDialogController.
+    hooks.emplace_back(tibia::game::kNotifyScope, "onModalDialog", [modalDialog](GameObject*, const gamecore::Args& args) {
+        using Options = gamewindow::TServerModalDialogController::Options;
+        static const Options none;
+        const auto* buttons = notifyArg<Options>(args, 3);
+        const auto* choices = notifyArg<Options>(args, 6);
+        modalDialog->open(argInt(args, 0), argString(args, 1), argString(args, 2), buttons ? *buttons : none, argInt(args, 4),
+                          argInt(args, 5), choices ? *choices : none);
+        return std::any{};
+    });
+
+    // TConfigureCreaturePodiumDialogController.
+    hooks.emplace_back(tibia::game::kNotifyScope, "onConfigureCreaturePodium", [podiumDialog](GameObject*, const gamecore::Args& args) {
+        using RaceRows = std::vector<gamewindow::TConfigureCreaturePodiumDialogController::RaceRow>;
+        static const RaceRows emptyRaces;
+        const ::Outfit selected = notifyArg<::Outfit>(args, 0) ? *notifyArg<::Outfit>(args, 0) : ::Outfit{};
+        const bool bossPodium = argInt(args, 1) != 0;
+        const auto* races = notifyArg<RaceRows>(args, 2);
+        const ::Position pos = notifyArg<::Position>(args, 3) ? *notifyArg<::Position>(args, 3) : ::Position{};
+        podiumDialog->open(selected, static_cast<uint16_t>(argInt(args, 9)), bossPodium, races ? *races : emptyRaces, pos,
+                           static_cast<uint16_t>(argInt(args, 4)), static_cast<uint8_t>(argInt(args, 5)), argInt(args, 6) != 0,
+                           argInt(args, 7) != 0, static_cast<uint8_t>(argInt(args, 8)));
+        return std::any{};
+    });
+
+    // TQuestLogController: the game's end empties the quest log.
+    QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, questLog,
+                     [questLog] { questLog->clear(); });
+}
+
+}
 
 /// The game window's objects, declared in construction order (destroyed in
 /// reverse: the pack wiring first, the out-of-date dialog last).
@@ -191,12 +252,18 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TDialogStackController> dialogStack;
     std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
-    std::unique_ptr<gamewindow::TInformationDialogs> informationDialogs;
+    /// CIP: the button bar's Cyclopedia and Bosstiary buttons (held here
+    /// until the button bar makes them).
+    std::unique_ptr<gamewindow::TCyclopediaButtonController> cyclopediaButton;
+    std::unique_ptr<gamewindow::TBosstiaryButtonController> bosstiaryButton;
+    /// Host: the game notify hooks that feed the client's dialogs (server
+    /// modal dialog, creature podium) until they follow the
+    /// session's protocol handlers themselves.
+    std::vector<gamecore::Hook> dialogNotifyHooks;
     std::unique_ptr<gamewindow::TDragAndDropController> dragAndDrop;
     /// CIP: the game window controller's shared image downloader (store, social, news, …).
     std::shared_ptr<store::TDynamicallyLoadedImageManager> dynamicallyLoadedImageManager;
     std::unique_ptr<gamewindow::TStoreButtonController> storeButton;
-    std::unique_ptr<gamewindow::TStashDialogController> stashDialog;
     std::unique_ptr<gamewindow::TManageLootContainerDialogController> manageLootDialog;
     std::unique_ptr<gamewindow::TImbuingDialogController> imbuingDialog;
     std::unique_ptr<skillwheel::TSkillWheelManager> skillWheel;
@@ -208,7 +275,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<exivaoptions::TExivaOptionsDialogController> exivaOptionsDialog;
     std::unique_ptr<gamewindow::TCipSoftUiEventBridge> cipSoftUiEventBridge;
     std::unique_ptr<analysers::TAnalyserWidgets> analyserWidgets;
-    std::unique_ptr<gamewindow::TTaskboardDialogController> taskboardDialog;
     std::unique_ptr<gamewindow::TTutorialShell> tutorialShell;
     std::unique_ptr<gamewindow::TTutorialOverlayController> tutorialOverlay;
     std::unique_ptr<gamewindow::TOptionsMenuDialogController> optionsDialog;
@@ -362,13 +428,13 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     if (auto* guiApplication = qobject_cast<QGuiApplication*>(application))
         connect(guiApplication, &QGuiApplication::applicationStateChanged, g.keyboardStatus.get(),
                 &input::TKeyboardStatusStorage::onApplicationStateChanged);
+    connect(g.keyboardStatus.get(), &input::TKeyboardStatusStorage::checkForChangeAfterDelay, this,
+            &TGameClient::checkKeyboardStatusStorageAfterDelay);
     g.keyEventHandler = std::make_shared<input::TKeyEventHandler>(g.keyboardStatus);
     const auto chatMode = [&g] { return g.chat ? g.chat->chatMode() : 0; };
     g.keyboardShortcuts = std::make_shared<input::TKeyboardShortcutHandler>(chatMode, std::make_shared<shared::TClockService>());
     g.recordKeyboardShortcut = std::make_shared<input::TRecordKeyboardShortcutHandler>();
     g.eventFilterManager = std::make_unique<input::TEventFilterManager>(g.keyboardShortcuts, g.keyEventHandler, g.recordKeyboardShortcut);
-    g.playerMovement = std::make_shared<input::TPlayerMovementInputInterpreter>(g.keyboardStatus, chatMode);
-    g.keyboardInputToGameActionConverter = std::make_shared<input::TKeyboardInputToGameActionConverter>(g.playerMovement);
 
     // ShowClientOutOfDate: caption "info", body client_too_old, single Restart
     // (YES/Return). Restart writes QTCLIENT_RESTART_FILE so the launcher updates.
@@ -396,7 +462,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
 
     // The start screen until the world is entered, then the map, sidebars,
     // chat and bars. Dialogs go into its dialogPlaceholder.
-    g.gameWindowController = std::make_shared<gamewindow::TGameWindowController>(setup.placeholder);
+    g.gameWindowController = std::make_shared<gamewindow::TGameWindowController>(
+        gameActionRouter(), appearanceInstanceFactory(), engine, clientOptions(), setup.placeholder,
+        QUrl(g.env.assetBase.toString() + QStringLiteral("/hints.json")), g.env.clientServicesUrl(),
+        tibiaFileSystemHelper(), shared::TClockService::process());
     gamewindow::TGameWindowController* gameWindowController = g.gameWindowController.get();
     // kill / SIGTERM / Ctrl+C: same Exit / Logout / Cancel prompt as the window close.
     gamecore::setForceExitHandler([gameWindowController] { gameWindowController->quitPressed(); });
@@ -569,8 +638,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &gamewindow::TGameWindowController::bindFocusToChatInput);
     // Before the dialogs: the Cyclopedia item page and the loot widgets read its item storages.
     g.analyserStorages = std::make_unique<analysers::TAnalyserStorages>();
-    g.informationDialogs = std::make_unique<gamewindow::TInformationDialogs>();
-    gamewindow::TInformationDialogs* informationDialogs = g.informationDialogs.get();
     g.dragAndDrop = std::make_unique<gamewindow::TDragAndDropController>(
         window->contentItem(), gameWindowController->gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
     g.dragAndDrop->registerContextProperty(engine->rootContext());
@@ -599,6 +666,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     m_pBugReportDialogController = std::make_unique<gamewindow::TBugReportDialogController>(engine, dialogParentItem);
     m_pBlessingsDialogController = std::make_unique<gamewindow::TBlessingsDialogController>(engine, dialogParentItem);
     m_pSoulSealsDialogController = std::make_unique<gamewindow::TSoulSealsDialogController>(engine, dialogParentItem);
+    m_pTaskboardDialogController = std::make_shared<gamewindow::TTaskboardDialogController>(engine, dialogParentItem);
     m_pBossDifficultySelectionDialogController =
         std::make_unique<gamewindow::TBossDifficultySelectionDialogController>(engine, dialogParentItem);
     m_pSelectObjectAmountDialogController =
@@ -611,15 +679,52 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         std::make_unique<gamewindow::TMultiOfflineTrainingDialogController>(engine, dialogParentItem);
     m_pShowImageDialogController = std::make_unique<gamewindow::TShowImageDialogController>(engine, dialogParentItem);
     m_pShowSpellBookDialogController = std::make_unique<gamewindow::TShowSpellBookDialogController>(engine, dialogParentItem);
+    // CIP: the outfit and creature podium dialogs, the prey dialog, the
+    // highscores, the quest log, the server's modal dialogs, the info banner
+    // (over the map window), the text windows, the link copy warning and the
+    // Cyclopedia, in showGameWindow's order.
+    m_pSelectOutfitDialogController = std::make_unique<gamewindow::TSelectOutfitDialogController>();
+    m_pConfigureCreaturePodiumDialogController = std::make_unique<gamewindow::TConfigureCreaturePodiumDialogController>();
+    m_pPreyDialogController = std::make_unique<gamewindow::TPreyDialogController>(clientOptions(), engine, dialogParentItem);
+    m_pHighscoresDialogController = std::make_unique<gamewindow::THighscoresDialogController>(
+        clientOptions(), shared::TClockService::process(), engine, dialogParentItem);
+    m_pQuestLogController = std::make_unique<gamewindow::TQuestLogController>(engine, dialogParentItem);
+    m_pServerModalDialogController = std::make_unique<gamewindow::TServerModalDialogController>(engine, dialogParentItem);
+    m_pInfoBannerController = std::make_unique<gamewindow::TInfoBannerController>(mapWindowPane);
+    m_pEditTextController = std::make_unique<gamewindow::TEditTextController>(engine, dialogParentItem);
+    m_pLinkCopyWarningDialogController = std::make_unique<gamewindow::TLinkCopyWarningDialogController>();
+    m_pCyclopediaDialogController = std::make_unique<gamewindow::TCyclopediaDialogController>();
+    g.cyclopediaButton = std::make_unique<gamewindow::TCyclopediaButtonController>();
+    g.bosstiaryButton = std::make_unique<gamewindow::TBosstiaryButtonController>();
+    hookDialogsToGameNotify(g.dialogNotifyHooks, m_pServerModalDialogController.get(), m_pConfigureCreaturePodiumDialogController.get(),
+                            m_pQuestLogController.get());
+    g.gameActions.on(input::EGameAction::OPEN_QUESTLOG_DIALOG, [this](const input::TGameActionOpenQuestLog& action) {
+        m_pQuestLogController->showDialog(action.questId());
+        return true;
+    });
+    g.gameActions.on(input::EGameAction::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD,
+                     [this](const input::IGameAction& action) { m_pLinkCopyWarningDialogController->handleGameAction(action); });
     gamewindow::TStoreDialogController* storeDialog = m_pStoreDialogController.get();
     g.storeButton = std::make_unique<gamewindow::TStoreButtonController>(storeDialog);
-    g.stashDialog = std::make_unique<gamewindow::TStashDialogController>();
-    connect(m_pMarketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
-            &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
-    g.manageLootDialog = std::make_unique<gamewindow::TManageLootContainerDialogController>();
-    connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
-            &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
-    g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>();
+    // CIP: the client's mouse mapping, with the stored control and loot scheme.
+    {
+        const QJsonObject schemeOptions = app::ClientOptions::load().options();
+        m_pGameActionMapper = std::make_shared<input::TGameActionMapper>(
+            schemeOptions.value(QLatin1String("controlSchemeIndex")).toInt(0),
+            schemeOptions.value(QLatin1String("lootSchemeIndex")).toInt(0));
+    }
+    m_pStashDialogController = std::make_unique<gamewindow::TStashDialogController>(
+        m_pGameActionMapper, appearancesManager(), traderStorage(), clientOptions(), engine, dialogParentItem);
+    // CIP: the confirmation before an object goes into the stash is the client's
+    // own dialog (it answers SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG itself).
+    m_pConfirmMoveObjectToStashDialogController = std::make_unique<gamewindow::TConfirmMoveObjectToStashDialogController>();
+    connect(m_pMarketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed,
+            m_pStashDialogController.get(), &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
+    g.manageLootDialog = std::make_unique<gamewindow::TManageLootContainerDialogController>(engine, dialogParentItem, clientOptions());
+    connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed,
+            m_pStashDialogController.get(), &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
+    g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>(
+        appearanceInstanceFactory(), clientOptions(), engine, dialogParentItem);
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
     g.screenshotManager = std::make_unique<screenshot::TScreenshotManager>();
     g.screenshotManager->configure(window, mapWindowPane);
@@ -636,7 +741,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     });
     qmlcomponents::followSoundOptions();
 
-    g.sidebarPanels = std::make_unique<gamewindow::TSidebarPanelsManager>(sidebarManager, engine);
+    // CIP: the sidebar manager, the client options, the mouse mapping, the
+    // social dialog (host: none, the pack installs the social button), the
+    // dialog parent item and the engine.
+    g.sidebarPanels = std::make_unique<gamewindow::TSidebarPanelsManager>(
+        sidebarManager, clientOptions(), m_pGameActionMapper, nullptr, dialogParentItem, engine);
     gamewindow::TSidebarPanelsManager* sidebarPanels = g.sidebarPanels.get();
     g.sidebarWidgets = std::make_unique<gamewindow::TSidebarWidgetsManager>(
         sidebarManager, gameWindowItem, engine, g.analyserStorages.get());
@@ -657,14 +766,13 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     containers->setLootScheme(lootScheme);
     sidebarWidgets->setContainerStorage(containers);
     sidebarWidgets->setControlScheme(controlScheme);
-    informationDialogs->setControlScheme(controlScheme);
+    m_pCyclopediaDialogController->setControlScheme(controlScheme);
     g.exivaOptionsDialog = std::make_unique<exivaoptions::TExivaOptionsDialogController>(engine, g.dialogPlaceholder);
     g.exivaOptionsDialog->setWorldType([this] { return worldType(); });
     // Subscribers for gem atelier / helpers / RV channel / virtues yellow border.
     g.cipSoftUiEventBridge = std::make_unique<gamewindow::TCipSoftUiEventBridge>();
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
-    g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
     g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>(engine, g.dialogPlaceholder, mapWindowPane,
                                                                    cyclopediaMapStaticDataStorage());
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
@@ -677,8 +785,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     if (gamewindow::TButtonBarController* buttonBar = sidebarPanels->buttonBar()) {
         buttonBar->setStoreButtonController(g.storeButton.get());
         buttonBar->setNewsButtonController(gameWindowController->newsButton());
-        buttonBar->setCyclopediaButtonController(informationDialogs->cyclopediaButton());
-        buttonBar->setBosstiaryButtonController(informationDialogs->bosstiaryButton());
+        buttonBar->setCyclopediaButtonController(g.cyclopediaButton.get());
+        buttonBar->setBosstiaryButtonController(g.bosstiaryButton.get());
         if (QQuickItem* buttonBarItem = sidebarPanels->buttonBarItem()) {
             // storeButtonController is constant: rebinding panelController re-reads it.
             buttonBarItem->setProperty("panelController", QVariant::fromValue<QObject*>(nullptr));
@@ -691,10 +799,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         }
     }
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, gameWindowItem,
-            [&g](const QString& name) {
+            [this, &g](const QString& name) {
                 const QJsonObject opts = app::ClientOptions::load().options();
                 if (name == QLatin1String("controlSchemeIndex")) {
                     const int scheme = opts.value(name).toInt(0);
+                    if (m_pGameActionMapper)
+                        m_pGameActionMapper->setControlScheme(scheme);
                     if (g.minimapController)
                         g.minimapController->setControlScheme(scheme);
                     if (gamewindow::TPlayerInventoryAndStatusController* inventory = g.sidebarPanels->inventory())
@@ -703,20 +813,22 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     g.sidebarWidgets->setControlScheme(scheme);
                 } else if (name == QLatin1String("lootSchemeIndex")) {
                     const int scheme = opts.value(name).toInt(0);
+                    if (m_pGameActionMapper)
+                        m_pGameActionMapper->setLootScheme(scheme);
                     if (gamewindow::TPlayerInventoryAndStatusController* inventory = g.sidebarPanels->inventory())
                         inventory->setLootScheme(scheme);
                     g.containers->setLootScheme(scheme);
                 }
             });
 
-    g.optionsDialog = std::make_unique<gamewindow::TOptionsMenuDialogController>();
+    g.optionsDialog = std::make_unique<gamewindow::TOptionsMenuDialogController>(clientOptions(), engine, dialogParentItem);
     gamewindow::TOptionsMenuDialogController* optionsDialog = g.optionsDialog.get();
     optionsDialog->setWindow(window);
     optionsDialog->setFrameDurations(frameDurations());
     optionsDialog->setGameClient(this);
     optionsDialog->setPortalBase(g.env.loginBase);
     g.openWebsiteActions = std::make_unique<input::TOpenWebsiteGameActionHandler>(g.env);
-    g.fpsLatency = std::make_unique<gamewindow::TFPSLatencyIndicatorController>();
+    g.fpsLatency = std::make_unique<gamewindow::TFPSLatencyIndicatorController>(clientOptions());
     g.fpsLatency->setWindow(window);
     g.fpsLatency->setFrameDurations(frameDurations());
     g.fpsLatency->setWidgetItem(gameWindowController->gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")));
@@ -724,6 +836,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.chat = std::make_unique<gamewindow::TChatController>(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), *this);
     gamewindow::TChatController* chat = g.chat.get();
     setMessageIgnoreList(&chat->ignoreList());
+    g.playerMovement = std::make_shared<input::TPlayerMovementInputInterpreter>(g.keyboardStatus, config::TClientOptions::instance(),
+                                                                                &chat->chatModeManager());
+    g.keyboardInputToGameActionConverter = std::make_shared<input::TKeyboardInputToGameActionConverter>(g.playerMovement);
 
     // The action bar manager takes the client options, the premium time
     // storage and the spell table; the three groups (bottom, left, right)
@@ -759,10 +874,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // The bindings and walk keys follow the chat mode.
     connect(chat, &gamewindow::TChatController::chatModeChanged, g.keyboardShortcuts.get(),
             &input::TKeyboardShortcutHandler::onHotkeyOptionsChanged);
-    connect(chat, &gamewindow::TChatController::chatModeChanged, g.playerMovement.get(),
-            &input::TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
     g.keyboardShortcuts->onHotkeyOptionsChanged();
-    g.playerMovement->onHotkeyOptionsChanged();
     connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, g.keyboardShortcuts.get(),
             qOverload<const input::IGameActionPtr&>(&input::TKeyboardShortcutHandler::handleGameAction));
     connect(g.keyboardShortcuts.get(), &input::TKeyboardShortcutHandler::publishGameAction, gameActionRouter()->internalRouter(),
@@ -791,7 +903,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(m_pStoreDialogController.get());
     publishToRouter(g.storeButton.get());
     publishToRouter(m_pMarketController.get());
-    publishToRouter(g.stashDialog.get());
+    publishToRouter(m_pStashDialogController.get());
+    publishToRouter(m_pConfirmMoveObjectToStashDialogController.get());
     publishToRouter(g.manageLootDialog.get());
     publishToRouter(m_pExaltationForgeDialogController.get());
     publishToRouter(g.screenshotManager.get());
@@ -811,10 +924,18 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.sidebarWidgets.get());
     publishToRouter(g.sidebarPanels.get());
     publishToRouter(g.containers.get());
-    publishToRouter(g.informationDialogs.get());
+    publishToRouter(m_pSelectOutfitDialogController.get());
+    publishToRouter(m_pConfigureCreaturePodiumDialogController.get());
+    publishToRouter(m_pPreyDialogController.get());
+    publishToRouter(m_pQuestLogController.get());
+    publishToRouter(m_pEditTextController.get());
+    publishToRouter(m_pLinkCopyWarningDialogController.get());
+    publishToRouter(m_pCyclopediaDialogController.get());
+    publishToRouter(g.cyclopediaButton.get());
+    publishToRouter(g.bosstiaryButton.get());
     publishToRouter(g.imbuingDialog.get());
     publishToRouter(g.exivaOptionsDialog.get());
-    publishToRouter(g.taskboardDialog.get());
+    publishToRouter(m_pTaskboardDialogController.get());
     publishToRouter(g.skillWheel->dialog());
     publishToRouter(g.analyserStorages.get());
     publishToRouter(g.analyserWidgets.get());
@@ -827,13 +948,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
     g.eventFilterManager->enableDiscardingUnhandledMouseButtons();
 
-    g.npcDialog = std::make_unique<gamewindow::TNpcDialogController>();
-    g.npcDialog->setChatController(chat);
+    g.npcDialog = std::make_unique<gamewindow::TNpcDialogController>(clientOptions(), chat, engine, dialogParentItem);
     publishToRouter(g.npcDialog.get());
 
     // The handlers' handleGameAction slots get the router's actions (CIP
-    // TClipboardHelper). The map window goes first: a battle list taking an
-    // at-mouse-cursor action clears the map window's tracking of it.
+    // TClipboardHelper).
     const auto handleFromRouter = [router](auto* handler) {
         if (handler)
             connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
@@ -844,16 +963,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             [&g](const input::IGameActionPtr& action) { g.gameActions.handle(action); });
     handleFromRouter(gameWindowController);
     handleFromRouter(g.sidebarWidgets.get());
-    if (g.mapWindowController)
-        connect(g.sidebarWidgets->battleLists(), &gamewindow::TBattleListControllerStorage::atMouseCursorGameActionTaken,
-                g.mapWindowController, &gamewindow::TMapWindowController::clearTrackedUseAtMouseCursorGameAction);
     handleFromRouter(g.sidebarPanels.get());
     handleFromRouter(g.containers.get());
     handleFromRouter(g.contextMenu.get());
     handleFromRouter(m_pSelectObjectAmountDialogController.get());
     handleFromRouter(m_pStoreDialogController.get());
     handleFromRouter(m_pMarketController.get());
-    handleFromRouter(g.stashDialog.get());
+    handleFromRouter(m_pStashDialogController.get());
+    handleFromRouter(m_pConfirmMoveObjectToStashDialogController.get());
     handleFromRouter(g.manageLootDialog.get());
     handleFromRouter(m_pExaltationForgeDialogController.get());
     handleFromRouter(m_pReportViolationController.get());
@@ -865,9 +982,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     handleFromRouter(g.actionBars.get());
     handleFromRouter(g.targetSelection.get());
     g.actionBars->restoreLastAktionBarConfiguration();
-    handleFromRouter(g.informationDialogs.get());
+    handleFromRouter(m_pCyclopediaDialogController.get());
+    handleFromRouter(m_pHighscoresDialogController.get());
+    handleFromRouter(m_pPreyDialogController.get());
     handleFromRouter(g.exivaOptionsDialog.get());
-    handleFromRouter(g.taskboardDialog.get());
+    handleFromRouter(m_pTaskboardDialogController.get());
     handleFromRouter(g.tutorialShell.get());
     handleFromRouter(g.tutorialOverlay.get());
     handleFromRouter(m_pWeaponProficiencyDialogController.get());
@@ -886,14 +1005,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         g.sidebarWidgets->questTrackerWidget()->setMissionBackend(backend);
         g.sidebarWidgets->questTrackerWidget()->setBrowseOpener(std::move(browse));
     };
-    packHost.bindQuestLog = [&g](mods::MissionBackend* backend, qtclient::BrowseOpenerFn browse) {
-        if (auto* log = g.informationDialogs->questLog()) {
-            log->setMissionBackend(backend);
-            log->setBrowseOpener(std::move(browse));
-        }
+    packHost.bindQuestLog = [this](mods::MissionBackend* backend, qtclient::BrowseOpenerFn browse) {
+        m_pQuestLogController->setMissionBackend(backend);
+        m_pQuestLogController->setBrowseOpener(std::move(browse));
     };
-    packHost.bindInstanceToInfoDialogs = [&g](mods::InstanceBackend* instance) {
-        g.informationDialogs->setInstanceStorage(instance);
+    packHost.bindInstanceToInfoDialogs = [this](mods::InstanceBackend* instance) {
+        m_pCyclopediaDialogController->setInstanceStorage(instance);
     };
     packHost.bindAttentionToButtonBar = [&g](mods::AttentionBackend* attention) {
         if (auto* buttonBar = g.sidebarPanels->buttonBar())
@@ -985,18 +1102,20 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     connect(session->storeProtocolMessageHandler().get(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged,
                             premiumPanel, &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
             }
+            // CIP: the skill wheel dialog's premium status follows the premium time.
+            g.skillWheel->dialog()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
             if (game::TGameserverGameSession* live = session())
                 live->skillWheelGameActionHandler()->setSessionPremium(account().session.isPremium);
-            g.containers->setSidebarOptions(sidebarOptions());
             g.sidebarWidgets->onLoginRampUpFinished();
             g.statusBarController->setStorage(statusbarStorage());
-            g.informationDialogs->setAmbientLightStorage(ambientLight());
-            g.informationDialogs->setMinimapTileStorage(minimap() ? minimap()->tileStorage() : nullptr);
+            m_pCyclopediaDialogController->setAmbientLightStorage(ambientLight());
+            // The Cyclopedia map's local minimap mode draws the local minimap.
+            qmlcomponents::TMinimapRendererQuickItem::setMinimapTileStorage(minimapTileStorage().get());
             if (g.minimapController) {
                 g.minimapController->setAmbientLightStorage(ambientLight());
-                g.minimapController->setMarkerStorage(minimap() ? minimap()->markerStorage() : nullptr);
+                g.minimapController->setMarkerStorage(minimapMarkerStorage().get());
             }
-            g.sidebarPanels->setTileStorage(minimap() ? minimap()->tileStorage() : nullptr);
+            g.sidebarPanels->setTileStorage(minimapTileStorage().get());
             g.optionsDialog->setInGame(true);
             g.actionBars->onWorldEntered();
             qmlcomponents::applyOptionVolumes(); // stop login anthem; keep channel gains
@@ -1008,10 +1127,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             g.minimapController->setMarkerStorage(nullptr);
             g.minimapController->setTileStorage(nullptr);
         }
-        g.informationDialogs->setMinimapTileStorage(nullptr);
+        qmlcomponents::TMinimapRendererQuickItem::setMinimapTileStorage(nullptr);
         g.sidebarPanels->setSidebarOptions(nullptr);
         g.sidebarWidgets->setSidebarOptions(nullptr);
-        g.containers->setSidebarOptions(nullptr);
         g.statusBarController->setStorage(nullptr);
         g.optionsDialog->setInGame(false);
         g.dialogStack->hideAll();
@@ -1024,7 +1142,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             g.minimapController->setMarkerStorage(nullptr);
             g.minimapController->setTileStorage(nullptr);
         }
-        g.informationDialogs->setMinimapTileStorage(nullptr);
+        qmlcomponents::TMinimapRendererQuickItem::setMinimapTileStorage(nullptr);
         shutdown();
     });
     // start() activated the session before the controllers above created their
@@ -1056,6 +1174,11 @@ void TGameClient::onKeyboardStatusStorageChanged()
         tibia::game::notify("onWalk", static_cast<tibia::client::Direction>(
                                           static_cast<const input::TMovementIntentDirection&>(*intent).direction()));
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionPlayerMovementIntent>(intent));
+}
+
+void TGameClient::checkKeyboardStatusStorageAfterDelay(const int DelayMillis)
+{
+    QTimer::singleShot(DelayMillis, this, &TGameClient::onKeyboardStatusStorageChanged);
 }
 
 gamewindow::TGameSessionDisconnectReactionController* TGameClient::gameSessionDisconnectReactionController() const
@@ -1108,10 +1231,10 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             m_messageIgnoreList->setGameSession(GameSession);
         if (m_pReportViolationController)
             m_pReportViolationController->connectToGameSession(GameSession);
-        if (g.informationDialogs) {
-            g.informationDialogs->editText()->connectToGameSession(GameSession);
-            g.informationDialogs->outfitDialog()->connectToGameSession(GameSession);
-        }
+        if (m_pEditTextController)
+            m_pEditTextController->connectToGameSession(GameSession);
+        if (m_pSelectOutfitDialogController)
+            m_pSelectOutfitDialogController->connectToGameSession(GameSession);
         if (m_pStoreDialogController)
             m_pStoreDialogController->connectToGameSession(GameSession);
         // CIP: the button bar connects its store button.
@@ -1119,9 +1242,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.storeButton->connectToGameSession(GameSession);
         if (m_pBugReportDialogController)
             m_pBugReportDialogController->connectToGameSession(GameSession);
-        if (g.informationDialogs)
-            if (gamewindow::TPreyDialogController* prey = g.informationDialogs->prey())
-                prey->connectToGameSession(GameSession);
+        if (m_pPreyDialogController)
+            m_pPreyDialogController->connectToGameSession(GameSession);
         if (g.imbuingDialog) {
             g.imbuingDialog->connectToGameSession(GameSession);
             g.imbuingDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
@@ -1150,37 +1272,35 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.manageLootDialog->connectToGameSession(GameSession);
             g.manageLootDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         }
-        if (g.informationDialogs) {
-            if (gamewindow::TCyclopediaDialogController* cyclopedia = g.informationDialogs->cyclopedia()) {
-                cyclopedia->connectToGameSession(GameSession);
-                cyclopedia->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-            }
-            // CIP: the button bar's connector (unported) connects these buttons.
-            g.informationDialogs->cyclopediaButton()->connectToGameSession(GameSession);
-            g.informationDialogs->bosstiaryButton()->connectToGameSession(GameSession);
+        if (m_pCyclopediaDialogController) {
+            m_pCyclopediaDialogController->connectToGameSession(GameSession);
+            m_pCyclopediaDialogController->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
             // Host: the Cyclopedia's houses and map pages draw the session's light.
-            g.informationDialogs->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
+            m_pCyclopediaDialogController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
         }
-        if (g.taskboardDialog)
-            g.taskboardDialog->connectToGameSession(GameSession);
+        // CIP: the button bar's connector (unported) connects these buttons.
+        if (g.cyclopediaButton)
+            g.cyclopediaButton->connectToGameSession(GameSession);
+        if (g.bosstiaryButton)
+            g.bosstiaryButton->connectToGameSession(GameSession);
+        if (m_pTaskboardDialogController)
+            m_pTaskboardDialogController->connectToGameSession(GameSession);
         if (m_pSoulSealsDialogController)
             m_pSoulSealsDialogController->connectToGameSession(GameSession);
         if (m_pShowSpellBookDialogController)
             m_pShowSpellBookDialogController->connectToGameSession(GameSession);
-        if (g.stashDialog)
-            g.stashDialog->connectToGameSession(GameSession);
+        if (m_pStashDialogController)
+            m_pStashDialogController->connectToGameSession(GameSession);
         if (g.exivaOptionsDialog)
             g.exivaOptionsDialog->connectToGameSession(GameSession);
         if (g.screenshotManager)
             g.screenshotManager->connectToGameSession(GameSession);
         m_predictor->connectToGameSession(GameSession);
-        if (g.informationDialogs)
-            if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
-                highscores->connectToGameSession(GameSession);
+        if (m_pHighscoresDialogController)
+            m_pHighscoresDialogController->connectToGameSession(GameSession);
         // The quest log and the quest tracker show the session's quest log storage.
-        if (g.informationDialogs)
-            if (gamewindow::TQuestLogController* questLog = g.informationDialogs->questLog())
-                questLog->connectToGameSession(GameSession);
+        if (m_pQuestLogController)
+            m_pQuestLogController->connectToGameSession(GameSession);
         if (gamewindow::TCharacterTradeDialogController* characterTrade = gamewindow::TCharacterTradeDialogController::instance())
             characterTrade->connectToGameSession(GameSession);
         if (m_pExaltationForgeDialogController)
@@ -1208,10 +1328,10 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             if (g.analyserStorages)
                 connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g.analyserStorages.get(),
                         &analysers::TAnalyserStorages::onCharacterConfigurationLoaded, Qt::UniqueConnection);
-            if (gamewindow::TCyclopediaDialogController* cyclopedia = g.informationDialogs ? g.informationDialogs->cyclopedia() : nullptr)
+            if (gamewindow::TCyclopediaDialogController* cyclopedia = m_pCyclopediaDialogController.get())
                 connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
                         &gamewindow::TCyclopediaMapDialogController::showDialogTab, Qt::UniqueConnection);
-            if (gamewindow::TQuestLogController* questLog = g.informationDialogs ? g.informationDialogs->questLog() : nullptr)
+            if (gamewindow::TQuestLogController* questLog = m_pQuestLogController.get())
                 connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
                         &gamewindow::TQuestLogController::onCharacterConfigurationLoaded, Qt::UniqueConnection);
         }
@@ -1237,24 +1357,20 @@ void TGameClient::onGameSessionDisconnected()
     // selection, offline training and the proficiency shape options.
     if (m_pConnectingDialogController)
         m_pConnectingDialogController->dialog()->close();
-    // CIP: the walk keys no longer reach the session (a live session connects them again).
-    if (input::TKeyboardStatusStorage* keyboardStatus = keyboardStatusStorage())
-        disconnect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged);
     if (m_gameWindow) {
         TGameWindow& g = *m_gameWindow;
-        if (m_minimap)
-            if (gamewindow::TEditMinimapMarkerDialogController* marker = m_minimap->markerStorage()->editMinimapMarkerDialog())
-                marker->dialog()->close();
-        if (g.informationDialogs) {
-            g.informationDialogs->outfitDialog()->dialog()->close();
-            g.informationDialogs->podiumDialog()->dialog()->close();
-        }
+        if (gamewindow::TEditMinimapMarkerDialogController* marker = minimapMarkerStorage()->editMinimapMarkerDialog())
+            marker->dialog()->close();
+        if (m_pSelectOutfitDialogController)
+            m_pSelectOutfitDialogController->dialog()->close();
+        if (m_pConfigureCreaturePodiumDialogController)
+            m_pConfigureCreaturePodiumDialogController->dialog()->close();
         if (m_pLoginAdviceDialogController)
             m_pLoginAdviceDialogController->dialog()->close();
         if (g.chat)
             g.chat->whiteBlacklistDialog().close();
-        if (g.stashDialog)
-            g.stashDialog->confirmMoveObjectToStashDialog()->closeDialog();
+        if (m_pConfirmMoveObjectToStashDialogController)
+            m_pConfirmMoveObjectToStashDialogController->closeDialog();
         if (g.tutorialShell) {
             g.tutorialShell->hint()->dialog()->close();
             g.tutorialShell->vocation()->dialog()->close();
@@ -1264,6 +1380,15 @@ void TGameClient::onGameSessionDisconnected()
         if (m_pWeaponProficiencyShapeOptionsDialogController)
             m_pWeaponProficiencyShapeOptionsDialogController->closeDialog();
     }
+    // CIP: the walk keys no longer reach the session (a live session connects the first again).
+    if (input::TKeyboardStatusStorage* keyboardStatus = keyboardStatusStorage()) {
+        disconnect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged);
+        disconnect(keyboardStatus, &input::TKeyboardStatusStorage::checkForChangeAfterDelay, this,
+                   &TGameClient::checkKeyboardStatusStorageAfterDelay);
+    }
+    // CIP: the session's spell modifications are dropped.
+    if (spells::TSpellInfoStorage* spells = spellInfoStorage())
+        spells->clearSpellModifications();
     // Host: the world is left (minimap and character options written, start screen).
     onWorldLeft();
     if (!m_gameSessionMetaInfoQueue.empty()) {

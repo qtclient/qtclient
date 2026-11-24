@@ -30,35 +30,6 @@ struct SkillsWidgetEntry
     bool operator==(const SkillsWidgetEntry&) const = default;
 };
 
-class TSkillsWidgetEntryData final : public cip::tibia::game::TSkillsWidgetEntryData
-{
-    Q_OBJECT
-public:
-    explicit TSkillsWidgetEntryData(QObject* parent = nullptr);
-
-    void assign(const SkillsWidgetEntry& entry);
-
-    // The QML properties, one plain read each.
-    QString caption() const override { return m_caption; }
-    QString valueString() const override { return m_valueString; }
-    EValueColorType valueStringColor() const override { return m_valueStringColor; }
-    QString tooltip() const override { return m_tooltip; }
-    QColor progressBarColor() const override { return m_progressBarColor; }
-    double progressBarValue() const override { return m_progressBarValue; }
-    ESeparatorType separatorType() const override { return m_separatorType; }
-    bool changeHighlight() const override { return m_changeHighlight; }
-    bool showButton() const override { return m_showButton; }
-    QString iconSource() const override { return m_iconSource; }
-    QString iconTooltip() const override { return m_iconTooltip; }
-    QString additionalValueString() const override { return m_additionalValueString; }
-    bool entryVisible() const override { return m_entryVisible; }
-    /// Shows or hides the row; announces changed every time.
-    void setEntryVisible(bool EntryVisible);
-
-private:
-    SkillsWidgetEntry m_entry;
-};
-
 /// CIP's skill types : 1 experience, 2 level, 3 experience
 /// gain, 4 magic level, 6 hit points, 7 mana, 8 speed, 9 capacity, 10
 /// shielding, 11 distance, 12 club, 13 sword, 14 axe, 15 fist, 16 fishing,
@@ -84,6 +55,43 @@ enum class SkillType {
     Stamina = 19,
     OfflineTraining = 20,
 };
+
+class TSkillsWidgetEntryData final : public cip::tibia::game::TSkillsWidgetEntryData
+{
+    Q_OBJECT
+public:
+    /// An experience row with nothing else set (shown, no bar, no separator).
+    explicit TSkillsWidgetEntryData(QObject* parent = nullptr);
+    /// The row of `Type`: its skill name as caption, a progress bar when the
+    /// type has one, and `Separator` below it; shown, nothing else set.
+    TSkillsWidgetEntryData(SkillType Type, ESeparatorType Separator, QObject* parent = nullptr);
+
+    SkillType type() const { return m_type; }
+
+    void assign(const SkillsWidgetEntry& entry);
+
+    // The QML properties, one plain read each.
+    QString caption() const override { return m_caption; }
+    QString valueString() const override { return m_valueString; }
+    EValueColorType valueStringColor() const override { return m_valueStringColor; }
+    QString tooltip() const override { return m_tooltip; }
+    QColor progressBarColor() const override { return m_progressBarColor; }
+    double progressBarValue() const override { return m_progressBarValue; }
+    ESeparatorType separatorType() const override { return m_separatorType; }
+    bool changeHighlight() const override { return m_changeHighlight; }
+    bool showButton() const override { return m_showButton; }
+    QString iconSource() const override { return m_iconSource; }
+    QString iconTooltip() const override { return m_iconTooltip; }
+    QString additionalValueString() const override { return m_additionalValueString; }
+    bool entryVisible() const override { return m_entryVisible; }
+    /// Shows or hides the row; announces changed every time.
+    void setEntryVisible(bool EntryVisible);
+
+private:
+    SkillType m_type = SkillType::Experience;
+    SkillsWidgetEntry m_entry;
+};
+
 
 /// The skill's name; experience carries its short form as a length variant.
 QString skillName(SkillType type);

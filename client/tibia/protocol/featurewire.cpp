@@ -425,7 +425,7 @@ bool readDoubles(ClassicReader& r, List* out, const int count)
 {
     for (int i = 0; i < count; ++i) {
         double value = 0;
-        if (!r.real(value))
+        if (!r.readDouble(value))
             return false;
         out->Add(value);
     }
@@ -455,7 +455,7 @@ bool readKeyedValues(ClassicReader& r, List* out)
         ProtocolCharacterInfoKeyedValue* entry = out->Add();
         uint8_t key = 0;
         double value = 0;
-        if (!r.u8(key) || !r.real(value))
+        if (!r.u8(key) || !r.readDouble(value))
             return false;
         entry->set_key(key);
         entry->set_value(value);
@@ -474,7 +474,7 @@ bool readSkillBonuses(ClassicReader& r, List* out)
         ProtocolCharacterInfoSkillBonus* entry = out->Add();
         uint8_t skill = 0;
         double first = 0, second = 0;
-        if (!r.u8(skill) || !r.real(first) || !r.real(second))
+        if (!r.u8(skill) || !r.readDouble(first) || !r.readDouble(second))
             return false;
         entry->set_skill_id(skill);
         entry->set_first(first);
@@ -513,7 +513,7 @@ bool readAugments(ClassicReader& r, List* out)
         uint16_t spell = 0;
         uint8_t type = 0;
         double value = 0;
-        if (!r.u16(spell) || !r.u8(type) || !r.real(value))
+        if (!r.u16(spell) || !r.u8(type) || !r.readDouble(value))
             return false;
         entry->set_spell_id(spell);
         entry->set_type(type);
@@ -665,7 +665,7 @@ bool readCharacterOffenceStats(ClassicReader& r, ProtocolCharacterInfoOffenceSta
     double cleave = 0;
     if (!readDoubles(r, o->mutable_crit_chance(), 7) || !readDoubles(r, o->mutable_crit_damage(), 6)
         || !readDoubles(r, o->mutable_life_leech(), 5) || !readDoubles(r, o->mutable_mana_leech(), 5)
-        || !readDoubles(r, o->mutable_onslaught(), 4) || !r.real(cleave)
+        || !readDoubles(r, o->mutable_onslaught(), 4) || !r.readDouble(cleave)
         || !readU16Values(r, o->mutable_perfect_shot(), 7) || !readU16Values(r, o->mutable_flat_damage(), 3))
         return false;
     o->set_cleave(cleave);
@@ -674,7 +674,7 @@ bool readCharacterOffenceStats(ClassicReader& r, ProtocolCharacterInfoOffenceSta
     int16_t skillLevel = 0, skillModifier = 0;
     double converted = 0;
     if (!r.u16(attack) || !r.u16(flat) || !r.u16(damage) || !r.u8(skillType) || !r.s16(skillLevel) || !r.s16(skillModifier)
-        || !r.u8(element) || !r.real(converted) || !r.u8(convertedElement))
+        || !r.u8(element) || !r.readDouble(converted) || !r.u8(convertedElement))
         return false;
     o->set_weapon_attack(attack);
     o->set_weapon_flat_modifier(flat);
@@ -687,20 +687,20 @@ bool readCharacterOffenceStats(ClassicReader& r, ProtocolCharacterInfoOffenceSta
     o->set_converted_element(convertedElement);
     double foes = 0;
     uint16_t targets = 0;
-    if (!readKeyedValues(r, o->mutable_accuracy()) || !r.real(foes) || !r.u16(targets))
+    if (!readKeyedValues(r, o->mutable_accuracy()) || !r.readDouble(foes) || !r.u16(targets))
         return false;
     o->set_powerful_foes(foes);
     for (uint16_t i = 0; i < targets; ++i) {
         ProtocolCharacterInfoTargetBonus* target = o->add_specific_targets();
         double value = 0;
-        if (!r.string(*target->mutable_name()) || !r.real(value))
+        if (!r.string(*target->mutable_name()) || !r.readDouble(value))
             return false;
         target->set_value(value);
     }
     double runes = 0, autoAttack = 0, critRunes = 0, critAutoAttack = 0;
     uint16_t lifeHit = 0, manaHit = 0, lifeKill = 0, manaKill = 0;
-    if (!readKeyedValues(r, o->mutable_crit_chance_elements()) || !r.real(runes) || !r.real(autoAttack)
-        || !readKeyedValues(r, o->mutable_crit_damage_elements()) || !r.real(critRunes) || !r.real(critAutoAttack)
+    if (!readKeyedValues(r, o->mutable_crit_chance_elements()) || !r.readDouble(runes) || !r.readDouble(autoAttack)
+        || !readKeyedValues(r, o->mutable_crit_damage_elements()) || !r.readDouble(critRunes) || !r.readDouble(critAutoAttack)
         || !r.u16(lifeHit) || !r.u16(manaHit) || !r.u16(lifeKill) || !r.u16(manaKill))
         return false;
     o->set_offensive_runes(runes);
@@ -713,7 +713,7 @@ bool readCharacterOffenceStats(ClassicReader& r, ProtocolCharacterInfoOffenceSta
     o->set_mana_on_kill(manaKill);
     double high = 0, low = 0, penetration = 0;
     if (!readSkillBonuses(r, o->mutable_extra_damage_skills()) || !readSkillBonuses(r, o->mutable_extra_damage_spells())
-        || !readSkillBonuses(r, o->mutable_extra_healing_spells()) || !r.real(high) || !r.real(low) || !r.real(penetration)
+        || !readSkillBonuses(r, o->mutable_extra_healing_spells()) || !r.readDouble(high) || !r.readDouble(low) || !r.readDouble(penetration)
         || !readKeyedValues(r, o->mutable_elemental_pierce()))
         return false;
     o->set_damage_high_health(high);
@@ -729,7 +729,7 @@ bool readCharacterDefenceStats(ClassicReader& r, ProtocolCharacterInfoDefenceSta
     double shieldPercent = 0;
     uint8_t skillType = 0, count = 0;
     int16_t shielding = 0;
-    if (!readDoubles(r, d->mutable_dodge(), 5) || !r.u32(shield) || !r.u16(shieldFlat) || !r.real(shieldPercent)
+    if (!readDoubles(r, d->mutable_dodge(), 5) || !r.u32(shield) || !r.u16(shieldFlat) || !r.readDouble(shieldPercent)
         || !r.u16(reflect) || !r.u16(armor) || !r.u16(mantra) || !r.u16(defence) || !r.u16(equipment) || !r.u8(skillType)
         || !r.s16(shielding) || !r.u16(wheel) || !readDoubles(r, d->mutable_mitigation(), 5) || !r.u8(count))
         return false;
@@ -748,7 +748,7 @@ bool readCharacterDefenceStats(ClassicReader& r, ProtocolCharacterInfoDefenceSta
         ProtocolCharacterInfoResistance* entry = d->add_resistances();
         uint8_t kind = 0, element = 0;
         double value = 0;
-        if (!r.u8(kind) || !r.u8(element) || !r.real(value))
+        if (!r.u8(kind) || !r.u8(element) || !r.readDouble(value))
             return false;
         entry->set_kind(kind);
         entry->set_element(element);
@@ -2906,7 +2906,7 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
         uint32_t health = 0, experience = 0;
         double mitigation = 0;
         if (!r.u16(charm) || !r.u8(attack) || !readBool(r, spells) || !r.u32(health) || !r.u32(experience) || !r.u16(speed)
-            || !r.u16(armor) || !r.real(mitigation))
+            || !r.u16(armor) || !r.readDouble(mitigation))
             return 0;
         m->set_charm_value(charm);
         m->set_attack_mode(attack);

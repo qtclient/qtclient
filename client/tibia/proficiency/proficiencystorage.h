@@ -51,6 +51,10 @@ struct TProficiencyInfo
     std::vector<TProficiencyLevel> levels;
 };
 
+/// Parses the proficiencies asset (a JSON array). Throws std::invalid_argument
+/// on malformed JSON.
+std::vector<TProficiencyInfo> parseProficiencies(const QByteArray& contents);
+
 /// A level's perk choice (CIP: 3 bytes {level, perk, picked}, indexed by level).
 struct TPerkPick
 {
@@ -155,6 +159,8 @@ public:
 
     /// CIP : the last reshape offers, null when none arrived.
     const TReshapeOffers* reshapeOffers() const { return m_reshapeOffers ? &*m_reshapeOffers : nullptr; }
+    /// Keeps the parsed catalogue by proficiency id; the first entry of an id wins.
+    void setTables(const std::vector<TProficiencyInfo>& proficiencies) const;
 
 Q_SIGNALS:
     void proficiencyDataChanged(uint typeId);
@@ -171,8 +177,6 @@ Q_SIGNALS:
 private:
     void loadTables() const;
     void readTables(const std::string& path) const;
-    /// Keeps the parsed catalogue by proficiency id; the first entry of an id wins.
-    void setTables(const std::vector<TProficiencyInfo>& proficiencies) const;
     int reachedLevel(uint16_t typeId, int count) const;
 
     std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;

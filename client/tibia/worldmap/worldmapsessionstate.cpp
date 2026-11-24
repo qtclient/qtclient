@@ -250,18 +250,90 @@ void TWorldMapSessionState::cleanDynamicThings()
 
 }
 
-bool TWorldMapSessionState::placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos,
-                          const int16_t stackPos)
+void TWorldMapSessionState::setFieldObjects(const Position& pos,
+                                            const std::vector<tibia::appearances::TAppearanceInstancePtr>& objects)
 {
-    if (!appearance || appearance->id() == 0 || !pos.isValid())
-        return false;
-    if (const auto& tile = getOrCreateTile(pos)) {
-        tile->addAppearance(appearance, stackPos);
-        notificateTileUpdate(pos, false, tibia::client::OPERATION_ADD);
-        m_itemRevision.fetch_add(1, std::memory_order_relaxed);
-        return true;
+    // The field's content goes first; a field left without objects is dropped.
+    cleanTile(pos);
+    if (objects.empty() || tibia::game::isSceneFrozen())
+        return;
+    tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos);
+    if (!tile)
+        return;
+    tile->setObjects(objects);
+    m_itemRevision.fetch_add(1, std::memory_order_relaxed);
+    notificateTileUpdate(pos, false, tibia::client::OPERATION_ADD);
+    for (const tibia::appearances::TAppearanceInstancePtr& object : objects) {
+        if (object->creatureId() != 0 && object->creatureId() == tibia::game::localPlayerId())
+            objectPlaced(object, pos);
     }
-    return false;
+}
+
+bool TWorldMapSessionState::insertObjectAt(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos,
+                                           const int stackPos)
+{
+    // Host: an item without a type is never placed.
+    if (!object || (!object->isCreature() && object->id() == 0) || !pos.isValid())
+        return false;
+    tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos);
+    if (!tile)
+        return false;
+    if (stackPos < 0 || stackPos >= 0xff)
+        (void)tile->addObject(object);
+    else
+        (void)tile->insertObject(object, static_cast<uint8_t>(stackPos));
+    objectPlaced(object, pos);
+    return true;
+}
+
+bool TWorldMapSessionState::replaceObjectAt(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos,
+                                            const int stackPos)
+{
+    if (!object || stackPos < 0 || !pos.isValid())
+        return false;
+    tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos);
+    if (!tile)
+        return false;
+    const tibia::appearances::TAppearanceInstancePtr removed =
+        tile->replaceObject(object, static_cast<uint8_t>(std::min(stackPos, 0xff)));
+    // The local player leaving its field (a turn puts its placeholder back).
+    if (removed && removed->creatureId() != 0 && removed->creatureId() == tibia::game::localPlayerId()) {
+        notificateTileUpdate(pos, true, tibia::client::OPERATION_REMOVE);
+        localPlayerDisappeared();
+    }
+    objectPlaced(object, pos);
+    return true;
+}
+
+tibia::appearances::TAppearanceInstancePtr TWorldMapSessionState::removeObjectAt(const Position& pos, const int stackPos)
+{
+    tibia::worldmap::TWorldMapField* tile = stackPos >= 0 && pos.isValid() ? getTile(pos) : nullptr;
+    if (!tile)
+        return nullptr;
+    tibia::appearances::TAppearanceInstancePtr removed = tile->removeObject(static_cast<uint8_t>(std::min(stackPos, 0xff)));
+    if (!removed)
+        return nullptr;
+    // A creature leaving is announced; an object's field announces itself.
+    if (!removed->isCreature())
+        return removed;
+    const bool isLocal = removed->creatureId() != 0 && removed->creatureId() == tibia::game::localPlayerId();
+    notificateTileUpdate(pos, isLocal, tibia::client::OPERATION_REMOVE);
+    if (isLocal)
+        localPlayerDisappeared();
+    return removed;
+}
+
+void TWorldMapSessionState::objectPlaced(const tibia::appearances::TAppearanceInstancePtr& object, const Position& pos)
+{
+    if (object->creatureId() != 0 && object->creatureId() == tibia::game::localPlayerId()) {
+        setLocalPlayerPosition(pos);
+        localPlayerAppeared();
+        notificateTileUpdate(pos, true, tibia::client::OPERATION_ADD);
+        return;
+    }
+    if (!object->isCreature())
+        m_itemRevision.fetch_add(1, std::memory_order_relaxed);
+    notificateTileUpdate(pos, false, tibia::client::OPERATION_ADD);
 }
 
 const std::vector<tibia::appearances::TAppearanceInstancePtr>& TWorldMapSessionState::getFloorMissiles(const uint8_t z) const
@@ -406,7 +478,7 @@ void TWorldMapSessionState::cleanTile(const Position& pos)
 
     tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage();
     if (tibia::worldmap::TWorldMapField* tile = storage->fieldAt(pos)) {
-        tile->clean();
+        tile->setObjects({});
         if (tile->canErase())
             storage->removeField(pos);
         notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN);
@@ -460,8 +532,16 @@ bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, 
     bool removed = false;
     const auto removeAt = [&](const Position& at) {
         tibia::worldmap::TWorldMapField* tile = at.isValid() ? getTile(at) : nullptr;
-        if (!tile || !tile->removeCreatureById(creatureId))
+        if (!tile)
             return;
+        // The stack entry the creature's placeholder holds.
+        const auto& stack = tile->appearances();
+        const auto it = std::ranges::find_if(stack, [creatureId](const tibia::appearances::TAppearanceInstancePtr& entry) {
+            return entry->creatureId() == creatureId;
+        });
+        if (it == stack.end())
+            return;
+        (void)tile->removeObject(static_cast<uint8_t>(it - stack.begin()));
         removed = true;
         notificateTileUpdate(at, isLocal, tibia::client::OPERATION_REMOVE);
     };
@@ -481,32 +561,6 @@ bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, 
     return removed;
 }
 
-bool TWorldMapSessionState::placeCreatureId(const uint32_t creatureId, const Position& pos, const int16_t stackPos)
-{
-    if (creatureId == 0 || !pos.isValid())
-        return false;
-    tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos);
-    if (!tile)
-        return false;
-
-    // A field stack holds creature ids, so a creature re-placed by a map
-    // description leaves the field it was standing on.
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const auto row = storage->creatureAt(creatureId); row && row->position().isValid() && row->position() != pos)
-            removeCreatureFromFields(creatureId, row->position(), false);
-    }
-
-    tile->addCreatureId(creatureId, stackPos);
-    if (creatureId == tibia::game::localPlayerId()) {
-        setLocalPlayerPosition(pos);
-        localPlayerAppeared();
-        notificateTileUpdate(pos, true, tibia::client::OPERATION_ADD);
-    } else {
-        notificateTileUpdate(pos, false, tibia::client::OPERATION_ADD);
-    }
-    return true;
-}
-
 bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
                                               const Position& newPos, const bool byId)
 {
@@ -522,8 +576,14 @@ bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const P
     // form moves it from where it stands.
     const bool isLocal = creatureId == tibia::game::localPlayerId();
     if (byId) {
+        // The creature leaves the field it stands on for the target field.
         const Position from = row->position();
-        placeCreatureId(creatureId, newPos, -1);
+        if (from.isValid() && from != newPos)
+            removeCreatureFromFields(creatureId, from, false);
+        if (row->placeholderAppearance() && getOrCreateTile(newPos)) {
+            row->setPosition(newPos);
+            insertObjectAt(row->placeholderAppearance(), newPos, -1);
+        }
         map->moveCreature(*row, from, newPos, map->elevationAt(from), map->elevationAt(newPos));
         return true;
     }
@@ -532,7 +592,7 @@ bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const P
         return false;
     if (!getOrCreateTile(newPos)) {
         // A step out of the known area only leaves the field.
-        fromTile->removeThingAtStackPos(oldStack);
+        (void)fromTile->removeObject(static_cast<uint8_t>(oldStack));
         notificateTileUpdate(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
         return true;
     }
@@ -661,7 +721,10 @@ void TWorldMapSessionState::setCentralPosition(const Position& centralPosition)
         if (oldPos == m_centralPosition)
             return;
         if (const tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(oldPos)) {
-            if (tile->creatureStackPos(tibia::game::localPlayerId()) >= 0)
+            const uint32_t localId = tibia::game::localPlayerId();
+            if (std::ranges::any_of(tile->appearances(), [localId](const tibia::appearances::TAppearanceInstancePtr& entry) {
+                    return entry->creatureId() == localId;
+                }))
                 return;
         }
         if (!m_localPlayerOffMap)

@@ -24,6 +24,9 @@ class TGameSessionBase;
 namespace shared {
 class TJsonDocumentHttpPostSender;
 }
+namespace config {
+class TClientOptions;
+}
 namespace authentication {
 
 /// A login answer: the account's characters, the worlds and the play session.
@@ -35,20 +38,6 @@ struct LoginResult
 
     const TWorld* world(int id) const;
 };
-
-/// The client options a login answer is written to (device cookies, the last
-/// important balancing message seen). Optional: without them the answer is
-/// read but nothing is remembered.
-class ILoginRequestOptions
-{
-public:
-    virtual ~ILoginRequestOptions() = default;
-    virtual void setDeviceCookie(const std::string& loginEmail, const QString& deviceCookie) = 0;
-    virtual uint32_t intOption(int option) const = 0;
-};
-
-/// The cf_clearance cookie of a solved Cloudflare challenge's clearance.
-QNetworkCookie cloudflareClearanceCookie(const TCloudflareChallengeClearanceInfo& Clearance);
 
 /// CIP: posts the login request to the login service through a JSON
 /// document sender and reads its answer. The authentication process
@@ -69,8 +58,11 @@ public:
     };
 
     /// CIP: the uploader of the login service at `Url`; `Sender` posts the
-    /// requests and reports a Cloudflare mitigation.
-    TLoginRequestUploader(const QUrl& Url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> Sender);
+    /// requests and reports a Cloudflare mitigation. A login answer's device
+    /// cookie goes to `ClientOptions`, which also tell whether its important
+    /// balancing message was seen; without them nothing is remembered.
+    TLoginRequestUploader(const QUrl& Url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> Sender,
+                          config::TClientOptions* ClientOptions = nullptr);
     ~TLoginRequestUploader() override;
 
     /// CIP: the login request for `LoginData` goes to the login service, with
@@ -79,8 +71,6 @@ public:
     /// qtclient: the client revision the requests carry (the portal's client
     /// version check reads it from the body).
     void setClientRevision(const QString& ClientRevision) { m_clientRevision = ClientRevision; }
-
-    void setOptions(ILoginRequestOptions* options) { m_options = options; }
 
     /// The characters, worlds and session of a login answer (also the account
     /// service's answers after a character was created).
@@ -137,7 +127,7 @@ private:
     QString m_clientRevision;
 
     std::unique_ptr<TAuthenticationJsonDocumentHelper> m_helper;
-    ILoginRequestOptions* m_options = nullptr;
+    config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<game::TGameSessionBase> m_gameSession;
     TCharacterList m_characters;
     TWorldList m_worlds;

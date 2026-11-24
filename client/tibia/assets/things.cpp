@@ -264,6 +264,7 @@ void TAppearancesManager::postprocessAppearances()
     placeholder.setId(0);
     placeholder.setDisplacement(8, 8);
     placeholder.addFrameGroup(EFixedFrameGroup::OutfitIdle, std::move(markerInfo));
+    placeholder.completeFrameGroups();
     m_appearanceTypes[EAppearanceCategory::Outfit].insert_or_assign(placeholder.getId(), std::move(placeholder));
 
     // The three coins have a market category of their own.
@@ -324,25 +325,31 @@ bool TAppearancesManager::loadStaticData(const std::string& directory)
         // The houses' map areas come with the static data (CIP: asset type 6),
         // handed to the static content's house table.
         const auto mapFileName = catalogFile(catalog, tibia::assets::TAsset::StaticMapData);
-        std::vector<cyclopedia::TStaticHouseMapArea> houseMapAreas;
+        std::vector<THouseMapArea> areas;
         if (!mapFileName.empty()) {
-            const std::vector<THouseMapArea> areas = parseStaticMapData(
+            areas = parseStaticMapData(
                 tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + mapFileName)));
-            houseMapAreas.reserve(areas.size());
-            for (const THouseMapArea& area : areas) {
-                houseMapAreas.push_back({ area.houseId,
-                                          tibia::worldmap::TWorldMapCuboid(
-                                              tibia::worldmap::TWorldMapCoordinate(area.topLeft.x, area.topLeft.y, area.topLeft.z),
-                                              tibia::worldmap::TWorldMapExtent(static_cast<int>(area.width), static_cast<int>(area.height),
-                                                                        static_cast<int>(area.depth))),
-                                          QByteArray::fromStdString(area.serializedFields) });
-            }
         }
-        cyclopedia::setHouseMapAreas(std::move(houseMapAreas));
+        setStaticMapData(std::move(areas));
         return true;
     } catch (const std::exception&) {
         return false;
     }
+}
+
+void TAppearancesManager::setStaticMapData(std::vector<THouseMapArea> areas)
+{
+    std::vector<cyclopedia::TStaticHouseMapArea> houseMapAreas;
+    houseMapAreas.reserve(areas.size());
+    for (const THouseMapArea& area : areas) {
+        houseMapAreas.push_back({ area.houseId,
+                                  tibia::worldmap::TWorldMapCuboid(
+                                      tibia::worldmap::TWorldMapCoordinate(area.topLeft.x, area.topLeft.y, area.topLeft.z),
+                                      tibia::worldmap::TWorldMapExtent(static_cast<int>(area.width), static_cast<int>(area.height),
+                                                                static_cast<int>(area.depth))),
+                                  QByteArray::fromStdString(area.serializedFields) });
+    }
+    cyclopedia::setHouseMapAreas(std::move(houseMapAreas));
 }
 
 TStaticInformation TAppearancesManager::parseStaticInformation(const std::string& bytes)

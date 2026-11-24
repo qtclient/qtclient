@@ -2,6 +2,8 @@
 
 #include "sound/sounddecompressorthreadpool.h"
 
+#include "readonlymemoryblob.h"
+
 #include <QLoggingCategory>
 
 #include <algorithm>
@@ -125,46 +127,46 @@ QString TSoundManager::soundName(const TSoundEffectID soundId) const
     return QStringLiteral("Unknown");
 }
 
+/// Every sound of the metadata gets an entry (an entry already there stays):
+/// a sound of load type 0 plays from its file in the sounds directory; any
+/// other has no data until its asset arrives (addSoundAssetData).
 void TSoundManager::onSoundMetadataChanged()
 {
-    if (!m_metadata)
-        return;
     for (const auto& [id, sound] : m_metadata->sounds()) {
         TSoundCacheEntry entry;
         entry.soundId = id;
-        // Every sound streams from its file until it is converted; CipSoft
-        // only starts sounds with load type 0 that way and preloads the others.
-        entry.soundData = TSoundFile{ m_soundsDirectory + sound.fileName.toStdString() };
+        if (sound.loadType == 0)
+            entry.soundData = TSoundFile{ m_soundsDirectory + sound.fileName.toStdString() };
+        else
+            entry.soundData = ESoundDataState::Unavailable;
         entry.playableData = ESoundDataState::Unloaded;
-        m_entries.insert_or_assign(id, std::move(entry));
+        m_entries.try_emplace(id, std::move(entry));
     }
-    m_soundCount = static_cast<int64_t>(m_entries.size());
+}
+
+/// The asset of the sound stored as `FileName` was loaded. A sound of load
+/// type 2 is decoded to raw samples on the decompressor (its data is loading
+/// until onPreprocessingSoundDataFinished); one of load type 1 keeps the
+/// bytes. Either way its playable data is made again on the next use.
+void TSoundManager::addSoundAssetData(const QString& FileName, const std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob>& pData)
+{
+    const std::optional<TSoundMetadata> sound = m_metadata->soundByFileName(FileName);
+    if (!sound)
+        return;
+    TSoundCacheEntry& entry = m_entries.at(sound->id);
+    if (sound->loadType == 2) {
+        entry.soundData = m_decompressor->soundData(sound->id, TSoundData{ pData->getData() }, ESoundLoadTarget::RawSamples);
+        ++m_preprocessingCount;
+    } else if (sound->loadType == 1) {
+        entry.soundData = TSoundData{ pData->getData() };
+    }
+    entry.playableData = ESoundDataState::Unloaded;
 }
 
 void TSoundManager::startLoading(TSoundCacheEntry& entry, const TSoundMetadata& metadata)
 {
-    const auto target = static_cast<ESoundLoadTarget>(metadata.cacheType);
-    if (static_cast<int>(entry.soundData.index()) == static_cast<int>(target)) {
-        if (const auto* file = std::get_if<TSoundFile>(&entry.soundData))
-            entry.playableData = *file;
-        else if (const auto* bytes = std::get_if<QByteArray>(&entry.soundData))
-            entry.playableData = *bytes;
-        return;
-    }
-    if (target == ESoundLoadTarget::Buffer) {
-        if (const auto* samples = std::get_if<TRawSoundSamples>(&entry.soundData)) {
-            entry.playableData = TSoundBuffer{ std::make_shared<const TRawSoundSamples>(*samples) };
-            return;
-        }
-    }
-    // CipSoft's asset loader has a streamed sound's bytes in memory already;
-    // qtclient reads the file here (no decoding).
-    if (target == ESoundLoadTarget::StreamFile || target == ESoundLoadTarget::StreamMemory) {
-        entry.playableData = TSoundDecompressorThreadpool::toPlayableSoundData(entry.soundData, target);
-        return;
-    }
-    m_decompressor->convertToPlayableSoundData(entry.soundId, entry.soundData, target);
-    entry.playableData = ESoundDataState::Loading;
+    entry.playableData =
+        m_decompressor->playableSoundData(entry.soundId, entry.soundData, static_cast<ESoundLoadTarget>(metadata.cacheType));
 }
 
 std::optional<TPlayableSound> TSoundManager::playableSound(const TSoundEffectID soundId)

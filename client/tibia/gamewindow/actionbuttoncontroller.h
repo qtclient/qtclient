@@ -69,6 +69,8 @@ public:
     /// (with the tier when it has one), else a placeholder.
     QString objectTooltipName() const;
     void setPassiveAbility(int passiveAbility);
+    /// The shown slot's passive ability name; empty for an unknown ability.
+    QString passiveAbilityName() const;
     /// The keys of TriggerActionButton_<bar>.<button>; the first one is shown
     /// on the button.
     void setHotkeys(const QList<QKeySequence>& hotkeys);
@@ -108,6 +110,7 @@ public:
 
     // A multi-action button shows its current slot (CIP: every getter walks
     // , e.g. type, object).
+    uint actionButtonID() const override { return m_actionButtonID; }
     EQmlActionButtonType type() const override { return shown()->m_type; }
     EQmlActionButtonProgressType progressType() const override { return shown()->m_progressType; }
     QString spellIconUrl() const override { return shown()->m_spellIconUrl; }

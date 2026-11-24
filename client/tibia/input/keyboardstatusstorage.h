@@ -57,6 +57,11 @@ public:
     /// Forgets the held keys that are tracked.
     void releaseTrackedKeys();
 
+Q_SIGNALS:
+    /// CIP: the state is to be read again after `DelayMillis` (the client calls
+    /// onKeyboardStatusStorageChanged then).
+    void checkForChangeAfterDelay(int DelayMillis);
+
 public Q_SLOTS:
     /// Leaving the active state forgets every key; presses are ignored until the
     /// application is active again.

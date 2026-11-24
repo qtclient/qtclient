@@ -171,7 +171,7 @@ static TProficiencyInfo parseProficiency(const QJsonObject& json)
     return info;
 }
 
-static std::vector<TProficiencyInfo> parseProficiencies(const QByteArray& contents)
+std::vector<TProficiencyInfo> parseProficiencies(const QByteArray& contents)
 {
     QJsonParseError error;
     const QJsonDocument document = QJsonDocument::fromJson(contents, &error);

@@ -2,11 +2,17 @@
 
 #include "chat/chatchannel.h"
 #include "chat/textstorage.h"
+#include "config/clientoptions.h"
+#include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
+#include "game/playerdata.h"
+#include "input/gameaction.h"
+#include "iclockservice.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <algorithm>
+#include <bitset>
 #include <cmath>
 #include <cstdlib>
 #include <stdexcept>
@@ -20,6 +26,7 @@ using creatures::EMovementDirection;
 using worldmap::TWorldMapCoordinate;
 
 constexpr int RepeatIntervalMs = 50;
+constexpr int DefaultKeyboardDelayMs = 250;
 constexpr int StuckLimit = 14;
 constexpr int RootedState = 19;
 constexpr int FearedState = 20;
@@ -57,10 +64,41 @@ EMovementDirection toMovementDirection(const tibia::client::Direction direction)
     }
 }
 
-TPlayerMovementIntentHandler::TPlayerMovementIntentHandler(Environment environment, QObject* parent)
+TPlayerMovementIntentHandler::TPlayerMovementIntentHandler(
+    std::shared_ptr<const game::TPlayerMovementIntentHandlerConfiguration> pConfiguration, config::TClientOptions* pClientOptions,
+    std::shared_ptr<shared::IClockService> pClockService, std::shared_ptr<worldmap::TWorldMapStorage> pWorldMapStorage,
+    std::shared_ptr<chat::TTextStorage> pTextStorage, std::shared_ptr<creatures::TCreatureStorage> pCreatureStorage,
+    std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> pCreatureMovementSpeedCalculator,
+    std::shared_ptr<game::TPlayerData> pPlayerData, Environment environment, QObject* parent)
     : cip::tibia::input::TPlayerMovementIntentHandler(parent)
+    , m_pConfiguration(std::move(pConfiguration))
+    , m_pClientOptions(pClientOptions)
+    , m_pClockService(std::move(pClockService))
+    , m_pWorldMapStorage(std::move(pWorldMapStorage))
+    , m_pTextStorage(std::move(pTextStorage))
+    , m_pCreatureStorage(std::move(pCreatureStorage))
+    , m_pCreatureMovementSpeedCalculator(std::move(pCreatureMovementSpeedCalculator))
+    , m_pPlayerData(std::move(pPlayerData))
     , m_env(std::move(environment))
+    , m_intent(std::make_shared<TMovementIntentStop>())
 {
+}
+
+qint64 TPlayerMovementIntentHandler::now() const
+{
+    return m_pClockService->nowMillis();
+}
+
+void TPlayerMovementIntentHandler::applyAutoChaseBeforeWalking()
+{
+    if (!m_pClientOptions->boolOption(config::EClientOption::autoChaseEnabled) && m_pCreatureStorage->attackID() != 0
+        && m_pPlayerData && m_pPlayerData->chaseOpponents())
+        Q_EMIT publishGameAction(std::make_shared<TGameActionSetTactics>(
+            TGameActionSetTactics::TTactics{ false, m_pPlayerData->secureMode(), m_pPlayerData->pvpMode() }));
+    if (m_pCreatureStorage->followID() != 0) {
+        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(EGameAction::STOP_FOLLOWING_CREATURE, 0));
+        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(EGameAction::STOP_ATTACKING_CREATURE, 0));
+    }
 }
 
 void TPlayerMovementIntentHandler::setPlayer(std::weak_ptr<creatures::TCreature> pPlayer)
@@ -154,10 +192,10 @@ bool TPlayerMovementIntentHandler::canStepTowards(const EMovementDirection direc
         return false;
     const worldmap::TWorldMapExtent offset = creatures::stepOffset(direction);
     const TWorldMapCoordinate position(player->position());
-    const worldmap::TWorldMapField* field = m_env.map()->fieldAt(offsetBy(position, offset.width, offset.height));
+    const worldmap::TWorldMapField* field = m_pWorldMapStorage->fieldAt(offsetBy(position, offset.width, offset.height));
     if (!field || !field->hasBank())
         return true;
-    return m_env.map()->elevationAt(position.toPosition()) != 0;
+    return m_pWorldMapStorage->elevationAt(position.toPosition()) != 0;
 }
 
 void TPlayerMovementIntentHandler::step(const EMovementDirection direction)
@@ -171,8 +209,7 @@ void TPlayerMovementIntentHandler::goToAndSend(const TWorldMapCoordinate& goal, 
 {
     const int result = goTo(goal, enterUnwalkableGoal, allowDiagonalStep);
     if (result == 2) {
-        if (m_env.stopChaseAndFollow)
-            m_env.stopChaseAndFollow();
+        applyAutoChaseBeforeWalking();
         Q_EMIT sendStop();
     }
     if (result == 1)
@@ -185,7 +222,7 @@ int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bo
     creatures::TCreature* player = m_player.get();
     if (!player || (m_goal && *m_goal == goal) || goal == offsetBy(predictedPosition(), m_pendingX, m_pendingY))
         return 0;
-    if (const quint64 states = m_env.playerStates ? m_env.playerStates() : 0; states & (quint64(1) << RootedState | quint64(1) << FearedState))
+    if (const std::bitset<30> states = m_pPlayerData->states().flags; states.test(FearedState) || states.test(RootedState))
         return 0;
     m_goal = goal;
     m_enterUnwalkableGoal = enterUnwalkableGoal;
@@ -207,7 +244,7 @@ int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bo
     bool turned = false;
     const bool inView = m_env.isInView && m_env.isInView(goal);
     if (inView && goal.z == position.z && (dx != 0 || dy != 0) && (fieldState(goal) == EFieldState::Blocked || canStep)) {
-        const bool turnOption = m_env.alwaysTurnTowardsMoveDirection && m_env.alwaysTurnTowardsMoveDirection();
+        const bool turnOption = m_pClientOptions->boolOption(config::EClientOption::alwaysTurnTowardsMoveDirection);
         if (turnOption && !adjacent) {
             m_goal.reset();
             return 0;
@@ -295,7 +332,7 @@ void TPlayerMovementIntentHandler::predictNextStep()
     if (state == EFieldState::Blocked)
         return;
     bool alreadyPending = false;
-    if (m_env.map()->groundSpeedAt(target.toPosition()) != 0) {
+    if (m_pWorldMapStorage->groundSpeedAt(target.toPosition()) != 0) {
         if (m_pendingX == offset.width && m_pendingY == offset.height)
             alreadyPending = true;
         else
@@ -307,7 +344,7 @@ void TPlayerMovementIntentHandler::predictNextStep()
     m_pendingY = offset.height;
     if (state == EFieldState::Free)
         predictStep(offset.width, offset.height);
-    m_nextStepMs = m_env.now() + nextStepDelay(position, target);
+    m_nextStepMs = now() + nextStepDelay(position, target);
 }
 
 void TPlayerMovementIntentHandler::predictStep(const int dx, const int dy)
@@ -315,7 +352,7 @@ void TPlayerMovementIntentHandler::predictStep(const int dx, const int dy)
     creatures::TCreature* player = m_player.get();
     if (!player)
         return;
-    worldmap::TWorldMapStorage* map = m_env.map();
+    worldmap::TWorldMapStorage* map = m_pWorldMapStorage.get();
     const Position from = player->position();
     const Position to = offsetBy(TWorldMapCoordinate(from), dx, dy).toPosition();
     map->moveCreature(*player, from, to, map->elevationAt(from), map->elevationAt(to));
@@ -324,13 +361,12 @@ void TPlayerMovementIntentHandler::predictStep(const int dx, const int dy)
 qint64 TPlayerMovementIntentHandler::nextStepDelay(const TWorldMapCoordinate& from, const TWorldMapCoordinate& to) const
 {
     const creatures::TCreature* player = m_player.get();
-    worldmap::TWorldMapStorage* map = m_env.map();
+    worldmap::TWorldMapStorage* map = m_pWorldMapStorage.get();
     const worldmap::TWorldMapExtent step(to.x - from.x, to.y - from.y, to.z - from.z);
-    const qint64 duration = map->speedCalculator().stepDurationWithDiagonalCost(player->speed(), step,
-                                                                                map->groundSpeedAt(to.toPosition()));
+    const qint64 duration = m_pCreatureMovementSpeedCalculator->stepDurationWithDiagonalCost(
+        player->speed(), step, map->groundSpeedAt(to.toPosition()));
     static const game::TPlayerMovementIntentHandlerConfiguration defaults;
-    const game::TPlayerMovementIntentHandlerConfiguration& configuration =
-        m_env.configuration ? *m_env.configuration : defaults;
+    const game::TPlayerMovementIntentHandlerConfiguration& configuration = m_pConfiguration ? *m_pConfiguration : defaults;
     const double share = static_cast<double>(duration) * configuration.minPercentageOfCurrentMovementBeforeSendNext;
     // Rounded half away from zero.
     const qint64 atLeast = static_cast<int>(share + std::copysign(0.5, share));
@@ -340,7 +376,7 @@ qint64 TPlayerMovementIntentHandler::nextStepDelay(const TWorldMapCoordinate& fr
 bool TPlayerMovementIntentHandler::advance()
 {
     creatures::TCreature* player = m_player.get();
-    if (!player || !m_waiting || !player->movementTween().isTweenFinished() || m_env.now() <= m_nextStepMs)
+    if (!player || !m_waiting || !player->movementTween().isTweenFinished() || now() <= m_nextStepMs)
         return false;
     m_waiting = false;
     if (static_cast<int>(m_path.size()) <= m_stepsTaken)
@@ -354,7 +390,10 @@ void TPlayerMovementIntentHandler::tick()
     if (!m_repeatTimer.isValid())
         m_repeatTimer.start();
     if (m_heldDirection) {
-        const int interval = m_repeats > 0 ? RepeatIntervalMs : (m_env.keyboardDelayMs ? m_env.keyboardDelayMs() : 250);
+        const int keyboardDelay = m_pClientOptions->boolOption(config::EClientOption::keyboardDelayUseDefault)
+                                      ? DefaultKeyboardDelayMs
+                                      : m_pClientOptions->intOption(config::EClientOption::keyboardDelayMs);
+        const int interval = m_repeats > 0 ? RepeatIntervalMs : keyboardDelay;
         if (m_repeatTimer.elapsed() > interval) {
             m_repeatTimer.restart();
             ++m_repeats;
@@ -378,7 +417,7 @@ void TPlayerMovementIntentHandler::onPositionChanged(const TWorldMapCoordinate& 
             m_waiting = false;
         } else {
             bool expected = false;
-            if (m_env.map()->groundSpeedAt(position.toPosition()) != 0) {
+            if (m_pWorldMapStorage->groundSpeedAt(position.toPosition()) != 0) {
                 expected = m_pendingX == dx && m_pendingY == dy;
                 m_pendingX = m_pendingY = 0;
                 if (!expected)
@@ -393,7 +432,7 @@ void TPlayerMovementIntentHandler::onPositionChanged(const TWorldMapCoordinate& 
 
 void TPlayerMovementIntentHandler::onCancelWalk(const creatures::ECreatureLookDirection direction)
 {
-    m_nextStepMs = m_env.now() + 1;
+    m_nextStepMs = now() + 1;
     bool stuck = false;
     if (m_lastPosition && m_stuckPosition && *m_lastPosition == *m_stuckPosition) {
         stuck = m_stuckCount > StuckLimit;
@@ -405,8 +444,7 @@ void TPlayerMovementIntentHandler::onCancelWalk(const creatures::ECreatureLookDi
         m_stuckPosition = m_lastPosition;
     if (stuck) {
         clearPath();
-        if (m_env.stopFollowing)
-            m_env.stopFollowing();
+        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(EGameAction::STOP_FOLLOWING_CREATURE, 0));
         m_stuckCount = 0;
     }
     if (resetAfterRejectedStep(direction))
@@ -457,8 +495,7 @@ void TPlayerMovementIntentHandler::sendPath()
 {
     if (m_path.empty())
         return;
-    if (m_env.stopChaseAndFollow)
-        m_env.stopChaseAndFollow();
+    applyAutoChaseBeforeWalking();
     if (m_path.size() == 1)
         sendStep(m_path.front());
     else
@@ -492,13 +529,13 @@ void TPlayerMovementIntentHandler::sendRotate(const creatures::ECreatureLookDire
 
 void TPlayerMovementIntentHandler::showStatusMessage(const QString& text)
 {
-    if (chat::TTextStorage* texts = m_env.textStorage ? m_env.textStorage() : nullptr)
-        texts->setStatusMessage(text, chat::overlayColor(21), false);
+    if (m_pTextStorage)
+        m_pTextStorage->setStatusMessage(text, chat::overlayColor(21), false);
 }
 
 TPlayerMovementIntentHandler::EFieldState TPlayerMovementIntentHandler::fieldState(const TWorldMapCoordinate& coordinate) const
 {
-    const worldmap::TWorldMapField* field = m_env.map()->fieldAt(coordinate);
+    const worldmap::TWorldMapField* field = m_pWorldMapStorage->fieldAt(coordinate);
     if (!field)
         return EFieldState::Blocked;
     switch (field->walkState()) {

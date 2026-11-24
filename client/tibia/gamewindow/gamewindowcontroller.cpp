@@ -6,6 +6,7 @@
 #include <QQmlEngine>
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "input/eventfiltermanager.h"
 #include "randomhints.h"
 #include "app/launcherenv.h"
@@ -135,18 +136,39 @@ void TGameWindowController::setShowEmailAsPlainText(const bool v)
     Q_EMIT showEmailChanged();
 }
 
-TGameWindowController::TGameWindowController(QQuickItem* container, QObject* parent)
+TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRouter> GameActionRouter,
+                                             std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                             QQmlEngine* Engine, config::TClientOptions* ClientOptions, QQuickItem* ClientWindow,
+                                             const QUrl& HintsUrl, const QUrl& ClientServicesUrl,
+                                             std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                             std::shared_ptr<shared::IClockService> ClockService, QObject* parent)
     : cip::tibia::gamewindow::TGameWindowController(parent)
-    , m_container(container)
-    , m_fileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
+    , m_pGameActionRouter(std::move(GameActionRouter))
+    , m_pAppearanceInstanceFactory(std::move(AppearanceInstanceFactory))
+    , m_pEngine(Engine)
+    , m_pClientOptions(ClientOptions)
+    , m_container(ClientWindow)
+    , m_hintsUrl(HintsUrl)
+    , m_fileSystemHelper(std::move(TibiaFileSystemHelper))
+    , m_pClockService(std::move(ClockService))
     , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
     , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
     , m_eventsStorage(std::make_unique<news::TEventsStorage>())
+    // CIP: the live information and boosted creature uploaders ask the
+    // client services URL, each with its own sender.
+    , m_boostedUploader(std::make_unique<game::TBoostedCreatureRequestUploader>(
+          ClientServicesUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper, m_pClockService))
+    , m_liveInfoUploader(std::make_unique<game::TLiveInformationRequestUploader>(
+          ClientServicesUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper, m_pClockService))
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
     , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
     , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
+    connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
+            &TGameWindowController::onBoostedCreatureReceived);
+    connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
+            &TGameWindowController::onLiveInformationReceived);
     connect(m_newsDialog.get(), &TNewsDialogController::publishGameAction, this, &TGameWindowController::publishGameAction);
     connect(m_newsButton.get(), &TNewsButtonController::publishGameAction, this, &TGameWindowController::publishGameAction);
     // CIP (TGameClient): the storage saves through the disk cache and starts
@@ -167,7 +189,13 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     m_upperPaneHeight = static_cast<uint>(options.value(QLatin1String(UpperPaneHeight)).toInt());
     m_lowerPaneHeight = static_cast<uint>(options.value(QLatin1String(LowerPaneHeight)).toInt());
     m_resizingMode = static_cast<EResizingMode>(options.value(QLatin1String(ResizingMode)).toInt());
-    m_statusBarVisible = options.value(QLatin1String("statusBarEnabled")).toBool(true);
+    // CIP: the status bar shows while the client options' statusBarEnabled is set.
+    m_statusBarVisible = m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::statusBarEnabled);
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::statusBarEnabledChanged, this, [this] {
+            m_statusBarVisible = m_pClientOptions->boolOption(config::EClientOption::statusBarEnabled);
+            Q_EMIT statusBarVisibilityChanged();
+        });
     // CIP Misc stayLoggedInByDefault (sessionRemainLoggedIn) seeds the login
     // "remember email" checkbox when rememberEmail has never been stored.
     if (options.contains(QLatin1String(RememberEmail)))
@@ -178,11 +206,6 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     m_showCreateAccountOption = false;
     syncAnthemButton();
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("statusBarEnabled")) {
-            m_statusBarVisible = app::ClientOptions::load().options().value(name).toBool(true);
-            Q_EMIT statusBarVisibilityChanged();
-            return;
-        }
         if (name == QLatin1String("soundAnthemEnabled") || name == QLatin1String("soundMusicVolume")
             || name == QLatin1String("soundMasterVolume"))
             syncAnthemButton();
@@ -275,16 +298,6 @@ void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
 void TGameWindowController::configureClientServices(const QUrl& url, const QString& clientRevision)
 {
     const QUrl service = url.isEmpty() ? QUrl() : url;
-    m_boostedUploader = std::make_unique<game::TBoostedCreatureRequestUploader>(
-        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
-        shared::TClockService::process());
-    connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
-            &TGameWindowController::onBoostedCreatureReceived);
-    m_liveInfoUploader = std::make_unique<game::TLiveInformationRequestUploader>(
-        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
-        shared::TClockService::process());
-    connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
-            &TGameWindowController::onLiveInformationReceived);
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
     // CIP builds the client services uploaders with their URL.
@@ -346,8 +359,8 @@ void TGameWindowController::requestDeferredStartScreenServices()
 void TGameWindowController::loadHints()
 {
     const app::LauncherEnv env = app::LauncherEnv::load(QDir::currentPath());
+    // Host: the hints' images are under the asset base.
     m_cdnBase = env.assetBase.toString();
-    m_hintsUrl = QUrl(m_cdnBase + QStringLiteral("/hints.json"));
     m_hintsDownloadedAt = 0;
     updateHint();
 }

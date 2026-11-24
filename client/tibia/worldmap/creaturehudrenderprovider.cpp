@@ -158,7 +158,7 @@ TCreatureHUDRenderInfo TCreatureHUDRenderProvider::creatureHUDRenderInfo(const c
     TWorldMapSubfieldCoordinate anchor;
     frameAnchor(info.creatureId, anchor);
     info.anchor = adjustedAnchor(anchor, creature);
-    info.covered = !isUncovered(TWorldMapCoordinate(creature.position()), firstVisibleFloor);
+    info.covered = !isUncovered(m_worldMapStorage, TWorldMapCoordinate(creature.position()), firstVisibleFloor);
     info.lightness = lightnessAt(anchor);
     info.statusMarks = creature.extraIcons();
 
@@ -229,14 +229,15 @@ TCreatureHUDRenderInfo TCreatureHUDRenderProvider::creatureHUDRenderInfo(const c
     return info;
 }
 
-bool TCreatureHUDRenderProvider::isUncovered(const TWorldMapCoordinate& position, const int firstVisibleFloor) const
+bool TCreatureHUDRenderProvider::isUncovered(const std::shared_ptr<TWorldMapStorage>& worldMapStorage, const TWorldMapCoordinate& position,
+                                             const int firstVisibleFloor)
 {
-    if (!m_worldMapStorage)
+    if (!worldMapStorage)
         return true;
     for (int floor = position.z; firstVisibleFloor < floor;) {
         --floor;
         const TWorldMapCoordinate above = TWorldMapCoordinate(position.x, position.y, floor).shiftedTowardsFloor(position.z);
-        if (const std::shared_ptr<TWorldMapField> field = m_worldMapStorage->field(above); field && field->hasBank())
+        if (const std::shared_ptr<TWorldMapField> field = worldMapStorage->field(above); field && field->hasBank())
             return false;
     }
     return true;

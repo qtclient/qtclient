@@ -2,7 +2,7 @@
 
 #include <QQuickItem>
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -15,9 +15,6 @@
 namespace tibia::gamewindow {
 
 namespace {
-
-constexpr auto ShowFpsOption = QLatin1String("showFpsLagIndicator");
-constexpr auto StabilityOption = QLatin1String("connectionStabilityOptimizationEnabled");
 
 /// The latency band QML colours the ping by: "measuring" until a ping
 /// is known, then low below 200 ms, medium below 500 ms, else high.
@@ -51,24 +48,19 @@ QString formatFps(const double fps)
 
 }
 
-TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(QObject* parent)
+TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(config::TClientOptions* ClientOptions, QObject* parent)
     : cip::tibia::gamewindow::TFPSLatencyIndicatorController(parent)
+    , m_pClientOptions(ClientOptions)
 {
     m_currentFrameRate = QStringLiteral("0");
     m_currentLatencyState = QStringLiteral("low");
-    m_visible = app::ClientOptions::load().options().value(ShowFpsOption).toBool(false);
-    syncOptimizedConnectionStability();
-
     m_timer.setInterval(1000);
     connect(&m_timer, &QTimer::timeout, this, &TFPSLatencyIndicatorController::tick);
-
-
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == ShowFpsOption)
-            setVisibleFromOptions(app::ClientOptions::load().options().value(ShowFpsOption).toBool(false));
-        else if (name == StabilityOption)
-            syncOptimizedConnectionStability();
-    });
+    connect(this, &TFPSLatencyIndicatorController::visibilityChanged, this, &TFPSLatencyIndicatorController::onVisibilityChanged);
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::fpsLagIndicatorOptionsChanged, this,
+                &TFPSLatencyIndicatorController::visibilityChanged);
+    Q_EMIT visibilityChanged();
 }
 
 TFPSLatencyIndicatorController::~TFPSLatencyIndicatorController()
@@ -82,8 +74,7 @@ void TFPSLatencyIndicatorController::setWindow(QQuickWindow* window)
     m_window = window;
     if (window)
         m_frameConnection = connect(window, &QQuickWindow::frameSwapped, this, [this] { ++m_frames; }, Qt::DirectConnection);
-    if (m_visible)
-        m_timer.start();
+    onVisibilityChanged();
 }
 
 void TFPSLatencyIndicatorController::setFrameDurations(worldmap::TFrameDurationRing* ring)
@@ -96,30 +87,22 @@ void TFPSLatencyIndicatorController::setRenderProvider(qmlcomponents::TWorldMapR
     m_provider = provider;
 }
 
-void TFPSLatencyIndicatorController::toggle()
+bool TFPSLatencyIndicatorController::visible() const
 {
-    applyVisible(!m_visible);
-    app::ClientOptions::store(ShowFpsOption, m_visible);
+    return m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::showFpsLagIndicator);
 }
 
-void TFPSLatencyIndicatorController::setVisibleFromOptions(const bool on)
+void TFPSLatencyIndicatorController::onVisibilityChanged()
 {
-    applyVisible(on);
-}
-
-void TFPSLatencyIndicatorController::applyVisible(const bool on)
-{
-    if (on == m_visible)
-        return;
-    m_visible = on;
-    if (on) {
-        m_frames = 0;
-        m_timer.start();
-        tick();
-    } else {
+    if (!visible()) {
         m_timer.stop();
+        return;
     }
-    Q_EMIT visibilityChanged();
+    if (m_timer.isActive())
+        return;
+    m_frames = 0;
+    m_timer.start();
+    tick();
 }
 
 void TFPSLatencyIndicatorController::tick()
@@ -128,7 +111,9 @@ void TFPSLatencyIndicatorController::tick()
     (void)m_frames.exchange(0);
     const double fps = effectiveFpsFromRing(m_frameDurations);
     const int ping = tibia::game::isOnline() ? tibia::game::getPing() : -1;
-    update(fps, ping, ping >= 0, m_stabilityOption, static_cast<int>(fps + 0.5));
+    const bool optimizedConnectionStability =
+        m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::connectionStabilityOptimizationEnabled);
+    update(fps, ping, ping >= 0, optimizedConnectionStability, static_cast<int>(fps + 0.5));
     const QString buildUs = QString::number(m_provider ? m_provider->buildNs() / 1000 : 0);
     if (buildUs != m_worldmapBuildUs) {
         m_worldmapBuildUs = buildUs;
@@ -163,12 +148,6 @@ void TFPSLatencyIndicatorController::update(const double frameRate, const qint64
 
 /// The frame count is formatted when it is read.
 QString TFPSLatencyIndicatorController::currentFrameCount() const { return QString::number(m_frameCount); }
-
-void TFPSLatencyIndicatorController::syncOptimizedConnectionStability()
-{
-    m_stabilityOption = app::ClientOptions::load().options().value(StabilityOption).toBool(true);
-    update(m_frameRate, m_currentLatency, m_latencyMeasured, m_stabilityOption, m_frameCount);
-}
 
 void TFPSLatencyIndicatorController::setWidgetItem(QQuickItem* item)
 {

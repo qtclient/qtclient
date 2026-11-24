@@ -12,6 +12,10 @@
 #include <functional>
 #include <memory>
 
+namespace tibia::protocol {
+class TGameActionContextHelper;
+}
+
 namespace tibia {
 namespace input {
 
@@ -23,7 +27,9 @@ class TUseWithGameActionHandler final : public cip::tibia::input::TUseWithGameAc
 {
     Q_OBJECT
 public:
-    explicit TUseWithGameActionHandler(QObject* parent = nullptr);
+    /// The session's context helper writes the objects into the messages.
+    explicit TUseWithGameActionHandler(std::shared_ptr<protocol::TGameActionContextHelper> pGameActionContextHelper,
+                                       QObject* parent = nullptr);
     ~TUseWithGameActionHandler() override;
     TUseWithGameActionHandler(const TUseWithGameActionHandler&) = delete;
     TUseWithGameActionHandler& operator=(const TUseWithGameActionHandler&) = delete;
@@ -41,7 +47,12 @@ private:
     void handleUseOnCreature(const TGameActionUseOnCreature& action);
     void handleTargetSelected(const TTargetSelectedPtr& target);
     void startTargetSelectionBridge();
+    /// An object as the ObjectPosition and ObjectIdentifier of a client
+    /// message; no location is anywhere the player has the object.
+    void fillObject(const TObjectGameActionContext& object, tibia::protobuf::protocol::ObjectPosition* objectPosition,
+                    tibia::protobuf::protocol::ObjectIdentifier* objectIdentifier) const;
 
+    std::shared_ptr<protocol::TGameActionContextHelper> m_pGameActionContextHelper;
     std::shared_ptr<const TGameActionUseWith> m_pPendingAction;
 };
 

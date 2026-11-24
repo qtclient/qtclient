@@ -25,7 +25,7 @@ constexpr int FieldSize = 32;
 }
 
 TSingleObjectAppearanceInstanceRenderer::TSingleObjectAppearanceInstanceRenderer(QQuickItem* parent)
-    : cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer(parent)
+    : TAppearanceInstanceRendererBaseOfSingleObject(parent)
 {
     m_scaleFactor = 1.f;
     setFlag(ItemHasContents);
@@ -70,6 +70,7 @@ void TSingleObjectAppearanceInstanceRenderer::setAnimated(const bool v)
     if (v == m_animated)
         return;
     cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer::setAnimated(v);
+    requestStorageEnabledUpdate();
     changed();
 }
 
@@ -78,7 +79,7 @@ void TSingleObjectAppearanceInstanceRenderer::setScaleFactor(const float v)
     if (v == m_scaleFactor)
         return;
     cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer::setScaleFactor(v);
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 void TSingleObjectAppearanceInstanceRenderer::setSmoothTextureFiltering(const bool v)
@@ -91,15 +92,8 @@ void TSingleObjectAppearanceInstanceRenderer::setSmoothTextureFiltering(const bo
 
 void TSingleObjectAppearanceInstanceRenderer::componentComplete()
 {
-    cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer::componentComplete();
+    TAppearanceInstanceRendererBaseOfSingleObject::componentComplete();
     changed();
-}
-
-void TSingleObjectAppearanceInstanceRenderer::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
-{
-    cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer::geometryChange(newGeometry, oldGeometry);
-    if (newGeometry.size() != oldGeometry.size())
-        polish();
 }
 
 void TSingleObjectAppearanceInstanceRenderer::itemChange(const ItemChange change, const ItemChangeData& value)
@@ -144,7 +138,7 @@ void TSingleObjectAppearanceInstanceRenderer::changed()
     }
     m_phase = currentPhase();
     watchFrames();
-    polish();
+    requestDrawCommandsUpdate();
 }
 
 /// Animated objects re-lay out when their phase moves on.
@@ -157,7 +151,7 @@ void TSingleObjectAppearanceInstanceRenderer::watchFrames()
     m_frameConnection = connect(window(), &QQuickWindow::afterAnimating, this, [this] {
         if (currentPhase() != m_phase) {
             m_phase = currentPhase();
-            polish();
+            requestDrawCommandsUpdate();
         }
     });
 }
@@ -182,7 +176,7 @@ int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
     return static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
 }
 
-void TSingleObjectAppearanceInstanceRenderer::updatePolish()
+void TSingleObjectAppearanceInstanceRenderer::updateDrawCommands()
 {
     TAppearanceType* const appearanceType = type();
     m_sprite = {};

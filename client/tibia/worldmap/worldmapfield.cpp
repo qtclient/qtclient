@@ -19,6 +19,8 @@
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/appearances/appearancetype.h>
 #include "clockservice.h"
+
+#include <algorithm>
 #include <tibia/schedule/schedule.h>
 #include <tibia/schedule/schedule.h>
 #include <tibia/game/gamesession.h>
@@ -68,7 +70,6 @@ void TWorldMapField::recalculateThingFlag()
 {
     m_thingTypeFlag = 0;
     m_elevation = 0;
-    rebuildCreatureRange();
     for (const auto& entry : m_stack)
         setStackEntryFlag(entry);
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
@@ -123,38 +124,48 @@ void TWorldMapField::syncCreatureStackAppearance(const uint32_t creatureId)
     }
     if (!onField)
         return;
-    recalculateThingFlag();
-    notifyAppearanceInstancesChanged();
+    objectsChanged();
 }
 
 namespace
 {
-    // A field taking a creature places it on a field; every creature leaving a
+    // A creature taken by a field is placed on a field; a creature leaving a
     // field is no longer placed (the battle list shows placed creatures only).
-    void placeCreatureOnField(const uint32_t creatureId)
+    void placeCreatureOnField(const appearances::TAppearanceInstancePtr& object)
     {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-            storage->placeOnField(creatureId);
+        if (!object || !object->isCreature())
+            return;
+        const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(object.get());
+        if (!placeholder)
+            return;
+        if (const std::shared_ptr<tibia::creatures::TCreature> creature = placeholder->creature())
+            creature->setPlacedOnField(true);
     }
 
-    void removeCreatureFromField(const uint32_t creatureId)
+    void removeCreatureFromField(const appearances::TAppearanceInstancePtr& object)
     {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-            storage->removeFromField(creatureId);
+        if (!object || !object->isCreature())
+            return;
+        const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(object.get());
+        if (!placeholder)
+            return;
+        if (const std::shared_ptr<tibia::creatures::TCreature> creature = placeholder->creature())
+            creature->setPlacedOnField(false);
     }
 }
 
-TWorldMapField::TWorldMapField(QObject* parent)
+TWorldMapField::TWorldMapField(const TWorldMapCoordinate& coordinate, const uint8_t stackLimit, QObject* parent)
     : cip::tibia::worldmap::TWorldMapField(parent)
+    , m_coordinate(coordinate)
+    , m_positionCache(coordinate.toPosition())
+    , m_stackLimit(stackLimit)
 {
 }
 
 TWorldMapField::~TWorldMapField()
 {
-    for (const appearances::TAppearanceInstancePtr& entry : m_stack) {
-        if (entry->creatureId() != 0)
-            removeCreatureFromField(entry->creatureId());
-    }
+    for (const appearances::TAppearanceInstancePtr& entry : m_stack)
+        removeCreatureFromField(entry);
 }
 
 namespace
@@ -201,25 +212,6 @@ namespace
 
 
 
-void TWorldMapField::clean()
-{
-    // CIP tile refresh replaces the whole field stack; the local player's
-    // appear/disappear does not run here (it would cancel its step).
-    // The creatures it held leave the field.
-    for (const appearances::TAppearanceInstancePtr& entry : m_stack) {
-        if (entry->creatureId() != 0)
-            removeCreatureFromField(entry->creatureId());
-    }
-    m_stack.clear();
-
-    m_thingTypeFlag = 0;
-
-    m_firstCreatureIndex = -1;
-    m_lastCreatureIndex = -1;
-
-    notifyAppearanceInstancesChanged();
-}
-
 void TWorldMapField::addWalkingCreature(const uint32_t creatureId)
 {
     if (!creatureId)
@@ -247,10 +239,6 @@ void TWorldMapField::removeWalkingCreature(const uint32_t creatureId)
     recalculateThingFlag();
 }
 
-void TWorldMapField::updateThingStackPos() {
-    // Map Creature keep-alive retired — stack rows are appearance + creatureId only.
-}
-
 const std::vector<appearances::TAppearanceInstancePtr>& TWorldMapField::effectAppearances() const
 {
     return effects::TEffectStorage::instance().effectsAt(getPosition());
@@ -263,132 +251,79 @@ bool TWorldMapField::hasEffect() const
 
 void TWorldMapField::effectsChanged()
 {
-    recalculateThingFlag();
-    notifyAppearanceInstancesChanged();
+    objectsChanged();
 }
 
-void TWorldMapField::addAppearance(const appearances::TAppearanceInstancePtr& appearance, int stackPos)
+void TWorldMapField::setObjects(const std::vector<appearances::TAppearanceInstancePtr>& objects)
 {
-    if (!appearance)
-        return;
-
-    const uint8_t size = static_cast<uint8_t>(m_stack.size());
-    if (stackPos < 0 || stackPos == 255)
-        stackPos = insertionIndex(appearance);
-    else if (stackPos > static_cast<int>(size))
-        stackPos = size;
-    // An object sorted past the last stack position does not fit on the field.
-    if (stackPos >= static_cast<int>(tibia::config::tileMaxThings()))
-        return;
-
-    // CIP TPatternObjectAppearanceInstance : patterns from field coordinate.
-    if (const auto patterned =
-            std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
-        patterned->applyWorldMapCoordinate(getPosition());
-
-    m_stack.insert(m_stack.begin() + stackPos, appearance);
-
-    // Non-creature insert: shift creature range indexes like updateCreatureRangeForInsert.
-    if (m_firstCreatureIndex != -1 && stackPos <= m_firstCreatureIndex)
-        ++m_firstCreatureIndex;
-    if (m_lastCreatureIndex != -1 && stackPos <= m_lastCreatureIndex)
-        ++m_lastCreatureIndex;
-
-    setStackEntryFlag(m_stack[stackPos]);
-
-    // The object pushed past the last stack position drops off the field.
-    if (static_cast<uint8_t>(m_stack.size()) > tibia::config::tileMaxThings())
-        eraseStackEntry(tibia::config::tileMaxThings());
-
-    updateThingStackPos();
-    notifyAppearanceInstancesChanged();
+    for (const appearances::TAppearanceInstancePtr& entry : m_stack)
+        removeCreatureFromField(entry);
+    m_stack.clear();
+    m_drawList.clear();
+    // Each object goes to the end of the stack; what does not fit is left out.
+    for (const appearances::TAppearanceInstancePtr& object : objects)
+        (void)insertObject(object, m_stackLimit);
+    // Host: the stack flags of an emptied field are reset, too.
+    objectsChanged();
 }
 
-void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
+appearances::TAppearanceInstancePtr TWorldMapField::insertObject(const appearances::TAppearanceInstancePtr& object,
+                                                                 const uint8_t stackPosition)
 {
-    if (creatureId == 0)
-        return;
-
-    // CIP field stack holds at most one slot per creature id — re-place replaces
-    // the existing entry (MoveCreature after a partial remove must not trail).
-    const auto setStoredPosition = [this](const uint32_t id) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const auto row = storage->getOrCreate(id))
-                row->setPosition(getPosition());
-        }
-    };
-    if (const int existing = creatureStackPos(creatureId); existing >= 0) {
-        if (stackPos < 0 || stackPos == 255 || stackPos == existing) {
-            syncCreatureStackAppearance(creatureId);
-            setStoredPosition(creatureId);
-            placeCreatureOnField(creatureId);
-            return;
-        }
-        removeCreatureById(creatureId);
+    if (stackPosition < m_stack.size())
+        m_stack.insert(m_stack.begin() + stackPosition, object);
+    else
+        m_stack.push_back(object);
+    placeCreatureOnField(object);
+    // The object pushed past the stack limit drops off the field; a creature
+    // among them keeps its placed-on-field flag.
+    appearances::TAppearanceInstancePtr dropped;
+    if (m_stack.size() > m_stackLimit) {
+        dropped = m_stack[m_stackLimit];
+        m_stack.resize(m_stackLimit);
     }
-
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(creatureId);
-    row->setPosition(getPosition());
-    // The field holds the creature's placeholder.
-    const appearances::TAppearanceInstancePtr appearance = row->placeholderAppearance();
-    if (!appearance)
-        return;
-
-    const uint8_t size = static_cast<uint8_t>(m_stack.size());
-    if (stackPos < 0 || stackPos == 255)
-        stackPos = insertionIndex(appearance);
-    else if (stackPos > static_cast<int>(size))
-        stackPos = size;
-    if (stackPos >= static_cast<int>(tibia::config::tileMaxThings()))
-        return;
-
-    m_stack.insert(m_stack.begin() + stackPos, appearance);
-    placeCreatureOnField(creatureId);
-
-    // Range insert: treat as creature without ThingPtr.
-    if (m_firstCreatureIndex != -1 && stackPos <= m_firstCreatureIndex)
-        ++m_firstCreatureIndex;
-    if (m_lastCreatureIndex != -1 && stackPos <= m_lastCreatureIndex)
-        ++m_lastCreatureIndex;
-    if (m_firstCreatureIndex == -1 || stackPos < m_firstCreatureIndex)
-        m_firstCreatureIndex = static_cast<int16_t>(stackPos);
-    if (stackPos > m_lastCreatureIndex)
-        m_lastCreatureIndex = static_cast<int16_t>(stackPos);
-
-    setStackEntryFlag(m_stack[stackPos]);
-
-    // The object pushed past the last stack position drops off the field; a
-    // creature among them keeps its placed-on-field flag.
-    if (static_cast<uint8_t>(m_stack.size()) > tibia::config::tileMaxThings())
-        eraseStackEntry(tibia::config::tileMaxThings());
-
-    updateThingStackPos();
-    notifyAppearanceInstancesChanged();
+    objectsChanged();
+    return dropped;
 }
 
-bool TWorldMapField::removeThingAtStackPos(const int stackPos)
+appearances::TAppearanceInstancePtr TWorldMapField::addObject(const appearances::TAppearanceInstancePtr& object)
 {
-    if (stackPos < 0 || stackPos >= static_cast<int>(m_stack.size()))
-        return false;
-    if (const uint32_t creatureId = m_stack[stackPos]->creatureId()) {
-        // Prefer id path so Map keep-alive Creature is optional.
-        if (removeCreatureById(creatureId))
-            return true;
-        return false;
+    const uint8_t stackPosition = static_cast<uint8_t>(insertionIndex(object));
+    if (stackPosition < m_stackLimit)
+        return insertObject(object, stackPosition);
+    // Sorted past the limit: the field does not take it, yet a creature counts
+    // as placed on a field.
+    placeCreatureOnField(object);
+    return object;
+}
+
+appearances::TAppearanceInstancePtr TWorldMapField::removeObject(const uint8_t stackPosition)
+{
+    appearances::TAppearanceInstancePtr removed;
+    if (stackPosition < m_stack.size()) {
+        removed = m_stack[stackPosition];
+        removeCreatureFromField(removed);
+        m_stack.erase(m_stack.begin() + stackPosition);
     }
-    eraseStackEntry(stackPos);
-    return true;
+    objectsChanged();
+    return removed;
+}
+
+appearances::TAppearanceInstancePtr TWorldMapField::replaceObject(const appearances::TAppearanceInstancePtr& object,
+                                                                  const uint8_t stackPosition)
+{
+    appearances::TAppearanceInstancePtr removed = removeObject(stackPosition);
+    (void)insertObject(object, stackPosition);
+    return removed;
 }
 
 appearances::TAppearanceInstancePtr TWorldMapField::takeCreatureInstance(const int stackPos)
 {
-    appearances::TAppearanceInstancePtr instance = appearanceAt(stackPos);
-    if (!instance || instance->creatureId() == 0)
+    // Only a creature's placeholder is taken off the field.
+    const appearances::TAppearanceInstancePtr instance = appearanceAt(stackPos);
+    if (!std::dynamic_pointer_cast<appearances::TCreaturePlaceholderAppearanceInstance>(instance))
         return nullptr;
-    removeThingAtStackPos(stackPos);
+    (void)removeObject(static_cast<uint8_t>(stackPos));
     return instance;
 }
 
@@ -398,67 +333,37 @@ void TWorldMapField::updateAnimations(const qint64 nowMs)
         instance->updateAnimation(nowMs);
 }
 
-bool TWorldMapField::removeCreatureById(const uint32_t creatureId)
+void TWorldMapField::rebuildDrawList()
 {
-    if (creatureId == 0)
-        return false;
-    const auto it = std::ranges::find_if(m_stack, [creatureId](const appearances::TAppearanceInstancePtr& entry) {
-        return entry->creatureId() == creatureId;
-    });
-    if (it == m_stack.end())
-        return false;
-
-    eraseStackEntry(static_cast<int>(it - m_stack.begin()));
-    removeCreatureFromField(creatureId);
-    return true;
-}
-
-void TWorldMapField::eraseStackEntry(const int stackIndex)
-{
-    m_stack.erase(m_stack.begin() + stackIndex);
-    recalculateThingFlag();
-    updateThingStackPos();
-    notifyAppearanceInstancesChanged();
-}
-
-void TWorldMapField::rebuildCreatureRange()
-{
-    m_firstCreatureIndex = -1;
-    m_lastCreatureIndex = -1;
-
-    const auto count = static_cast<int32_t>(m_stack.size());
-    for (int32_t i = 0; i < count; ++i) {
-        if (m_stack[i]->creatureId() == 0)
-            continue;
-
-        if (m_firstCreatureIndex == -1)
-            m_firstCreatureIndex = static_cast<int16_t>(i);
-
-        m_lastCreatureIndex = static_cast<int16_t>(i);
+    m_drawList.assign(m_stack.begin(), m_stack.end());
+    auto first = m_drawList.begin();
+    while (first != m_drawList.end()) {
+        const TAppearanceType* type = (*first)->thingType();
+        if (!type || (!type->isGround() && !type->isGroundBorder() && !type->isOnBottom()))
+            break;
+        ++first;
     }
+    std::reverse(first, m_drawList.end());
+}
+
+void TWorldMapField::objectsChanged()
+{
+    rebuildDrawList();
+    updateElevation();
+    updateViewFlags();
+    recalculateThingFlag();
+    Q_EMIT appearanceInstancesChanged(this);
 }
 
 std::vector<TStackCreatureEntry> TWorldMapField::stackCreatureEntries() const
 {
     std::vector<TStackCreatureEntry> entries;
-    entries.reserve(static_cast<size_t>(m_lastCreatureIndex >= 0 ? m_lastCreatureIndex - m_firstCreatureIndex + 1 : 0));
     for (int i = 0; i < static_cast<int>(m_stack.size()); ++i) {
         if (m_stack[i]->creatureId() == 0)
             continue;
         entries.push_back({ i, m_stack[i]->creatureId(), m_stack[i] });
     }
     return entries;
-}
-
-int TWorldMapField::creatureStackPos(const uint32_t creatureId) const
-{
-    if (creatureId == 0)
-        return -1;
-    for (int stackpos = 0, s = static_cast<int>(m_stack.size()); stackpos < s; ++stackpos) {
-        if (m_stack[stackpos]->creatureId() == creatureId)
-            return stackpos;
-    }
-    return -1;
 }
 
 bool TWorldMapField::hasGround() const
@@ -663,10 +568,8 @@ void TWorldMapField::updateElevation()
     // In draw order every object but a top object stands on the elevation of
     // the objects drawn before it; the stack rises by each object's height up
     // to 24 pixels.
-    const std::vector<int> order = drawList();
     uint8_t elevation = 0;
-    for (const int index : order) {
-        const appearances::TAppearanceInstancePtr& appearance = m_stack[index];
+    for (const appearances::TAppearanceInstancePtr& appearance : m_drawList) {
         const TAppearanceType* type = entryThingType(appearance);
         if (!type)
             continue;
@@ -677,8 +580,7 @@ void TWorldMapField::updateElevation()
     m_objectElevation = elevation;
     // A hangable object hangs on the hook of the last hook object drawn before it.
     uint8_t hook = 0;
-    for (const int index : order) {
-        const appearances::TAppearanceInstancePtr& appearance = m_stack[index];
+    for (const appearances::TAppearanceInstancePtr& appearance : m_drawList) {
         if (const TAppearanceType* type = entryThingType(appearance)) {
             if (type->isHookSouth())
                 hook = 1;
@@ -770,7 +672,11 @@ uint16_t TFieldObject::clientId() const
 
 TFieldObject TWorldMapField::fieldObject(const int stackIndex) const
 {
-    const appearances::TAppearanceInstancePtr& entry = m_stack[stackIndex];
+    return fieldObject(m_stack[stackIndex]);
+}
+
+TFieldObject TWorldMapField::fieldObject(const appearances::TAppearanceInstancePtr& entry) const
+{
     TFieldObject object;
     object.stackPosition = stackPositionOf(entry);
     object.creatureId = entry->creatureId();
@@ -781,21 +687,6 @@ TFieldObject TWorldMapField::fieldObject(const int stackIndex) const
         object.appearance = creature ? creature->outfitAppearance() : nullptr;
     }
     return object;
-}
-
-std::vector<int> TWorldMapField::drawList() const
-{
-    const int count = thingCount();
-    int prefix = 0;
-    while (prefix < count && isBankClipOrBottom(entryThingType(m_stack[prefix])))
-        ++prefix;
-    std::vector<int> list;
-    list.reserve(count);
-    for (int i = 0; i < prefix; ++i)
-        list.push_back(i);
-    for (int i = count - 1; i >= prefix; --i)
-        list.push_back(i);
-    return list;
 }
 
 int TWorldMapField::stackPositionOf(const appearances::TAppearanceInstancePtr& appearance) const
@@ -809,28 +700,27 @@ int TWorldMapField::stackPositionOf(const appearances::TAppearanceInstancePtr& a
 
 TFieldObject TWorldMapField::moveObject() const
 {
-    const std::vector<int> list = drawList();
-    int item = -1;
-    int creature = -1;
-    for (auto it = list.rbegin(); it != list.rend(); ++it) {
-        const appearances::TAppearanceInstancePtr& entry = m_stack[*it];
+    appearances::TAppearanceInstancePtr item;
+    appearances::TAppearanceInstancePtr creature;
+    for (auto it = m_drawList.rbegin(); it != m_drawList.rend(); ++it) {
+        const appearances::TAppearanceInstancePtr& entry = *it;
         const TAppearanceType* type = entryThingType(entry);
         if (isTop(type))
             continue;
         if (isBankClipOrBottom(type))
             break;
         if (entry->creatureId() != 0) {
-            if (creature < 0)
-                creature = *it;
+            if (!creature)
+                creature = entry;
             continue;
         }
         if (!isUnmove(type))
-            item = *it;
+            item = entry;
         break;
     }
-    if (item >= 0)
+    if (item)
         return fieldObject(item);
-    if (creature >= 0)
+    if (creature)
         return fieldObject(creature);
     return {};
 }
@@ -865,9 +755,8 @@ TFieldObject TWorldMapField::useObject() const
 
 TFieldObject TWorldMapField::quickLootObject() const
 {
-    const std::vector<int> list = drawList();
-    for (auto it = list.rbegin(); it != list.rend(); ++it) {
-        const TAppearanceType* type = entryThingType(m_stack[*it]);
+    for (auto it = m_drawList.rbegin(); it != m_drawList.rend(); ++it) {
+        const TAppearanceType* type = entryThingType(*it);
         if (isCorpse(type) && isContainer(type))
             return fieldObject(*it);
     }
@@ -913,12 +802,12 @@ TFieldObject TWorldMapField::multiUseObject() const
 
 TFieldObject TWorldMapField::topCreature() const
 {
-    int creature = -1;
-    for (const int index : drawList()) {
-        if (m_stack[index]->creatureId() != 0)
-            creature = index;
+    appearances::TAppearanceInstancePtr creature;
+    for (const appearances::TAppearanceInstancePtr& entry : m_drawList) {
+        if (entry->creatureId() != 0)
+            creature = entry;
     }
-    return creature >= 0 ? fieldObject(creature) : TFieldObject{};
+    return creature ? fieldObject(creature) : TFieldObject{};
 }
 
 bool TWorldMapField::isWalkable(const bool ignoreCreatures) const

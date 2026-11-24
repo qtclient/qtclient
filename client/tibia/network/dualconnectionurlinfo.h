@@ -18,6 +18,13 @@ enum class EConnectionsUsed : int
     PrimaryAndSecondary = 3,
 };
 
+/// One game server connection: the primary URL's or a secondary one's.
+enum class EConnectionType : int
+{
+    Primary = 0,
+    Secondary = 1,
+};
+
 /// CIP network::TDualConnectionUrlInfo: the game server URLs a dual
 /// connection uses (one primary, one secondary), each with its connection
 /// state, the time it may be connected to next and its failed attempts in a

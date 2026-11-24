@@ -1,6 +1,7 @@
 #include "containercontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
@@ -106,8 +107,6 @@ TContainerController::TContainerController(const int containerId, container::TCo
         if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
             readExpireOptions();
     });
-    if (const game::TGameSessionBase* session = game::currentGameSession())
-        m_model.setObjectCountStorage(session->objectCountStorage().get());
 
     widget()->createItem(QStringLiteral("container.qml"));
     QQuickItem* item = quickItem();
@@ -124,14 +123,21 @@ TContainerController::TContainerController(const int containerId, container::TCo
     connect(item, SIGNAL(searchButtonClicked()), this, SLOT(onSearchButtonClicked()));
 }
 
-void TContainerController::setSidebarOptions(config::TSidebarOptions* options)
+void TContainerController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (m_options)
-        disconnect(m_options, nullptr, this, nullptr);
-    m_options = options;
-    if (!options)
+    m_gameSessionConnections.disconnectAll();
+    m_model.setObjectCountStorage(nullptr);
+    m_options = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
         return;
-    connect(options, &config::TSidebarOptions::optionsForAllContainersChanged, this, &TContainerController::onWidgetOptionsChanged);
+    if (const auto& configuration = session->characterConfigurationManager())
+        m_options = configuration->sidebarOptions();
+    if (m_options)
+        m_gameSessionConnections.add(connect(m_options, &config::TSidebarOptions::optionsForAllContainersChanged, this,
+                                             &TContainerController::onWidgetOptionsChanged));
+    m_model.setObjectCountStorage(session->objectCountStorage().get());
     onWidgetOptionsChanged();
 }
 

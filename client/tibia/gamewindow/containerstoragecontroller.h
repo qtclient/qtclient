@@ -58,7 +58,6 @@ public:
 
     void setControlScheme(int controlScheme);
     void setLootScheme(int lootScheme);
-    void setSidebarOptions(config::TSidebarOptions* options);
     /// Host: the client's character configuration manager, whose loaded
     /// configuration updates the widgets (CIP reaches it through the session).
     void setCharacterConfigurationManager(config::TCharacterConfigurationManager* manager);
@@ -125,7 +124,6 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<container::TContainerStorage> m_containerStorage;
     QPointer<config::TCharacterConfigurationManager> m_characterConfigurationManager;
-    QPointer<config::TSidebarOptions> m_options;
     int m_controlScheme = 0;
     int m_lootScheme = 0; // CIP lootSchemeIndex default: Loot: Right
     std::map<int, TContainerController*> m_containerControllers;

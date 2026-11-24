@@ -1505,35 +1505,6 @@ void TSurveyInvitationDialogController::onAskLaterClicked()
     Q_EMIT dialogClosed();
 }
 
-TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::
-    TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("taskboard/HuntingTaskRewardPurchaseConfirmationDialog.qml"), parent)
-{}
-
-void TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::prepare(const int appearanceId, const int optionalId,
-                                                                              const QString& title, const QString& cost,
-                                                                              const QVariant& rewardType)
-{
-    m_appearanceId = appearanceId;
-    m_optionalId = optionalId;
-    m_title = title;
-    m_cost = cost;
-    m_rewardType = rewardType;
-}
-
-void TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::purchaseRequested()
-{
-    Q_EMIT purchaseAccepted(m_optionalId);
-    dialog()->close();
-    Q_EMIT dialogClosed();
-}
-
-void TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::closeRequested()
-{
-    dialog()->close();
-    Q_EMIT dialogClosed();
-}
-
 TTutorialOverlayItemController::TTutorialOverlayItemController(QObject* parent)
     : cip::tibia::gamewindow::TTutorialOverlayItemController(parent)
 {}

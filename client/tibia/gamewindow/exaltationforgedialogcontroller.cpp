@@ -948,7 +948,8 @@ bool TExaltationForgeDialogController::handleGameAction(const input::IGameAction
         setTab(Fusion);
         break;
     case A::SHOW_EXALTATION_RESULT_DIALOG:
-        m_resultDialog->showDialog(m_storage->lastResult());
+        if (const auto* result = input::gameActionAs<input::TGameActionShowExaltationResultDialog>(&action))
+            m_resultDialog->showDialog(result->result());
         break;
     case A::SHOW_EXALTATION_ERROR_DIALOG:
         m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });

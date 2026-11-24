@@ -110,14 +110,15 @@ public:
     virtual std::vector<TCreatureHUDRenderInfo> creatureHUDRenderInfos() const;
     /// `creature`'s record; `firstVisibleFloor` is the first floor drawn.
     virtual TCreatureHUDRenderInfo creatureHUDRenderInfo(const creatures::TCreature& creature, int firstVisibleFloor) const;
+    /// No floor from `position`'s down to `firstVisibleFloor` holds a bank over
+    /// its field in `worldMapStorage` (true without a storage).
+    static bool isUncovered(const std::shared_ptr<TWorldMapStorage>& worldMapStorage, const TWorldMapCoordinate& position,
+                            int firstVisibleFloor);
 
 private:
     void readOptions();
     /// Appends the player's creature when none of `creatures` is the player.
     void appendPlayer(std::vector<std::shared_ptr<creatures::TCreature>>& creatures) const;
-    /// No floor from the creature's down to `firstVisibleFloor` holds a bank
-    /// over its field.
-    bool isUncovered(const TWorldMapCoordinate& position, int firstVisibleFloor) const;
     /// Moves the anchor of the outfits that stand taller than their field.
     static TWorldMapSubfieldCoordinate adjustedAnchor(const TWorldMapSubfieldCoordinate& anchor,
                                                      const creatures::TCreature& creature);

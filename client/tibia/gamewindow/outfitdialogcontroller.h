@@ -104,7 +104,8 @@ public:
 
     explicit TOutfitPresetsModel(QObject* parent = nullptr);
 
-    void setPresets(QList<QJsonObject> presets, QList<bool> owned);
+    /// Each preset carries its "everythingOwned" flag.
+    void setPresets(QList<QJsonObject> presets);
 
     int count() const override;
     int rowCount(const QModelIndex& parent = {}) const override;
@@ -113,7 +114,6 @@ public:
 
 private:
     QList<QJsonObject> m_presets;
-    QList<bool> m_owned;
 };
 
 /// The outfit window, outfitdialog/OutfitDialog.qml (CIP:

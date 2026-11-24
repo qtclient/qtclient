@@ -42,7 +42,17 @@
 #include "gamewindow/blessingsdialogcontroller.h"
 #include "gamewindow/bossdifficultyselectiondialogcontroller.h"
 #include "gamewindow/bugreportdialogcontroller.h"
+#include "gamewindow/configurecreaturepodiumdialogcontroller.h"
+#include "gamewindow/cyclopediadialogcontroller.h"
 #include "gamewindow/deathdialogcontroller.h"
+#include "gamewindow/edittextcontroller.h"
+#include "gamewindow/highscoresdialogcontroller.h"
+#include "gamewindow/infobannercontroller.h"
+#include "gamewindow/linkcopywarningdialogcontroller.h"
+#include "gamewindow/outfitdialogcontroller.h"
+#include "gamewindow/preydialogcontroller.h"
+#include "gamewindow/questlogcontroller.h"
+#include "gamewindow/servermodaldialogcontroller.h"
 #include "gamewindow/exaltationforgedialogcontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/naggingmessagedialogcontroller.h"
@@ -109,7 +119,10 @@
 #include "game/gameservergamesessionmetainfo.h"
 #include "game/statusbarstorage.h"
 #include "input/gameactionhandlers.h"
-#include "minimap/minimapmanager.h"
+#include "minimap/minimapdiskio.h"
+#include "gamewindow/stashdialogcontroller.h"
+#include "gamewindow/taskboarddialogcontroller.h"
+#include "input/gameactionmapper.h"
 #include "minimap/waypointcosts.h"
 #include "network/extendedopcoderouter.h"
 #include "sound/soundprotocolmessagehandler.h"
@@ -420,7 +433,7 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     // Cloudflare challenge for the login service, handed to the controller.
     auto pCharacterSelection = std::make_shared<gamewindow::TCharacterSelectionController>();
     auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>(
-        LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
+        LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), clientOptions());
     pLoginRequestUploader->setClientRevision(m_options.env.revision);
     auto pEMailCodeRequestUploader = std::make_shared<authentication::TEmailCodeRequestUploader>(
         LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
@@ -522,12 +535,25 @@ TGameClient::~TGameClient()
     m_pLoginAdviceDialogController.reset();
     m_pExitGameDialogController.reset();
     m_pConnectingDialogController.reset();
+    m_pHighscoresDialogController.reset();
+    m_pPreyDialogController.reset();
+    m_pConfigureCreaturePodiumDialogController.reset();
+    m_pSelectOutfitDialogController.reset();
+    m_pCyclopediaDialogController.reset();
+    m_pLinkCopyWarningDialogController.reset();
+    m_pInfoBannerController.reset();
+    m_pEditTextController.reset();
+    m_pServerModalDialogController.reset();
+    m_pQuestLogController.reset();
     m_pCreateCharacterDialogController.reset();
     m_pCreateAccountDialogController.reset();
     m_pRewardWallDialogController.reset();
     m_pOutfitMemorialDialogController.reset();
     m_pLenshelpManager.reset();
+    m_pConfirmMoveObjectToStashDialogController.reset();
+    m_pStashDialogController.reset();
     m_pBossDifficultySelectionDialogController.reset();
+    m_pTaskboardDialogController.reset();
     m_pSoulSealsDialogController.reset();
     m_pWeaponProficiencyShapeOptionsDialogController.reset();
     m_pWeaponProficiencyShapeDialogController.reset();
@@ -1163,8 +1189,7 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         // A retired session no longer follows the game's notifications.
         disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
         // The session's minimap feed.
-        if (m_minimap)
-            m_minimap->setProtocolHandler(nullptr);
+        setMinimapWorldmapProtocolHandler(nullptr);
         if (previous)
             previous->setWhiteBlacklist(nullptr);
         // Host shim: the classes' instance() stop resolving to this session.
@@ -1193,8 +1218,7 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         linkGameActionRouters(*m_pGameActionRouter, *current);
         current->setWhiteBlacklist(m_messageIgnoreList);
     }
-    if (m_minimap)
-        m_minimap->setProtocolHandler(worldmapProtocol());
+    setMinimapWorldmapProtocolHandler(worldmapProtocol());
     connectToCurrentGameSession();
     m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::disconnected);
     m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connectionError);
@@ -1229,26 +1253,12 @@ void TGameClient::onWorldEntered()
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager();
         manager && tibia::game::localPlayerId() != 0)
         manager->onPlayerCreatureLoaded(tibia::game::localPlayerId());
-    const std::string assets = gamecore::assetsRoot(ClientVersion);
-    // CipSoft: Resources/minimap is a sibling of Resources/assets (assetsRoot adds
-    // Resources as a search path so short name `minimap/` resolves). Prefer that
-    // over nested assets/minimap. Prefer getRealPath over getRealDir+concat so a
-    // "/" search root is never re-joined into "//…" (wasm MEMFS rejects that).
-    std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
-    if (defaultMinimapPath.empty())
-        defaultMinimapPath = tibia::files::data().getRealPath(assets + "minimap");
-    m_minimap = std::make_unique<minimap::TMinimapManager>(
-        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath));
     // The map handler keeps the minimap's floor and fields current.
-    m_minimap->setProtocolHandler(worldmapProtocol());
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
-            m_minimap->markerStorage(), qOverload<const input::IGameActionPtr&>(&minimap::TMinimapMarkerStorage::handleGameAction));
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
-            m_minimap->tileManager(), &minimap::TMinimapTileManager::handleGameAction);
+    setMinimapWorldmapProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
-        return minimap::snapshotWaypointCosts(m_minimap ? m_minimap->tileStorage() : nullptr);
+        return minimap::snapshotWaypointCosts(minimapTileStorage().get());
     });
     Q_EMIT worldEntered();
 
@@ -1331,7 +1341,7 @@ config::TActionBarOptions* TGameClient::actionBarOptions() const
 void TGameClient::onWorldLeft()
 {
     tibia::game::clearWaypointCostFactory();
-    m_minimap.reset();
+    saveMinimapToDisk();
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
         manager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
@@ -1354,6 +1364,13 @@ void TGameClient::setWindow(QQuickWindow* window)
         if (m_fpsHistory)
             m_fpsHistory->fpsCounter()->startNewFrame();
     }, Qt::DirectConnection);
+}
+
+void TGameClient::initialize()
+{
+    ::tibia::client::TGameClientBase::initialize();
+    // CIP: the marker file is read once the minimap is up.
+    minimapTileDiskIO()->loadMinimapMarkerFileContentFromDiskIfPossible();
 }
 
 void TGameClient::initializeSound()

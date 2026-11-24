@@ -31,9 +31,8 @@ constexpr int RetriggerMs = 5000;
 
 TPremiumPanelController::TPremiumPanelController()
 {
-    createPremiumMessages();
-    // The renew line replaces the table's plain message for its feature.
-    delete m_messages[RenewPremiumFeature];
+    m_messages = createPremiumMessages(false, this);
+    // The renew line is the panel's message for its feature.
     m_renewPremium = new game::TPremiumMessageRenewPremium(this);
     m_messages[RenewPremiumFeature] = m_renewPremium;
 
@@ -68,10 +67,13 @@ TPremiumPanelController::~TPremiumPanelController()
     releasePanelItem();
 }
 
-void TPremiumPanelController::createPremiumMessages()
+std::map<int, cip::tibia::game::TPremiumMessage*> TPremiumPanelController::createPremiumMessages(const bool largeIcon, QObject* parent)
 {
+    std::map<int, cip::tibia::game::TPremiumMessage*> messages;
     for (int id = 0; id <= 0x23; ++id)
-        m_messages[id] = new game::TPremiumMessage(static_cast<uint8_t>(id), false, this);
+        if (id != RenewPremiumFeature)
+            messages[id] = new game::TPremiumMessage(static_cast<uint8_t>(id), largeIcon, parent);
+    return messages;
 }
 
 bool TPremiumPanelController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }

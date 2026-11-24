@@ -31,7 +31,8 @@ class TBountyTasksController final : public cip::tibia::gamewindow::TBountyTasks
 {
     Q_OBJECT
 public:
-    explicit TBountyTasksController(QObject* parent = nullptr);
+    /// The reroll confirmation is made with the engine and the dialog parent item.
+    TBountyTasksController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// Takes the session; its bounty data refills the lists, its bounty
     /// point and reroll token balances notify the properties and its player

@@ -88,8 +88,13 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
-        creatures::TPartyGameActionProvider::appendActions(actions, creatureId);
-        creatures::TInspectPlayerGameActionProvider::appendActions(actions, creatureId);
+        // The session's party and inspection providers.
+        if (const game::TGameSessionBase* session = game::currentGameSession()) {
+            if (const auto& party = session->partyGameActionProvider())
+                party->appendActions(actions, creatureId);
+            if (const auto& inspect = session->inspectPlayerGameActionProvider())
+                inspect->appendActions(actions, creatureId);
+        }
     }
 
     push(A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD);

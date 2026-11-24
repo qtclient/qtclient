@@ -1,6 +1,7 @@
 #include "gameservergamesession.h"
 
 #include "authentication/authenticationandencryptioninfo.h"
+#include "authentication/gameserverloginprocesscontroller.h"
 #include "authentication/loginprotocolmessagehandler.h"
 #include "chat/chatgameactionhandler.h"
 #include "config/characterconfigurationmanager.h"
@@ -24,6 +25,8 @@
 #include "network/gameservernetworkpacketrawdataprocessor.h"
 #include "network/gameservernetworkpacketsequenceflowprocessor.h"
 #include "network/gameservertcpconnection.h"
+#include "network/networkqualityprotocolmessagehandler.h"
+#include "protocol/protocolclientmessageprocessor.h"
 #include "network/unencryptedrawmessagestream.h"
 #include "protocol/extendedopcode.h"
 #include "protocol/protocolciptypes.h"
@@ -33,6 +36,7 @@
 #include "clockservice.h"
 #include "compressionhelper.h"
 #include "crashhandler.h"
+#include "hashhelper.h"
 #include "sessiondump/clientsessiondumprecorder.h"
 
 #include <protocol.pb.h>
@@ -71,6 +75,26 @@ std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetwor
     auto socket = std::make_shared<network::TGameserverSocket>();
     auto tcpConnection = std::make_shared<network::TGameserverTCPConnection>(socket);
     return std::make_shared<network::TGameserverNetworkPacketConnection>(tcpConnection);
+}
+
+/// Host: qtclient's meta info carries the game server login as
+/// GameserverCredentials. CrystalServer serves both game connections of a
+/// world on one address and port (the world's game port).
+authentication::TGameserverLoginRequestData gameserverLoginRequestData(const GameserverCredentials& Credentials)
+{
+    authentication::TGameserverLoginRequestData data;
+    data.email = Credentials.account;
+    data.password = Credentials.password;
+    data.token = Credentials.authenticatorToken;
+    data.sessionKey = Credentials.sessionKey;
+    data.characterName = Credentials.characterName;
+    data.worldAddressUnprotected = Credentials.host;
+    data.worldAddressProtected = Credentials.host;
+    data.worldPortUnprotected = Credentials.port;
+    data.worldPortProtected = Credentials.port;
+    data.worldName = Credentials.worldName;
+    data.assetsIdentifier = QString::fromStdString(tibia::game::assetIdentifier());
+    return data;
 }
 
 void wireProcessLoginErrorImpl(const std::string_view error)
@@ -124,29 +148,6 @@ void TGameserverGameSession::wireProcessDeath()
     setSceneFrozen(true);
 }
 
-void TGameserverGameSession::wireProcessPing()
-{
-    tibia::game::notify("onPing");
-    if (TGameSessionState& hub = gameSessionState(); hub.m_gameConnection)
-        tibia::protocol::gameclient::sendPingBack();
-}
-
-void TGameserverGameSession::wireProcessPingBack()
-{
-    TGameSessionState& hub = gameSessionState();
-    ++hub.m_pingReceived;
-
-    if (hub.m_pingReceived == hub.m_pingSent) {
-        const int64_t oldPing = hub.m_ping;
-        hub.m_ping = hub.m_pingTimer.elapsed();
-        if (oldPing != hub.m_ping)
-            tibia::game::notify("onPingBack", hub.m_ping);
-    }
-
-    const int pingDelay = hub.m_pingDelay;
-    hub.m_pingEvent = tibia::schedule::after([] { gameSessionState().ping(); }, pingDelay);
-}
-
 namespace {
 
 template<typename F>
@@ -183,12 +184,6 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
             return;
         Q_EMIT disconnected();
     });
-    connect(TGameNotify::instance(), &TGameNotify::connectionFailing, this, [this](bool failing) {
-        if (failing)
-            Q_EMIT pingTimeout();
-        else
-            Q_EMIT pingTimeoutRecovered();
-    });
     m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
 }
 
@@ -207,8 +202,10 @@ TGameserverGameSession::~TGameserverGameSession()
     }
     // Released from the event loop: the session can end inside one of their signals.
     QTimer::singleShot(0, [dualConnection = std::move(m_dualConnection),
+                           loginProcessController = std::move(m_gameserverLoginProcessController),
                            sequenceFlowProcessor = std::move(m_sequenceFlowProcessor),
-                           loginProtocolMessageHandler = std::move(m_loginProtocolMessageHandler)] {});
+                           loginProtocolMessageHandler = std::move(m_loginProtocolMessageHandler),
+                           networkQualityProtocolMessageHandler = std::move(m_networkQualityProtocolMessageHandler)] {});
 }
 
 void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
@@ -223,7 +220,9 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createSoundProviders();
     createGameActionProvidersAndHandlers();
     createNetworkStack();
-    m_loginData = gameserverMetaInfo->loginData;
+    m_loginData = gameserverLoginRequestData(gameserverMetaInfo->loginData);
+    m_recordTo = gameserverMetaInfo->loginData.recordTo;
+    createSessionControllers();
     // CIP: the session records its last server messages (kept 10 to 20 seconds)
     // and hands them to the crash handler as the report's session dump.
     m_sessiondumpRecorder = std::make_shared<sessiondump::TClientSessiondumpRecorder>(SessiondumpKeepSeconds);
@@ -245,6 +244,7 @@ void TGameserverGameSession::createProtocolMessageHandlers()
     // Host: qtclient has no Epic Games Store distribution.
     m_loginProtocolMessageHandler =
         std::make_shared<authentication::TLoginProtocolMessageHandler>(m_authenticationAndEncryptionInfo, false);
+    m_networkQualityProtocolMessageHandler = std::make_shared<network::TNetworkQualityProtocolMessageHandler>(clockService());
     using authentication::TLoginProtocolMessageHandler;
     TLoginProtocolMessageHandler* login = m_loginProtocolMessageHandler.get();
     // The login's outcome is the session's.
@@ -268,6 +268,7 @@ void TGameserverGameSession::createNetworkStack()
     m_serverMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
     m_compressionHelper = std::make_shared<shared::TCompressionHelper>();
     m_sequenceFlowProcessor = std::make_shared<TGameserverNetworkPacketSequenceFlowProcessor>();
+    m_clientMessageProcessor = std::make_shared<protocol::TProtocolClientMessageProcessor>();
     m_rawDataProcessor = std::make_shared<network::TGameserverNetworkPacketRawDataProcessor>(
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);
 
@@ -281,6 +282,8 @@ void TGameserverGameSession::createNetworkStack()
             &TGameserverNetworkPacketSequenceFlowProcessor::onConnectionsUsedChanged);
     connect(queue, &protocol::TProtocolMessageQueue::receivedMessage, sequenceFlowProcessor,
             &TGameserverNetworkPacketSequenceFlowProcessor::handleAnyMessage);
+    connect(sequenceFlowProcessor, &TGameserverNetworkPacketSequenceFlowProcessor::sendConnectionPing,
+            m_networkQualityProtocolMessageHandler.get(), &network::TNetworkQualityProtocolMessageHandler::sendConnectionPingBack);
     m_connectionManager.add(connect(sequenceFlowProcessor, &TGameserverNetworkPacketSequenceFlowProcessor::packetReady, this,
                                     &TGameserverGameSession::onPacketReady));
     // The queue's encoded client messages become packets for the connections.
@@ -309,6 +312,12 @@ void TGameserverGameSession::createNetworkStack()
             });
 }
 
+void TGameserverGameSession::createSessionControllers()
+{
+    m_gameserverLoginProcessController = std::make_shared<authentication::TGameserverLoginProcessController>(
+        m_dualConnection, m_authenticationAndEncryptionInfo, std::make_shared<shared::THashHelper>());
+}
+
 void TGameserverGameSession::connectProtocolMessageHandlers()
 {
     using Queue = protocol::TProtocolMessageQueue;
@@ -332,6 +341,21 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
                  &TLoginProtocolMessageHandler::handleReadyForSecondaryConnectionMessage));
     link(connect(login, &TLoginProtocolMessageHandler::sendLoginMessage, queue, &Queue::sendLogin));
     link(connect(login, &TLoginProtocolMessageHandler::sendSecondaryLoginMessage, queue, &Queue::sendSecondaryLogin));
+    using network::TNetworkQualityProtocolMessageHandler;
+    TNetworkQualityProtocolMessageHandler* networkQuality = m_networkQualityProtocolMessageHandler.get();
+    link(connect(queue, &Queue::receivedMessage, networkQuality, &TNetworkQualityProtocolMessageHandler::handleAnyMessage));
+    link(connect(queue, &Queue::receivedPingMessage, networkQuality, &TNetworkQualityProtocolMessageHandler::handlePingMessage));
+    link(connect(queue, &Queue::receivedPingBackMessage, networkQuality,
+                 &TNetworkQualityProtocolMessageHandler::handlePingBackMessage));
+    link(connect(queue, &Queue::receivedLoginSuccessMessage, networkQuality, &TNetworkQualityProtocolMessageHandler::reset));
+    link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::sendConnectionPingBackMessage, queue,
+                 &Queue::sendConnectionPingBack));
+    link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::sendPingBackMessage, queue, &Queue::sendPingBack));
+    link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::sendPingMessage, queue, &Queue::sendPing));
+    link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::pingTimeoutOccurred, this,
+                 &TGameserverGameSession::pingTimeout));
+    link(connect(networkQuality, &TNetworkQualityProtocolMessageHandler::pingTimeoutRecovered, this,
+                 &TGameserverGameSession::pingTimeoutRecovered));
 
     TGameProtocolMessageHandler* game = gameProtocolMessageHandler().get();
     link(connect(game, &TGameProtocolMessageHandler::sendEnterWorldMessage, queue, &Queue::sendEnterWorld));
@@ -432,16 +456,14 @@ void TGameserverGameSession::startSession()
 
 void TGameserverGameSession::connectToGameserver()
 {
-    // CIP hands the login data to its game server login process controller.
-    // Host: the controller's steps run here: the classic session state starts
-    // the login, the authentication info gets the login's keys, and the dual
-    // connection connects to the world's game server.
-    const GameserverCredentials& c = m_loginData;
+    // Host: the classic session state starts the login with a view of this
+    // session's connection (it records the frames and drops them in a replay).
     const auto sessionNetwork = network::TGameserverSessionNetwork::create();
     sessionNetwork->setFrameWriter([this](const QByteArray& frame) { sendClientFrame(frame); });
     sessionNetwork->setDisconnector([this] { closeConnection(); });
     try {
-        gameSessionState().loginWorld(c.worldName.toStdString(), c.characterName.toStdString(), sessionNetwork);
+        gameSessionState().loginWorld(m_loginData.worldName.toStdString(), m_loginData.characterName.toStdString(),
+                                      sessionNetwork);
     } catch (const std::exception& e) {
         sessionNetwork->setFrameWriter({});
         sessionNetwork->setDisconnector({});
@@ -449,25 +471,14 @@ void TGameserverGameSession::connectToGameserver()
         return;
     }
     m_sessionNetwork = sessionNetwork;
-    sessionNetwork->startRecording(c.recordTo.toStdString());
-    m_authenticationAndEncryptionInfo->setSessionKey(c.sessionKey);
-    m_authenticationAndEncryptionInfo->setCharacterName(c.characterName);
-    m_authenticationAndEncryptionInfo->setAssetsIdentifier(QString::fromStdString(tibia::game::assetIdentifier()));
+    sessionNetwork->startRecording(m_recordTo.toStdString());
     // A pack that listens for extended opcodes asks for the product transport
     // in the login's RSA padding; the CIP client leaves the padding zero.
     if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
         m_loginProtocolMessageHandler->setProductTransport("ExtendedOpcodes");
 
-    QUrl primaryUrl;
-    primaryUrl.setScheme(QStringLiteral("tcp"));
-    primaryUrl.setHost(c.host);
-    primaryUrl.setPort(c.port);
-    // Crystal serves the secondary connection on the same game port; the
-    // fragment keeps the two URLs apart.
-    QUrl secondaryUrl = primaryUrl;
-    secondaryUrl.setFragment(QStringLiteral("secondary"));
-    auto urlInfo = std::make_shared<network::TDualConnectionUrlInfo>(primaryUrl, secondaryUrl);
-    m_dualConnection->connectToGameserver(urlInfo, c.worldName);
+    gameserverLoginProcessController()->login(m_loginData);
+    // Host: the network tick (CipSoft's game client processes the network every frame).
     m_networkTick.start();
 }
 
@@ -499,11 +510,19 @@ void TGameserverGameSession::processNetwork()
     const auto dualConnection = m_dualConnection;
     dualConnection->processAvailablePackets();
     dualConnection->checkForStateChange();
+    if (m_loginProtocolMessageHandler && m_loginProtocolMessageHandler->isLoggedIn())
+        m_networkQualityProtocolMessageHandler->update();
 }
 
 network::EConnectionsUsed TGameserverGameSession::connectionsUsed() const
 {
     return m_dualConnection ? m_dualConnection->connectionsUsed() : network::EConnectionsUsed::None;
+}
+
+network::TNetworkLatency TGameserverGameSession::latency() const
+{
+    return m_networkQualityProtocolMessageHandler ? m_networkQualityProtocolMessageHandler->latency()
+                                                  : network::TNetworkLatency{};
 }
 
 void TGameserverGameSession::onGameReadyForSecondaryConnection()
@@ -530,15 +549,23 @@ void TGameserverGameSession::sendClientFrame(const QByteArray& frame)
     if (frame.isEmpty() || !m_dualConnection || m_dualConnection->connectionsUsed() == network::EConnectionsUsed::None)
         return;
     using network::TGameserverNetworkPacket;
-    const auto opcode = static_cast<uint8_t>(frame.at(0));
-    // CIP TProtocolClientMessageProcessor: the login messages are RSA packets,
-    // every other message an XTEA packet for all connections; a connection
-    // ping back answers one connection (qtclient's answers the primary one).
+    // The client message processor makes the packet of the queue's message
+    // (login: RSA; a connection ping back: XTEA to the connection it answers;
+    // else XTEA to all connections).
+    const protocol::TProtocolMessageQueue* queue = protocolMessageQueue().get();
+    const ::tibia::protobuf::protocol::GameclientMessage* message = queue ? queue->clientMessageBeingSent() : nullptr;
     TGameserverNetworkPacket packet(TGameserverNetworkPacket::Gameclient, frame);
-    packet.setEncryptionType(opcode == LoginOpcode || opcode == SecondaryLoginOpcode ? TGameserverNetworkPacket::LoginRsa
-                                                                                     : TGameserverNetworkPacket::Xtea);
-    packet.setConnectionsUsed(opcode == ConnectionPingBackOpcode ? network::EConnectionsUsed::Primary
-                                                                 : network::EConnectionsUsed::PrimaryAndSecondary);
+    if (message && m_clientMessageProcessor) {
+        packet = m_clientMessageProcessor->processClientMessage(*message, frame);
+    } else {
+        // Host: frames without a queue message (the product transport, frames
+        // sent before the queue exists) keep the rule by opcode.
+        const auto opcode = static_cast<uint8_t>(frame.at(0));
+        packet.setEncryptionType(opcode == LoginOpcode || opcode == SecondaryLoginOpcode ? TGameserverNetworkPacket::LoginRsa
+                                                                                         : TGameserverNetworkPacket::Xtea);
+        packet.setConnectionsUsed(opcode == ConnectionPingBackOpcode ? network::EConnectionsUsed::Primary
+                                                                     : network::EConnectionsUsed::PrimaryAndSecondary);
+    }
     m_rawDataProcessor->encodePacket(packet);
     m_dualConnection->preparePacket(packet);
     m_dualConnection->sendPacket(packet);

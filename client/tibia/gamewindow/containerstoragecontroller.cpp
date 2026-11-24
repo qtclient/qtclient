@@ -50,13 +50,6 @@ void TContainerStorageController::setLootScheme(const int lootScheme)
         controller->setLootScheme(lootScheme);
 }
 
-void TContainerStorageController::setSidebarOptions(config::TSidebarOptions* options)
-{
-    m_options = options;
-    for (const auto& [id, controller] : m_containerControllers)
-        controller->setSidebarOptions(options);
-}
-
 void TContainerStorageController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     if (!pGameAction)
@@ -150,11 +143,10 @@ TContainerController* TContainerStorageController::createContainerController(con
                                                 m_gameWindowItem, m_engine, this);
     m_containerControllers[containerId] = controller;
     updateContainerController(containerId, isNewContainer);
-    // CIP connects the controller to the session; here the session's input
-    // schemes and the character's options are the host's.
+    // CIP connects the controller to the session; the input schemes are the host's.
+    controller->connectToGameSession(m_gameSession);
     controller->setControlScheme(m_controlScheme);
     controller->setLootScheme(m_lootScheme);
-    controller->setSidebarOptions(m_options);
     connect(controller, &TContainerController::publishGameAction, this, &TContainerStorageController::publishGameAction);
     return controller;
 }

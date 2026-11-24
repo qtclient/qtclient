@@ -15,7 +15,6 @@
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "sprites/spritesheetdecompressor.h"
 #include "sprites/spritesystem.h"
-#include "minimap/minimapmanager.h"
 #include "minimap/minimapmarkerstorage.h"
 #include "minimap/minimaptile.h"
 #include "minimap/minimaptilestorage.h"

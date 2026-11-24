@@ -19,6 +19,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "config/clientoptiondefaults.h"
 #include "minimap/waypointcosts.h"
 #include <tibia/game/mapsession.h>
@@ -93,26 +94,6 @@ void TGameSessionState::terminate()
 
 namespace {
 
-struct TMovementOptions
-{
-    bool alwaysTurnTowardsMoveDirection = false;
-    bool autoChaseEnabled = false;
-    int keyboardDelayMs = 250;
-
-    void load()
-    {
-        const QJsonObject options = tibia::app::ClientOptions::load().options();
-        const QJsonObject& defaults = tibia::config::defaultClientOptions();
-        const auto value = [&](const char* name) {
-            const QLatin1String key(name);
-            return options.contains(key) ? options.value(key) : defaults.value(key);
-        };
-        alwaysTurnTowardsMoveDirection = value("alwaysTurnTowardsMoveDirection").toBool();
-        autoChaseEnabled = value("autoChaseEnabled").toBool();
-        keyboardDelayMs = value("keyboardDelayUseDefault").toBool(true) ? 250 : value("keyboardDelayMs").toInt(250);
-    }
-};
-
 /// A field the planner avoids: not free (blocked or unsure) or marked avoid.
 bool isAvoidedField(tibia::worldmap::TWorldMapField& field)
 {
@@ -171,42 +152,14 @@ void TGameSessionState::createMovementIntent()
     m_movementIntent.reset();
     if (!m_playerPresent)
         return;
-    auto options = std::make_shared<TMovementOptions>();
-    options->load();
+    TGameSessionBase* session = currentGameSession();
+    if (!session)
+        return;
     TPlayerMovementIntentHandler::Environment env;
-    env.now = [] { return static_cast<qint64>(tibia::shared::TClockService::frameMillis()); };
-    env.map = [] { return tibia::worldmap::TWorldMapStorage::ensureStorage(); };
     env.waypointCost = snapshotWaypointCost;
     env.blockedFields = avoidedFieldsInView;
-    env.alwaysTurnTowardsMoveDirection = [options] { return options->alwaysTurnTowardsMoveDirection; };
-    env.keyboardDelayMs = [options] { return options->keyboardDelayMs; };
-    env.stopChaseAndFollow = [this, options] {
-        // Walking while attacking turns chasing off (unless auto chase is on):
-        // the player's tactics go out again with chase cleared.
-        const TPlayerData* playerData = currentPlayerData();
-        if (!options->autoChaseEnabled && isAttacking() && playerData && playerData->chaseOpponents())
-            Q_EMIT m_movementIntent->publishGameAction(std::make_shared<tibia::input::TGameActionSetTactics>(
-                tibia::input::TGameActionSetTactics::TTactics{ false, playerData->secureMode(), playerData->pvpMode() }));
-        if (isFollowing()) {
-            Q_EMIT m_movementIntent->publishGameAction(
-                std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
-            Q_EMIT m_movementIntent->publishGameAction(
-                std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_ATTACKING_CREATURE, 0));
-        }
-    };
-    env.stopFollowing = [this] {
-        Q_EMIT m_movementIntent->publishGameAction(
-            std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
-    };
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
-    };
-    env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
-    if (TGameSessionBase* session = currentGameSession(); session && session->metaInfo())
-        env.configuration = session->metaInfo()->playerMovementIntentHandlerConfiguration;
-    env.textStorage = []() -> tibia::chat::TTextStorage* {
-        TGameSessionBase* session = currentGameSession();
-        return session ? session->textStorage().get() : nullptr;
     };
     env.claimUnreachable = [](const tibia::worldmap::TWorldMapCoordinate& goal, const int result) {
         int reason = 0;
@@ -219,7 +172,11 @@ void TGameSessionState::createMovementIntent()
         }
         return tibia::mods::claimWalkUnreachable(goal.x, goal.y, goal.z, reason);
     };
-    m_movementIntent = std::make_shared<TPlayerMovementIntentHandler>(std::move(env));
+    m_movementIntent = std::make_shared<TPlayerMovementIntentHandler>(
+        session->metaInfo() ? session->metaInfo()->playerMovementIntentHandlerConfiguration : nullptr,
+        tibia::config::TClientOptions::instance(), session->clockService(), session->worldMapStorage(),
+        session->textStorage(), session->creatureStorage(), session->creatureMovementSpeedCalculator(),
+        session->playerData(), std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
     // CIP: the session hands the player's creature to the intent handler, now or
     // when it joins the creature storage.
@@ -241,12 +198,6 @@ void TGameSessionState::createMovementIntent()
     if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
         QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
                          &TInternalGameActionRouter::handleGameActionInternal);
-    QObject::connect(tibia::app::ClientOptionsNotifier::instance(), &tibia::app::ClientOptionsNotifier::optionChanged, intent,
-                     [options](const QString& name) {
-                         if (name.startsWith(QLatin1String("keyboardDelay")) || name == QLatin1String("alwaysTurnTowardsMoveDirection")
-                             || name == QLatin1String("autoChaseEnabled"))
-                             options->load();
-                     });
     // CIP (live session only): the intent handler's sends go to the session's
     // player protocol message handler, which hands its snap backs and stops to
     // the intent handler; its messages reach the session's queue.
@@ -261,7 +212,6 @@ void TGameSessionState::resetGameStates()
     m_sceneFrozen = false;
     m_serverBeat = 50;
     m_seq = 0;
-    m_ping = -1;
     m_mapUpdatedAt = 0;
     m_mapUpdateTimer = { true, tibia::shared::TFrameStopWatch{} };
     setCanReportBugs(false);
@@ -278,14 +228,6 @@ void TGameSessionState::resetGameStates()
     m_playerPresent = false;
     if (TGameSessionBase* session = currentGameSession())
         session->objectCountStorage()->clear();
-    m_pingSent = 0;
-    m_pingReceived = 0;
-
-    if (m_pingEvent) {
-        m_pingEvent->cancel();
-        m_pingEvent = nullptr;
-    }
-
     if (m_checkConnectionEvent) {
         m_checkConnectionEvent->cancel();
         m_checkConnectionEvent = nullptr;
@@ -354,11 +296,6 @@ void TGameSessionState::processGameStart()
     m_online = true;
     tibia::host::app().resetTargetFps();
 
-    // An in-flight ping (kept across alt switch) reschedules the loop from processPingBack.
-    if (m_pingSent == m_pingReceived) {
-        m_pingEvent = tibia::schedule::after([this] { ping(); }, m_pingDelay);
-    }
-
     m_checkConnectionEvent = tibia::schedule::every([this] {
         if (!isConnectionOk() && !m_connectionFailWarned) {
             tibia::game::notify("onConnectionFailing", true);
@@ -388,12 +325,7 @@ void TGameSessionState::processCharacterSwitch(const std::string_view characterN
     m_switchingCharacter = true;
     endSession();
 
-    // Same socket: a ping sent before the switch still gets its reply, so keep the counters paired.
-    const auto pingSent = m_pingSent;
-    const auto pingReceived = m_pingReceived;
     resetGameStates();
-    m_pingSent = pingSent;
-    m_pingReceived = pingReceived;
     tibia::game::cleanMapDynamicThings();
 
     beginPlayerSession(characterName);
@@ -920,19 +852,6 @@ void TGameSessionState::changeOutfitAndMount(const Outfit& outfit, const bool mo
 
 
 
-
-void TGameSessionState::ping()
-{
-    if (!m_gameConnection || !m_gameConnection->isConnected())
-        return;
-
-    if (m_pingReceived != m_pingSent)
-        return;
-
-    gameclient::sendPing();
-    ++m_pingSent;
-    m_pingTimer.restart();
-}
 
 bool TGameSessionState::isAttacking()
 {

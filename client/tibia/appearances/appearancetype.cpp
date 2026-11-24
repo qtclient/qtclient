@@ -334,7 +334,7 @@ TAppearanceType TAppearanceType::fromProtobuf(const EAppearanceCategory category
     if (flags.has_upgradeclassification())
         type.m_upgradeClassification = static_cast<uint8_t>(flags.upgradeclassification().upgrade_classification());
 
-    type.updateDerivedSize();
+    type.completeFrameGroups();
     return type;
 }
 
@@ -424,6 +424,23 @@ const TAppearanceTypeSpriteInfo& TAppearanceType::frameGroup(const EFixedFrameGr
 void TAppearanceType::addFrameGroup(const EFixedFrameGroup group, TAppearanceTypeSpriteInfo info)
 {
     m_frameGroups[group] = std::move(info);
+    updateDerivedSize();
+}
+
+void TAppearanceType::completeFrameGroups()
+{
+    if (m_frameGroups.empty())
+        m_frameGroups[EFixedFrameGroup::ObjectInitial] = TAppearanceTypeSpriteInfo();
+    if (m_category == EAppearanceCategory::Outfit) {
+        if (!m_frameGroups.contains(EFixedFrameGroup::OutfitIdle)) {
+            const TAppearanceTypeSpriteInfo moving = m_frameGroups[EFixedFrameGroup::OutfitMoving];
+            m_frameGroups[EFixedFrameGroup::OutfitIdle] = moving;
+        }
+        if (!m_frameGroups.contains(EFixedFrameGroup::OutfitMoving)) {
+            const TAppearanceTypeSpriteInfo idle = m_frameGroups[EFixedFrameGroup::OutfitIdle];
+            m_frameGroups[EFixedFrameGroup::OutfitMoving] = idle;
+        }
+    }
     updateDerivedSize();
 }
 

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -33,16 +32,23 @@ class TWeeklyTasksController;
 class TTaskboardShopController;
 
 /// TaskboardDialog.qml (CIP: TTaskboardDialogController). Opens from the
-/// OPEN_TASKBOARD_DIALOG action (bounty or weekly tab) and fills tabs from
-/// the task board storages.
+/// OPEN_TASKBOARD_DIALOG action (bounty or weekly tab); its bounty, weekly
+/// and shop tabs follow the session themselves.
 class TTaskboardDialogController final : public TDialogController<cip::tibia::gamewindow::TTaskboardDialogController>
 {
     Q_OBJECT
 public:
-    explicit TTaskboardDialogController(QObject* parent = nullptr);
+    /// CipSoft also passes the game window's mouse mapper and clock on to the
+    /// weekly tab; qtclient's weekly tab follows the control scheme itself.
+    TTaskboardDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem);
     ~TTaskboardDialogController() override;
 
-    /// The session's task board currencies.
+    QObject* bountyTaskController() const override;
+    QObject* weeklyTaskController() const override;
+    QObject* rewardShopController() const override;
+    DialogTab dialogTab() const override { return m_dialogTab; }
+    /// The session's task board currencies in English number format; "0"
+    /// without a session.
     QString bountyPointsString() const override;
     QString preyHuntingTaskTokensString() const override;
     QString soulSealsString() const override;
@@ -58,10 +64,8 @@ public Q_SLOTS:
 
 private:
     void switchToTab(DialogTab tab);
-    /// Host: the tabs are not ported with their own session connectors; the
-    /// dialog feeds them from the session's task board storages.
+    /// The bounty, weekly and shop tabs take the session.
     void connectTabsToGameSession();
-    void refreshFromResourceBalance();
 
     TBountyTasksController* m_bounty = nullptr;
     TWeeklyTasksController* m_weekly = nullptr;
@@ -69,21 +73,10 @@ private:
     TMessageDialogController* m_notOnMain = nullptr;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
-    /// True while TaskboardDialog.qml (and nested tab Loaders) are being created.
-    /// Resource-balance slots must not emit into incubating QML — that corrupts the heap.
-    bool m_dialogCreating = false;
-    bool m_pendingResourceRefresh = false;
 
 public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
+    /// The router's game actions: OPEN_TASKBOARD_DIALOG opens its tab.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 };
 
 }

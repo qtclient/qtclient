@@ -20,8 +20,19 @@
 namespace tibia::chat {
 class TTextStorage;
 }
+namespace tibia::config {
+class TClientOptions;
+}
 namespace tibia::creatures {
 class TCreature;
+class TCreatureMovementSpeedCalculator;
+class TCreatureStorage;
+}
+namespace tibia::game {
+class TPlayerData;
+}
+namespace tibia::shared {
+class IClockService;
 }
 namespace tibia::worldmap {
 class TWorldMapStorage;
@@ -44,35 +55,35 @@ class TPlayerMovementIntentHandler final : public cip::tibia::input::TPlayerMove
 {
     Q_OBJECT
 public:
+    /// Host inputs qtclient computes outside the session's objects.
     struct Environment
     {
-        std::function<qint64()> now;
-        std::function<worldmap::TWorldMapStorage*()> map;
         /// Waypoint costs for one plan.
         std::function<WaypointCost()> waypointCost;
         /// Fields other creatures block.
         std::function<std::vector<worldmap::TWorldMapCoordinate>()> blockedFields;
-        std::function<bool()> alwaysTurnTowardsMoveDirection;
-        /// Delay before a held direction repeats (the keyboard delay option).
-        std::function<int()> keyboardDelayMs;
-        /// Before a path is sent: chase off unless auto-chase is on, and stop
-        /// following and attacking while following.
-        std::function<void()> stopChaseAndFollow;
-        std::function<void()> stopFollowing;
+        /// Whether the client is aware of the field (the world map session state).
         std::function<bool(const worldmap::TWorldMapCoordinate&)> isInView;
-        /// The session's text storage: the status line shows why a walk failed.
-        std::function<chat::TTextStorage*()> textStorage;
         /// qtclient pack extension, not CipSoft: a map target (no entering an unwalkable goal)
         /// the planner refuses may be taken over (planner result; true: no failure message).
         std::function<bool(const worldmap::TWorldMapCoordinate&, int result)> claimUnreachable;
-        /// The local player's state bits (bit 19 rooted, bit 20 feared).
-        std::function<quint64()> playerStates;
-        /// How early the next step goes out (the session meta info's
-        /// configuration; none: the defaults).
-        std::shared_ptr<const game::TPlayerMovementIntentHandlerConfiguration> configuration;
     };
 
-    explicit TPlayerMovementIntentHandler(Environment environment, QObject* parent = nullptr);
+    /// The session's objects the handler works with: the movement
+    /// configuration (how early the next step goes out; none: the defaults), the
+    /// client options (auto chase, turning, keyboard delay), the clock, the world
+    /// map, the text storage (the status line), the creature storage (attack and
+    /// follow targets), the movement speed calculator and the player data (the
+    /// player's state bits and tactics).
+    TPlayerMovementIntentHandler(std::shared_ptr<const game::TPlayerMovementIntentHandlerConfiguration> pConfiguration,
+                                 config::TClientOptions* pClientOptions,
+                                 std::shared_ptr<shared::IClockService> pClockService,
+                                 std::shared_ptr<worldmap::TWorldMapStorage> pWorldMapStorage,
+                                 std::shared_ptr<chat::TTextStorage> pTextStorage,
+                                 std::shared_ptr<creatures::TCreatureStorage> pCreatureStorage,
+                                 std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> pCreatureMovementSpeedCalculator,
+                                 std::shared_ptr<game::TPlayerData> pPlayerData, Environment environment,
+                                 QObject* parent = nullptr);
 
     /// CIP v16: the player's new movement intent. A target coordinate plans a
     /// path there; a direction is held: it steps now and repeats until another
@@ -124,6 +135,11 @@ private:
     /// The steps of the planned path.
     int pathLength() const { return static_cast<int>(m_path.size()); }
     void sendPath();
+    /// Before a path goes out: unless auto chase is on, attacking with chase on
+    /// sends the tactics again with chase off; following stops following and
+    /// attacking.
+    void applyAutoChaseBeforeWalking();
+    qint64 now() const;
     void sendStep(creatures::EMovementDirection direction);
     void sendRotate(creatures::ECreatureLookDirection direction);
     /// The status line shows `text` in the overlay colour of message mode 21.
@@ -139,6 +155,15 @@ private:
     void noteIntent(TMovementIntentKind kind);
     static creatures::EMovementDirection directionOfLook(creatures::ECreatureLookDirection look);
 
+    /// +0x10..+0xa0: the session's objects.
+    std::shared_ptr<const game::TPlayerMovementIntentHandlerConfiguration> m_pConfiguration;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<shared::IClockService> m_pClockService;
+    std::shared_ptr<worldmap::TWorldMapStorage> m_pWorldMapStorage;
+    std::shared_ptr<chat::TTextStorage> m_pTextStorage;
+    std::shared_ptr<creatures::TCreatureStorage> m_pCreatureStorage;
+    std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_pCreatureMovementSpeedCalculator;
+    std::shared_ptr<game::TPlayerData> m_pPlayerData;
     Environment m_env;
     /// +0x90: the player's creature (setPlayer).
     std::shared_ptr<creatures::TCreature> m_player;

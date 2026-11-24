@@ -1,7 +1,7 @@
 #include "playermovementinputinterpreter.h"
 
-#include "app/clientoptions.h"
-#include "config/clientoptiondefaults.h"
+#include "chat/chatmodemanager.h"
+#include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -29,28 +29,25 @@ const std::unordered_map<QString, tibia::client::Direction>& goActions()
     return actions;
 }
 
-bool boolOption(const QJsonObject& options, const char* name)
-{
-    const QLatin1String key(name);
-    return options.value(key).toBool(config::defaultClientOptions().value(key).toBool());
-}
-
 }
 
 TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(std::shared_ptr<TKeyboardStatusStorage> pKeyboardStatusStorage,
-                                                                 std::function<int()> chatMode, QObject* parent)
+                                                                 config::TClientOptions* pClientOptions,
+                                                                 chat::TChatModeManager* pChatModeManager, QObject* parent)
     : cip::tibia::input::TPlayerMovementInputInterpreter(parent)
     , m_pKeyboardStatusStorage(std::move(pKeyboardStatusStorage))
-    , m_chatMode(std::move(chatMode))
+    , m_pClientOptions(pClientOptions)
+    , m_pChatModeManager(pChatModeManager)
 {
-    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    connect(hotkeys, &config::THotkeyOptions::mappingsChanged, this, &TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
-    connect(hotkeys, &config::THotkeyOptions::keysChanged, this, &TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name.startsWith(QLatin1String("rotateWith")))
-            onOptionsChanged();
-    });
-    onOptionsChanged();
+    if (!m_pClientOptions || !m_pChatModeManager)
+        return;
+    connect(m_pClientOptions, &config::TClientOptions::hotkeyOptionsChanged, this,
+            &TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
+    connect(m_pClientOptions, &config::TClientOptions::rotateKeyOptionsChanged, this,
+            &TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
+    connect(m_pChatModeManager, &chat::TChatModeManager::chatModeChanged, this,
+            &TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
+    onHotkeyOptionsChanged();
 }
 
 TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter() = default;
@@ -72,7 +69,7 @@ void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
         { tibia::client::SouthWest, { Qt::Key_End, true } },
         { tibia::client::SouthEast, { Qt::Key_PageDown, true } },
     } };
-    const config::THotkeySet& set = config::THotkeyOptions::instance()->currentSet();
+    const config::THotkeySet set = m_pClientOptions->currentHotkeySet();
     for (size_t mode = 0; mode < m_directions.size(); ++mode) {
         TDirectionKeys& directions = m_directions[mode];
         for (auto& keys : directions)
@@ -89,6 +86,9 @@ void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
             directions[it->second].push_back({ combined & 0x1ffffff, (combined & Qt::KeypadModifier) != 0 });
         }
     }
+    m_rotateWithCtrl = m_pClientOptions->boolOption(config::EClientOption::rotateWithCtrl);
+    m_rotateWithShift = m_pClientOptions->boolOption(config::EClientOption::rotateWithShift);
+    m_rotateWithAlt = m_pClientOptions->boolOption(config::EClientOption::rotateWithAlt);
     // The status tracks every direction key of the chat mode, then the enabled
     // rotate modifiers.
     std::vector<TKey> tracked;
@@ -101,15 +101,6 @@ void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
     if (m_rotateWithAlt)
         tracked.push_back({ Qt::Key_Alt, false });
     m_pKeyboardStatusStorage->setTrackedKeys(tracked);
-}
-
-void TPlayerMovementInputInterpreter::onOptionsChanged()
-{
-    const QJsonObject options = app::ClientOptions::load().options();
-    m_rotateWithCtrl = boolOption(options, "rotateWithCtrl");
-    m_rotateWithShift = boolOption(options, "rotateWithShift");
-    m_rotateWithAlt = boolOption(options, "rotateWithAlt");
-    onHotkeyOptionsChanged();
 }
 
 bool TPlayerMovementInputInterpreter::rotates() const
@@ -130,7 +121,7 @@ bool TPlayerMovementInputInterpreter::rotates() const
 
 const TPlayerMovementInputInterpreter::TDirectionKeys& TPlayerMovementInputInterpreter::currentDirections() const
 {
-    return m_directions[m_chatMode && m_chatMode() != 0 ? 1 : 0];
+    return m_directions[m_pChatModeManager && m_pChatModeManager->chatMode() != 0 ? 1 : 0];
 }
 
 bool TPlayerMovementInputInterpreter::statusHolds(const int key) const

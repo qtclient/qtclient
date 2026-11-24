@@ -55,11 +55,6 @@ public:
                                  const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier);
 };
 
-class TProtocolClientMessageProcessor final : public ::tibia::CipTyped {
-public:
-    TProtocolClientMessageProcessor() = default;
-};
-
 /// CIP `protocol::TProtocolReader` (pin layout size 0x18).
 class TProtocolReader final : public ::tibia::CipTyped {
 public:

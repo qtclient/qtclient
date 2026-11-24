@@ -191,11 +191,10 @@ TOutfitPresetsModel::TOutfitPresetsModel(QObject* parent)
     connect(this, &QAbstractItemModel::rowsRemoved, this, &TOutfitPresetsModel::rowCountChanged);
 }
 
-void TOutfitPresetsModel::setPresets(QList<QJsonObject> presets, QList<bool> owned)
+void TOutfitPresetsModel::setPresets(QList<QJsonObject> presets)
 {
     beginResetModel();
     m_presets = std::move(presets);
-    m_owned = std::move(owned);
     m_count = m_presets.size();
     endResetModel();
     Q_EMIT rowCountChanged();
@@ -217,7 +216,7 @@ QVariant TOutfitPresetsModel::data(const QModelIndex& index, const int role) con
         return {};
     switch (role) {
         case JsonDataRole: return m_presets[index.row()];
-        case EverythingOwnedRole: return m_owned.value(index.row());
+        case EverythingOwnedRole: return m_presets[index.row()].value(QStringLiteral("everythingOwned")).toBool();
         default: return {};
     }
 }
@@ -444,7 +443,6 @@ void TSelectOutfitDialogController::onControllerFinished()
 void TSelectOutfitDialogController::onCharacterPresetsChanged()
 {
     QList<QJsonObject> presets;
-    QList<bool> owned;
     TOutfitPresetQmlType preset;
     const QJsonArray* list = presetList();
     const auto isOwned = [this](const int id) { return id == 0 || m_ownedIds.contains(static_cast<uint16_t>(id)); };
@@ -457,9 +455,8 @@ void TSelectOutfitDialogController::onCharacterPresetsChanged()
             json.insert(QStringLiteral("everythingOwned"), everythingOwned);
         }
         presets.append(json);
-        owned.append(everythingOwned);
     }
-    m_presets.setPresets(std::move(presets), std::move(owned));
+    m_presets.setPresets(std::move(presets));
 }
 
 /// Sends what the data's mode configures, then closes: a show-off socket

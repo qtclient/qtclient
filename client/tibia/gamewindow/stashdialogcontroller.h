@@ -19,8 +19,18 @@
 #include <set>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia::game {
 class IGameSession;
+class TTraderStorage;
+}
+namespace tibia::appearances {
+class TAppearancesManager;
+}
+namespace tibia::config {
+class TClientOptions;
 }
 
 namespace tibia {
@@ -30,7 +40,6 @@ class TStashStorage;
 }
 namespace gamewindow {
 
-class TConfirmMoveObjectToStashDialogController;
 class TMessageDialogController;
 
 /// The stash's name, category and trader filters and its sort order (CIP:
@@ -80,7 +89,12 @@ class TStashDialogController final : public TDialogController<cip::tibia::gamewi
 {
     Q_OBJECT
 public:
-    explicit TStashDialogController(QObject* parent = nullptr);
+    /// CIP: made with the client's mouse mapping, the appearances, the trader
+    /// storage, the client options, the engine and the dialog parent item.
+    TStashDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                           std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                           std::shared_ptr<game::TTraderStorage> TraderStorage, config::TClientOptions* ClientOptions,
+                           QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TStashDialogController() override;
 
     void setNameFilter(const QString& name) override;
@@ -88,8 +102,6 @@ public:
     void setTraderFilterIndex(int index) override;
     void setSortOrder(int order) override;
     int sortOrder() const override { return m_proxy.sortOrder(); }
-    /// The confirmation before an object is moved into the stash.
-    TConfirmMoveObjectToStashDialogController* confirmMoveObjectToStashDialog() const { return m_confirmStow; }
 
 public Q_SLOTS:
     /// CIP .
@@ -125,7 +137,6 @@ private:
     /// CIP TContainerGameActionProvider::v4 for a stash type.
     input::TGameActionList typeActions(uint16_t typeId) const;
     int count(uint16_t typeId) const;
-    void persistSortOrder(int order);
     void applyFilter(const Filter& filter);
     void saveFilter();
     /// The categories of the stored types, "all" first.
@@ -137,6 +148,10 @@ private:
     void handleGameAction(const input::IGameAction& action);
 
     shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
+    std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
+    std::shared_ptr<game::TTraderStorage> m_pTraderStorage;
+    config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<container::TStashStorage> m_stashStorage;
     std::shared_ptr<container::TContainerProtocolMessageHandler> m_containerProtocolMessageHandler;
@@ -146,8 +161,6 @@ private:
     TAppearanceTypeListModel m_model;
     TStashProxyModel m_proxy;
     TMessageDialogController* m_info;
-    TConfirmMoveObjectToStashDialogController* m_confirmStow;
-    input::TGameActionMapper m_mapper;
     bool m_reopenAfterMarket = false;
     bool m_reopenAfterManageLoot = false;
 

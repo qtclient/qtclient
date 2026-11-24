@@ -5,6 +5,7 @@
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -19,6 +20,9 @@
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -46,9 +50,10 @@ public:
     int containerId() const { return m_containerId; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
     void setLootScheme(int lootScheme) { m_mapper.setLootScheme(lootScheme); }
-    /// CIP : restores the widget's size from the character's
-    /// containersOptions and follows them.
-    void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP connector: the session's character sidebar options (their
+    /// containers' options restore the widget's size) and the object counts
+    /// the slots show.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// CIP : the container's state from TContainerStorage; the scroll
     /// view resets when it shows another container (replace-open).
     void update(bool resetScrollView);
@@ -146,6 +151,8 @@ private:
     void setIcon(const container::TInventorySlot& slot);
 
     int m_containerId;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<container::TContainerProtocolMessageHandler> m_messages;
     TAppearanceInstanceListModel m_model;
     input::TGameActionMapper m_mapper;

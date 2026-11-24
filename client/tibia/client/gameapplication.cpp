@@ -14,6 +14,7 @@
 #include "downloadpool.h"
 #include "logging.h"
 #include "qnetworkaccessmanagerwrapper.h"
+#include "shared/dynamicresourceshelper.h"
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QColor>
@@ -55,6 +56,11 @@ TGameApplicationBase::~TGameApplicationBase()
     // Host: the QML engine goes with the application (CipSoft hands it to
     // deleteLater); the protobuf library is shut down.
     google::protobuf::ShutdownProtobufLibrary();
+}
+
+void TGameApplicationBase::registerGraphicsResources()
+{
+    shared::TDynamicResourcesHelper::registerResources({ QStringLiteral("graphics") });
 }
 
 void TGameApplicationBase::setQmlEngine(std::unique_ptr<QQmlEngine> Engine)

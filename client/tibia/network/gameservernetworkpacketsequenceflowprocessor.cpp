@@ -102,7 +102,7 @@ void TGameserverNetworkPacketSequenceFlowProcessor::answerConnectionPings()
         if (messages == m_packetMessages.end())
             break;
         while (packet.answeredPings < messages->second.connectionPings) {
-            Q_EMIT sendConnectionPing(packet.connectionIndex);
+            Q_EMIT sendConnectionPing(static_cast<EConnectionType>(packet.connectionIndex));
             ++packet.answeredPings;
         }
         if (!messages->second.complete)

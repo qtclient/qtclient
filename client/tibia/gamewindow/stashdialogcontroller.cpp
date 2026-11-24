@@ -3,7 +3,7 @@
 #include "platform/platform.h"
 
 #include "analysers/itempricestorage.h"
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "game/gamesessionbase.h"
@@ -39,8 +39,6 @@ constexpr A ContextMenuOrder[] = {
     A::MARKET_BROWSE, A::CONTEXT_MENU_SEPARATOR, A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST,
 };
 
-constexpr auto ControlSchemeOption = "controlSchemeIndex";
-constexpr auto StashSortOrderOption = "stashSortOrder";
 
 QList<TMessageDialogButton*> okButton()
 {
@@ -195,35 +193,31 @@ bool TStashProxyModel::lessThan(const QModelIndex& left, const QModelIndex& righ
     }
 }
 
-TStashDialogController::TStashDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("StashDialog.qml"), parent)
+TStashDialogController::TStashDialogController(std::shared_ptr<input::TGameActionMapper> GameActionMapper,
+                                               std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                                               std::shared_ptr<game::TTraderStorage> TraderStorage,
+                                               config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                               QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("StashDialog.qml"), Engine, DialogParentItem, parent)
+    , m_pGameActionMapper(std::move(GameActionMapper))
+    , m_pAppearancesManager(std::move(AppearancesManager))
+    , m_pTraderStorage(std::move(TraderStorage))
+    , m_pClientOptions(ClientOptions)
     , m_model([this](const uint16_t typeId, uint8_t) { return count(typeId); })
     , m_proxy(&m_model, [this](const uint16_t typeId) { return count(typeId); })
-    , m_info(new TMessageDialogController(this))
-    , m_confirmStow(new TConfirmMoveObjectToStashDialogController(this))
-    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
+    , m_info(new TMessageDialogController(Engine, DialogParentItem, this))
 {
     m_stashModel = &m_proxy;
     m_info->setCloseOnButtonClicked(true);
     setCategories({});
-    setTraders(traderNames());
-
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(ControlSchemeOption))
-            m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
-        onStashOptionsChanged();
-    });
-
-    // A move onto the stash or a stow of a container's content waits in the
-    // confirmation dialog; once confirmed it goes out again marked as confirmed.
-    connect(m_confirmStow, &TConfirmMoveObjectToStashDialogController::publishGameAction, this,
-            &TStashDialogController::publishGameAction);
-    m_gameActions.on(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this](const input::TGameActionShowConfirmMoveObjectToStashDialog& action) {
-        if (!action.gameAction())
-            return true;
-        m_confirmStow->handleGameAction(std::make_shared<input::TGameActionShowConfirmMoveObjectToStashDialog>(action.gameAction()));
-        return true;
-    });
+    // The trader filter offers the appearances' traders.
+    std::set<QString> traders;
+    if (m_pAppearancesManager)
+        traders = traderNames();
+    setTraders(traders);
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::stashOptionsChanged, this,
+                &TStashDialogController::onStashOptionsChanged);
 
     m_gameActions.on(A::MARKET_BROWSE, [this](const input::IGameAction& action) { handleGameAction(action); });
 }
@@ -339,12 +333,8 @@ void TStashDialogController::setSortOrder(const int order)
         return;
     m_proxy.setSortOrder(order);
     Q_EMIT sortOderChanged();
-    persistSortOrder(order);
-}
-
-void TStashDialogController::persistSortOrder(const int order)
-{
-    app::ClientOptions::store(QLatin1String(StashSortOrderOption), order);
+    if (m_pClientOptions)
+        m_pClientOptions->setIntOption(config::EClientOption::stashSortOrder, order);
 }
 
 void TStashDialogController::applyFilter(const Filter& filter)
@@ -428,7 +418,7 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(TypeID));
-    const input::IGameActionPtr action = m_mapper.map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_pGameActionMapper->map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -439,7 +429,7 @@ void TStashDialogController::slotClicked(const int TypeID, const int MouseButton
     if (!menu)
         return;
     if (const input::TGameActionList entries = input::contextMenuActions(candidates, ContextMenuOrder); !entries.empty())
-        menu->showGameActions(entries, StashContext, m_mapper);
+        menu->showGameActions(entries, StashContext, *m_pGameActionMapper);
 }
 
 void TStashDialogController::requestOpenManageLootContainerDialog()
@@ -464,7 +454,9 @@ void TStashDialogController::onStashOptionsChanged()
 {
     if (!dialog()->isInStack())
         return;
-    const int order = app::ClientOptions::load().options().value(QLatin1String(StashSortOrderOption)).toInt(static_cast<int>(Order::AtoZ));
+    if (!m_pClientOptions)
+        return;
+    const int order = m_pClientOptions->intOption(config::EClientOption::stashSortOrder);
     if (m_proxy.sortOrder() != order) {
         m_proxy.setSortOrder(order);
         Q_EMIT sortOderChanged();

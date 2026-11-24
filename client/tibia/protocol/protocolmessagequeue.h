@@ -407,6 +407,9 @@ public:
 
     /// The server message being dispatched, or the last one dispatched.
     const GameserverMessage* lastServerMessage() const { return m_lastGameserverMessage.get(); }
+    /// Host: the client message whose bytes clientMessageEnqueued is handing on;
+    /// null outside that signal.
+    const GameclientMessage* clientMessageBeingSent() const { return m_clientMessageBeingSent.get(); }
 
     int serverCount() const { return m_serverCount; }
     int clientCount() const { return m_clientCount; }
@@ -805,6 +808,7 @@ private:
     std::unordered_map<int, std::function<void(const GameserverMessage&)>> m_gameserverMessageHandlers;
 
     std::shared_ptr<GameserverMessage> m_lastGameserverMessage;
+    std::shared_ptr<GameclientMessage> m_clientMessageBeingSent;
     int m_serverCount = 0;
     int m_clientCount = 0;
 };

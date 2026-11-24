@@ -206,8 +206,6 @@ public:
     // >= 1080 ingame store
 
     //void reportRuleViolation2();
-    void ping();
-    void setPingDelay(const int delay) { m_pingDelay = delay; }
 
     // qtclient only
 
@@ -241,7 +239,6 @@ public:
     auto mapUpdatedAt() const { return m_mapUpdatedAt; }
     void resetMapUpdatedAt() { m_mapUpdatedAt = 0; }
 
-    int getPing() { return m_ping; }
     int getRecivedPacketsCount() { return m_gameConnection ? m_gameConnection->receivedPackets() : 0; }
     int getRecivedPacketsSize() { return m_gameConnection ? m_gameConnection->receivedBytes() : 0; }
     uint32_t getAttackingCreatureId() const { return m_attackingCreatureId; }
@@ -330,7 +327,6 @@ public:
     /// The game connection of the running session (null when offline).
     std::shared_ptr<tibia::network::TGameserverSessionNetwork> m_gameConnection;
     tibia::shared::TFrameStopWatch m_dashTimer;
-    tibia::schedule::TScheduledTaskPtr m_pingEvent;
     tibia::schedule::TScheduledTaskPtr m_checkConnectionEvent;
 
     bool m_online{ false };
@@ -352,20 +348,14 @@ public:
 
     uint8_t m_walkMaxSteps{ 1 };
     uint16_t m_serverBeat{ 50 };
-    uint16_t m_pingDelay{ 1000 };
     uint16_t m_protocolVersion{ 0 };
     uint16_t m_clientVersion{ 0 };
-    uint32_t m_pingSent{ 0 };
-    uint32_t m_pingReceived{ 0 };
     uint32_t m_seq{ 0 };
 
     std::string m_characterName;
     std::string m_worldName;
     std::string m_clientSignature;
 
-    QElapsedTimer m_pingTimer;
-
-    int64_t m_ping{ -1 };
 };
 
 /// The live session state.

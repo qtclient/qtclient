@@ -11,6 +11,10 @@
 #include "packqmlinterceptor.h"
 #include "qmldisk.h"
 #include "imageproviders/imagestripimageprovider.h"
+#ifdef TIBIA_WITH_GAMECORE
+#include "client/gameapplication.h"
+#include "shared/dynamicresourceshelper.h"
+#endif
 
 #include <cip_registration.h>
 
@@ -32,6 +36,7 @@
 #include <QTranslator>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace tibia::app {
 
@@ -201,6 +206,23 @@ QString mountGraphicsResources(const QStringList& dirs)
         // Already mounted in this process (re-entry).
         return QStringLiteral("<mounted-buffer>");
     }
+#if defined(TIBIA_WITH_GAMECORE) && !defined(__EMSCRIPTEN__)
+    // CIP: the packaged client registers graphics_resources.rcc next to the
+    // executable; the host directories below serve the other layouts.
+    static QString registeredFile;
+    if (!registeredFile.isEmpty())
+        return registeredFile;
+    const QString packagedFile = shared::TDynamicResourcesHelper::getResourceFilePath(QStringLiteral("graphics"));
+    if (QFile::exists(packagedFile)) {
+        try {
+            client::TGameApplicationBase::registerGraphicsResources();
+            registeredFile = packagedFile;
+            return registeredFile;
+        } catch (const std::runtime_error&) {
+            // Logged by the helper; the host directories are tried next.
+        }
+    }
+#endif
 
     for (const QString& dir : dirs) {
         if (dir.isEmpty())

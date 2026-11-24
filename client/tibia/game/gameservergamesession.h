@@ -3,6 +3,8 @@
 #include "game/gamesessionbase.h"
 #include "game/gameservergamesessionmetainfo.h"
 
+#include "authentication/gameserverloginprocesscontroller.h"
+
 #include "client/gamecore.h"
 #include "network/dualconnectionurlinfo.h"
 
@@ -32,7 +34,12 @@ class TLoginProtocolMessageHandler;
 namespace tibia::shared {
 class TCompressionHelper;
 }
+namespace tibia::protocol {
+class TProtocolClientMessageProcessor;
+}
 namespace tibia::network {
+class TNetworkQualityProtocolMessageHandler;
+struct TNetworkLatency;
 class TGameserverDualConnection;
 class TGameserverNetworkPacket;
 class TGameserverNetworkPacketRawDataProcessor;
@@ -53,7 +60,8 @@ void hubDisconnectNow();
 /// its network, as CipSoft's does: the dual game server connection, the packet
 /// processors, the authentication and encryption info and the login protocol
 /// message handler, built when the session is initialized; connectToGameserver
-/// logs in with the meta info's login data. The session's handlers send their
+/// hands the meta info's login data to its game server login process
+/// controller. The session's handlers send their
 /// client messages through its protocol queue (connectProtocolMessageHandlers).
 class TGameserverGameSession final : public TGameSessionBase
 {
@@ -67,8 +75,8 @@ public:
     /// recorder, then the protocol and game action connections.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
     void startSession() override;
-    /// Connects with the meta info's login data and logs in; progress arrives
-    /// as signals.
+    /// The game server login process controller logs in with the meta info's
+    /// login data; progress arrives as signals.
     void connectToGameserver();
     /// Asks the server to log the character out (it may refuse, e.g. in fight).
     void requestLogout();
@@ -80,12 +88,19 @@ public:
     /// connection checks for a state change.
     void processNetwork();
     /// Which of the session's connections are in use.
-    network::EConnectionsUsed connectionsUsed() const;
+    network::EConnectionsUsed connectionsUsed() const override;
+    /// The connection's round trip time (the network quality handler's).
+    network::TNetworkLatency latency() const;
 
     bool isOnline() const;
     QString characterName() const;
     QString worldName() const;
 
+    /// The controller that connects the session to its world's game server.
+    const std::shared_ptr<authentication::TGameserverLoginProcessController>& gameserverLoginProcessController() const
+    {
+        return m_gameserverLoginProcessController;
+    }
     /// The session's login protocol message handler.
     const std::shared_ptr<authentication::TLoginProtocolMessageHandler>& loginProtocolMessageHandler() const
     {
@@ -107,8 +122,6 @@ public:
     static void wireProcessWorldEntered();
     /// Host: a death stops the own walk and freezes the scene.
     static void wireProcessDeath();
-    static void wireProcessPing();
-    static void wireProcessPingBack();
 
 Q_SIGNALS:
     /// The server wants a newer client (UpdateNeeded).
@@ -131,6 +144,9 @@ private:
     /// message stream, the raw data and sequence flow processors, and their
     /// connections to each other, to the protocol queue and to the session.
     void createNetworkStack();
+    /// The game server login process controller over the dual connection and
+    /// the authentication info.
+    void createSessionControllers();
     /// A packet in order from the sequence flow processor: decoded and handed
     /// to the protocol layer.
     void onPacketReady(network::TGameserverNetworkPacket packet);
@@ -143,12 +159,15 @@ private:
     void onConnectionLost(const QString& message, bool clean);
 
     std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
+    std::shared_ptr<network::TNetworkQualityProtocolMessageHandler> m_networkQualityProtocolMessageHandler;
+    std::shared_ptr<protocol::TProtocolClientMessageProcessor> m_clientMessageProcessor;
     /// Host: qtclient's server packets go through the classic parser, which
     /// reads them from this stream (CipSoft's server packet processor).
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_serverMessageStream;
     std::shared_ptr<network::TGameserverNetworkPacketRawDataProcessor> m_rawDataProcessor;
     std::shared_ptr<authentication::TAuthenticationAndEncryptionInfo> m_authenticationAndEncryptionInfo;
-    GameserverCredentials m_loginData;
+    std::shared_ptr<authentication::TGameserverLoginProcessController> m_gameserverLoginProcessController;
+    authentication::TGameserverLoginRequestData m_loginData;
     std::shared_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::shared_ptr<network::TGameserverNetworkPacketSequenceFlowProcessor> m_sequenceFlowProcessor;
     /// CIP's recorder of the session's last server messages, for crash reports.
@@ -162,6 +181,8 @@ private:
     /// Host: the client message links, made again when the game window relinks
     /// the protocol queue.
     shared::TQtConnectionManager m_clientMessageConnections;
+    /// Host: the file the session's packets are recorded to (--record).
+    QString m_recordTo;
     std::vector<tibia::game::SoftHook> m_hooks;
 };
 

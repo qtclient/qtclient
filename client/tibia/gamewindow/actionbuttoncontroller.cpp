@@ -2,6 +2,7 @@
 
 #include "gamewindow/actionbarcontroller.h"
 #include "game/gamesessionbase.h"
+#include "game/passiveabilityinfostorage.h"
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
@@ -252,16 +253,36 @@ QString TActionButtonController::objectTooltipName() const
     return qtTrId("actionbar_tooltip_object_name_with_tier").arg(slot->m_text).arg(tier);
 }
 
+/// A passive ability with a cooldown counts it down anchored, one without a
+/// counter; an unknown one keeps the cooldown progress.
 void TActionButtonController::setPassiveAbility(const int passiveAbility)
 {
-    if (m_type == PASSIVEABILITY && m_passiveAbility == passiveAbility)
+    if (m_passiveAbility == passiveAbility)
         return;
     reset();
     clearMultiActions();
     m_type = PASSIVEABILITY;
+    if (const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance()) {
+        if (const std::optional<game::TPassiveAbilityInfo> info = storage->findInfo(static_cast<uint8_t>(passiveAbility))) {
+            if (!info->flag)
+                m_progressType = ANCHORED_COOLDOWN;
+            else
+                m_progressType = COUNTER_COOLDOWN;
+        }
+    }
+    // Host: the QML reads the icon from the passive ability icon provider.
     m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(passiveAbility);
     m_passiveAbility = passiveAbility;
     Q_EMIT changed();
+}
+
+QString TActionButtonController::passiveAbilityName() const
+{
+    const TActionButtonController* slot = shown();
+    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    if (!storage || !game::TPassiveAbilityInfoStorage::isKnownPassiveAbility(static_cast<uint8_t>(slot->m_passiveAbility)))
+        return {};
+    return storage->info(static_cast<uint8_t>(slot->m_passiveAbility)).name;
 }
 
 void TActionButtonController::setHotkeys(const QList<QKeySequence>& hotkeys)
@@ -362,8 +383,7 @@ QString TActionButtonController::tooltipRows() const
         rows += row("actionbar_tooltip_label_sendautomatically", qtTrId(m_sendAutomatically ? "yes" : "no"));
         break;
     case PASSIVEABILITY:
-        // CIP : the ability's name; qtclient has no passive ability data.
-        rows += row("actionbar_tooltip_label_passiveability", QString());
+        rows += row("actionbar_tooltip_label_passiveability", passiveAbilityName());
         break;
     }
     if (!isMultiActionChild()) {

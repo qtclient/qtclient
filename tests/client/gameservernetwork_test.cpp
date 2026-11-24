@@ -175,7 +175,9 @@ TEST(GameserverNetworkPacketSequenceFlowProcessor, AnswersPingsOnTheConnectionOf
     TGameserverNetworkPacketSequenceFlowProcessor processor;
     std::vector<int> pings;
     QObject::connect(&processor, &TGameserverNetworkPacketSequenceFlowProcessor::sendConnectionPing,
-                     [&pings](int connectionType) { pings.push_back(connectionType); });
+                     [&pings](tibia::network::EConnectionType connectionType) {
+                         pings.push_back(static_cast<int>(connectionType));
+                     });
     processor.onConnectionsUsedChanged(EConnectionsUsed::PrimaryAndSecondary);
 
     processor.processPacket(xteaPacket(5, 0));

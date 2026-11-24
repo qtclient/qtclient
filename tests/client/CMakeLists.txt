@@ -359,6 +359,14 @@ if(TARGET cip_messages)
     )
     target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
 endif()
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_appearancetypeframegroups_tests
+        appearancetypeframegroups_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    )
+    target_link_libraries(client_appearancetypeframegroups_tests PRIVATE cip_messages Qt6::Gui)
+endif()
 
 # CIP appearance instance tracker and the appearance type -> spritesheet mapping.
 if(TARGET cip_messages)
@@ -448,6 +456,7 @@ if(Qt6_FOUND AND TARGET tibia)
         ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_07.h
         ${_snd}/audiobackend.h
         ${_snd}/soundmetadatamanager.h
+        ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
         ${_snd}/sounddecompressorthreadpool.h
         ${_snd}/soundmanager.cpp ${_snd}/soundmanager.h
         ${_snd}/soundplayer.cpp ${_snd}/soundplayer.h
@@ -646,3 +655,13 @@ qtclient_add_port_test(client_worldmapobjectcounter_tests
     worldmapobjectcounter_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/worldmapobjectcounter.cpp
 )
+qtclient_add_port_test(client_networkquality_tests
+    networkqualityprotocolmessagehandler_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/networkqualityprotocolmessagehandler.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/networkqualityprotocolmessagehandler.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/protocolclientmessageprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacket.cpp
+)
+set_target_properties(client_networkquality_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_networkquality_tests PRIVATE cip_messages)
+target_compile_definitions(client_networkquality_tests PRIVATE QT_NO_KEYWORDS)

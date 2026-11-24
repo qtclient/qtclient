@@ -1,5 +1,7 @@
 #pragma once
 
+#include "assets/asset.h"
+
 #include <cip_gen.h>
 
 #include <QByteArray>
@@ -134,8 +136,8 @@ public:
     const std::unordered_map<uint16_t, TAmbienceObjectStreamMetadata>& ambienceObjectStreams() const { return m_ambienceObjectStreams; }
 
 Q_SIGNALS:
-    /// A sound file to load ahead of use (CIP passes a TAsset).
-    void newAssetDataToLoad(const QString& fileName, bool streamed, bool prioritized);
+    /// A sound file to load ahead of use.
+    void newAssetDataToLoad(tibia::assets::TAsset AssetToLoad, bool Prioritized);
 
 private:
     /// Raises the memory priority of a known sound.

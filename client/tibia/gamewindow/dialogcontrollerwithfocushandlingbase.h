@@ -29,6 +29,17 @@ public:
         QObject::connect(m_clickArea, &cip::tibia::input::TClickAreaEventFilter::clickedInside, this,
                          [this] { TDialogControllerWithFocusHandlingBase::takeFocus(); });
     }
+    /// CipSoft's TDialogControllerWithFocusHandlingBase(qml, engine, dialog parent item, parent).
+    TDialogControllerWithFocusHandlingBase(const QString& qmlFile, QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                           QObject* parent = nullptr)
+        : TDialogController<Base>(qmlFile, engine, dialogParentItem, parent)
+        , m_clickArea(new input::TClickAreaEventFilter(this))
+    {
+        QObject::connect(m_clickArea, &cip::tibia::input::TClickAreaEventFilter::clickedOutside, this,
+                         [this] { TDialogControllerWithFocusHandlingBase::releaseFocus(); });
+        QObject::connect(m_clickArea, &cip::tibia::input::TClickAreaEventFilter::clickedInside, this,
+                         [this] { TDialogControllerWithFocusHandlingBase::takeFocus(); });
+    }
 
     /// The focus counts while allowed and the dialog has its item.
     bool hasFocus() const override { return this->m_hasFocus && m_focusAllowed && this->dialog()->item(); }

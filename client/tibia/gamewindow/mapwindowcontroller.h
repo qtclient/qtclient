@@ -104,14 +104,13 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
-    /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR.
-    bool handleGameAction(const input::IGameAction& action);
-    /// The use goes to the TARGET_SELECTED under the mouse.
-    void handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action);
+    /// The use goes to the TARGET_SELECTED under the mouse; it is tracked
+    /// until the next frames tell whether a window took it.
+    void handleGameActionAtMouseCursor(const std::shared_ptr<const input::TGameActionUseAtMouseCursor>& action);
     /// The spell's talk aimed at the field under the mouse.
     void handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action);
     /// A use at the mouse waits a frame for a handler.
-    void trackUseAtMouseCursorGameAction();
+    void trackUseAtMouseCursorGameAction(const std::shared_ptr<const input::TGameActionUseAtMouseCursor>& action);
     /// Per frame: an untaken use at the mouse reports "no target".
     void updateTrackedUseAtMouseCursor();
     /// The mouse cursor in mapWindow pixels; `onMap` when it is over the map and no dialog is up.
@@ -165,8 +164,9 @@ private:
     bool m_highlightMouseTarget = true;
     bool m_hovering = false;
     QPointF m_hoverPosition;
-    /// Frames since an at-mouse use no handler took; -1 when none is tracked.
-    int m_unhandledAtMouseFrames = -1;
+    /// CIP +0x140: the tracked use at the mouse cursor, and the frames since (+0x150).
+    std::shared_ptr<const input::TGameActionUseAtMouseCursor> m_trackedUseAtMouseCursor;
+    int m_trackedUseAtMouseCursorFrames = 0;
 
     /// MapWindowPane mouseAreaDrag — FOV grabber (under IdleOT HUD z-order).
     QPointer<QQuickItem> m_mapMouseArea;
@@ -181,15 +181,9 @@ private:
     QPointF m_mapPressPos;
 
 public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
+    /// CIP: USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR from the router
+    /// (connected to publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 };
 
 }

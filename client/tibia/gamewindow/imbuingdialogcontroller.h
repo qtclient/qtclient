@@ -13,6 +13,12 @@
 #include <vector>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 class TPremiumTimeStorage;
@@ -103,7 +109,12 @@ class TImbuingDialogController final : public TDialogController<cip::tibia::game
 {
     Q_OBJECT
 public:
-    explicit TImbuingDialogController(QObject* parent = nullptr);
+    /// CIP: made with the appearance instance factory, the client options, the
+    /// engine and the dialog parent item; its three message dialogs (result,
+    /// imbue and clear confirmation) use the same engine and parent item.
+    TImbuingDialogController(std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                             config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                             QObject* parent = nullptr);
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
@@ -158,6 +169,8 @@ private:
     void selectImbuement(uint32_t imbuementId);
     void replaceObject(QObject*& member, QObject* object);
 
+    config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<imbuing::TImbuingStorage> m_storage;

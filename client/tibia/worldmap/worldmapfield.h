@@ -42,43 +42,53 @@ struct TFieldObject
     uint16_t clientId() const;
 };
 
-/// One aware-range field (CIP: TWorldMapField). Owns the appearance stack (+ item/creature refs) for qtclient play.
+/// A field of the stored map: its objects in stack order (a creature is its
+/// placeholder), at most the stack limit of them, and their draw list.
 class TWorldMapField final : public cip::tibia::worldmap::TWorldMapField
 {
     Q_OBJECT
 public:
-    explicit TWorldMapField(QObject* parent = nullptr);
+    /// A field at `coordinate` holding at most `stackLimit` objects (the
+    /// storage gives 10).
+    TWorldMapField(const TWorldMapCoordinate& coordinate, uint8_t stackLimit, QObject* parent = nullptr);
     /// The creatures still on the field leave it: they are no longer placed on a field.
     ~TWorldMapField() override;
 
-    void setCoordinate(const TWorldMapCoordinate& coordinate)
-    {
-        m_coordinate = coordinate;
-        syncPositionCache();
-    }
     const TWorldMapCoordinate& coordinate() const { return m_coordinate; }
 
     Position getPosition() const { return m_coordinate.toPosition(); }
     const Position& position() const { return m_positionCache; }
-    void syncPositionCache() { m_positionCache = getPosition(); }
-    void clean();
+    /// The most objects the field holds.
+    uint8_t stackLimit() const { return m_stackLimit; }
 
     void addWalkingCreature(uint32_t creatureId);
     void removeWalkingCreature(uint32_t creatureId);
 
     /// The effect storage changed the effects on this field.
     void effectsChanged();
-    /// Protocol item place: appearance-only stack entry (no Item::create / ItemPtr).
-    void addAppearance(const appearances::TAppearanceInstancePtr& appearance, int stackPos);
-    /// Phase 5.0-C: place creature from storage id + outfit appearance (no CreaturePtr).
-    void addCreatureId(uint32_t creatureId, int stackPos);
-    /// Remove stack entry by creature id without requiring Map `Creature`.
-    bool removeCreatureById(uint32_t creatureId);
-    int creatureStackPos(uint32_t creatureId) const;
+    /// The objects leave the field and `objects` take their place, in order;
+    /// those past the stack limit are left out.
+    void setObjects(const std::vector<appearances::TAppearanceInstancePtr>& objects);
+    /// Puts `object` at `stackPosition` (at the end when past it); a creature
+    /// is placed on a field. Returns the object pushed past the stack limit,
+    /// which is no longer on the field, or null.
+    appearances::TAppearanceInstancePtr insertObject(const appearances::TAppearanceInstancePtr& object,
+                                                     uint8_t stackPosition);
+    /// Puts `object` where its kind sorts on the stack. Returns the object
+    /// pushed past the stack limit, or `object` itself when it sorts past the
+    /// limit and is not taken.
+    appearances::TAppearanceInstancePtr addObject(const appearances::TAppearanceInstancePtr& object);
+    /// Takes the object at `stackPosition` off the field (a creature is no
+    /// longer placed on a field); null when the position is past the stack.
+    appearances::TAppearanceInstancePtr removeObject(uint8_t stackPosition);
+    /// The object at `stackPosition` leaves and `object` takes its place.
+    /// Returns the object that left.
+    appearances::TAppearanceInstancePtr replaceObject(const appearances::TAppearanceInstancePtr& object,
+                                                      uint8_t stackPosition);
 
-    /// The stack positions in draw order: the leading bank, clip and bottom
-    /// objects in stack order, then the rest of the stack from its end.
-    std::vector<int> drawList() const;
+    /// The objects in draw order: the leading bank, clip and bottom objects
+    /// in stack order, then the rest of the stack from its end.
+    const std::vector<appearances::TAppearanceInstancePtr>& drawList() const { return m_drawList; }
     /// The object a drag from this field moves: top-down, top objects passed
     /// over, the first object that is no creature unless it cannot be moved,
     /// else the creature drawn highest above it. Bank, clip and bottom objects
@@ -113,7 +123,6 @@ public:
     appearances::TAppearanceInstancePtr appearanceAt(int stackPos) const;
     uint16_t itemClientIdAt(int stackPos) const;
     uint32_t stackCreatureId(int stackPos) const;
-    bool removeThingAtStackPos(int stackPos);
     /// Takes the creature instance at `stackPos` off the field; null when
     /// none is there.
     appearances::TAppearanceInstancePtr takeCreatureInstance(int stackPos);
@@ -213,12 +222,7 @@ public:
     }
 
     bool hasElevation(const int elevation = 1) { return m_elevation >= elevation; }
-    void notifyAppearanceInstancesChanged()
-    {
-        updateElevation();
-        updateViewFlags();
-        Q_EMIT appearanceInstancesChanged(this);
-    }
+    void notifyAppearanceInstancesChanged() { Q_EMIT appearanceInstancesChanged(this); }
 
 Q_SIGNALS:
     void appearanceInstancesChanged(const TWorldMapField* field);
@@ -226,6 +230,14 @@ Q_SIGNALS:
 private:
     /// The stack entry at `stackIndex` as an object, at its stack position.
     TFieldObject fieldObject(int stackIndex) const;
+    /// A stack entry as an object, at its stack position.
+    TFieldObject fieldObject(const appearances::TAppearanceInstancePtr& entry) const;
+    /// Copies the stack into the draw list: the leading bank, clip and bottom
+    /// objects keep their order, the rest is reversed.
+    void rebuildDrawList();
+    /// The stack changed: draw list, elevations, view flags and the host's
+    /// stack flags follow it, then the change is announced.
+    void objectsChanged();
     /// Where an object sorts on the stack: 0 bank, 1 clip, 2 bottom, 3 top,
     /// 4 creature, 5 any other object.
     static int stackOrder(const appearances::TAppearanceInstancePtr& entry);
@@ -235,22 +247,18 @@ private:
     void updateElevation();
     /// Recomputes isOpaque and blocksSight from the stack.
     void updateViewFlags();
-    /// Takes the stack entry at `stackIndex` off the field without touching a
-    /// creature's placed-on-field flag (the stack's overflow).
-    void eraseStackEntry(int stackIndex);
     void setStackEntryFlag(const appearances::TAppearanceInstancePtr& entry);
     void applyStackFlagsFromThingType(TAppearanceType* type);
     void applyCreatureStackFlags(const tibia::creatures::TCreature& stored, TAppearanceType* outfitType);
 
-    void updateThingStackPos();
-
-    void rebuildCreatureRange();
     void recalculateThingFlag();
 
     bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
     std::vector<uint32_t> m_walkingCreatureIds;
-    /// The field's appearance instances in stack order (a creature's is linked to it).
+    /// The field's objects in stack order; a creature is its placeholder.
     std::vector<appearances::TAppearanceInstancePtr> m_stack;
+    /// The objects in draw order (rebuilt with the stack).
+    std::vector<appearances::TAppearanceInstancePtr> m_drawList;
 
 
 
@@ -260,7 +268,8 @@ private:
 
 
     TWorldMapCoordinate m_coordinate;
-    mutable Position m_positionCache;
+    Position m_positionCache;
+    uint8_t m_stackLimit{ 10 };
 
 
     uint8_t m_minimapColor{ 0 };
@@ -269,8 +278,6 @@ private:
     uint8_t m_objectElevation{ 0 };
     bool m_blocksSight{ false };
 
-    int16_t m_firstCreatureIndex{ -1 };
-    int16_t m_lastCreatureIndex{ -1 };
 
 
 

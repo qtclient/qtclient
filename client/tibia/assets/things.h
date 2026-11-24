@@ -91,6 +91,8 @@ public:
     static TStaticInformation parseStaticInformation(const std::string& bytes);
     /// Parses the staticmapdata asset.
     static std::vector<THouseMapArea> parseStaticMapData(const std::string& bytes);
+    /// Hands the houses' map areas to the static content's house table.
+    static void setStaticMapData(std::vector<THouseMapArea> areas);
     void setStaticInformation(TStaticInformation information);
 
     /// Builds every appearance type from the appearances asset (throws

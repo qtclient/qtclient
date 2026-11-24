@@ -59,19 +59,6 @@ struct ClassicReader {
         out = int16_t(raw);
         return true;
     }
-    /// A u8 count of decimals, then the value plus 0x7fffffff as a u32.
-    bool real(double& out)
-    {
-        uint8_t decimals = 0;
-        uint32_t scaled = 0;
-        if (remaining() < 5 || !u8(decimals) || !u32(scaled))
-            return false;
-        double divisor = 1.0;
-        for (uint8_t k = 0; k < decimals; ++k)
-            divisor *= 10.0;
-        out = double(int64_t(scaled) - int64_t(0x7fffffff)) / divisor;
-        return true;
-    }
     bool string(std::string& out)
     {
         uint16_t len = 0;
@@ -81,7 +68,9 @@ struct ClassicReader {
         i += len;
         return true;
     }
-    bool otDouble(double& out)
+    /// CIP TProtocolReader: a u8 count of decimals, then the value plus
+    /// 0x7fffffff as a u32.
+    bool readDouble(double& out)
     {
         uint8_t precision = 0;
         if (!u8(precision) || remaining() < 4)

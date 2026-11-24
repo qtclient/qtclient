@@ -46,7 +46,7 @@ public:
     /// Hands the markers to the disk as a marker file.
     void saveMarkers();
 
-    /// Session-active storage (TMinimapManager lifetime); used by render / menus.
+    /// Host: the client's storage (the game client base sets it); used by render / menus.
     static TMinimapMarkerStorage* active();
     static void setActive(TMinimapMarkerStorage* storage);
     /// The dialog that edits a marker.

@@ -68,9 +68,13 @@ public:
     Q_INVOKABLE void maximizePanel() override;
     Q_INVOKABLE void minimizePanel() override;
 
+public:
+    /// CIP: one message per premium feature 0..0x23 but 0xd (the renew line,
+    /// which the panel makes itself); the character selection's messages have
+    /// large icons, the panel's small ones.
+    static std::map<int, cip::tibia::game::TPremiumMessage*> createPremiumMessages(bool largeIcon, QObject* parent);
+
 private:
-    /// One message per premium feature (13 is replaced by the renew line).
-    void createPremiumMessages();
     /// Premium, unlimited premium or a known premium time.
     bool canTogglePanel() const;
     /// CIP : the triggered features become the messages.

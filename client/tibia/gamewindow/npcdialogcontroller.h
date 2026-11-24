@@ -23,7 +23,13 @@
 #include <optional>
 #include <vector>
 
+class QQmlEngine;
+class QQuickItem;
+
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace chat {
 class TChatChannelStorage;
 }
@@ -96,13 +102,15 @@ class TNpcDialogController final : public TDialogControllerWithFocusHandlingBase
 {
     Q_OBJECT
 public:
-    explicit TNpcDialogController(QObject* parent = nullptr);
+    /// CipSoft's arguments: the client options (NPC dialog rectangle), the chat
+    /// controller (+0x138: ChatInput's history and chat mode, typed lines, the
+    /// conversation pane's channel), the QML engine and the dialog parent item
+    /// the dialog and the trade are made with. CipSoft also passes the mouse
+    /// input mapper (to the NPCs channel controller) and the game window's root
+    /// focus manager (parent of the trade's); qtclient has neither.
+    TNpcDialogController(config::TClientOptions* ClientOptions, TChatController* ChatController, QQmlEngine* Engine,
+                         QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TNpcDialogController() override;
-
-    /// CIP ctor's chat controller (+0x138, chatController): ChatInput's history and chat
-    /// mode, typed lines, and the conversation pane's channel (chatChannelModel, the NPCs
-    /// channel). Before the first show.
-    void setChatController(TChatController* controller);
     /// CIP connector: the dialog closes; then it follows `GameSession`'s NPC
     /// conversation, NPCs channel and NPC trade.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -201,6 +209,8 @@ private:
     /// CIP +0x110: the conversation pane's model, m_chat from the dialog's opening on.
     TChatChannelFilterController m_filter;
     QPointer<TChatController> m_chatControl;
+    /// CIP +0x128.
+    config::TClientOptions* m_clientOptions;
     QPointer<chat::TChatChannelStorage> m_chatStorage;
     std::optional<TRemoteNpcSession> m_remote;
     int m_savedChatMode = 0;

@@ -112,8 +112,8 @@ bool typeIsCommonItem(const TAppearanceType* type)
 std::vector<uint32_t> shadeCreatureIds(const tibia::worldmap::TWorldMapField& tile)
 {
     std::vector<uint32_t> order;
-    for (const int index : tile.drawList()) {
-        if (const uint32_t id = tile.stackCreatureId(index))
+    for (const appearances::TAppearanceInstancePtr& entry : tile.drawList()) {
+        if (const uint32_t id = entry->creatureId())
             order.push_back(id);
     }
     std::vector<uint32_t> keep;
@@ -217,9 +217,12 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(QObject* parent)
 {
     loadLightOptions();
     loadMarkOptions();
+    loadLootHighlightOption();
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name.startsWith(QLatin1String("light")))
             loadLightOptions();
+        else if (name == QLatin1String("gameWindowShowLootHighlighting"))
+            loadLootHighlightOption();
         else if (name.startsWith(QLatin1String("combatShow")) || name == QLatin1String("gameWindowShowTragetFrame")
                  || name == QLatin1String("mouseHighlightTarget"))
             loadMarkOptions();
@@ -284,6 +287,12 @@ std::array<uint32_t, 3> TWorldMapRenderProvider::creatureMarks(const tibia::crea
 void TWorldMapRenderProvider::loadLightOptions()
 {
     m_lightOptions = light::loadOptions();
+}
+
+void TWorldMapRenderProvider::loadLootHighlightOption()
+{
+    m_showLootHighlighting =
+        app::ClientOptions::load().options().value(QLatin1String("gameWindowShowLootHighlighting")).toBool(true);
 }
 
 void TWorldMapRenderProvider::advance()
@@ -924,6 +933,18 @@ uint8_t drawGroupOfKind(const int kind)
     return static_cast<unsigned>(kind) < KindGroups.size() ? KindGroups[static_cast<size_t>(kind)] : 2;
 }
 
+/// An object with light shines unless it hangs from hooks and can be moved
+/// but is not hung (a lamp lying on the floor).
+bool objectShines(const TAppearanceType& type, const appearances::TAppearanceInstance& object)
+{
+    if (!type.hasLight())
+        return false;
+    if (!type.isHangable() || type.isNotMoveable())
+        return true;
+    const auto* hangable = dynamic_cast<const appearances::THangableObjectAppearanceInstance*>(&object);
+    return hangable && hangable->hangSide() != 0;
+}
+
 uint8_t drawLayerOfKind(const int kind)
 {
     return static_cast<unsigned>(kind) < KindLayers.size() ? KindLayers[static_cast<size_t>(kind)] : 0;
@@ -1108,6 +1129,30 @@ void TWorldMapRenderProvider::addField(const FieldEntry& field, TOcclusionGrid& 
     addTileCreatures(field, dest, elevation);
     addTileEffects(field.field, dest);
     addTileTop(field, dest, grid);
+    if (m_showLootHighlighting)
+        addLootHighlight(field, dest);
+}
+
+void TWorldMapRenderProvider::addLootHighlight(const FieldEntry& field, const QPoint& dest)
+{
+    // With loot highlighting on, the first container in draw order that holds
+    // a field effect draws it after the field's objects: at the container's
+    // place, as the effect type's kind with draw index 0, with its light.
+    for (const appearances::TAppearanceInstancePtr& object : field.field->drawList()) {
+        const auto* container = dynamic_cast<const appearances::TContainerObjectAppearanceInstance*>(object.get());
+        if (!container || !container->fieldEffect())
+            continue;
+        const appearances::TAppearanceInstancePtr effect = container->fieldEffect();
+        if (const TAppearanceType* type = effect->thingType()) {
+            const TAppearanceType* containerType = object->thingType();
+            const QPoint displacement = containerType ? containerType->getDisplacement() : QPoint();
+            m_key = keyOfKind(objectLayer(*type, false), field.x, field.y, 0, m_floor);
+            uint8_t elevation = object->elevation();
+            addEffectFromAppearance(effect, dest - displacement, elevation);
+        }
+        break;
+    }
+    m_key = DrawKey{ .group = 2, .x = field.x, .y = field.y, .z = m_floor };
 }
 
 void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint& dest, uint8_t& elevation,
@@ -1221,8 +1266,8 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
             continue;
         const Position& pos = row->position();
         const tibia::worldmap::TWorldMapField* own = tibia::worldmap::fieldAt(pos);
-        const int stackPos = own ? own->creatureStackPos(creatureId) : -1;
-        if (stackPos < 0)
+        const int stackPos = own && row->placeholderAppearance() ? own->stackPositionOf(row->placeholderAppearance()) : 0xff;
+        if (stackPos == 0xff)
             continue;
         const int lift = row->drawElevation();
         appearances::TAppearanceInstancePtr appearance = row->outfitAppearance();
@@ -1397,7 +1442,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
         if (showOff->drawsSocket()) {
             addObjectSprite();
-            if (type->hasLight())
+            if (objectShines(*type, *appearance))
                 addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
         }
         if (showOff->hasFigure()) {
@@ -1412,7 +1457,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
     }
 
     addObjectSprite();
-    if (type->hasLight())
+    if (objectShines(*type, *appearance))
         addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
 

@@ -33,49 +33,29 @@ Position positionOf(const ProtocolCoordinate& c)
 
 } // namespace
 
-void TWorldmapProtocolMessageHandler::clearField(const Position& position)
-{
-    if (m_storage)
-        m_storage->clearField(position);
-    else
-        TWorldMapStorage::ensureStorage()->clearField(position);
-}
-
-void TWorldmapProtocolMessageHandler::applyAppearanceToField(const appearances::TAppearanceInstancePtr& appearance,
-                                                             const Position& position, const int stackPos)
-{
-    if (m_storage)
-        m_storage->placeAppearance(appearance, position, stackPos);
-    else
-        TWorldMapStorage::ensureStorage()->placeAppearance(appearance, position, stackPos);
-}
-
-void TWorldmapProtocolMessageHandler::applyCreatureIdToField(const uint32_t creatureId, const Position& position,
-                                                             const int stackPos)
-{
-    if (m_storage)
-        m_storage->placeCreatureId(creatureId, position, stackPos);
-    else
-        TWorldMapStorage::ensureStorage()->placeCreatureId(creatureId, position, stackPos);
-}
-
-bool TWorldmapProtocolMessageHandler::applyObject(const ProtocolMapObject& object, const Position& position, const int stackPos)
+appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject(const ProtocolMapObject& object,
+                                                                                   const Position& position)
 {
     if (object.has_creature()) {
-        // The creature's data is applied first; its field then holds it.
-        if (const uint32_t id = creatures::applyProtocolCreature(object.creature()); id != 0) {
-            applyCreatureIdToField(id, position, stackPos);
-            return true;
-        }
-        return false;
+        // The creature's data is applied first; the creature then stands at
+        // the field and its placeholder is what the field holds.
+        const uint32_t id = creatures::applyProtocolCreature(object.creature());
+        creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+        const std::shared_ptr<creatures::TCreature> creature = id != 0 && storage ? storage->creatureAt(id) : nullptr;
+        if (!creature)
+            return nullptr;
+        creature->setPosition(position);
+        return creature->placeholderAppearance();
     }
     if (object.has_item()) {
-        if (const auto appearance = container::TInventorySlot::fromProtocolInventoryItem(object.item()).appearance) {
-            applyAppearanceToField(appearance, position, stackPos);
-            return true;
-        }
+        appearances::TAppearanceInstancePtr appearance =
+            container::TInventorySlot::fromProtocolInventoryItem(object.item()).appearance;
+        // An object drawn by its field's pattern takes it from the coordinate.
+        if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
+            patterned->applyWorldMapCoordinate(position);
+        return appearance;
     }
-    return false;
+    return nullptr;
 }
 
 void TWorldmapProtocolMessageHandler::applyField(const ProtocolMapField& field)
@@ -86,12 +66,13 @@ void TWorldmapProtocolMessageHandler::applyField(const ProtocolMapField& field)
         return;
     // The objects replace the field's content in their order; objects that
     // yield nothing are left out, and a field left without objects is dropped.
-    clearField(position);
-    int stackPos = 0;
+    std::vector<appearances::TAppearanceInstancePtr> objects;
+    objects.reserve(static_cast<size_t>(field.objects_size()));
     for (const ProtocolMapObject& object : field.objects()) {
-        if (applyObject(object, position, stackPos))
-            ++stackPos;
+        if (appearances::TAppearanceInstancePtr instance = applyObject(object, position))
+            objects.push_back(std::move(instance));
     }
+    map().setFieldObjects(position, objects);
     updateMinimapField(position);
 }
 
@@ -232,47 +213,30 @@ void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverM
 {
     if (game::isSceneFrozen())
         return;
+    // Stack position 0xff puts the object where its kind sorts on the stack.
     const Position at = positionOf(message.coordinate());
-    if (applyObject(message.object(), at, static_cast<int>(message.stackpos())))
+    if (const appearances::TAppearanceInstancePtr instance = applyObject(message.object(), at)) {
+        map().insertObjectAt(instance, at, static_cast<int>(message.stackpos() & 0xff));
         updateMinimapField(at);
+    }
 }
 
 void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverMessageChangeOnMap& message)
 {
     if (game::isSceneFrozen())
         return;
-    TWorldMapStorage* map = m_storage ? m_storage : TWorldMapStorage::ensureStorage();
-    // A creature replacement updates the creature storage even when its field
-    // slot is not found (a turn of a creature already moved on).
-    const bool creatureReplacement = message.object().has_creature();
-    const auto replace = [&](const Position& at, const int stackPos) { applyObject(message.object(), at, stackPos); };
     if (message.has_creature_id()) {
         // CIP: the id form only updates the creature; its field entry stays.
-        if (creatureReplacement)
+        if (message.object().has_creature())
             (void)creatures::applyProtocolCreature(message.object().creature());
         return;
     }
+    // The object at the stack position leaves the field and the new one takes
+    // its place (a creature's data is applied either way).
     const Position at = positionOf(message.coordinate());
-    const int stackPos = static_cast<int>(message.stackpos());
-    const auto replaceAt = [&] {
-        if (TWorldMapField* tile = fieldAt(at)) {
-            if (const uint32_t stackCreatureId = tile->stackCreatureId(stackPos)) {
-                if (map->removeCreatureFromFields(stackCreatureId, at)) {
-                    replace(at, stackPos);
-                    return;
-                }
-            }
-            if (tile->removeThingAtStackPos(stackPos)) {
-                replace(at, stackPos);
-                return;
-            }
-        }
-        // A turn still carries the creature's update when its field slot is not found.
-        if (creatureReplacement)
-            (void)creatures::applyProtocolCreature(message.object().creature());
-    };
-    replaceAt();
-    // The minimap records the field whether or not the slot was found.
+    if (const appearances::TAppearanceInstancePtr instance = applyObject(message.object(), at))
+        map().replaceObjectAt(instance, at, static_cast<int>(message.stackpos() & 0xff));
+    // The minimap records the field whether or not an object was placed.
     updateMinimapField(at);
 }
 
@@ -287,16 +251,10 @@ void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverM
             storage->removeFromField(message.creature_id());
         return;
     }
-    // The field drops the object at the stack position (a creature leaves the
-    // field), then the minimap records the field.
-    TWorldMapStorage* map = m_storage ? m_storage : TWorldMapStorage::ensureStorage();
+    // The field drops the object at the stack position, then the minimap
+    // records the field.
     const Position at = positionOf(message.coordinate());
-    const int stackPos = static_cast<int>(message.stackpos());
-    if (TWorldMapField* tile = fieldAt(at)) {
-        const uint32_t stackCreatureId = tile->stackCreatureId(stackPos);
-        if (!stackCreatureId || !map->removeCreatureFromFields(stackCreatureId, at))
-            (void)tile->removeThingAtStackPos(stackPos);
-    }
+    (void)map().removeObjectAt(at, static_cast<int>(message.stackpos() & 0xff));
     updateMinimapField(at);
 }
 

@@ -4,11 +4,13 @@
 #include "sprites/spritesheetsmetadatamanager.h"
 
 #include <QImage>
+#include <QPointer>
 
 #include <memory>
 
 namespace tibia::assets {
 class TAssetAsyncLoader;
+class TAssetHandler;
 class TContentCatalog;
 }
 
@@ -30,12 +32,16 @@ public:
 
     /// Forgets every spritesheet and stops loading.
     void clear();
+    /// The game client's asset handler: start hands it the catalog's spritesheet
+    /// metadata and every loaded asset, and loads the assets it asks for.
+    void setAssetHandler(tibia::assets::TAssetHandler* assetHandler);
     /// Takes the catalog's spritesheets and starts loading their files from `assetsDirectory`.
     void start(const tibia::assets::TContentCatalog& catalog, const QString& assetsDirectory);
 
     /// Null before start.
     const std::shared_ptr<TSpritesheetsMetadataManager>& metadata() const { return m_metadata; }
     TSpritesheetManager& spritesheets() { return *m_spritesheets; }
+    const std::shared_ptr<TSpritesheetManager>& sharedSpritesheets() const { return m_spritesheets; }
     TSpriteResolver& resolver() { return *m_resolver; }
     /// Null before start.
     tibia::assets::TAssetAsyncLoader* assetLoader() { return m_assetLoader.get(); }
@@ -66,6 +72,7 @@ private:
     std::shared_ptr<TSpritesheetManager> m_spritesheets;
     std::unique_ptr<TSpriteResolver> m_resolver;
     std::unique_ptr<tibia::assets::TAssetAsyncLoader> m_assetLoader;
+    QPointer<tibia::assets::TAssetHandler> m_assetHandler;
 };
 
 }

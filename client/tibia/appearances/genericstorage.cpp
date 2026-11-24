@@ -36,6 +36,17 @@ void TAppearanceInstanceGenericStorage::removeAppearanceInstance(const std::shar
     m_appearanceInstances.erase(static_cast<uint32_t>(Instance->serialNumber()));
 }
 
+void TAppearanceInstanceGenericStorage::clear(const bool KeepEffects)
+{
+    if (!KeepEffects) {
+        m_appearanceInstances.clear();
+        return;
+    }
+    std::erase_if(m_appearanceInstances, [](const auto& entry) {
+        return !std::dynamic_pointer_cast<TEffectInstance>(entry.second);
+    });
+}
+
 TAppearanceInstanceGenericStoragesManager::TAppearanceInstanceGenericStoragesManager(
     std::shared_ptr<TAppearanceInstanceFactory> AppearanceInstanceFactory, QObject* parent)
     : cip::tibia::appearances::TAppearanceInstanceGenericStoragesManager(parent)

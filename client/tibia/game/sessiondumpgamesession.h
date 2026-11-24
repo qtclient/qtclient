@@ -109,6 +109,9 @@ private:
     void pumpReplay();
     void stopReplay();
     void startHintsForDump(const QString& dumpPath);
+    /// The tutorial's hints at the dump's progress: the dump pauses at the
+    /// next hint until the hints due by then are processed.
+    void processHintsTick();
     void stopHints();
 
     std::shared_ptr<const TSessiondumpGameSessionMetaInfo> m_sessiondumpMetaInfo;

@@ -3,28 +3,40 @@
 #include <QMetaType>
 #include <QNetworkCookie>
 #include <QString>
-#include <QList>
 
 namespace tibia {
 namespace authentication {
 
-/// CIP TCloudflareChallengeError (qm: cloudflare_challenge_error_*).
-enum class TCloudflareChallengeError : int
+/// CIP TCloudflareChallengeError: why a challenge failed (qm:
+/// cloudflare_challenge_error_*) and the reason it was cancelled with.
+struct TCloudflareChallengeError
 {
-    Unknown = 0,
-    Cancelled = 1,
-    Timeout = 2,
+    enum : int
+    {
+        Unknown = 0,
+        Cancelled = 1,
+        Timeout = 2,
+    };
+
+    int code = Unknown;
+    QString reason;
+
+    bool operator==(const TCloudflareChallengeError& other) const
+    {
+        return code == other.code && reason == other.reason;
+    }
 };
 
-/// CIP TCloudflareChallengeClearanceInfo — cookies + UA after cf_clearance lands.
+/// CIP TCloudflareChallengeClearanceInfo: the cf_clearance cookie of a solved
+/// challenge and the solver's user agent (the login request must send both).
 struct TCloudflareChallengeClearanceInfo
 {
+    QNetworkCookie cookie;
     QString userAgent;
-    QList<QNetworkCookie> cookies;
 
     bool operator==(const TCloudflareChallengeClearanceInfo& other) const
     {
-        return userAgent == other.userAgent && cookies == other.cookies;
+        return cookie == other.cookie && userAgent == other.userAgent;
     }
 };
 

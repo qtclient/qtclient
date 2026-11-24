@@ -56,6 +56,12 @@ public:
 
     /// Host: the QML engine app::createEngine made; the application owns it.
     void setQmlEngine(std::unique_ptr<QQmlEngine> Engine);
+    /// CIP: the resource set "graphics" (graphics_resources.rcc next to the
+    /// executable) is registered at qrc:; throws std::runtime_error when the
+    /// file is missing or cannot be registered. Host: qtclient's start runs
+    /// it from app::mountGraphicsResources, which falls back to its own
+    /// search directories (development layouts, WASM).
+    static void registerGraphicsResources();
     QQmlEngine* qmlEngine() const { return m_pEngine.get(); }
     std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper() const { return m_pTibiaFileSystemHelper; }
     /// Host: qtclient's client options are the process-wide config object.

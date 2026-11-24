@@ -8,6 +8,8 @@
 
 #include <protocol.pb.h>
 
+#include <utility>
+
 namespace tibia::reporting {
 
 namespace {
@@ -36,6 +38,12 @@ namespace {
 /// The server's report message confirms a submitted rule violation report.
 constexpr uint32_t MessageModeReport = 38;
 
+}
+
+TRuleViolationProtocolMessageHandler::TRuleViolationProtocolMessageHandler(
+    std::shared_ptr<protocol::TGameActionContextHelper> gameActionContextHelper)
+    : m_gameActionContextHelper(std::move(gameActionContextHelper))
+{
 }
 
 void TRuleViolationProtocolMessageHandler::handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message)

@@ -1,5 +1,7 @@
 #include "sound/sounddecompressorthreadpool.h"
 
+#include "sound/soundconcurrentexception.h"
+
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QFutureWatcher>
@@ -44,20 +46,26 @@ std::optional<TSoundData> convertStep(const TSoundData& data, const ESoundLoadTa
     return std::nullopt;
 }
 
+/// Runs `work` on the thread pool; once it finished, `done` gets its result
+/// on the owner's thread and the watcher goes. A conversion that threw holds a
+/// TSoundConcurrentException instead, which reading the result throws again.
 template<typename T>
 void runAsync(QObject* owner, std::function<T()> work, std::function<void(const T&)> done)
 {
     auto* watcher = new QFutureWatcher<T>(owner);
     QObject::connect(watcher, &QFutureWatcher<T>::finished, owner, [watcher, done = std::move(done)] {
-        if (watcher->future().resultCount() > 0)
-            done(watcher->future().result());
+        done(watcher->future().result());
         watcher->deleteLater();
     });
     auto promise = std::make_shared<QPromise<T>>();
     watcher->setFuture(promise->future());
     auto task = [promise, work = std::move(work)] {
         promise->start();
-        promise->addResult(work());
+        try {
+            promise->addResult(work());
+        } catch (...) {
+            promise->setException(TSoundConcurrentException());
+        }
         promise->finish();
     };
 #if QT_CONFIG(thread)
@@ -99,6 +107,35 @@ TPlayableSoundData TSoundDecompressorThreadpool::toPlayableSoundData(const TSoun
     if (auto* samples = std::get_if<TRawSoundSamples>(&data))
         return TSoundBuffer{ std::make_shared<const TRawSoundSamples>(std::move(*samples)) };
     return ESoundDataState::Unavailable;
+}
+
+TPlayableSoundData TSoundDecompressorThreadpool::playableSoundData(const TSoundEffectID soundId, const TSoundData& data,
+                                                                   const ESoundLoadTarget target)
+{
+    if (std::holds_alternative<ESoundDataState>(data))
+        return ESoundDataState::Unavailable;
+    const int kind = static_cast<int>(data.index());
+    if (kind == static_cast<int>(target) || (target == ESoundLoadTarget::Buffer && kind == static_cast<int>(ESoundLoadTarget::RawSamples))) {
+        if (const auto* file = std::get_if<TSoundFile>(&data))
+            return *file;
+        if (const auto* bytes = std::get_if<QByteArray>(&data))
+            return *bytes;
+        return TSoundBuffer{ std::make_shared<const TRawSoundSamples>(std::get<TRawSoundSamples>(data)) };
+    }
+    convertToPlayableSoundData(soundId, data, target);
+    return ESoundDataState::Loading;
+}
+
+TSoundData TSoundDecompressorThreadpool::soundData(const TSoundEffectID soundId, const TSoundData& data,
+                                                   const ESoundLoadTarget target)
+{
+    if (std::holds_alternative<ESoundDataState>(data))
+        return ESoundDataState::Unavailable;
+    const int kind = static_cast<int>(data.index());
+    if (kind == static_cast<int>(target) || (target == ESoundLoadTarget::Buffer && kind == static_cast<int>(ESoundLoadTarget::RawSamples)))
+        return data;
+    convertSoundData(soundId, data, target);
+    return ESoundDataState::Loading;
 }
 
 void TSoundDecompressorThreadpool::convertToPlayableSoundData(const TSoundEffectID soundId, const TSoundData& soundData,

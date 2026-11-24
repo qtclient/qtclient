@@ -21,7 +21,14 @@ class QObject;
 class QQuickItem;
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceFactory;
+}
+namespace config {
+class TClientOptions;
+}
 namespace game {
+class TGameActionRouter;
 class TBoostedCreatureRequestUploader;
 class TLiveInformationRequestUploader;
 class TShowOffRequestUploader;
@@ -36,6 +43,7 @@ class TNewsStorage;
 class TNewsViewsUploader;
 }
 namespace shared {
+class IClockService;
 class TTibiaFileSystemHelper;
 }
 }
@@ -57,8 +65,17 @@ class TGameWindowController final : public cip::tibia::gamewindow::TGameWindowCo
 {
     Q_OBJECT
 public:
-    /// `container` is clientwindow.qml's placeholder (gamewindowContainer).
-    explicit TGameWindowController(QQuickItem* container, QObject* parent = nullptr);
+    /// CIP: made with the game action router, the appearance instance factory,
+    /// the engine, the client options, the client window (qtclient:
+    /// clientwindow.qml's placeholder, gamewindowContainer), the hints URL, the
+    /// client services URL (the boosted creature and live information
+    /// uploaders ask it), the file system helper and the client's clock.
+    TGameWindowController(std::shared_ptr<game::TGameActionRouter> GameActionRouter,
+                          std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                          QQmlEngine* Engine, config::TClientOptions* ClientOptions, QQuickItem* ClientWindow,
+                          const QUrl& HintsUrl, const QUrl& ClientServicesUrl,
+                          std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                          std::shared_ptr<shared::IClockService> ClockService, QObject* parent = nullptr);
     ~TGameWindowController() override;
 
     void setStatusBarController(QObject* controller);
@@ -190,6 +207,10 @@ private:
     void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void syncAnthemButton();
 
+    std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    QQmlEngine* m_pEngine = nullptr;
+    config::TClientOptions* m_pClientOptions = nullptr;
     QPointer<QQuickItem> m_container;
     QPointer<QQuickItem> m_gameWindowItem;
     QUrl m_hintsUrl;
@@ -201,6 +222,7 @@ private:
     QTimer m_eventsSchedulePreviewTimer;
     bool m_beforeServerSave = true;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::IClockService> m_pClockService;
     std::shared_ptr<news::TNewsStorage> m_newsStorage;
     std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;
     std::unique_ptr<news::TEventsStorage> m_eventsStorage;

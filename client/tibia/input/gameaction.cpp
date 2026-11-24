@@ -312,7 +312,7 @@ IGameActionPtr makeGameAction(const EGameAction type)
     case EGameAction::GET_CHAT_CHANNEL_LIST:
         return std::make_shared<TGameActionGetChatChannelList>();
     case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
-        return std::make_shared<TGameActionShowExaltationResultDialog>();
+        return std::make_shared<TGameActionShowExaltationResultDialog>(exaltation::TExaltationResult{});
     case EGameAction::ATTACK_FIRST_TARGET:
         return std::make_shared<TGameActionAttackFirstTarget>();
     case EGameAction::ATTACK_NEXT_TARGET:

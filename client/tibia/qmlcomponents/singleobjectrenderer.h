@@ -3,6 +3,7 @@
 #include <cip_gen.h>
 
 #include "animation/animator.h"
+#include "qmlcomponents/appearanceinstancerendererbase.h"
 #include "renderer/spritetexturecache.h"
 
 #include <QPointer>
@@ -23,7 +24,7 @@ namespace qmlcomponents {
 /// pattern (protobuf bounding_box_per_direction, else the whole sprite) is what
 /// must fit. A 32x32 object whose box fits shows its whole field at the top-left;
 /// anything larger is shrunk to fit (never past scaleFactor) and centered on its box.
-class TSingleObjectAppearanceInstanceRenderer : public cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer
+class TSingleObjectAppearanceInstanceRenderer : public TAppearanceInstanceRendererBaseOfSingleObject
 {
     Q_OBJECT
 public:
@@ -37,14 +38,11 @@ public:
     void setAnimated(bool v) override;
     void setScaleFactor(float v) override;
     void setSmoothTextureFiltering(bool v) override;
-    void refreshAppearanceInstances() override { polish(); }
-    void refreshAppearanceInstances(bool) override { polish(); }
 
 protected:
     void componentComplete() override;
-    void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     void itemChange(ItemChange change, const ItemChangeData& value) override;
-    void updatePolish() override;
+    void updateDrawCommands() override;
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 
 private:

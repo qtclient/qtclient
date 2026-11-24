@@ -228,7 +228,7 @@ bool TTraderInventorySortFilterProxyModel::lessThan(const QModelIndex& left, con
     return value(left, TTraderInventoryModel::AppearanceID) < value(right, TTraderInventoryModel::AppearanceID);
 }
 
-TNPCTradeController::TNPCTradeController(QObject* parent)
+TNPCTradeController::TNPCTradeController(QQuickItem* DialogParentItem, QQmlEngine* Engine, QObject* parent)
     : cip::tibia::gamewindow::TNPCTradeController(parent)
     , m_options(TNPCTradeOptions::load())
     , m_proxy(&m_options)
@@ -245,7 +245,7 @@ TNPCTradeController::TNPCTradeController(QObject* parent)
     connect(this, &TNPCTradeController::selectedLiquidTypeChanged, this, &TNPCTradeController::buyOrSellPriceChanged);
     connect(this, &TNPCTradeController::amountPreselectedChanged, this, &TNPCTradeController::buyOrSellPriceChanged);
 
-    m_confirmation = new TMessageDialogController(this);
+    m_confirmation = new TMessageDialogController(Engine, DialogParentItem, this);
     m_confirmation->setYesNoButtons();
     m_confirmation->setCloseOnButtonClicked(true);
     connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
@@ -465,6 +465,8 @@ void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChagned()
 
 void TNPCTradeController::onNpcTradeOptionsChanged()
 {
+    // CIP: showNameFitlerChanged. Host: qtclient keeps a copy of the trade
+    // options, so the copy, the proxy's filter and the list follow here.
     m_options = TNPCTradeOptions::load();
     m_showNameFilter = m_options.showNameFilter;
     Q_EMIT showNameFitlerChanged();

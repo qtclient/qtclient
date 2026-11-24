@@ -15,6 +15,10 @@
 #include <variant>
 #include <vector>
 
+namespace tibia::shared {
+class TReadOnlyMemoryBlob;
+}
+
 namespace tibia {
 namespace sound {
 
@@ -93,6 +97,8 @@ public:
     std::optional<TPlayableSound> playableSound(TSoundEffectID soundId);
     /// The sound's name for logs.
     QString soundName(TSoundEffectID soundId) const;
+    /// The loaded asset of the sound stored as `FileName`.
+    void addSoundAssetData(const QString& FileName, const std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob>& pData);
 
 public Q_SLOTS:
     void onPreprocessingSoundDataFinished(tibia::sound::TSoundEffectID soundId, const tibia::sound::TSoundData& soundData);
@@ -109,7 +115,8 @@ private:
     std::string m_soundsDirectory;
     std::unordered_map<TSoundEffectID, TSoundCacheEntry> m_entries;
     std::unique_ptr<TSoundDecompressorThreadpool> m_decompressor;
-    int64_t m_soundCount = 0;
+    /// Sound assets handed to the decompressor.
+    int64_t m_preprocessingCount = 0;
     int64_t m_loadedCount = 0;
     int32_t m_cacheSeconds = 60;
     int64_t m_timestampMs = 0;

@@ -267,6 +267,9 @@ public:
     /// Throws std::logic_error when the group does not exist.
     const TAppearanceTypeSpriteInfo& frameGroup(EFixedFrameGroup group) const;
     void addFrameGroup(EFixedFrameGroup group, TAppearanceTypeSpriteInfo info);
+    /// A type without frame groups gets an empty initial group; an outfit missing
+    /// its idle or moving group gets a copy of the other one.
+    void completeFrameGroups();
     /// Every frame group is opaque (true without frame groups).
     bool isOpaque() const { return m_opaque; }
 

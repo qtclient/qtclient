@@ -25,6 +25,8 @@ public:
     void setSoundsToPlay(std::vector<TSoundToPlay> sounds, int64_t timestampMs);
     /// An effect that plays at its timestamp (update).
     void queueSound(const TSoundToPlay& sound);
+    /// The message's queued sounds: each plays the storage's delay after `timestampMs`.
+    void queueSoundsToPlay(std::vector<TSoundToPlay> sounds, int64_t timestampMs);
     /// v12: the queued effects due at `nowMs` become the sounds to play.
     void update(int64_t nowMs);
 

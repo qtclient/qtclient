@@ -34,6 +34,8 @@
 #include <QString>
 #include <tibia/game/thingsession_forward.h>
 #include "protocol/clientmessages.h"
+#include "game/currentgamesession.h"
+#include "network/networkqualityprotocolmessagehandler.h"
 
 namespace tibia {
 namespace game {
@@ -880,7 +882,9 @@ bool isUsingProtobuf()
 
 int getPing()
 {
-    return gameSessionState().getPing();
+    // The live game server session's round trip time; -1 without one.
+    const auto* session = dynamic_cast<const TGameserverGameSession*>(currentGameSession());
+    return session ? int(session->latency().milliseconds) : -1;
 }
 
 uint32_t getFollowingCreatureId()

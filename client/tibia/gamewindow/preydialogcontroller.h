@@ -1,6 +1,8 @@
 #pragma once
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "prey/preystorage.h"
+#include "input/gameactionptr.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -23,141 +25,6 @@ class TClientOptions;
 }
 namespace game {
 class IGameSession;
-}
-namespace prey {
-
-/// A creature of a prey slot (CIP: name and outfit of TPreyData's monster).
-struct TPreyMonster
-{
-    QString name;
-    uint outfitId = 0;
-    int head = 0;
-    int torso = 0;
-    int legs = 0;
-    int detail = 0;
-    bool firstAddOn = false;
-    bool secondAddOn = false;
-
-    bool operator==(const TPreyMonster&) const = default;
-};
-
-/// The protocol's prey bonus (type 4: none).
-struct TPreyBonus
-{
-    int type = 4;
-    int value = 0;
-    int grade = 0;
-};
-
-/// One prey slot (CIP: TPreyData, ctor , 0xd8 bytes). States:
-/// 0 locked, 1 inactive, 2 active, 3 selection, 4 selection with a bonus,
-/// 5 bestiary selection, 6 bestiary selection with a bonus (wildcard).
-class TPreyData final : public cip::tibia::prey::TPreyData
-{
-    Q_OBJECT
-public:
-    explicit TPreyData(uint8_t preyId, QObject* parent = nullptr);
-
-    uint8_t preyId() const { return m_preyId; }
-    int state() const { return m_state; }
-    int unlockOption() const { return m_unlockOption; }
-    int timeLeft() const { return m_timeLeft; }
-    /// The free list reroll, in seconds since the epoch (0: now).
-    qint64 nextFreeListReroll() const { return m_nextFreeListReroll; }
-    int automaticExtendType() const { return m_automaticExtendType; }
-    const TPreyBonus& bonus() const { return m_bonus; }
-    const TPreyMonster& monster() const { return m_monster; }
-    const QList<TPreyMonster>& monsterList() const { return m_monsterList; }
-    const QList<uint16_t>& raceList() const { return m_raceList; }
-
-    /// The state setters. Each clears the slot first (clearStateData) and
-    /// falls back to inactive when the server sent no bonus or no creatures.
-    void setLocked(int unlockOption);
-    void setInactive();
-    void setActive(const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
-    void setSelection(QList<TPreyMonster> list);
-    void setSelectionChangeMonster(const TPreyBonus& bonus, QList<TPreyMonster> list);
-    void setListSelection(QList<uint16_t> races);
-    void setWildcardSelection(const TPreyBonus& bonus, QList<uint16_t> races);
-    void setTimeLeft(int seconds);
-    /// `seconds` from now, as the server sends it (0: free now).
-    void setNextFreeListReroll(qint64 seconds);
-    void setAutomaticExtendType(int type);
-
-private:
-    void clearStateData();
-    void setState(int state);
-    void setUnlockOption(int unlockOption);
-    void setBonus(const TPreyBonus& bonus);
-    void setMonster(const TPreyMonster& monster);
-    void setMonsterList(QList<TPreyMonster> list);
-    void setRaceList(QList<uint16_t> races);
-
-    uint8_t m_preyId;
-    /// A new slot is inactive and unlocked until the server says otherwise.
-    int m_state = 1;
-    int m_unlockOption = 2;
-    int m_timeLeft = 0;
-    qint64 m_nextFreeListReroll = 0;
-    int m_automaticExtendType = 0;
-    TPreyBonus m_bonus;
-    TPreyMonster m_monster;
-    QList<TPreyMonster> m_monsterList;
-    QList<uint16_t> m_raceList;
-};
-
-/// The three prey slots and the prices (CIP: TPreyStorage, ctor).
-/// The dialog opens once the server sent every slot.
-class TPreyStorage final : public cip::tibia::prey::TPreyStorage
-{
-    Q_OBJECT
-public:
-    static constexpr int SlotCount = 3;
-
-    explicit TPreyStorage(QObject* parent = nullptr);
-
-    TPreyData* slot(int preyId) const;
-    const std::array<TPreyData*, SlotCount>& slots() const { return m_slots; }
-    /// CIP vtable +0xb8: every slot arrived (the pending set is empty).
-    bool allDataReceived() const { return m_pendingSlots.empty(); }
-    /// CIP : a slot arrived.
-    void markReceived(int preyId);
-    /// One slot's data; out-of-range slots are ignored. The state setters
-    /// count the slot as received.
-    void setSlotNextFreeListReroll(int preyId, qint64 seconds);
-    void setSlotTimeLeft(int preyId, int seconds);
-    void setSlotAutomaticExtendType(int preyId, int type);
-    void setSlotLocked(int preyId, int unlockOption);
-    void setSlotInactive(int preyId);
-    void setSlotActive(int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
-    void setSlotSelection(int preyId, QList<TPreyMonster> list);
-    void setSlotSelectionChangeMonster(int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list);
-    void setSlotListSelection(int preyId, QList<uint16_t> races);
-    void setSlotWildcardSelection(int preyId, const TPreyBonus& bonus, QList<uint16_t> races);
-
-    int listRerollPrice() const { return m_listRerollPrice; }
-    int bonusRerollPrice() const { return m_bonusRerollPrice; }
-    int choosePreyPrice() const { return m_choosePreyPrice; }
-    int preyWildcards() const { return m_preyWildcards; }
-    bool bonusRerollPossible() const { return static_cast<uint>(m_bonusRerollPrice) <= static_cast<uint>(m_preyWildcards); }
-    bool choosePreyPossible() const { return static_cast<uint>(m_choosePreyPrice) <= static_cast<uint>(m_preyWildcards); }
-    /// The PreyPrices message: list reroll, bonus reroll and choose prey prices.
-    void setPrices(int listReroll, int bonusReroll, int choosePrey);
-    void setListRerollPrice(int price);
-    void setBonusRerollPrice(int price);
-    void setChoosePreyPrice(int price);
-    /// The prey wildcard resource balance.
-    void setPreyWildcards(int amount);
-
-private:
-    std::array<TPreyData*, SlotCount> m_slots{};
-    std::set<int> m_pendingSlots;
-    int m_listRerollPrice = 0;
-    int m_bonusRerollPrice = 0;
-    int m_choosePreyPrice = 0;
-    int m_preyWildcards = 0;
-};
-
 }
 }
 
@@ -376,6 +243,13 @@ public:
 
     /// CIP (OPEN_PREY_DIALOG).
     void showDialog() override;
+
+public Q_SLOTS:
+    /// CIP: OPEN_PREY_DIALOG shows the dialog (connected to the game window's
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+public:
     /// CIP (vtable 14).
     void closeDialog() override;
     void closeButtonClicked() override;

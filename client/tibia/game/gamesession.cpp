@@ -351,14 +351,6 @@ void processWorldEntered()
 {
     tibia::game::TGameserverGameSession::wireProcessWorldEntered();
 }
-void processPing()
-{
-    tibia::game::TGameserverGameSession::wireProcessPing();
-}
-void processPingBack()
-{
-    tibia::game::TGameserverGameSession::wireProcessPingBack();
-}
 void processLoginError(const std::string_view error)
 {
     tibia::game::TGameserverGameSession::wireProcessLoginError(error);

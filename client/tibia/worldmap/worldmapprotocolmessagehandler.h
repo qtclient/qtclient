@@ -59,12 +59,6 @@ public:
     /// The session's view: a full map centres it on the map's coordinate.
     void setViewport(TWorldMapViewport* viewport) { m_viewport = viewport; }
 
-    /// CIP tile-description apply.
-    void clearField(const Position& position);
-    void applyAppearanceToField(const appearances::TAppearanceInstancePtr& appearance, const Position& position,
-                                int stackPos);
-    void applyCreatureIdToField(uint32_t creatureId, const Position& position, int stackPos);
-
     void handleFullMapMessage(const ::tibia::protobuf::protocol::GameserverMessageFullMap& message);
     void handleTopRowMessage(const ::tibia::protobuf::protocol::GameserverMessageTopRow& message);
     void handleRightColumnMessage(const ::tibia::protobuf::protocol::GameserverMessageRightColumn& message);
@@ -80,8 +74,12 @@ public:
     /// Replace a field's content with `field`'s objects; a field without objects
     /// leaves the storage. Fields outside the known area are ignored.
     void applyField(const ::tibia::protobuf::protocol::ProtocolMapField& field);
-    /// Place one object at `position` / `stackPos`; false when it yields nothing to place.
-    bool applyObject(const ::tibia::protobuf::protocol::ProtocolMapObject& object, const Position& position, int stackPos);
+    /// The instance an object of the field at `position` stands for: a
+    /// creature's data is applied, the creature placed at `position` and its
+    /// placeholder returned; an item's instance takes the field's patterns.
+    /// Null when the object yields nothing.
+    appearances::TAppearanceInstancePtr applyObject(const ::tibia::protobuf::protocol::ProtocolMapObject& object,
+                                                    const Position& position);
 
     /// CIP slot: AmbientLight (S 0x82 / 130) — native Q→H apply (skips classic bridge).
     void handleAmbientLightMessage(

@@ -8,6 +8,7 @@
 
 #include "gameactioncontext.h"
 #include "playermovementintent.h"
+#include "exaltation/exaltationstorage.h"
 
 #include <QColor>
 #include <QJsonDocument>
@@ -2445,15 +2446,20 @@ private:
     bool m_convergence;
 };
 
-/// CIP input::TGameActionShowExaltationResultDialog (SHOW_EXALTATION_RESULT_DIALOG).
-/// qtclient: the result travels in the exaltation storage (CIP's action carries it).
+/// CIP input::TGameActionShowExaltationResultDialog (SHOW_EXALTATION_RESULT_DIALOG):
+/// the fusion's or transfer's result (+0xc).
 class TGameActionShowExaltationResultDialog final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionShowExaltationResultDialog()
+    explicit TGameActionShowExaltationResultDialog(const exaltation::TExaltationResult& result)
         : TGameActionSimple(EGameAction::SHOW_EXALTATION_RESULT_DIALOG)
+        , m_result(result)
     {
     }
+    const exaltation::TExaltationResult& result() const { return m_result; }
+
+private:
+    exaltation::TExaltationResult m_result;
 };
 
 /// CIP input::TGameActionPreySystem: a prey action on one slot (+0xc); the list /
@@ -3105,9 +3111,13 @@ public:
     }
     EGameAction gameActionType() const override { return EGameAction::USE_AT_MOUSECURSOR; }
     const std::optional<TObjectGameActionContext>& target() const { return m_target; }
+    /// CIP: a window (the map window, a battle list) took the use.
+    bool isHandled() const { return m_isHandled; }
+    void setHandled() const { m_isHandled = true; }
 
 private:
     std::optional<TObjectGameActionContext> m_target;
+    mutable bool m_isHandled = false;
 };
 
 /// CIP input::TGameActionPlayerTradeItem (TRADE_ITEM).

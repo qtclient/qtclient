@@ -8,6 +8,7 @@
 #include "game/gamesessionbase.h"
 #include "game/playerdata.h"
 #include "teamfinder/teamfinderciptypes.h"
+#include "config/clientoptions.h"
 
 #include "jsondocumenthttppostsender.h"
 
@@ -22,26 +23,15 @@ namespace tibia::authentication {
 
 namespace {
 
-/// The client option holding the id of the last important balancing message seen.
-constexpr int LastImportantBalancingMessageOption = 126;
 /// An important balancing message is shown for 28 days after its changes.
 constexpr int ImportantBalancingMessageSeconds = 28 * 24 * 60 * 60;
 
 /// The sender's form of a solved challenge's clearance.
 shared::TJsonDocumentHttpPostSender::TCloudflareClearance senderClearance(const TCloudflareChallengeClearanceInfo& Clearance)
 {
-    return { cloudflareClearanceCookie(Clearance), Clearance.userAgent };
+    return { Clearance.cookie, Clearance.userAgent };
 }
 
-}
-
-QNetworkCookie cloudflareClearanceCookie(const TCloudflareChallengeClearanceInfo& Clearance)
-{
-    for (const QNetworkCookie& cookie : Clearance.cookies) {
-        if (cookie.name() == QByteArrayLiteral("cf_clearance"))
-            return cookie;
-    }
-    return QNetworkCookie();
 }
 
 const TWorld* LoginResult::world(const int id) const
@@ -50,11 +40,13 @@ const TWorld* LoginResult::world(const int id) const
     return it == worlds.end() ? nullptr : &it->second;
 }
 
-TLoginRequestUploader::TLoginRequestUploader(const QUrl& Url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> Sender)
+TLoginRequestUploader::TLoginRequestUploader(const QUrl& Url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> Sender,
+                                             config::TClientOptions* ClientOptions)
     : shared::TJsonDocumentUploaderBase(Sender)
     , m_pSender(std::move(Sender))
     , m_loginUrl(Url)
     , m_helper(std::make_unique<TAuthenticationJsonDocumentHelper>())
+    , m_pClientOptions(ClientOptions)
 {
     connect(this, &TLoginRequestUploader::finished, this, &TLoginRequestUploader::onFinished);
     connect(m_pSender.get(), &shared::TJsonDocumentHttpPostSender::cloudflareMitigated, this,
@@ -133,8 +125,9 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
     QString loginEmail;
     QString deviceCookie;
     m_helper->parseLoginEmail(reply, loginEmail);
-    if (m_helper->parseDeviceCookie(reply, deviceCookie) && !deviceCookie.isEmpty() && !loginEmail.isEmpty() && m_options)
-        m_options->setDeviceCookie(loginEmail.toStdString(), deviceCookie);
+    if (m_helper->parseDeviceCookie(reply, deviceCookie) && !deviceCookie.isEmpty() && !loginEmail.isEmpty()
+        && m_pClientOptions)
+        m_pClientOptions->setDeviceCookie(loginEmail, deviceCookie);
 
     TSurveyData survey;
     if (m_helper->parseSurveyData(reply, survey))
@@ -146,7 +139,7 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
     m_helper->parseCharacterTradePayments(reply, m_characterTradePayments);
     m_showReturnerNotification = m_helper->parseReturnerNotification(reply);
     m_showImportantBalancingMessage = false;
-    if (m_options) {
+    if (m_pClientOptions) {
         QString data;
         QFile file(QStringLiteral(":/data/ImportantBalancingMessageData.json"));
         if (file.open(QIODevice::ReadOnly))
@@ -157,7 +150,7 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
         const auto now = static_cast<int>(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
         const int dateOfCurrentChanges = message.value(QStringLiteral("dateOfCurrentChanges")).toInt();
         if (static_cast<uint32_t>(now - dateOfCurrentChanges) <= ImportantBalancingMessageSeconds
-            && m_options->intOption(LastImportantBalancingMessageOption) < id)
+            && static_cast<uint32_t>(m_pClientOptions->intOption(config::EClientOption::emergencyDialogVersion)) < id)
             m_showImportantBalancingMessage = true;
     }
 
