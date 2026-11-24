@@ -305,13 +305,6 @@ std::vector<TImbuementSource> ownedAstralSources(const TImbuingStorage& storage,
     return owned;
 }
 
-bool localPlayerPremium()
-{
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
-    return session && session->hasLocalPlayer() && premium && premium->isPremium();
-}
-
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
@@ -394,7 +387,7 @@ bool TImbuingDialogController::itemSelectionValid() const
 bool TImbuingDialogController::scrollIsAvailable() const { return m_storage->scrollAvailable(); }
 bool TImbuingDialogController::imbueModeItem() const { return m_storage->mode() == TImbuingStorage::MODE_ITEM; }
 bool TImbuingDialogController::imbueModeScroll() const { return m_storage->mode() == TImbuingStorage::MODE_SCROLL; }
-bool TImbuingDialogController::isPremium() const { return localPlayerPremium(); }
+bool TImbuingDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 
 QString TImbuingDialogController::imbuementFilter() const
 {
@@ -445,7 +438,7 @@ void TImbuingDialogController::closeDialog()
     Q_EMIT imbuingQmlDataChanged();
     dialog()->close();
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCloseImbuingWindow();
     m_imbuedItemInstance.reset();
     m_picking = false;
@@ -528,7 +521,7 @@ void TImbuingDialogController::handlePickItemToImbue()
         if (target && target->objectClientId()) {
             const uint8_t stackpos = target->stackPosition() >= 0 ? static_cast<uint8_t>(target->stackPosition()) : 0;
             if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-                session && session->canPerformGameAction())
+                session)
                 tibia::protocol::gameclient::sendImbuementWindowAction(tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM, target->objectClientId(), target->position(), stackpos);
         }
         m_picking = false;
@@ -539,7 +532,7 @@ void TImbuingDialogController::handlePickItemToImbue()
 
 void TImbuingDialogController::handleImbueScroll()
 {
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
         tibia::protocol::gameclient::sendImbuementWindowAction(tibia::client::IMBUEMENT_WINDOW_SCROLL);
 }
 
@@ -561,14 +554,14 @@ void TImbuingDialogController::onDisplayResultMessage(const QString& message)
 void TImbuingDialogController::onImbueSlotConfirmed()
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendApplyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
 }
 
 void TImbuingDialogController::onClearSlotConfirmed()
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendClearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
 }
 
@@ -678,7 +671,7 @@ void TImbuingDialogController::updateAvailableImbuements()
             const bool occupied = slot && !slot->isEmpty;
             if (occupied)
                 m_filter = slot->imbuement.tier;
-            else if (!localPlayerPremium())
+            else if (!isPremium())
                 m_filter = 0;
             std::vector<TImbuement> imbuements = occupied ? std::vector<TImbuement>{ slot->imbuement } : imbuementsOfTier(*m_storage, m_filter);
             sortImbuements(imbuements);

@@ -296,7 +296,7 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
         return;
     // CIP: the charm page asks for the bestiary overview.
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();
 }
 
@@ -561,7 +561,7 @@ void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()
 {
     const game::TGameSessionBase* session = tibia::game::currentGameSession();
     cyclopedia::TCyclopediaProtocolMessageHandler* handler =
-        session && session->canPerformGameAction() ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
+        session ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
     if (!handler)
         return;
     // m_confirmAction: 0 unlock, 1 assign, 2 remove, 3 reset all.

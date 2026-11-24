@@ -104,11 +104,10 @@ QString ownName(const std::shared_ptr<game::IGameSession>& gameSession)
     return session ? session->characterName() : QString();
 }
 
-/// The connected session takes game actions (online, a live player, connected).
-bool canPerformGameAction(const std::shared_ptr<game::IGameSession>& gameSession)
+/// A session takes the messages (its queue sends them).
+bool hasGameSession(const std::shared_ptr<game::IGameSession>& gameSession)
 {
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
-    return session && session->canPerformGameAction();
+    return dynamic_cast<const game::TGameSessionBase*>(gameSession.get()) != nullptr;
 }
 
 bool isOnline(const std::shared_ptr<game::IGameSession>& gameSession)
@@ -119,13 +118,13 @@ bool isOnline(const std::shared_ptr<game::IGameSession>& gameSession)
 
 void inviteToOwnChannel(const std::shared_ptr<game::IGameSession>& gameSession, const std::string& name)
 {
-    if (canPerformGameAction(gameSession) && !name.empty())
+    if (hasGameSession(gameSession) && !name.empty())
         protocol::gameclient::sendInviteToOwnChannel(name);
 }
 
 void excludeFromOwnChannel(const std::shared_ptr<game::IGameSession>& gameSession, const std::string& name)
 {
-    if (canPerformGameAction(gameSession) && !name.empty())
+    if (hasGameSession(gameSession) && !name.empty())
         protocol::gameclient::sendExcludeFromOwnChannel(name);
 }
 
@@ -1158,7 +1157,7 @@ TChatController::TChatController(const uint MaxChatInputHistoryLength, QQuickIte
     connect(&m_openDialog, &TOpenChatChannelDialogController::channelChosen, this, &TChatController::onRequestOpenChanel);
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
             [this](const QString& name) {
-                if (canPerformGameAction(m_gameSession) && !name.isEmpty())
+                if (hasGameSession(m_gameSession) && !name.isEmpty())
                     protocol::gameclient::sendOpenPrivateChannel(name.toStdString());
             });
 

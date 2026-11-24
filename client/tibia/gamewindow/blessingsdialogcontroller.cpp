@@ -31,13 +31,6 @@ int blessingStoreOffer(const int id)
     }
 }
 
-bool localPlayerPremium()
-{
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
-    return session && session->hasLocalPlayer() && premium && premium->isPremium();
-}
-
 }
 
 TBlessingsDialogController::TBlessingsDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
@@ -76,7 +69,8 @@ void TBlessingsDialogController::connectToPremiumTimeStorage(game::TPremiumTimeS
 void TBlessingsDialogController::showDialog(const game::TBlessingDialogData& BlessingDialogData)
 {
     QObject* previous = m_blessingsData;
-    m_blessingsData = new game::TQmlBlessingDialogData(game::TBlessingDialogData(BlessingDialogData), localPlayerPremium());
+    m_blessingsData = new game::TQmlBlessingDialogData(game::TBlessingDialogData(BlessingDialogData),
+                                                     m_premiumTimeStorage && m_premiumTimeStorage->isPremium());
     m_blessingsData->setParent(this);
     dialog()->destroy();
     if (previous)
@@ -89,7 +83,7 @@ void TBlessingsDialogController::closeDialog() { dialog()->close(); }
 void TBlessingsDialogController::onPremiumStatusChanged()
 {
     if (auto* data = qobject_cast<game::TQmlBlessingDialogData*>(m_blessingsData))
-        data->setPremium(localPlayerPremium());
+        data->setPremium(m_premiumTimeStorage && m_premiumTimeStorage->isPremium());
 }
 
 void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()

@@ -208,11 +208,10 @@ void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMe
             details.emplace_back(QString::fromStdString(detail.key()), QString::fromStdString(detail.value()));
         // The entry's look: its object (one with a type), else its outfit.
         appearances::TAppearanceInstancePtr appearance;
-        // CipSoft's factory also takes the clock's now as the object's
-        // animation start; qtclient's starts object animations at time 0.
+        // The object's animation starts at the clock's now.
         if (information.has_object() && information.object().item_id() != 0) {
             appearance = m_appearanceInstanceFactory->createObject(
-                protocol::TObjectData::fromProtocolInventoryItem(information.object()));
+                protocol::TObjectData::fromProtocolInventoryItem(information.object()), m_clockService->nowMillis());
         } else if (information.has_outfit()) {
             // Looking south.
             appearance = m_appearanceInstanceFactory->fromOutfit(
@@ -748,7 +747,7 @@ void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMess
 {
     const QString text = QString::fromStdString(m.text());
     const auto object = std::dynamic_pointer_cast<appearances::TObjectAppearanceInstance>(
-        m_appearanceInstanceFactory->createFromProtobuf(m.object(), m_clockService->nowMillis()));
+        m_appearanceInstanceFactory->createFromProtobuf(m.object(), Position(0, 0, 0), m_clockService->nowMillis()));
     Q_EMIT requestEditTextDialog(m.edit_id(), text, static_cast<int>(m.max_length()), object, QString::fromStdString(m.author()),
                                  m.recently_traded(), QString::fromStdString(m.date()));
 }

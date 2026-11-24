@@ -360,7 +360,7 @@ void TCreatureTrackerWidgetController::requestContextMenu(const uint RaceID, con
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("bestiary_tracker_stop_tracking").arg(RaceName)), &TContextMenuEntryItem::triggered,
             this, [RaceID] {
-                if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
                     tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), false);
             });
     menu->showCustomMenu();

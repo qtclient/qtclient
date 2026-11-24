@@ -33,4 +33,4 @@ The sync tree (`client/upstream/`, `launcher/upstream/`) and extracted assets
 (`data/assets/`, sounds, `graphics_resources.rcc`) are CipSoft-derived. They
 are **not** redistributed by a public cut of this project. Obtain them from a
 licensed Tibia install via `make tibia-sync` / `make sync` and `make extract`.
-See docs/open-source.md.
+See README.md.

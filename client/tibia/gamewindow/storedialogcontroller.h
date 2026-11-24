@@ -129,8 +129,8 @@ private:
 };
 
 /// The store, StoreDialog.qml (CIP: TStoreDialogController), on the game
-/// session's TStoreStorage and TStoreProtocolMessageHandler. Crystal sends no
-/// world transfer or main character data, so those purchases never start.
+/// session's TStoreStorage and TStoreProtocolMessageHandler. The world transfer
+/// and main character purchases start when the server asks for their input.
 class TStoreDialogController final : public TDialogController<cip::tibia::gamewindow::TStoreDialogController>
 {
     Q_OBJECT

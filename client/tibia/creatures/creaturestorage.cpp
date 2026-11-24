@@ -336,8 +336,6 @@ void TCreature::syncLocalPlayerStats()
         m_harmony = data->harmony();
         m_serene = data->serene();
         m_vocation = data->vocation();
-        if (!data->characterName().empty())
-            m_name = QString::fromStdString(data->characterName());
     }
 }
 

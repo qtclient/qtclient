@@ -622,7 +622,7 @@ void TCharacterInfoDialogController::updateAchievements()
 /// CIP .
 void TCharacterInfoDialogController::resetCharacterTitle()
 {
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
         tibia::protocol::gameclient::sendFriendSystemAction(0x0E, 0);
 }
 
@@ -632,7 +632,7 @@ void TCharacterInfoDialogController::setOrToggleCharacterTitle(const uint charac
     if (!titles || characterTitleId == 0)
         return;
     const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    if (!session || !session->canPerformGameAction())
+    if (!session)
         return;
     // The current title again clears it.
     tibia::protocol::gameclient::sendFriendSystemAction(
@@ -650,13 +650,13 @@ void TCharacterInfoDialogController::showContextMenuForCharacterTitleID(const ui
     if (CharacerTitleId == titles->currentTitleId()) {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_rest_title")), &TContextMenuEntryItem::triggered, this,
                 [] {
-                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
                         tibia::protocol::gameclient::sendFriendSystemAction(0x0E, 0);
                 });
     } else {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_set_title")), &TContextMenuEntryItem::triggered, this,
                 [CharacerTitleId] {
-                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
                         tibia::protocol::gameclient::sendFriendSystemAction(0x0E, static_cast<uint8_t>(CharacerTitleId));
                 });
     }

@@ -57,10 +57,10 @@ bool sessionIsOnline()
     return session && session->isOnline();
 }
 
-bool sessionCanPerformGameAction()
+/// A session takes the messages (its queue sends them).
+bool hasGameSession()
 {
-    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
-    return session && session->canPerformGameAction();
+    return tibia::game::currentGameSession() != nullptr;
 }
 
 uint64_t localPlayerResource(const tibia::client::ResourceTypes_t type)
@@ -411,7 +411,7 @@ TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 
 void TWeaponProficiencyDialogController::sendItemInfo(const uint16_t typeId) const
 {
-    if (sessionCanPerformGameAction())
+    if (hasGameSession())
         tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_ITEM_INFO, typeId);
 }
 
@@ -441,7 +441,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
         if (m_storage->listRequested()) {
             sendItemInfo(static_cast<uint16_t>(m_currentTypeId));
         } else {
-            if (sessionCanPerformGameAction())
+            if (hasGameSession())
                 tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_LIST_INFO);
             m_storage->setListRequested(true);
         }
@@ -458,7 +458,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 
 void TWeaponProficiencyDialogController::sendInspectObject(const uint16_t typeId) const
 {
-    if (sessionCanPerformGameAction())
+    if (hasGameSession())
         tibia::protocol::gameclient::sendInspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
 }
 
@@ -603,7 +603,7 @@ void TWeaponProficiencyDialogController::onApplyClicked()
     const auto typeId = static_cast<uint16_t>(m_currentTypeId);
     const TProficiencyData* server = m_storage->data(typeId);
     if (m_pendingReset && sessionIsOnline() && server && !flaggedPicks(*server).empty())
-        if (sessionCanPerformGameAction())
+        if (hasGameSession())
             tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_RESET_PERKS, typeId);
     std::vector<uint8_t> levels;
     std::vector<uint8_t> perks;
@@ -611,7 +611,7 @@ void TWeaponProficiencyDialogController::onApplyClicked()
         levels.push_back(pick.level);
         perks.push_back(pick.perk);
     }
-    if (sessionCanPerformGameAction())
+    if (hasGameSession())
         tibia::protocol::gameclient::sendWeaponProficiencyApply(typeId, levels, perks);
     m_pendingReset = false;
 }
@@ -748,7 +748,7 @@ void TWeaponProficiencyDialogController::onModifyShapeClicked()
     if (!m_selectedPerkCanBeShaped) {
         m_onAccept = [this, typeId, level, perk] {
             onApplyClicked();
-            if (sessionCanPerformGameAction())
+            if (hasGameSession())
                 tibia::protocol::gameclient::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_MODIFY_SLOT, typeId, level, perk);
         };
         m_onDiscard = nullptr;

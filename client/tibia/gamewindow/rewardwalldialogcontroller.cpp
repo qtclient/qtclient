@@ -79,13 +79,6 @@ const TDailyRewardFixedItems* fixedItems(const std::shared_ptr<TDailyReward>& re
     return dynamic_cast<const TDailyRewardFixedItems*>(reward.get());
 }
 
-bool localPlayerPremium()
-{
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
-    return session && session->hasLocalPlayer() && premium && premium->isPremium();
-}
-
 TMessageDialogButton* okButton(const TMessageDialogController::Button identifier)
 {
     return new TMessageDialogButton(qtTrId("ok"), identifier, QKeySequence(QStringLiteral("Return")));
@@ -184,7 +177,7 @@ TRewardWallDialogController::~TRewardWallDialogController()
     clearDailyRewards();
 }
 
-bool TRewardWallDialogController::isPremium() const { return localPlayerPremium(); }
+bool TRewardWallDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 uint TRewardWallDialogController::instantRewardAccessAmount() const { return m_storage ? m_storage->instantRewardAccessAmount() : 0; }
 uint TRewardWallDialogController::dailyRewardJokerAmount() const { return m_storage ? m_storage->dailyRewardJokerAmount() : 0; }
 uint TRewardWallDialogController::cosmeticTokenCount() const { return m_storage ? m_storage->cosmeticTokenCount() : 0; }
@@ -449,7 +442,7 @@ std::shared_ptr<TDailyReward> TRewardWallDialogController::collectableReward() c
     const size_t position = m_storage->nextDailyRewardPosition();
     if (position >= rewards.size() || m_storage->nextRewardTime() > currentUnixTime())
         return {};
-    return localPlayerPremium() ? rewards[position].second : rewards[position].first;
+    return isPremium() ? rewards[position].second : rewards[position].first;
 }
 
 /// The server may warn first (1) or refuse (2); away from a shrine the
@@ -552,7 +545,7 @@ QString TRewardWallDialogController::dailyRewardHoverText(const int Index)
     if (Index < 0 || Index >= m_dailyRewards.size() || !m_storage)
         return {};
     const dailyreward::TDailyRewardStorage::TRewardPair reward = m_storage->rewards()[size_t(Index)];
-    return qtTrId("rewardwall_daily_reward_details").arg(dailyRewardDetails(reward.first, reward.second, localPlayerPremium()));
+    return qtTrId("rewardwall_daily_reward_details").arg(dailyRewardDetails(reward.first, reward.second, isPremium()));
 }
 
 /// Collected, waiting, unlocking in some time, or claimable now with the

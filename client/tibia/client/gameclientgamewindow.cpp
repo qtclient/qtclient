@@ -1290,8 +1290,11 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
     // CIP: the sidebar widgets manager connects every widget it owns and
     // opens and closes the player trade and depot search widgets from
     // the session's protocol handlers.
-    if (g && g->sidebarWidgets)
+    if (g && g->sidebarWidgets) {
         g->sidebarWidgets->connectToGameSession(GameSession);
+        // The client hands the widgets its premium time storage.
+        g->sidebarWidgets->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
+    }
     if (g && g->sidebarPanels)
         g->sidebarPanels->connectToGameSession(GameSession);
     if (g && g->cooldownBar)

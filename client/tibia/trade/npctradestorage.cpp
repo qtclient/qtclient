@@ -123,12 +123,6 @@ TNPCTradeStorage::TNPCTradeStorage(std::shared_ptr<game::TPlayerData> playerData
     }
     if (m_sidebarOptions)
         connect(m_sidebarOptions.get(), &config::TSidebarOptions::npcTradeOptionsChanged, this, &TNPCTradeStorage::traderInventoryChanged);
-    // Host: qtclient's gold balances are not part of the inventory container;
-    // their change refreshes the goods like an inventory change.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this]() {
-        if (m_open)
-            Q_EMIT playerInventoryChanged();
-    });
     Q_EMIT traderInventoryChanged();
 }
 

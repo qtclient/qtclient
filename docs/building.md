@@ -9,7 +9,7 @@ Install the official CipSoft Tibia client, then from this tree (or the public
 git submodule update --init third_party/Qt5LegacyControls
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 make setup                 # qt + sync + extract (default Tibia path)
-make client-build && make client-start
+make desktop build && make desktop run
 ```
 
 `make sync` / `make extract` probe OS defaults (macOS CipSoft package,
@@ -41,3 +41,22 @@ wasm chainloads Qt’s `qt.toolchain.cmake` with the `wasm32-emscripten` triplet
 
 Umbrella repo: same targets via top-level `make extract` / `make sync`
 (optional `TIBIA=`).
+
+## Android
+
+Use `scripts/lifecycle/build/android.sh` with the CipSoft Android Qt kit from
+`make qt ANDROID=1`. C++ deps still come from vcpkg.
+
+## Animated UI assets
+
+Qt's PNG handler reads **static** PNG only (no `acTL` / APNG). Animated CIP UI
+art ships as **animated WebP** and loads through `QImageReader` (`imageCount`,
+`nextImageDelay`, `loopCount`). When upstream ships new APNG PNGs under `data/`:
+
+```bash
+python3 tools/extract/apng_to_webp.py
+python3 tools/extract/apng_to_webp.py --check   # CI: fail if any acTL .png remains
+```
+
+CipSoft's QML asks for the `.webp` path; data lookups without an extension try
+`.webp` (`guessFilePath`). WebP is preferred over GIF (lossless, smaller).

@@ -15,7 +15,7 @@ Session accessors for packs: the host ABI session table
 implemented over the current CipSoft session in `client/tibia/mods/host_api_v1.cpp`).
 The session is `TGameSessionBase` (`game/currentgamesession.h`; null between
 sessions). Raycast lighting uses the POD `WorldLightingDriver` + the ABI peels — no
-tip-deep `things.h` / `ThingType&` in product pack raycast TUs. Sprite peels:
+tip-deep `things.h` / appearance types in product pack raycast TUs. Sprite peels:
 `sprites/spritesession.h` (`QImage spriteImage`).
 
 CMake: tip `INCLUDE_DIRECTORIES` + tip `COMPILE_DEFINITIONS`/`OPTIONS`
@@ -25,8 +25,8 @@ CMake: tip `INCLUDE_DIRECTORIES` + tip `COMPILE_DEFINITIONS`/`OPTIONS`
 GuiPrivate/RHI link only (see [`mods.md`](mods.md)). Do not require
 `MOD_INTERNAL` just for RHI. Pack TUs use named / domain façades under
 `include/qtclient/` named / domain façades only. Prefer
-`QTCLIENT_PACK_SDK_ONLY=ON` (see [`docs/pack-architecture.md`](../../../docs/pack-architecture.md)).
-Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
+`QTCLIENT_PACK_SDK_ONLY=ON` (see [`mods.md`](mods.md)).
+Third-party / default packs must `#include <qtclient/…>` only
 (`check-pack-sdk-only.sh`). GuiPrivate remains for RHI packs.
 
 ## Public hooks
@@ -51,7 +51,7 @@ Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 
 1. **No product HUD in** `client/tibia/` — packs only.
 2. Hooks are **CIP-neutral** (ids, backends, QML properties) — never reintroduce
-   OTC `ThingPtr` / `ItemPtr` keep-alives as the pack API.
+   `ThingPtr` / `ItemPtr` keep-alives as the pack API.
 3. Tip play path must not call into product pack symbols; packs plug hooks at load.
 4. New pack needs → add a tip hook here and ratchet this doc; do not fork tip UX.
 5. Do not add `TGameAction::object` / field UI `ThingPtr` / tip `UIWidget` — purity

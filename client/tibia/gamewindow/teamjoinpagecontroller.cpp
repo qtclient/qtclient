@@ -57,8 +57,6 @@ void TTeamJoinPageController::showDialogTab()
 {
     disconnectAll();
     m_storage = nullptr;
-    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance(); premium != m_premium)
-        setPremiumStorage(premium);
     teamfinder::TTeamFinderProtocolMessageHandler* handler = m_teamFinderProtocolMessageHandler;
     if (!handler)
         return;

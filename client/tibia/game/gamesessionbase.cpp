@@ -902,7 +902,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         const auto forward = [this, player]<typename Message>(void (H::*signal)(const Message&),
                                                               void (Queue::*send)(const Message&)) {
             m_queueConnections.push_back(connect(player, signal, this, [this, send](const Message& message) {
-                if (m_protocolMessageQueue && canPerformGameAction())
+                if (m_protocolMessageQueue)
                     (m_protocolMessageQueue.get()->*send)(message);
             }));
         };
@@ -1423,12 +1423,8 @@ void TGameSessionBase::processWorldEntered()
 
 void TGameSessionBase::processDeath()
 {
+    // The pack's session state (is_dead); the scene goes on as CipSoft's does.
     m_dead = true;
-    if (m_playerPresent && m_creatureStorage) {
-        if (const std::shared_ptr<creatures::TCreature> player = m_creatureStorage->player(); player && player->isWalking())
-            player->stopMovement();
-    }
-    setSceneFrozen(true);
 }
 
 void TGameSessionBase::resetGameStates()

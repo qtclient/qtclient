@@ -453,7 +453,8 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
         if (std::dynamic_pointer_cast<appearances::TWearoutObjectAppearanceInstance>(slot.appearance))
             slot.appearance = TAppearanceInstanceFactory::installed()->createWearoutObject(type, slot.charges, true);
         else if (std::dynamic_pointer_cast<appearances::TExpireObjectAppearanceInstance>(slot.appearance))
-            slot.appearance = TAppearanceInstanceFactory::installed()->createExpireObject(type, 0, true, false);
+            slot.appearance = TAppearanceInstanceFactory::installed()->createExpireObject(
+                type, 0, true, false, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     }
     if (item.has_deco_item_id())
         slot.decoItemId = static_cast<uint16_t>(item.deco_item_id());

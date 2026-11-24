@@ -32,7 +32,7 @@ per-session class's `T::instance()` (that host shim goes away):
   current session disconnects, while it is still current.
 - Every `session->` peel reads the current session.
 
-Rust: see [`docs/rust-pack-module.md`](../docs/rust-pack-module.md).
+Rust: see [`docs/mods.md` → Rust packs](../../docs/mods.md#rust-packs).
 
 ## Logging
 

@@ -500,7 +500,7 @@ void TItemInfoDialogController::onInspectRequestTimeoutReached()
     if (m_typeId == 0 || !session || !session->isOnline())
         return;
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
-    if (session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+    if (session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->sendInspectCyclopediaObject(m_typeId);
 }
 

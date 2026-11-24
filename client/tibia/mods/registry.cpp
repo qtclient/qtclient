@@ -167,7 +167,7 @@ void enqueueLoginSync(std::function<void()> fn)
 
 void setWeatherDriver(WeatherDriver* driver)
 {
-    // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
+    // Exclusive hook: first non-null wins; log conflicts (docs/mods.md).
     if (driver && g_weather && g_weather != driver) {
         return;
     }

@@ -58,9 +58,6 @@ void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::I
     m_config->connectToGameSession(GameSession);
     m_join->setGameSession(GameSession);
     m_assemble->connectToGameSession(GameSession);
-    // Host: the game client hands CipSoft's dialog the premium storage; here
-    // it is the live instance.
-    setPremiumTimeStorage(GameSession ? game::TPremiumTimeStorage::liveInstance() : nullptr);
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)

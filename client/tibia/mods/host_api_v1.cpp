@@ -756,11 +756,17 @@ int sessPlayerName(char* buf, size_t buf_len)
 {
     if (!buf || buf_len == 0)
         return -1;
+    // The own creature carries the server's name (a replay logs in as "Player").
     std::string name;
-    if (const tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && !data->characterName().empty())
+    const tibia::game::TGameSessionBase* session = liveSession();
+    const std::shared_ptr<tibia::creatures::TCreature> player =
+        session && session->creatureStorage() ? session->creatureStorage()->player() : nullptr;
+    if (player && !player->name().isEmpty())
+        name = player->name().toStdString();
+    else if (const tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && !data->characterName().empty())
         name = data->characterName();
     else if (hasLocalPlayer())
-        name = liveSession()->characterName().toStdString();
+        name = session->characterName().toStdString();
     std::snprintf(buf, buf_len, "%s", name.c_str());
     return static_cast<int>(std::strlen(buf));
 }

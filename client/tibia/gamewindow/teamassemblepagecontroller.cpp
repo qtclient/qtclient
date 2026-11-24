@@ -148,8 +148,6 @@ void TTeamAssemblePageController::showDialogTab()
         loadActivities();
     disconnectAll();
     m_storage = nullptr;
-    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance(); premium != m_premium)
-        setPremiumStorage(premium);
     TTeamFinderProtocolMessageHandler* handler = m_teamFinderProtocolMessageHandler;
     if (!handler)
         return;

@@ -307,7 +307,7 @@ void THighscoresDialogController::sendHighscoresRequest(const int action, const 
                                                         const int vocation, const std::vector<int>& worldTypes, const int battlEye)
 {
     // Host: the session refuses game actions while it cannot perform them.
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session)
         return;
     using namespace ::tibia::protobuf::protocol;
     auto message = tibia::protocol::newGameclientMessage(177);

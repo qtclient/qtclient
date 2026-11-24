@@ -28,4 +28,4 @@ controllers, engine, launcher, build scripts, and documentation).
 It does **not** grant rights to CipSoft GmbH materials. The official Tibia
 client, its QML/contract sync tree (`client/upstream/`, `launcher/upstream/`),
 graphics, sounds, and related assets remain CipSoft property. Obtain them only
-from a licensed Tibia install (see NOTICE and docs/open-source.md).
+from a licensed Tibia install (see NOTICE and README.md).

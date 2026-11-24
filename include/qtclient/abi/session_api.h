@@ -141,6 +141,9 @@ typedef void (*QtClientTravelPathAsyncCallback)(void* user, int ok);
 typedef struct QtClientSessionApiV1 {
     int (*is_online)(void);
     int (*is_dead)(void);
+    /** The pack's scene-frozen flag. The host no longer freezes the scene on
+     *  death and its map handlers do not read the flag (CipSoft's scene keeps
+     *  applying map messages); it is pack-owned state only. */
     int (*is_scene_frozen)(void);
     void (*set_scene_frozen)(int frozen);
 

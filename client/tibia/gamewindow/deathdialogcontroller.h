@@ -72,7 +72,6 @@ private:
     int m_requestedDeathType = 0;
     int m_requestedFairFightFactor = 0;
     bool m_requestedApplicableForSubsequentBlessing = false;
-    bool m_finishing = false;
     bool m_openStoreOnWorldEntered = false;
 };
 

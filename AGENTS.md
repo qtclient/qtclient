@@ -17,11 +17,16 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
 - `client/tibia/` — C++/QML rewrite of the official client (desktop + WASM).
 - **`client/upstream/` is vendored, never hand-edited.** From `make tibia-sync` / `make sync`.
 - Product UI belongs in **runtime packs** (`client/mods/<id>/`), not stock `client/tibia/`.
-- Packs export `qtclient_mod_<id>_entry` (STATIC tip); see [`docs/pack-architecture.md`](../../docs/pack-architecture.md).
+- Runtime MODULE packs export only `qtclient_mod_register` (host-pushed C ABI);
+  IdleOT's deprecated `ABSORB_INTO_QTCLIENT` build defines `qtclient_mod_<id>_register`.
+  See [`docs/mods.md`](docs/mods.md) and [`docs/pack-extension-contract.md`](docs/pack-extension-contract.md).
 - **No Lua gameplay host** — QML + C++ only.
 
 ## Porting CipSoft code (mandatory)
 
+- The port is complete: client (CipSoft 15.33.0aa90c) and launcher at 100% in
+  `python3 tools/re/port.py coverage` (umbrella). Keep it there: absorb new
+  CipSoft releases and fix stale locks.
 - Every class with a CipSoft counterpart is written from its port unit (the
   decompiled class), never from memory, OTClient or invention. Recipe: skill
   `cip-port` in the umbrella (`.cursor/skills/cip-port/SKILL.md`).

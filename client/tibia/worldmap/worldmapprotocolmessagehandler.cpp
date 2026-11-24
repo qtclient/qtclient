@@ -37,12 +37,6 @@ TWorldMapCoordinate coordinateOf(const ProtocolCoordinate& c)
     return { static_cast<int>(c.x()), static_cast<int>(c.y()), static_cast<int>(c.z()) };
 }
 
-bool handlerSceneFrozen()
-{
-    const game::TGameSessionBase* session = game::currentGameSession();
-    return session && session->isSceneFrozen();
-}
-
 /// Same floor, at most one field away.
 bool isOneFieldStep(const Position& from, const Position& to)
 {
@@ -78,15 +72,9 @@ appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject
         creature->setPosition(coordinate.toPosition());
         return creature->placeholderAppearance();
     }
-    // Any other object is made by the instance factory at the current time.
-    // Host: animations start on the frame clock the renderer advances them by.
-    appearances::TAppearanceInstancePtr appearance =
-        m_appearanceInstanceFactory->createFromProtobuf(object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
-    // Host: qtclient's factory takes no coordinate; an object drawn by its
-    // field's pattern takes it from the coordinate here.
-    if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
-        patterned->applyWorldMapCoordinate(coordinate.toPosition());
-    return appearance;
+    // Any other object is made by the instance factory on the coordinate, its
+    // animation starting at the handler's clock time.
+    return m_appearanceInstanceFactory->createFromProtobuf(object, coordinate.toPosition(), m_clockService->nowMillis());
 }
 
 void TWorldmapProtocolMessageHandler::applyArea(const MapArea& area, const TShearedWorldMapCuboid& volume,
@@ -172,8 +160,6 @@ void TWorldmapProtocolMessageHandler::setCrashReportPosition(const Position& cen
 
 void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessageFullMap& message)
 {
-    if (handlerSceneFrozen())
-        return;
     m_center = coordinateOf(message.coordinate());
     const Position position = m_center.toPosition();
     game::TGameSessionBase* session = game::currentGameSession();
@@ -206,32 +192,24 @@ void TWorldmapProtocolMessageHandler::handleSlice(const MapArea& area, const TSh
 
 void TWorldmapProtocolMessageHandler::handleTopRowMessage(const GameserverMessageTopRow& message)
 {
-    if (handlerSceneFrozen())
-        return;
     --m_center.y;
     handleSlice(message.area(), centralPosition().topRow());
 }
 
 void TWorldmapProtocolMessageHandler::handleRightColumnMessage(const GameserverMessageRightColumn& message)
 {
-    if (handlerSceneFrozen())
-        return;
     ++m_center.x;
     handleSlice(message.area(), centralPosition().rightColumn());
 }
 
 void TWorldmapProtocolMessageHandler::handleBottomRowMessage(const GameserverMessageBottomRow& message)
 {
-    if (handlerSceneFrozen())
-        return;
     ++m_center.y;
     handleSlice(message.area(), centralPosition().bottomRow());
 }
 
 void TWorldmapProtocolMessageHandler::handleLeftColumnMessage(const GameserverMessageLeftColumn& message)
 {
-    if (handlerSceneFrozen())
-        return;
     --m_center.x;
     handleSlice(message.area(), centralPosition().leftColumn());
 }
@@ -259,8 +237,6 @@ void TWorldmapProtocolMessageHandler::handleBottomFloorMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMessageFieldData& message)
 {
-    if (handlerSceneFrozen())
-        return;
     // An area of the one field at the coordinate.
     const TWorldMapCoordinate at = coordinateOf(message.coordinate());
     applyArea(message.area(), TShearedWorldMapCuboid(TWorldMapCuboid::ofField(at), at.z), centralPosition());
@@ -268,8 +244,6 @@ void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMes
 
 void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverMessageCreateOnMap& message)
 {
-    if (handlerSceneFrozen())
-        return;
     // Stack position 0xff puts the object where its kind sorts on the stack.
     const TWorldMapCoordinate at = coordinateOf(message.coordinate());
     if (const appearances::TAppearanceInstancePtr instance = applyObject(message.object(), at)) {
@@ -280,8 +254,6 @@ void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverMessageChangeOnMap& message)
 {
-    if (handlerSceneFrozen())
-        return;
     if (!message.has_coordinate()) {
         // The creature form only updates the creature; its field entry stays.
         if (message.object().HasExtension(CreatureData::creature_data))
@@ -299,8 +271,6 @@ void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverMessageDeleteOnMap& message)
 {
-    if (handlerSceneFrozen())
-        return;
     // The creature-id form leaves the creature where it is drawn: it only
     // stops counting as placed on a field.
     if (message.has_creature_id()) {

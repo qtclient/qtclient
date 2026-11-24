@@ -201,7 +201,7 @@ class TCumulativeObjectAppearanceInstance final : public TObjectAppearanceInstan
 {
 public:
     /// A stack of `count`; a count of 0 keeps the first pile.
-    TCumulativeObjectAppearanceInstance(TAppearanceType* type, uint16_t count);
+    TCumulativeObjectAppearanceInstance(TAppearanceType* type, uint16_t count, qint64 animationStartMs = 0);
 
     /// A changed count draws its pile.
     void setCount(uint16_t count) override;
@@ -216,7 +216,7 @@ private:
 class THangableObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    explicit THangableObjectAppearanceInstance(TAppearanceType* type);
+    explicit THangableObjectAppearanceInstance(TAppearanceType* type, qint64 animationStartMs = 0);
 
     uint8_t hangSide() const { return m_hangSide; }
     /// Hang the object on `side` (0 none, 1 south, 2 east) and draw that column.
@@ -232,7 +232,7 @@ private:
 class TLiquidObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    TLiquidObjectAppearanceInstance(TAppearanceType* type, uint32_t liquidType);
+    TLiquidObjectAppearanceInstance(TAppearanceType* type, uint32_t liquidType, qint64 animationStartMs = 0);
 
     uint32_t fluid() const { return m_fluid; }
 
@@ -263,8 +263,9 @@ public:
 class TWearoutObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    explicit TWearoutObjectAppearanceInstance(TAppearanceType* type, uint32_t charges = 0, bool brandNew = false)
-        : TObjectAppearanceInstance(type), m_charges(charges), m_brandNew(brandNew)
+    explicit TWearoutObjectAppearanceInstance(TAppearanceType* type, uint32_t charges = 0, bool brandNew = false,
+                                              qint64 animationStartMs = 0)
+        : TObjectAppearanceInstance(type, animationStartMs), m_charges(charges), m_brandNew(brandNew)
     {
     }
 
@@ -282,7 +283,7 @@ class TExpireObjectAppearanceInstance final : public TObjectAppearanceInstance
 public:
     explicit TExpireObjectAppearanceInstance(TAppearanceType* type, int64_t remainingMilliseconds = 0,
                                              bool brandNew = false, bool stopped = false, int64_t nowMilliseconds = 0)
-        : TObjectAppearanceInstance(type)
+        : TObjectAppearanceInstance(type, nowMilliseconds)
         , m_lastUpdateMilliseconds(nowMilliseconds)
         , m_remainingMilliseconds(remainingMilliseconds)
         , m_brandNew(brandNew)
@@ -309,8 +310,8 @@ class TDecoItemKitAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
     /// A deco item kit of `type` that holds `decoItemId`; it draws its first pattern.
-    explicit TDecoItemKitAppearanceInstance(TAppearanceType* type, uint16_t decoItemId = 0)
-        : TObjectAppearanceInstance(type), m_decoItemId(decoItemId)
+    explicit TDecoItemKitAppearanceInstance(TAppearanceType* type, uint16_t decoItemId = 0, qint64 animationStartMs = 0)
+        : TObjectAppearanceInstance(type, animationStartMs), m_decoItemId(decoItemId)
     {
         setSpritePattern(TAppearancePattern{ 0, 0, 0 });
     }
@@ -361,7 +362,8 @@ private:
 class TUpgradeableObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    explicit TUpgradeableObjectAppearanceInstance(TAppearanceType* type, uint8_t tier = 0) : TObjectAppearanceInstance(type)
+    explicit TUpgradeableObjectAppearanceInstance(TAppearanceType* type, uint8_t tier = 0, qint64 animationStartMs = 0)
+        : TObjectAppearanceInstance(type, animationStartMs)
     {
         m_tier = tier;
     }
@@ -649,15 +651,22 @@ public:
     /// The dummy type of `category` (every category has one).
     TAppearanceType* dummyAppearanceType(ThingCategory category) const;
     TAppearanceInstancePtr fromThingType(TAppearanceType* type);
-    /// An object with no state of its own: hangable objects hang, every other
-    /// one follows its field's pattern.
-    TAppearanceInstancePtr createObject(TAppearanceType* type);
+    /// An object with no state of its own whose animation starts at
+    /// `animationStartMs`: hangable objects hang, every other one draws pattern 0.
+    TAppearanceInstancePtr createObject(TAppearanceType* type, qint64 animationStartMs = 0);
     /// The object `id` with no state of its own (createObject of its type).
-    TAppearanceInstancePtr createObject(uint16_t id);
-    std::shared_ptr<TCumulativeObjectAppearanceInstance> createCumulativeObject(uint16_t id, uint8_t count);
-    std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType);
-    std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId);
-    std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier);
+    TAppearanceInstancePtr createObject(uint16_t id, qint64 animationStartMs = 0);
+    /// CIP v2: the object `id` lying on `coordinate`: hangable objects hang,
+    /// every other one draws the coordinate's pattern.
+    TAppearanceInstancePtr createObject(uint16_t id, const Position& coordinate, qint64 animationStartMs);
+    std::shared_ptr<TCumulativeObjectAppearanceInstance> createCumulativeObject(uint16_t id, uint8_t count,
+                                                                                qint64 animationStartMs = 0);
+    std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType,
+                                                                        qint64 animationStartMs = 0);
+    std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId,
+                                                                            qint64 animationStartMs = 0);
+    std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier,
+                                                                                  qint64 animationStartMs = 0);
     /// CIP v6: the container object `id` with its two category sets and
     /// optional value; `withFieldEffect` gives it field effect 252 (made like
     /// createFieldEffect, on field (0, 0, 0) from source 0).
@@ -665,19 +674,22 @@ public:
     createContainerObject(uint16_t id, std::set<int> firstCategories, std::set<int> secondCategories, bool hasValue,
                           int value, bool withFieldEffect, qint64 animationStartMs);
     std::shared_ptr<TWearoutObjectAppearanceInstance> createWearoutObject(TAppearanceType* type, uint32_t charges,
-                                                                                bool brandNew);
+                                                                                bool brandNew, qint64 animationStartMs = 0);
+    /// An expiring object whose count down and animation start at `nowMs`.
     std::shared_ptr<TExpireObjectAppearanceInstance> createExpireObject(TAppearanceType* type,
                                                                               int64_t remainingMilliseconds,
-                                                                              bool brandNew, bool stopped);
+                                                                              bool brandNew, bool stopped, qint64 nowMs);
     /// The instance of a protocol object, by its kind: liquid, cumulative,
     /// upgradeable, deco item kit, else a plain object (a hangable one takes
     /// the hook state of a hangable kind).
-    TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
+    TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object, qint64 animationStartMs = 0);
     /// CIP v20: the instance of a protocol map object by its extension:
     /// liquid, cumulative, container, show-off socket, upgradeable, wearout,
     /// expire (the duration in seconds) or deco item kit; a plain object
-    /// without one. `nowMs` starts a container's field effect.
-    TAppearanceInstancePtr createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object, qint64 nowMs);
+    /// without one, drawn with the pattern of `coordinate`. Its animation (and
+    /// a container's field effect) starts at `nowMs`.
+    TAppearanceInstancePtr createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object,
+                                              const Position& coordinate, qint64 nowMs);
     /// CIP v19: the outfit of a protocol outfit: with a look type that outfit
     /// (its colours and addons), else with an object type that object drawn
     /// as an outfit, else none.

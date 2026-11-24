@@ -168,8 +168,6 @@ void TCreatureProtocolMessageHandler::applyUpdateTarget(const uint32_t sequence,
 
 void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const GameserverMessageMoveCreature& message)
 {
-    if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->isSceneFrozen())
-        return;
     // A creature moves by its id, or by the stack position it held on the old field.
     const bool byId = message.has_creature_id();
     Position oldPos;

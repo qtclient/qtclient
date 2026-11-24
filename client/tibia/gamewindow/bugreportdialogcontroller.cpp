@@ -164,19 +164,17 @@ void TBugReportDialogController::requestSendBugReport(const int ClassificationIn
             ? Classifications[ClassificationIndex]
             : Other;
         const std::string comment = Comment.toStdString();
-        if (session->canPerformGameAction()) {
-            switch (category) {
-            case Map: {
-                // A map report without a field reports where the player stands.
-                const Position position = m_position.isValid() ? m_position : session->localPlayerPosition();
-                tibia::protocol::gameclient::sendBugReport(Map, comment, {}, {}, position);
-                break;
-            }
-            case Typo:
-                tibia::protocol::gameclient::sendBugReport(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
-                break;
-            default: tibia::protocol::gameclient::sendBugReport(category, comment, {}, {}, {}); break;
-            }
+        switch (category) {
+        case Map: {
+            // A map report without a field reports where the player stands.
+            const Position position = m_position.isValid() ? m_position : session->localPlayerPosition();
+            tibia::protocol::gameclient::sendBugReport(Map, comment, {}, {}, position);
+            break;
+        }
+        case Typo:
+            tibia::protocol::gameclient::sendBugReport(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
+            break;
+        default: tibia::protocol::gameclient::sendBugReport(category, comment, {}, {}, {}); break;
         }
     }
     closeDialog();

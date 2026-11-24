@@ -920,7 +920,7 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_for_group")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [] {
                     if (const game::TGameSessionBase* s = tibia::game::currentGameSession();
-                        s && s->canPerformGameAction() && s->cyclopediaProtocolMessageHandler())
+                        s && s->cyclopediaProtocolMessageHandler())
                         s->cyclopediaProtocolMessageHandler()->sendResetPartyHuntAnalyser();
                 });
         if (isPremiumPlayer())
@@ -928,7 +928,7 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
                     &gamewindow::TContextMenuEntryItem::triggered, this,
                     [this] {
                         if (const game::TGameSessionBase* s = tibia::game::currentGameSession();
-                            s && s->canPerformGameAction() && s->cyclopediaProtocolMessageHandler())
+                            s && s->cyclopediaProtocolMessageHandler())
                             s->cyclopediaProtocolMessageHandler()->sendPartyHuntLootType(m_storage->priceType() == 0 ? 1 : 0);
                     });
     } else if (!inParty) {

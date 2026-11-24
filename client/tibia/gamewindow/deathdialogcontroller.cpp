@@ -117,12 +117,8 @@ void TDeathDialogController::onBeforeRenderFrame()
 
 void TDeathDialogController::onLogoutRequested()
 {
-    if (m_finishing)
-        return;
-    m_finishing = true;
-    closeBox();
+    // Cancel logs out; the box closes itself after the click.
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(true));
-    m_finishing = false;
 }
 
 void TDeathDialogController::onButtonClicked(

@@ -374,7 +374,7 @@ bool TQuestLogController::showHidden() const
 /// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
 void TQuestLogController::showDialog(const int parameter)
 {
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
         tibia::protocol::gameclient::sendRequestQuestLog();
     if ((parameter & 0xff0000) == 0) {
         m_lines.setLines({});
@@ -507,7 +507,7 @@ void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
 {
     if (QuestLineID == m_selectedQuestLineId)
         return;
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
         tibia::protocol::gameclient::sendRequestQuestLine(QuestLineID);
     m_selectedQuestLineId = QuestLineID;
     Q_EMIT selectedQuestLineChanged();

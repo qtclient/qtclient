@@ -275,10 +275,10 @@ void TCharacterTradeDialogController::showDialog()
     dialog()->create();
     dialog()->show();
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(1);
     m_hasUnfulfilledConditions = true;
     m_hasConfirmationError = true;
@@ -350,7 +350,7 @@ TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController:
 void TCharacterTradeDialogController::requestConditions()
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
     m_hasUnfulfilledConditions = true;
     Q_EMIT hasUnfulfilledConditionsChanged();
@@ -360,7 +360,7 @@ void TCharacterTradeDialogController::requestCheckConfiguration()
 {
     const TConfiguration config = configuration();
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(2, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
     m_hasConfirmationError = true;
     Q_EMIT hasConfirmationErrorChanged();
@@ -370,7 +370,7 @@ void TCharacterTradeDialogController::requestConfirmConfiguration()
 {
     const TConfiguration config = configuration();
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(3, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
 }
 
@@ -1356,7 +1356,7 @@ void TSoulSealsDialogController::onFightConfirmed()
     if (!m_gameSession)
         return;
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction() && static_cast<uint16_t>(m_selectedMonsterRaceID) != 0)
+        session && static_cast<uint16_t>(m_selectedMonsterRaceID) != 0)
         tibia::protocol::gameclient::sendSoulSealsAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
     closeDialog();
 }

@@ -352,8 +352,9 @@ void TCustomizableOutfitAppearanceInstance::updatePreviewSpriteInfo()
     m_previewSpriteInfo = preview.currentSpriteInfo();
 }
 
-TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(TAppearanceType* type, const uint16_t count)
-    : TObjectAppearanceInstance(type)
+TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(TAppearanceType* type, const uint16_t count,
+                                                                         const qint64 animationStartMs)
+    : TObjectAppearanceInstance(type, animationStartMs)
 {
     m_count = count;
     if (static_cast<uint8_t>(count) != 0) {
@@ -382,8 +383,8 @@ void TCumulativeObjectAppearanceInstance::pilePattern(int& patternX, int& patter
     cumulativePilePattern(pile, patternX, patternY);
 }
 
-THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(TAppearanceType* type)
-    : TObjectAppearanceInstance(type)
+THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(TAppearanceType* type, const qint64 animationStartMs)
+    : TObjectAppearanceInstance(type, animationStartMs)
 {
     updateHookPattern();
 }
@@ -400,8 +401,9 @@ void THangableObjectAppearanceInstance::updateHookPattern()
     setDrawPatterns(static_cast<uint8_t>(hookPattern(m_hangSide, width)), 0, 0);
 }
 
-TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(TAppearanceType* type, const uint32_t liquidType)
-    : TObjectAppearanceInstance(type)
+TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(TAppearanceType* type, const uint32_t liquidType,
+                                                                 const qint64 animationStartMs)
+    : TObjectAppearanceInstance(type, animationStartMs)
     , m_fluid(liquidType)
 {
     int x = 0;
@@ -761,7 +763,8 @@ TAppearanceInstancePtr createItem(TAppearanceInstanceFactory& factory, const TAp
     if (special.isWearOut(id))
         return factory.createWearoutObject(type, 0, false);
     if (special.isExpire(id) || special.isExpireStop(id))
-        return factory.createExpireObject(type, 0, false, false);
+        return factory.createExpireObject(type, 0, false, false,
+                                          static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     if (special.isDecoKit(id))
         return factory.createDecoItemKitObject(id, 0);
     return factory.createObject(type);
@@ -852,27 +855,39 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType
     }
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const uint16_t id)
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const uint16_t id, const qint64 animationStartMs)
 {
-    return createObject(appearanceType(ThingCategoryItem, id));
+    return createObject(appearanceType(ThingCategoryItem, id), animationStartMs);
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const uint16_t id, const Position& coordinate,
+                                                                const qint64 animationStartMs)
+{
+    TAppearanceType* type = appearanceType(ThingCategoryItem, id);
+    if (type && type->isHangable())
+        return makeTracked<THangableObjectAppearanceInstance>(type, animationStartMs);
+    return makeTracked<TPatternObjectAppearanceInstance>(type, coordinate, animationStartMs);
 }
 
 std::shared_ptr<TCumulativeObjectAppearanceInstance> TAppearanceInstanceFactory::createCumulativeObject(const uint16_t id,
-                                                                                                      const uint8_t count)
+                                                                                                      const uint8_t count,
+                                                                                                      const qint64 animationStartMs)
 {
-    return makeTracked<TCumulativeObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), count);
+    return makeTracked<TCumulativeObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), count, animationStartMs);
 }
 
 std::shared_ptr<TLiquidObjectAppearanceInstance> TAppearanceInstanceFactory::createLiquidObject(const uint16_t id,
-                                                                                              const uint32_t liquidType)
+                                                                                              const uint32_t liquidType,
+                                                                                              const qint64 animationStartMs)
 {
-    return makeTracked<TLiquidObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), liquidType);
+    return makeTracked<TLiquidObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), liquidType, animationStartMs);
 }
 
 std::shared_ptr<TDecoItemKitAppearanceInstance> TAppearanceInstanceFactory::createDecoItemKitObject(const uint16_t id,
-                                                                                                  const uint16_t decoItemId)
+                                                                                                  const uint16_t decoItemId,
+                                                                                                  const qint64 animationStartMs)
 {
-    return makeTracked<TDecoItemKitAppearanceInstance>(appearanceType(ThingCategoryItem, id), decoItemId);
+    return makeTracked<TDecoItemKitAppearanceInstance>(appearanceType(ThingCategoryItem, id), decoItemId, animationStartMs);
 }
 
 std::shared_ptr<TContainerObjectAppearanceInstance>
@@ -889,24 +904,26 @@ TAppearanceInstanceFactory::createContainerObject(const uint16_t id, std::set<in
 }
 
 std::shared_ptr<TUpgradeableObjectAppearanceInstance> TAppearanceInstanceFactory::createUpgradeableObject(const uint16_t id,
-                                                                                                        const uint8_t tier)
+                                                                                                        const uint8_t tier,
+                                                                                                        const qint64 animationStartMs)
 {
-    return makeTracked<TUpgradeableObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), tier);
+    return makeTracked<TUpgradeableObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), tier, animationStartMs);
 }
 
 std::shared_ptr<TWearoutObjectAppearanceInstance> TAppearanceInstanceFactory::createWearoutObject(TAppearanceType* type,
                                                                                                 const uint32_t charges,
-                                                                                                const bool brandNew)
+                                                                                                const bool brandNew,
+                                                                                                const qint64 animationStartMs)
 {
-    return makeTracked<TWearoutObjectAppearanceInstance>(type, charges, brandNew);
+    return makeTracked<TWearoutObjectAppearanceInstance>(type, charges, brandNew, animationStartMs);
 }
 
 std::shared_ptr<TExpireObjectAppearanceInstance>
 TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int64_t remainingMilliseconds,
-                                               const bool brandNew, const bool stopped)
+                                               const bool brandNew, const bool stopped, const qint64 nowMs)
 {
     return makeTracked<TExpireObjectAppearanceInstance>(type, remainingMilliseconds, brandNew, stopped,
-                                                        static_cast<int64_t>(tibia::shared::TClockService::frameMillis()));
+                                                        static_cast<int64_t>(nowMs));
 }
 
 std::shared_ptr<TFieldEffectInstance> TAppearanceInstanceFactory::createFieldEffect(const uint16_t id, const Position& field,
@@ -944,17 +961,18 @@ std::shared_ptr<TObjectOutfitAppearanceInstance> TAppearanceInstanceFactory::cre
     return makeTracked<TObjectOutfitAppearanceInstance>(appearanceType(ThingCategoryItem, id));
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::protocol::TObjectData& object)
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::protocol::TObjectData& object,
+                                                                const qint64 animationStartMs)
 {
     if (object.isLiquid())
-        return createLiquidObject(object.id, object.liquidType);
+        return createLiquidObject(object.id, object.liquidType, animationStartMs);
     if (object.isUpgradeable())
-        return createUpgradeableObject(object.id, object.upgradeClassification);
+        return createUpgradeableObject(object.id, object.upgradeClassification, animationStartMs);
     if (object.isCumulative())
-        return createCumulativeObject(object.id, object.count);
+        return createCumulativeObject(object.id, object.count, animationStartMs);
     if (object.isDecoItemKit())
-        return createDecoItemKitObject(object.id, object.decoItemId);
-    TAppearanceInstancePtr instance = createObject(object.id);
+        return createDecoItemKitObject(object.id, object.decoItemId, animationStartMs);
+    TAppearanceInstancePtr instance = createObject(object.id, animationStartMs);
     if (object.isHangable()) {
         if (const auto hangable = std::dynamic_pointer_cast<THangableObjectAppearanceInstance>(instance))
             hangable->setHangSide(static_cast<uint8_t>(object.hookState));
@@ -984,14 +1002,15 @@ TAppearanceInstanceFactory::createOutfitFromProtobuf(const tibia::protobuf::prot
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::createFromProtobuf(const tibia::protobuf::protocol::AppearanceInstance& object,
-                                                                     const qint64 nowMs)
+                                                                     const Position& coordinate, const qint64 nowMs)
 {
     namespace pb = tibia::protobuf::protocol;
     const auto id = static_cast<uint16_t>(object.id());
     if (object.HasExtension(pb::LiquidObject::liquid_object))
-        return createLiquidObject(id, object.GetExtension(pb::LiquidObject::liquid_object).liquid());
+        return createLiquidObject(id, object.GetExtension(pb::LiquidObject::liquid_object).liquid(), nowMs);
     if (object.HasExtension(pb::CumulativeObject::cumulative_object))
-        return createCumulativeObject(id, static_cast<uint8_t>(object.GetExtension(pb::CumulativeObject::cumulative_object).count()));
+        return createCumulativeObject(id, static_cast<uint8_t>(object.GetExtension(pb::CumulativeObject::cumulative_object).count()),
+                                      nowMs);
     if (object.HasExtension(pb::ContainerObject::container_object)) {
         const pb::ContainerObject& container = object.GetExtension(pb::ContainerObject::container_object);
         const uint32_t flags = container.flags();
@@ -1024,26 +1043,28 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::createFromProtobuf(const tibi
         return makeTracked<TShowOffSocketAppearanceInstance>(type, socket.visible(), std::move(outfit), std::move(mount));
     }
     if (object.HasExtension(pb::UpgradeableObject::upgradeable_object))
-        return createUpgradeableObject(id, static_cast<uint8_t>(object.GetExtension(pb::UpgradeableObject::upgradeable_object).tier()));
+        return createUpgradeableObject(id, static_cast<uint8_t>(object.GetExtension(pb::UpgradeableObject::upgradeable_object).tier()),
+                                       nowMs);
     if (object.HasExtension(pb::WearoutObject::wearout_object)) {
         const pb::WearoutObject& wearout = object.GetExtension(pb::WearoutObject::wearout_object);
-        return createWearoutObject(appearanceType(ThingCategoryItem, id), wearout.charges(), wearout.brand_new());
+        return createWearoutObject(appearanceType(ThingCategoryItem, id), wearout.charges(), wearout.brand_new(), nowMs);
     }
     if (object.HasExtension(pb::ExpireObject::expire_object)) {
         const pb::ExpireObject& expire = object.GetExtension(pb::ExpireObject::expire_object);
         return createExpireObject(appearanceType(ThingCategoryItem, id), static_cast<int64_t>(expire.duration()) * 1000,
-                                  expire.brand_new(), expire.expire_stop());
+                                  expire.brand_new(), expire.expire_stop(), nowMs);
     }
     if (object.HasExtension(pb::DecoItemKitObject::deco_item_kit_object))
-        return createDecoItemKitObject(id, static_cast<uint16_t>(object.GetExtension(pb::DecoItemKitObject::deco_item_kit_object).deco_item_id()));
-    return createObject(id);
+        return createDecoItemKitObject(id, static_cast<uint16_t>(object.GetExtension(pb::DecoItemKitObject::deco_item_kit_object).deco_item_id()),
+                                       nowMs);
+    return createObject(id, coordinate, nowMs);
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type)
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type, const qint64 animationStartMs)
 {
     if (type && type->isHangable())
-        return makeTracked<THangableObjectAppearanceInstance>(type);
-    return makeTracked<TPatternObjectAppearanceInstance>(type);
+        return makeTracked<THangableObjectAppearanceInstance>(type, animationStartMs);
+    return makeTracked<TPatternObjectAppearanceInstance>(type, animationStartMs);
 }
 
 std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(TAppearanceType* type, const Outfit& outfit,

@@ -6,33 +6,58 @@ Versioning follows semver for public tags (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-11-24
+
+qtclient v1: a complete port of CipSoft's client and launcher.
+
 ### Added
 
-- Mod SDK: unified `mods/<id>/` pack layout, `qtclient_add_mod`,
-  `ModLoader::loadFromDirectory`, and WorldView customization hooks
-  (lighting driver, overlays, frame hooks).
-- Public Mod API v1 (`include/qtclient/mod_api_v1.h` + `qtclient_mod_host_api_v1()`).
-- Filesystem QML modules (`qml/<uri>/qmldir`) + `PackQmlInterceptor` for
-  `qrc:/qt/qml/<uri>/…` → pack files (no STATIC qml plugin in the MODULE).
+- **CipSoft 15.33.0aa90c parity.** Every CipSoft function of the pinned client
+  (15.33.0aa90c) and launcher builds is ported from its decompiled unit or shown
+  not to be CipSoft logic: 100% in `port.py coverage` for both (todo 0,
+  untriaged 0), tracked function by function in `client/tibia/ports.lock` and
+  `launcher/ports.lock`.
+- **CipSoft-like secondary game connection.** `TGameserverDualConnection` opens a
+  backup connection to the world's unprotected port from the login data
+  (`externalportunprotected`; browser `websocketportunprotected`) when
+  *connection stability optimisation* is on, sends each XTEA packet on both, and
+  dedupes the server's copies. CrystalServer listens on the extra game port and
+  accepts growing sequence numbers with gaps, as CipSoft's server does.
+- CipSoft's session recorder for `--record` (writes a CipSoft `dmp` file that
+  `--replay` plays through the session-dump player).
+- Pack SDK: host-pushed C ABI (`include/qtclient/abi/`): runtime MODULE packs
+  export only `qtclient_mod_register(api, ctx)` and import no tip symbols, the
+  same way on desktop and WASM; filesystem QML modules (`qml/<uri>/qmldir`) +
+  `PackQmlInterceptor`; WorldView hooks (lighting driver, overlays, frame
+  hooks). See `docs/mods.md` and `docs/pack-extension-contract.md`.
 - SECURITY.md and clarified NOTICE (non-affiliation, BYO CipSoft materials).
 
 ### Removed
 
-- Sample SDK pack `client/mods/_sample` (`myaac` / `otclient` are enough examples).
+- The OTClient-era code CipSoft parity does not need: the session facade
+  (`TGameSessionState` and the `gamesession*` forwarders; the session is
+  CipSoft's `TGameSessionBase`), `cip_ports/` and the `CipTyped` shells, the
+  OTC `client/` remnants and `ThingType` (appearances are CipSoft's
+  `TAppearanceType`), the legacy game-server connection
+  (`gameserverconnection`), `runtimegameconfig`, the OTC map state, wire and
+  asset enums, and every client-side workaround for server differences
+  (CrystalServer now behaves like CipSoft's server instead).
+- The `otclient` example pack and the sample SDK pack `client/mods/_sample`;
+  the default tip pack is `mods/qtc-aac`.
+- Tip export lists / `host_exports.json` and packs importing
+  `qtclient_mod_host_api_v1()` (replaced by the `qtclient_mod_register` argument).
 
 ### Changed
 
-- Default tip pack `mods/myaac` → `mods/qtc-aac`: login and account pages now
-  point at [qtc-aac](https://github.com/qtclient/qtc-aac)
+- Default tip pack `mods/myaac` → `mods/qtc-aac`: login and account pages point
+  at [qtc-aac](https://github.com/qtclient/qtc-aac)
   (`http://127.0.0.1:5173/clientservices/*.php`). MyAAC servers can still use
   `package_desktop.py --login-profile myaac`.
-- Stock core is CIP classic lighting only; product raycast/weather live in
-  packs via the WorldView API — no export/scrub pipeline.
+- Stock core is CIP classic lighting only; product raycast / weather live in
+  packs via the WorldView API.
 - Product identity and launcher brand resolve from `mod.json` at runtime.
-- Process env / WASM hooks: `QTCLIENT_*` in stock, `product pack env knobs` in the product pack;
-  `TIBIA_*` kept for CipSoft-shaped CMake/target names only.
-- Source roots match include prefixes (no symlinks): `client/tibia/`,
-  `client/mods/pack/pack/`.
+- Process env / WASM hooks: `QTCLIENT_*` in stock, pack-defined knobs in product
+  packs; `TIBIA_*` kept for CipSoft-shaped CMake / target names only.
 - ModLoader: API min/max check, optional `hostBuildId`, import path is pack `qml/` only.
 
 ## [0.1.0] — 2026-03-28

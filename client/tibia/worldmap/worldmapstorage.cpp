@@ -45,12 +45,6 @@ TWorldMapField* createMapField(TWorldMapStorage& storage, const Position& positi
     return position.isMapPosition() ? storage.getOrCreateField(position) : nullptr;
 }
 
-bool sceneFrozen()
-{
-    const game::TGameSessionBase* session = game::currentGameSession();
-    return session && session->isSceneFrozen();
-}
-
 /// The own creature's id while the session has a character (0 otherwise).
 uint32_t sessionLocalPlayerId()
 {
@@ -758,7 +752,7 @@ void TWorldMapStorage::clean()
 
 void TWorldMapStorage::cleanField(const Position& position)
 {
-    if (sceneFrozen() || !position.isMapPosition())
+    if (!position.isMapPosition())
         return;
     if (TWorldMapField* field = fieldAt(position)) {
         field->setObjects({});
@@ -775,7 +769,7 @@ void TWorldMapStorage::setFieldObjects(const Position& position,
 {
     // The field's content goes first; a field left without objects is dropped.
     cleanField(position);
-    if (objects.empty() || sceneFrozen())
+    if (objects.empty())
         return;
     TWorldMapField* field = createMapField(*this, position);
     if (!field)
@@ -1045,7 +1039,7 @@ void TWorldMapStorage::localPlayerDisappeared()
 
 void TWorldMapStorage::setCentralPosition(const Position& center)
 {
-    if (sceneFrozen() || m_centralPosition == center)
+    if (m_centralPosition == center)
         return;
 
     m_centralPosition = center;

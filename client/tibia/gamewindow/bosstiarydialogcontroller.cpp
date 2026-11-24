@@ -232,7 +232,7 @@ void TBosstiaryDialogController::setShowMasteryBosses(const bool v) { changeFilt
 void TBosstiaryDialogController::showDialogTab()
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendRequestBosstiaryInfo();
 }
 
@@ -291,7 +291,7 @@ void TBosstiaryDialogController::requestNextPage()
 void TBosstiaryDialogController::requestToggleBosstiaryTracking(const int RaceID, const bool ShouldTrack)
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), ShouldTrack);
 }
 
@@ -368,21 +368,21 @@ void TBossSlotsDialogController::showDialogTab()
     m_firstList->resetFilter();
     m_secondList->resetFilter();
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendRequestBossSlootInfo();
 }
 
 void TBossSlotsDialogController::onClearClicked(const int SlotNumber)
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendRequestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
 }
 
 void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int SelectedRaceID)
 {
     if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session && session->canPerformGameAction())
+        session)
         tibia::protocol::gameclient::sendRequestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
 }

@@ -13,7 +13,7 @@ WorldFrameHooks g_frameHooks;
 
 void setWorldLightingDriver(WorldLightingDriver* driver)
 {
-    // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
+    // Exclusive hook: first non-null wins; log conflicts (docs/mods.md).
     if (driver && g_lighting && g_lighting != driver) {
         return;
     }

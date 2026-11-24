@@ -5,11 +5,14 @@
 | Path | Role |
 |------|------|
 | `client/upstream/` | CIP sync output (local only; gitignored in public) |
-| `client/mods/qtc-aac/` · `otclient/` | Stock example packs (login urls; OTC wire) |
+| `client/mods/qtc-aac/` | Stock default pack (qtc-aac login urls) |
 | `client/mods/<your>/` | Your pack (gitignored; copy/symlink/submodule locally)
 | `launcher/mods/<your>/` | Launcher brand / art pack |
 | `third_party/qt5-cip` | CipSoft Qt sources (submodule, `update = none`) |
 | `third_party/Qt5LegacyControls` | LegacyControls C++ (LGPL, branch `main`); QML from sync |
+
+Port rules (CipSoft classes from their decompiled units, `ports.lock`): see
+[`AGENTS.md`](../../AGENTS.md). Packs: [`docs/mods.md`](../mods.md).
 
 ## Overrides vs mods
 

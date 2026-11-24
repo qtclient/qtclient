@@ -130,8 +130,8 @@ void syncFieldStackFor(const uint32_t creatureId)
         field->syncCreatureStackAppearance(creatureId);
 }
 
-bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature,
-                                 const protobuf::protocol::CreatureData& c)
+bool applyProtocolCreatureFields(TCreatureStorage& storage, appearances::TAppearanceInstanceFactory& factory,
+                                 const std::shared_ptr<TCreature>& creature, const protobuf::protocol::CreatureData& c)
 {
     TCreature& target = *creature;
     if (c.has_name())
@@ -213,8 +213,7 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
         if (c.mount().look_type() == 0) {
             target.setMounted(false);
         } else {
-            target.setMountAppearance(
-                appearances::TAppearanceInstanceFactory::installed()->createOutfitFromProtobuf(c.mount(), target.patternX()));
+            target.setMountAppearance(factory.createOutfitFromProtobuf(c.mount(), target.patternX()));
             target.setMounted(true);
         }
         storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
@@ -228,14 +227,10 @@ uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
 {
     game::TGameSessionBase* session = game::currentGameSession();
     TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
-    if (!storage)
+    appearances::TAppearanceInstanceFactory* factory = session ? session->appearanceInstanceFactory().get() : nullptr;
+    if (!storage || !factory)
         return 0;
     const uint32_t id = c.id();
-    // Host: before the login named it (a replay), the session takes its own id
-    // from the own character's creature.
-    if (session->hasLocalPlayer() && storage->playerID() == 0 && c.has_name()
-        && c.type() == Proto::CreatureTypePlayer && session->playerData() && c.name() == session->playerData()->characterName())
-        storage->setPlayerID(id);
 
     // A new creature replaces the one the message names; a creature naming
     // itself (known, turned, or new under its own id) must already be stored.
@@ -249,26 +244,19 @@ uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
             return 0;
         }
     } else {
-        if (worldmap::TWorldMapStorage* map = session->worldMapStorage().get())
-            map->removeCreatureFromFields(removeId);
         storage->remove(removeId);
         creature = storage->createCreature(id);
     }
 
-    if (!applyProtocolCreatureFields(*storage, creature, c))
-        return 0;
+    // A field the message abandons (an unknown vocation or icon) still counts:
+    // the creature is renewed and reported either way.
+    (void)applyProtocolCreatureFields(*storage, *factory, creature, c);
     if (created) {
         creature->renewUniqueId();
         if (creature->isLocalPlayer())
             storage->notifyPlayerAdded(creature);
     }
     storage->notifyCreatureUpdated(creature);
-
-    // Host: the session's character name follows its creature.
-    if (created && creature->isLocalPlayer() && c.has_name()) {
-        if (game::TPlayerData* data = session->playerData().get())
-            data->setCharacterName(c.name());
-    }
     return id;
 }
 

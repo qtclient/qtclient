@@ -808,10 +808,13 @@ public:
     bool isDead() const { return m_dead; }
     /// A same-socket character switch is in progress.
     bool isSwitchingCharacter() const { return m_switchingCharacter; }
-    /// The death dialog froze the world map's scene.
+    /// The pack's scene-frozen flag (pack ABI is/set_scene_frozen). The host's
+    /// handlers do not read it: CipSoft's scene keeps applying map messages.
     bool isSceneFrozen() const { return m_sceneFrozen; }
     void setSceneFrozen(bool frozen) { m_sceneFrozen = frozen; }
-    /// Online, with a living character and a connected game connection.
+    /// Online, with a living character and a connected game connection (the
+    /// pack ABI's can-perform check and the CLI smoke tooling; CipSoft's
+    /// controllers hand their messages to the session's queue unchecked).
     bool canPerformGameAction() const;
     QString characterName() const;
     QString worldName() const;

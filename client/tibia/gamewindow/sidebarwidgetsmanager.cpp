@@ -283,7 +283,6 @@ void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IG
         if (hooks.connectToGameSession)
             hooks.connectToGameSession(GameSession);
     }
-    setPremiumTimeStorage(GameSession ? game::TPremiumTimeStorage::liveInstance() : nullptr);
 }
 
 void TSidebarWidgetsManager::onPlayerTradeWidgetOpenRequest()

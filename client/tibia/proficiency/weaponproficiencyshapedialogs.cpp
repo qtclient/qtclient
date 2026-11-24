@@ -47,10 +47,10 @@ bool sessionIsOnline()
     return session && session->isOnline();
 }
 
-bool sessionCanPerformGameAction()
+/// A session takes the messages (its queue sends them).
+bool hasGameSession()
 {
-    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
-    return session && session->canPerformGameAction();
+    return tibia::game::currentGameSession() != nullptr;
 }
 
 uint64_t localPlayerResource(const tibia::client::ResourceTypes_t type)
@@ -344,7 +344,7 @@ void TWeaponProficiencyShapeDialogController::onClearClicked()
 
 void TWeaponProficiencyShapeDialogController::sendSlotAction(const uint8_t type) const
 {
-    if (sessionCanPerformGameAction())
+    if (hasGameSession())
         tibia::protocol::gameclient::sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
 }
 
@@ -428,7 +428,7 @@ void TWeaponProficiencyReshapeDialogController::rebuildOffers()
 void TWeaponProficiencyReshapeDialogController::pickOffer(const int index) const
 {
     if (const TReshapeOffers* offers = m_storage->reshapeOffers())
-        if (sessionCanPerformGameAction())
+        if (hasGameSession())
             tibia::protocol::gameclient::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
 }
 

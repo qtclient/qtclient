@@ -45,7 +45,7 @@ vc18/
 /data/aac/
 /data/storeimages/
 # Public CIP-clone spin-out also ignores /upstream/ (builders run make tibia-sync).
-# This private qtclient fork keeps upstream/ tracked for convenience — see docs/open-source.md.
+# This private qtclient fork keeps upstream/ tracked for convenience — see README.md (Layout).
 # /upstream/
 
 # Stock tracks default packs only. Product packs STATIC-link via

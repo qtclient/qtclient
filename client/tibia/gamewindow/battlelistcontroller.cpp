@@ -463,7 +463,7 @@ bool TBattleListController::handleGameActionCastSpellAtMouseCursor(const input::
     const TCreaturePtr creature = session->creatureStorage() ? session->creatureStorage()->creatureAt(target->creatureId()) : nullptr;
     session->setNextTalkAim(creature ? creature->position() : Position());
     session->setNextTalkAimMode(2);
-    if (session->canPerformGameAction() && !action.words().isEmpty())
+    if (!action.words().isEmpty())
         tibia::protocol::gameclient::sendTalk(static_cast<uint32_t>(action.talkMode()), 0, "", action.words().toStdString());
     return true;
 }

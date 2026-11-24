@@ -52,7 +52,7 @@ void requestCharacterInfo(const std::shared_ptr<game::IGameSession>& gameSession
                           const uint16_t page = 0)
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
-    if (!session || !session->canPerformGameAction() || !session->cyclopediaProtocolMessageHandler())
+    if (!session || !session->cyclopediaProtocolMessageHandler())
         return;
     if (type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS || type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS)
         session->cyclopediaProtocolMessageHandler()->sendOpenCharacterInfo(playerId, type, entriesPerPage, page);

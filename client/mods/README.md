@@ -1,12 +1,8 @@
 # Mods
 
 Stock CipSoft is **not** under `mods/` (`upstream/` + `client/tibia/`).
-
-| OTC | This client |
-|-----|-------------|
-| `modules/` (stock) | CIP stock |
-| Customizing stock | pack `overrides/` (host has none) |
-| `mods/<name>/` | `mods/<name>/` + `mod.json` + `qml/<uri>/` |
+A pack is `mods/<name>/` + `mod.json` + `qml/<uri>/`, and customizes stock only
+through its `overrides/` (the host has none).
 
 ## Default packs (in-tree)
 
@@ -30,6 +26,7 @@ Enable with default `QTCLIENT_ENABLE_MODS=ON` (auto-discovers non-`_*` packs).
 Stock-only: `-DQTCLIENT_ENABLE_MODS=OFF` or run with `--no-mods`.
 
 QML must be a filesystem module: `qml/<qmlModule>/qmldir` (see [`docs/mods.md`](../../docs/mods.md)).
-Public C++ surface: [`include/qtclient/mod_api_v1.h`](../../include/qtclient/mod_api_v1.h).
+Pack surface: the host-pushed C ABI [`include/qtclient/abi/host_api_v1.h`](../../include/qtclient/abi/host_api_v1.h)
+(SDK: [`include/qtclient/`](../../include/qtclient/README.md)).
 
 See [`docs/mods.md`](../../docs/mods.md).

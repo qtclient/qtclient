@@ -127,11 +127,7 @@ void TGameWorldVolumeStorage::fillFromArea(const worldmap::TWorldMapCuboid& area
                 if (object.HasExtension(CreatureData::creature_data))
                     continue;
                 appearances::TAppearanceInstancePtr instance =
-                    m_appearanceInstanceFactory->createFromProtobuf(object, m_clockService->nowMillis());
-                // Host: qtclient's factory takes no coordinate; an object drawn by
-                // its field's pattern takes it from the coordinate here.
-                if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(instance))
-                    patterned->applyWorldMapCoordinate(coordinate.toPosition());
+                    m_appearanceInstanceFactory->createFromProtobuf(object, coordinate.toPosition(), m_clockService->nowMillis());
                 if (instance)
                     objects.push_back(std::move(instance));
             }

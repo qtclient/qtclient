@@ -548,7 +548,7 @@ void TCyclopediaMapDialogController::onAreaClicked(const int id, const bool isAr
 void TCyclopediaMapDialogController::onConfirmDialogAccepted()
 {
     const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    if (!session || !session->canPerformGameAction() || !session->cyclopediaProtocolMessageHandler())
+    if (!session || !session->cyclopediaProtocolMessageHandler())
         return;
     if (m_confirmType == ConfirmResetViewpoints)
         session->cyclopediaProtocolMessageHandler()->sendResetMapAreaViewpoints(m_resetSubAreaId);
@@ -685,7 +685,7 @@ void TCyclopediaMapDialogController::updateSubAreaData(TCyclopediaMapSelectionIn
         // Not known yet: the panel waits for the server's answer.
         subArea.viewpointInfoDelayed = true;
         if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-            session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+            session && session->cyclopediaProtocolMessageHandler())
             session->cyclopediaProtocolMessageHandler()->sendRequestMapArea(subArea.id);
     } else {
         const auto info = m_storage->subAreaViewpointInfo(subArea.id);

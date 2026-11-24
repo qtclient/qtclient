@@ -1,10 +1,12 @@
-# Mods and WorldView customization
+# Mods and packs
+
+Product / third-party packs on the CipSoft qtclient host. Ship path is
+**stock tip + runtime MODULE + FS chrome** for desktop and WASM.
 
 Frozen tip extension hooks (CIP-neutral only):
 [pack-extension-contract.md](pack-extension-contract.md)
-(`scripts/ci/check-cip-tip-purity.py`).
-
-Architecture overview: [`docs/pack-architecture.md`](../../../docs/pack-architecture.md).
+(`scripts/ci/check-cip-tip-purity.py`). Pack SDK:
+[`include/qtclient/`](../include/qtclient/README.md).
 
 ## Stock = CipSoft
 
@@ -14,8 +16,37 @@ Architecture overview: [`docs/pack-architecture.md`](../../../docs/pack-architec
 - `launcher/src/` — tip-protocol launcher
 - `shared/src/` — `shared::` types
 
-Do not invent an OTC-style `modules/` tree that re-hosts stock CIP.
+Do not invent a `modules/` tree that re-hosts stock CIP; stock is changed only
+through pack `overrides/`.
 Keep the name **mods** / **pack** (not “plugins” — that collides with Qt QML plugins).
+
+## Decisions
+
+| Choice | Why |
+|--------|-----|
+| Host-pushed C ABI (`include/qtclient/abi/`) | SDK headers define pack access; no tip export allowlist / `host_exports.json` |
+| Packs export only `qtclient_mod_register` | Tip dlopens the MODULE and passes `QtClientHostApiV1*` |
+| Zero tip imports in MODULE packs | Mods resolving tip/Qt symbols (export lists) was the past pain |
+| FS QML + overrides | F5 / `PackQmlInterceptor`; not tip-baked `qt_add_qml_module` |
+| Same pipeline desktop + WASM | `mods/<id>/native/mod.{dylib,so,dll,wasm}` |
+| IdleOT `ABSORB_INTO_QTCLIENT` (deprecated, still used) | Deep tip façades still in use; peel onto `abi/`, then drop absorb |
+
+Removed paths: tip export lists / `host_exports.json` (→ host-pushed API
+table), packs importing `qtclient_mod_host_api_v1()` (→ the
+`qtclient_mod_register(api, ctx)` argument), desktop-only `QPluginLoader`
+(→ the same MODULE load on desktop and WASM).
+
+Non-goals: tip export allowlists for packs; packs importing tip symbols;
+process-isolated sidecar mods (lighting / opcodes stay in-process).
+
+## Artifacts
+
+```text
+stock host (qtclient CI)     → tibia tip (+ optional default packs)
+client-sdk (pack_sdk)        → include/qtclient/abi/ + cmake helpers
+pack archive (pack CI)       → mods/<id>/native/mod.* + FS tree
+product tip (release/local)  → host + N packs staged under tip/mods/
+```
 
 ## Runtime MODULE (stock qtclient + product packs)
 
@@ -39,6 +70,19 @@ host API table (SDK headers under `include/qtclient/abi/` define the surface).
 | Product (`-DQTCLIENT_LINKED_PACK=`) | stages pack; IdleOT still `ABSORB_INTO_QTCLIENT` until abi peel |
 
 Local product path: `make qtclient desktop|browser install`.
+
+### Load sequence
+
+```text
+ModLoader::loadAll
+  → for each mods/<id>/mod.json
+      → dlopen native/mod.*
+      → qtclient_mod_register(&hostApi, &loadCtx)
+      → register FS qml/ overrides/ urls/identity
+```
+
+Packs never look up tip symbols. Extending capability means adding fields to
+`QtClientHostApiV1` in [`include/qtclient/abi/host_api_v1.h`](../include/qtclient/abi/host_api_v1.h).
 
 ## Tip splash (login / launcher /play)
 
@@ -81,6 +125,16 @@ QTCLIENT_MOD_EXPORT void qtclient_mod_register(
 Packs must **not** import tip symbols. Use only `api` function pointers.
 CI: `scripts/ci/check-pack-abi-headers.py`.
 
+### Rust packs
+
+qtclient stays C++, but a pack may be a Rust `cdylib`: bindgen
+[`include/qtclient/abi/*.h`](../include/qtclient/abi/), export
+`qtclient_mod_register` with the `host_api_v1.h` signature, use only the passed
+`QtClientHostApiV1*` (never link tip symbols), and stage the library as
+`mods/<id>/native/mod.{dylib,so,dll,wasm}` next to the FS chrome. Working
+example (bindgen + no-op hook):
+[`apps/idleot-client/rust-smoke/`](../../idleot-client/rust-smoke/README.md).
+
 ### Multi-pack tip + `urls`
 
 Tip loads **all** autoload packs under `mods/<id>/` (priority descending so lower
@@ -93,6 +147,17 @@ ascending priority sort.
 | tip default | all autoload `mods/<id>/` |
 | `QTCLIENT_MODS_DIR` | packs under that root (if none found → tip default) |
 | `QTCLIENT_EXTRA_MODS_DIR` (DEV) | additional FS packs |
+
+| Concern | Rule |
+|---------|------|
+| Native C++ | Each pack’s `qtclient_mod_register` via ModLoader |
+| QML import paths | Append all `mods/<id>/qml` |
+| Overrides | Later load wins (`PackQmlInterceptor` reverse scan) |
+| Exclusive hooks | Lighting / weather / HD: first setter wins; conflicts are logged |
+| Additive hooks | Overlay factories append |
+
+CMake: `-DQTCLIENT_LINKED_PACK=<pack>/client` (one source pack, IdleOT) or
+`-DQTCLIENT_LINKED_PACKS=a/client;b/client` (several).
 
 Local product Play may set `QTCLIENT_MODS_DIR` to a **launcher brand** directory
 (`brand.json` only). The launcher strips that env when starting the game client
@@ -114,13 +179,31 @@ Optional `urls` on `mod.json` merge into `LauncherEnv`.
 
 ## IdleOT transitional absorb
 
-IdleOT still uses tip C++ façades (`session.h`, `worldview.h`, …). Until those
-are peeled onto `abi/`, `qtclient_add_mod(idleot ABSORB_INTO_QTCLIENT …)` compiles
-pack sources into `tibia`. New packs must use the runtime MODULE path.
+IdleOT still uses tip C++ façades (`session.h`, `worldview.h`, `dialog.h`,
+`gameactions.h`, …). Until those are peeled onto `abi/`,
+`qtclient_add_mod(idleot ABSORB_INTO_QTCLIENT …)` compiles pack sources into
+`tibia` and the tip calls `qtclient_mod_<id>_register` instead of
+`qtclient_mod_register`. New packs must use the runtime MODULE path.
 
 ## Filesystem QML (F5)
 
-Unchanged: ModLoader adds `mods/<id>/qml`; F5 clears QML cache on desktop DEV.
+ModLoader adds `mods/<id>/qml`; F5 clears the QML cache on desktop DEV.
+
+## Performance
+
+Extensibility must not regress the CIP world hot path. Use the existing frame
+timers (`provider->buildNs()` / `tilesNs()` / `lightNs()`); the client logs only
+CipSoft's messages, so read them from the FPS / latency indicator
+(`worldmapBuildUs`) or a profiler, not from the log.
+
+- Baseline: stock (`QTCLIENT_ENABLE_MODS=OFF` or `--no-mods`) on a fixed replay,
+  e.g. `--replay=records/smoke-world.cam --play-for=20`.
+- After WorldView / pack changes: stock within noise of the baseline
+  (investigate a sustained >~2% frame-time increase); qtclient + raycast within
+  noise of the previous raycast build on the same machine and replay.
+- `ModLoader` runs only at startup; per frame only a cached
+  `WorldLightingDriver*` + null check; no `mod.json` / directory / `QLibrary`
+  work inside `advance()`.
 
 ## Verify
 
