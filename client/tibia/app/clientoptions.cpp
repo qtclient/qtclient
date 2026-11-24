@@ -7,15 +7,9 @@
 #include <QFile>
 #include <QJsonDocument>
 
-#include <QStringList>
-#include <QTimer>
-
 namespace tibia::app {
 
 namespace {
-
-/// Set while ClientOptions::store / storeAll write: they announce and save themselves.
-bool g_storing = false;
 
 /// The stored value of a CIP option as JSON.
 QJsonValue optionValue(const config::TClientOptions& options, const QString& name)
@@ -70,29 +64,24 @@ void ClientOptions::store(const QString& name, const QJsonValue& value)
     const QJsonValue before = optionValue(*options, name);
     if (before == value)
         return;
-    g_storing = true;
     setOptionValue(*options, name, value);
-    g_storing = false;
     if (optionValue(*options, name) == before)
         return;
     options->saveToJsonFile();
-    Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }
 
 void ClientOptions::storeAll(const QJsonObject& changes)
 {
     config::TClientOptions* options = config::TClientOptions::instance();
     const QJsonObject current = options->toJson().object();
-    QStringList changed;
-    g_storing = true;
+    bool changed = false;
     for (auto section = changes.begin(); section != changes.end(); ++section) {
         if (section.key() == QLatin1String("options")) {
             const QJsonObject values = section->toObject();
             for (auto it = values.begin(); it != values.end(); ++it) {
                 const QJsonValue before = optionValue(*options, it.key());
                 setOptionValue(*options, it.key(), *it);
-                if (optionValue(*options, it.key()) != before)
-                    changed << it.key();
+                changed |= optionValue(*options, it.key()) != before;
             }
             continue;
         }
@@ -100,15 +89,10 @@ void ClientOptions::storeAll(const QJsonObject& changes)
                                      ? QJsonValue(merged(current.value(section.key()).toObject(), section->toObject()))
                                      : *section;
         options->fromJson({ { section.key(), value } });
-        if (options->toJson().object().value(section.key()) != current.value(section.key()))
-            changed << section.key();
+        changed |= options->toJson().object().value(section.key()) != current.value(section.key());
     }
-    g_storing = false;
-    if (changed.isEmpty())
-        return;
-    options->saveToJsonFile();
-    for (const QString& name : std::as_const(changed))
-        Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
+    if (changed)
+        options->saveToJsonFile();
 }
 
 void ClientOptions::storeChanged(const config::TClientOptions& pending)
@@ -133,35 +117,6 @@ void ClientOptions::storeChanged(const config::TClientOptions& pending)
             changes.insert(section.key(), options);
     }
     storeAll(changes);
-}
-
-ClientOptionsNotifier::ClientOptionsNotifier()
-{
-    config::TClientOptions* options = config::TClientOptions::instance();
-    const auto changed = [this, options](const QString& name) {
-        if (g_storing)
-            return;
-        if (!m_saveScheduled) {
-            m_saveScheduled = true;
-            QTimer::singleShot(0, this, [this, options] {
-                m_saveScheduled = false;
-                options->saveToJsonFile();
-            });
-        }
-        Q_EMIT optionChanged(name);
-    };
-    connect(options, &config::TClientOptions::optionChanged, this,
-            [changed](const config::EClientOption id) { changed(config::TClientOptions::optionName(id)); });
-    connect(options, &config::TClientOptions::clientWindowOptionsChanged, this,
-            [changed] { changed(QStringLiteral("clientWindowOptions")); });
-    connect(options, &config::TClientOptions::whiteBlacklistOptionsChanged, this,
-            [changed] { changed(QStringLiteral("whiteBlacklistOptions")); });
-}
-
-ClientOptionsNotifier* ClientOptionsNotifier::instance()
-{
-    static ClientOptionsNotifier notifier;
-    return &notifier;
 }
 
 int ClientOptions::rendererIndex() const

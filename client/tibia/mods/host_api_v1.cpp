@@ -11,6 +11,7 @@
 #include "sprites/hdscale.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 
 #include "game/creaturesession.h"
 #include "game/currentgamesession.h"
@@ -1870,6 +1871,23 @@ int optLoadJson(char** out_json)
     return *out_json ? 0 : -1;
 }
 
+void optNotify(const QString& name);
+
+/// ClientOptions::store; a host option (no CIP option, no signal of its own)
+/// is announced to the pack's subscribers here.
+void optStoreValue(const QString& name, const QJsonValue& value)
+{
+    tibia::config::EClientOption id;
+    if (tibia::config::TClientOptions::optionId(name, id)) {
+        tibia::app::ClientOptions::store(name, value);
+        return;
+    }
+    const QJsonValue before = tibia::app::ClientOptions::load().options().value(name);
+    tibia::app::ClientOptions::store(name, value);
+    if (tibia::app::ClientOptions::load().options().value(name) != before)
+        optNotify(name);
+}
+
 int optStore(const char* name, const char* value_json)
 {
     if (!name || !value_json)
@@ -1881,15 +1899,15 @@ int optStore(const char* name, const char* value_json)
         const QJsonDocument asArr = QJsonDocument::fromJson(QByteArray("[") + value_json + "]", &err);
         if (err.error != QJsonParseError::NoError || !asArr.isArray() || asArr.array().isEmpty())
             return -1;
-        tibia::app::ClientOptions::store(QString::fromUtf8(name), asArr.array().at(0));
+        optStoreValue(QString::fromUtf8(name), asArr.array().at(0));
         return 0;
     }
     if (doc.isObject())
-        tibia::app::ClientOptions::store(QString::fromUtf8(name), doc.object());
+        optStoreValue(QString::fromUtf8(name), doc.object());
     else if (doc.isArray())
-        tibia::app::ClientOptions::store(QString::fromUtf8(name), doc.array());
+        optStoreValue(QString::fromUtf8(name), doc.array());
     else
-        tibia::app::ClientOptions::store(QString::fromUtf8(name), QJsonValue());
+        optStoreValue(QString::fromUtf8(name), QJsonValue());
     return 0;
 }
 
@@ -1898,45 +1916,69 @@ void optFree(char* p) { std::free(p); }
 struct OptChangedSlot {
     QtClientOptionChangedFn fn = nullptr;
     void* user = nullptr;
-    QMetaObject::Connection conn;
 };
 
 std::mutex g_optMu;
 std::unordered_map<int, OptChangedSlot> g_optSlots;
 int g_optNextId = 1;
 
+/// Calls every subscriber with `name` (a CIP option, a section or a host option).
+void optNotify(const QString& name)
+{
+    std::vector<OptChangedSlot> targets;
+    {
+        std::lock_guard lock(g_optMu);
+        targets.reserve(g_optSlots.size());
+        for (const auto& [id, slot] : g_optSlots)
+            targets.push_back(slot);
+    }
+    const QByteArray utf8 = name.toUtf8();
+    for (const OptChangedSlot& slot : targets)
+        slot.fn(slot.user, utf8.constData());
+}
+
+/// The client options' change signals, by name, to the pack's subscribers
+/// (connected once, on the first subscription).
+void optForwardChanges()
+{
+    static bool forwarding = false;
+    if (forwarding)
+        return;
+    forwarding = true;
+    using Options = tibia::config::TClientOptions;
+    Options* options = Options::instance();
+    QObject::connect(options, &Options::optionChanged, options,
+                     [](const tibia::config::EClientOption id) { optNotify(Options::optionName(id)); });
+    const auto section = [options](auto signal, const char* name) {
+        QObject::connect(options, signal, options, [name] { optNotify(QLatin1String(name)); });
+    };
+    section(&Options::clientWindowOptionsChanged, "clientWindowOptions");
+    section(&Options::npcDialogOptionsChanged, "npcDialogOptions");
+    section(&Options::buttonBarOptionsChanged, "controlButtonsOptions");
+    section(&Options::hotkeyOptionsChanged, "hotkeyOptions");
+    section(&Options::chatOptionsChanged, "chatOptions");
+    section(&Options::whiteBlacklistOptionsChanged, "whiteBlacklistOptions");
+    section(&Options::surveyInvitationOptionsChanged, "survey");
+    section(&Options::newsOptionsChanged, "news");
+    section(&Options::characterSelectionControllerOptionsChanged, "pinnedCharacters");
+    section(&Options::specialConditionsOptionsChanged, "specialConditionsOptions");
+}
+
 int optSubscribeChanged(QtClientOptionChangedFn fn, void* user)
 {
     if (!fn)
         return 0;
+    optForwardChanges();
     std::lock_guard lock(g_optMu);
     const int id = g_optNextId++;
-    OptChangedSlot slot;
-    slot.fn = fn;
-    slot.user = user;
-    slot.conn = QObject::connect(
-        tibia::app::ClientOptionsNotifier::instance(),
-        &tibia::app::ClientOptionsNotifier::optionChanged,
-        [id](const QString& name) {
-            std::lock_guard lock(g_optMu);
-            const auto it = g_optSlots.find(id);
-            if (it == g_optSlots.end() || !it->second.fn)
-                return;
-            const QByteArray utf8 = name.toUtf8();
-            it->second.fn(it->second.user, utf8.constData());
-        });
-    g_optSlots.emplace(id, std::move(slot));
+    g_optSlots.emplace(id, OptChangedSlot{ fn, user });
     return id;
 }
 
 void optUnsubscribeChanged(int id)
 {
     std::lock_guard lock(g_optMu);
-    const auto it = g_optSlots.find(id);
-    if (it == g_optSlots.end())
-        return;
-    QObject::disconnect(it->second.conn);
-    g_optSlots.erase(it);
+    g_optSlots.erase(id);
 }
 
 const QtClientOptionsApiV1 g_optionsApi = {

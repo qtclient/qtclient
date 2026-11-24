@@ -6,6 +6,9 @@
 #include <protocol.pb.h>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace input {
 
 /// CIP input::TGenericGameActionHandler: the session's handler for the object
@@ -19,13 +22,13 @@ namespace input {
 /// protobuf message (the game server session links them to its queue).
 /// Host: the objects are written from the actions' classic position, stack
 /// position and type (protocol::gameclient::setClassicObject, the bytes the
-/// session sent before). The container storage, the options and the analyser
-/// storages are qtclient's instances.
+/// session sent before). The container storage and the analyser storages are
+/// qtclient's instances; the options are the client's (CIP +0x30).
 class TGenericGameActionHandler final : public cip::tibia::input::TGenericGameActionHandler
 {
     Q_OBJECT
 public:
-    explicit TGenericGameActionHandler(QObject* parent = nullptr);
+    explicit TGenericGameActionHandler(std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent = nullptr);
     ~TGenericGameActionHandler() override;
     TGenericGameActionHandler(const TGenericGameActionHandler&) = delete;
     TGenericGameActionHandler& operator=(const TGenericGameActionHandler&) = delete;
@@ -78,6 +81,9 @@ Q_SIGNALS:
     void sendRequestResourceBalance(
         const ::tibia::protobuf::protocol::GameclientMessageRequestResourceBalance& RequestResourceBalanceMessage);
     void sendTeleport(const ::tibia::protobuf::protocol::GameclientMessageTeleport& TeleportMessage);
+
+private:
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
 };
 
 }

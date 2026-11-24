@@ -19,6 +19,10 @@
 namespace tibia {
 namespace game {
 class TGameSessionBase;
+class TPremiumTimeStorage;
+}
+namespace news {
+class TNewsStorage;
 }
 namespace assets {
 class TAssetManager;
@@ -134,6 +138,9 @@ public:
     {
         /// The host's copy of the play session data is forgotten too.
         std::function<void()> resetSessionData;
+        /// The game client's premium time and news storages (null: none).
+        std::function<game::TPremiumTimeStorage*()> premiumTimeStorage;
+        std::function<news::TNewsStorage*()> newsStorage;
     };
 
     explicit TAuthenticationProcessController(
@@ -325,6 +332,8 @@ private:
     std::shared_ptr<assets::TAssetManager> m_pAssetManager;
 
     THost m_host;
+    game::TPremiumTimeStorage* premiumTimeStorage() const;
+    news::TNewsStorage* newsStorage() const;
     std::vector<TTransition> m_transitions;
     std::vector<std::pair<EState, void (TAuthenticationProcessController::*)()>> m_entered;
     std::vector<std::pair<EState, void (TAuthenticationProcessController::*)()>> m_exited;

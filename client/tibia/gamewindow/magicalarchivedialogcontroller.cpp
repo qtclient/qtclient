@@ -1,5 +1,6 @@
 #include "magicalarchivedialogcontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
@@ -23,9 +24,7 @@ using A = input::EGameAction;
 
 TMagicalArchiveDialogController::TMagicalArchiveDialogController(QObject* parent)
     : cip::tibia::gamewindow::TMagicalArchiveDialogController(parent)
-    , m_proxy(new TSpellListDataModelSortFilterProxy(this))
 {
-    m_spellListModel = m_proxy;
 
     const QString path = spells::spellsAssetPath(QStringLiteral("spells-previews.json"));
     QFile file(path);
@@ -40,6 +39,21 @@ TMagicalArchiveDialogController::TMagicalArchiveDialogController(QObject* parent
         return;
     }
     m_previewsVariant = document.toVariant();
+}
+
+void TMagicalArchiveDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    auto* proxy = new TSpellListDataModelSortFilterProxy(session->spellInfoStorage(), this);
+    if (m_proxy)
+        m_proxy->deleteLater();
+    m_proxy = proxy;
+    m_spellListModel = proxy;
+    m_proxy->connectToGameSession(m_gameSession);
+    Q_EMIT dataChanged();
 }
 
 QJSValue TMagicalArchiveDialogController::spellsPreviewsJson() const
@@ -77,6 +91,8 @@ void TMagicalArchiveDialogController::refreshSelectionFlags()
 
 void TMagicalArchiveDialogController::showDialogTab()
 {
+    if (!m_proxy)
+        return;
     m_proxy->resetFilter();
     m_proxy->onPlayerDataChanged();
     // Re-convert previews now that this controller is in a QML tree (CONSTANT
@@ -93,7 +109,11 @@ void TMagicalArchiveDialogController::showDialogTab()
     Q_EMIT selectedSpellIDChanged();
 }
 
-void TMagicalArchiveDialogController::hideDialogTab() { m_proxy->resetFilter(); }
+void TMagicalArchiveDialogController::hideDialogTab()
+{
+    if (m_proxy)
+        m_proxy->resetFilter();
+}
 
 void TMagicalArchiveDialogController::requestAssignSpellToActionButton()
 {

@@ -95,12 +95,13 @@ QString newValuesText(const TShapedSlot& slot, const int rank)
 
 }
 
-TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController(TProficiencyStorage* ProficiencyStorage,
+                                                                                 QQmlEngine* engine, QQuickItem* dialogParentItem,
                                                                                  QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyShapeDialog.qml"), engine, dialogParentItem, parent)
     // Host: CIP reads the proficiency storage from the game session; qtclient's
     // is the game client's, alive before any controller.
-    , m_storage(TProficiencyStorage::instance())
+    , m_storage(ProficiencyStorage)
     , m_message(new gamewindow::TMessageDialogController(this))
 {
     m_message->setYesNoButtons();
@@ -371,12 +372,13 @@ void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
     Q_EMIT publishGameAction(action);
 }
 
-TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogController(TProficiencyStorage* ProficiencyStorage,
+                                                                                     QQmlEngine* engine, QQuickItem* dialogParentItem,
                                                                                      TWeaponProficiencyShapeDialogController* shape,
                                                                                      QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyReshapeDialog.qml"), engine, dialogParentItem, parent)
     // Host: the session's proficiency storage is the game client's.
-    , m_storage(TProficiencyStorage::instance())
+    , m_storage(ProficiencyStorage)
     , m_shape(shape)
     , m_message(new gamewindow::TMessageDialogController(this))
 {

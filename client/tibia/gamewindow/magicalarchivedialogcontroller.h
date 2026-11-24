@@ -48,11 +48,14 @@ public:
     /// The picked action button gets the selected spell; the selection's end
     /// stops waiting for it.
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    /// CIP v12: a new spell list over the session's spell infos.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     void refreshSelectionFlags();
 
-    TSpellListDataModelSortFilterProxy* m_proxy;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    TSpellListDataModelSortFilterProxy* m_proxy = nullptr;
     /// An action button is being picked for the selected spell.
     bool m_waitingForActionButton = false;
     mutable QVariant m_previewsVariant;

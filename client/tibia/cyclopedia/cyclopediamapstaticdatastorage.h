@@ -104,6 +104,7 @@ public:
     /// The minimap flags to show (CIP: the constructor's marker storage). Their
     /// pieces follow the storage's markersChanged.
     void setMinimapMarkerStorage(minimap::TMinimapMarkerStorage* markerStorage);
+    minimap::TMinimapMarkerStorage* minimapMarkerStorage() const;
 
     /// Reads map.dat; throws std::logic_error for malformed data.
     void initialize(const QByteArray& mapData);

@@ -69,7 +69,7 @@ TTaskboardDialogController::TTaskboardDialogController(std::shared_ptr<input::TG
                                                        QQmlEngine* engine, QQuickItem* dialogParentItem)
     : TDialogController(QStringLiteral("taskboard/TaskboardDialog.qml"), engine, dialogParentItem)
     , m_bounty(new TBountyTasksController(engine, dialogParentItem, this))
-    , m_weekly(new TWeeklyTasksController(this))
+    , m_weekly(new TWeeklyTasksController(GameActionMapper, this))
     , m_shop(new TTaskboardShopController(engine, dialogParentItem, this))
     , m_notOnMain(new TMessageDialogController(engine, dialogParentItem, this))
     , m_gameActionMapper(std::move(GameActionMapper))

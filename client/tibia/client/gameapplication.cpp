@@ -195,6 +195,14 @@ void TGameApplication::initialize()
     connect(m_pClientOptions, &config::TClientOptions::failedToSaveClientOptions, this,
             &TGameApplication::showErrorAsPopupAndCriticalLog);
     m_pClientOptions->saveToJsonFile();
+    // Host: every option change is saved on the next event loop turn.
+    m_clientOptionsSaveTimer.setSingleShot(true);
+    m_clientOptionsSaveTimer.setInterval(0);
+    connect(&m_clientOptionsSaveTimer, &QTimer::timeout, m_pClientOptions, &config::TClientOptions::saveToJsonFile);
+    const auto scheduleSave = [this] { m_clientOptionsSaveTimer.start(); };
+    connect(m_pClientOptions, &config::TClientOptions::optionChanged, this, scheduleSave);
+    connect(m_pClientOptions, &config::TClientOptions::clientWindowOptionsChanged, this, scheduleSave);
+    connect(m_pClientOptions, &config::TClientOptions::whiteBlacklistOptionsChanged, this, scheduleSave);
     m_startOptions = readStartOptions();
 }
 

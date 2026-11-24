@@ -157,7 +157,7 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TConta
         return new TCreatureTrackerWidgetController(CreatureMode::Bosstiary, gameWindowItem, engine);
     });
     registerOwnedWidget(BossCooldowns, m_bossTracker, [gameWindowItem, engine] { return new TBossTrackerWidgetController(gameWindowItem, engine); });
-    m_playerGuide = std::make_unique<TPlayerGuideWidgetManager>(gameWindowItem, engine);
+    m_playerGuide = std::make_unique<TPlayerGuideWidgetManager>(m_newsStorage, gameWindowItem, engine);
     publish(m_playerGuide.get());
     registerWidget(PlayerGuide, hooksFor(*m_playerGuide, [this, w = m_playerGuide.get()] { return w->open(m_options); }));
 
@@ -318,7 +318,7 @@ void TSidebarWidgetsManager::onDepotSearchWidgetOpenRequest()
 {
     if (m_depotSearch)
         return;
-    m_depotSearch = new TDepotSearchWidgetController(m_dialogParentItem, m_sidebars->engine());
+    m_depotSearch = new TDepotSearchWidgetController(m_pClientOptions, m_dialogParentItem, m_sidebars->engine());
     connect(m_depotSearch, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
             &TSidebarWidgetsManager::onDepotSearchWidgetCloseRequest, Qt::QueuedConnection);
     connect(m_depotSearch, &TDepotSearchWidgetController::publishGameAction, this, &TSidebarWidgetsManager::publishGameAction);

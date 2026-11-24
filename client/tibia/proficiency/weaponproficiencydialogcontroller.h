@@ -23,6 +23,10 @@ namespace tibia::game {
 class IGameSession;
 }
 
+namespace tibia::analysers {
+class TItemPriceStorage;
+}
+
 namespace tibia::config {
 class TClientOptions;
 }
@@ -82,6 +86,9 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void rebuild();
+    /// CIP: the character's item price storage the loot value frames read
+    /// (null: none).
+    void setItemPriceStorage(analysers::TItemPriceStorage* prices);
     bool isEmpty() const { return m_entries.empty(); }
     const TWeaponEntry& entry(int row) const { return m_entries[row]; }
     int size() const { return static_cast<int>(m_entries.size()); }
@@ -104,7 +111,9 @@ private:
     config::TClientOptions* m_clientOptions;
     TProficiencyStorage* m_storage;
     std::vector<TWeaponEntry> m_entries;
+    QPointer<analysers::TItemPriceStorage> m_prices;
     QMetaObject::Connection m_pricesConnection;
+    QMetaObject::Connection m_marketPricesConnection;
 };
 
 /// The grid's filters (CIP: the TAppearanceTypeListModelSortFilterProxy the
@@ -166,10 +175,10 @@ class TWeaponProficiencyDialogController final
 public:
     /// The levels of a weapon's proficiency table.
     int maxProficiencyLevels() const override;
-    /// CIP: the client options go to the weapons list; the dialog is made
-    /// with `engine` in `dialogParentItem`.
-    TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem,
-                                       QObject* parent = nullptr);
+    /// CIP: the client options and the proficiency storage go to the weapons
+    /// list; the dialog is made with `engine` in `dialogParentItem`.
+    TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions, TProficiencyStorage* ProficiencyStorage,
+                                       QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TWeaponProficiencyDialogController() override;
 
     /// CIP .

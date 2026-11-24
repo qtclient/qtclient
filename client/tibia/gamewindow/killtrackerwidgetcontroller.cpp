@@ -39,12 +39,21 @@ uint32_t mapU32(const std::map<std::string, uint32_t>& row, const char* key)
     return 0;
 }
 
-QString raceName(const uint32_t raceId)
+/// The race's name in `appearancesManager`'s static data, else "Race <id>".
+QString raceName(appearances::TAppearancesManager* appearancesManager, const uint32_t raceId)
 {
-    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
-    if (!race.name.empty())
-        return QString::fromStdString(race.name);
+    if (appearancesManager) {
+        if (const RaceType& race = appearancesManager->getRaceData(raceId); !race.name.empty())
+            return QString::fromStdString(race.name);
+    }
     return QStringLiteral("Race %1").arg(raceId);
+}
+
+/// The session's appearances manager; null without a session.
+appearances::TAppearancesManager* appearancesOf(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->appearancesManager().get() : nullptr;
 }
 
 }
@@ -117,7 +126,8 @@ void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<taskboa
     if (tasks.size() == 1 && tasks.front().claimState != taskboard::EBountyTaskClaimState::Available) {
         const taskboard::TBountyTask& task = tasks.front();
         entry.raceId = task.raceId;
-        entry.raceName = cyclopedia::capitalizeWords(QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getRaceData(task.raceId).name));
+        if (appearances::TAppearancesManager* appearancesManager = appearancesOf(m_gameSession))
+            entry.raceName = cyclopedia::capitalizeWords(QString::fromStdString(appearancesManager->getRaceData(task.raceId).name));
         entry.amountToHunt = task.requiredKills;
         entry.amountHunted = task.currentKills;
         entry.isActive = true;
@@ -138,7 +148,7 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
         TTaskMonsterModel::Entry entry;
         entry.raceId = static_cast<uint16_t>(mapU32(row, "raceId"));
         if (entry.raceId != 0)
-            entry.raceName = raceName(entry.raceId);
+            entry.raceName = raceName(appearancesOf(m_gameSession), entry.raceId);
         entry.amountToHunt = static_cast<uint16_t>(mapU32(row, "total"));
         entry.amountHunted = static_cast<uint16_t>(mapU32(row, "current"));
         entry.isActive = m_weeklyActive;

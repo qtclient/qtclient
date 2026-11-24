@@ -54,6 +54,11 @@ void TCyclopediaMapStaticDataStorage::setMinimapMarkerStorage(minimap::TMinimapM
     updateMinimapMarkers();
 }
 
+minimap::TMinimapMarkerStorage* TCyclopediaMapStaticDataStorage::minimapMarkerStorage() const
+{
+    return m_minimapMarkerStorage;
+}
+
 void TCyclopediaMapStaticDataStorage::updateMinimapMarkers()
 {
     m_minimapMarkers.clear();

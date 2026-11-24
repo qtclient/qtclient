@@ -17,6 +17,7 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QQmlContext>
+#include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
 
@@ -28,8 +29,6 @@ namespace {
 
 /// TibiaStyle.dragKeyMoveTibiaObject, the drop areas' key.
 const QString MoveObjectMimeType = QStringLiteral("application/x-move-tibia-object");
-
-QPointer<TDragAndDropController> s_instance;
 
 /// Whether a drop area's `keys` take one of `keys`; an area without keys
 /// takes everything.
@@ -149,13 +148,15 @@ bool TDragAndDropControllerEventFilter::eventFilter(QObject* /*watched*/, QEvent
     return false;
 }
 
-TDragAndDropController::TDragAndDropController(QQuickItem* root, QQuickItem* icon, QObject* parent)
+TDragAndDropController::TDragAndDropController(QQuickItem* root, QQuickItem* icon,
+                                               std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                                               QObject* parent)
     : cip::tibia::gamewindow::TDragAndDropController(parent)
     , m_root(root)
     , m_icon(icon)
+    , m_appearanceInstanceFactory(std::move(AppearanceInstanceFactory))
     , m_filter(new TDragAndDropControllerEventFilter(root, this))
 {
-    s_instance = this;
     connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropEventFilterFinished, this,
             &TDragAndDropController::onDragAndDropEventFilterFinished);
     connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropConfirmed, this, &TDragAndDropController::onDragAndDropConfirmed);
@@ -167,18 +168,19 @@ TDragAndDropController::~TDragAndDropController()
 {
     if (m_filterInstalled)
         QCoreApplication::instance()->removeEventFilter(m_filter);
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TDragAndDropController* TDragAndDropController::instance()
-{
-    return s_instance;
 }
 
 void TDragAndDropController::registerContextProperty(QQmlContext* context)
 {
     context->setContextProperty(QStringLiteral("tibiaDragAndDropController"), this);
+}
+
+TDragAndDropController* TDragAndDropController::fromEngine(const QQmlEngine* engine)
+{
+    const QQmlContext* context = engine ? engine->rootContext() : nullptr;
+    if (!context)
+        return nullptr;
+    return qobject_cast<TDragAndDropController*>(context->contextProperty(QStringLiteral("tibiaDragAndDropController")).value<QObject*>());
 }
 
 void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObject* source)
@@ -253,7 +255,7 @@ void TDragAndDropController::updateIcon()
             data = TObjectData::upgradeable(typeId, static_cast<const input::TUpgradeableObjectApperanceTypeGameActionContext*>(object)->tier());
             break;
         default: {
-            const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+            const TAppearanceTypePtr& type = m_appearanceInstanceFactory ? m_appearanceInstanceFactory->appearanceType(ThingCategoryItem, typeId) : nullptr;
             if (type && type->isStackable()) {
                 data = TObjectData::cumulative(typeId, 1);
             } else if (type && type->isDecoKit()) {
@@ -265,7 +267,8 @@ void TDragAndDropController::updateIcon()
             break;
         }
         }
-        m_draggedObjectInstance = appearances::TAppearanceInstanceFactory::installed()->createObject(data);
+        if (m_appearanceInstanceFactory)
+            m_draggedObjectInstance = m_appearanceInstanceFactory->createObject(data);
     }
     applyIconProperties();
     if (m_icon)

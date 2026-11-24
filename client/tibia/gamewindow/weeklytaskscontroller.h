@@ -28,7 +28,7 @@ class TWeeklyTasksController final : public cip::tibia::gamewindow::TWeeklyTasks
 {
     Q_OBJECT
 public:
-    explicit TWeeklyTasksController(QObject* parent = nullptr);
+    explicit TWeeklyTasksController(std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent = nullptr);
 
     /// Takes the session; its weekly tasks storage's changes refill the lists.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -86,8 +86,8 @@ private:
     TMessageDialogController* m_deliverTaskConfirmationDialog = nullptr;
     taskboard::TMonsterKillTasksListModel* m_killModel = nullptr;
     taskboard::TDeliveryTasksListModel* m_deliveryModel = nullptr;
-    /// Maps a delivery object click to its game action.
-    input::TGameActionMapper m_mapper;
+    /// The game window's mapper: a delivery object click to its game action.
+    std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     /// A request went out; the next weekly data message clears it.
     bool m_requestPending = false;
 };

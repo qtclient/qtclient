@@ -235,6 +235,8 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void optionChanged(tibia::config::EClientOption id);
+    /// Host extension: a host option (setExtraOption) changed its value.
+    void extraOptionChanged(const QString& name);
 
 private:
     void readBoolOptions(const QJsonObject& options);

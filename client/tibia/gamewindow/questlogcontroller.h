@@ -199,6 +199,8 @@ private:
     QString selectedPartName() const;
 
     QTimer m_questLinesChangedTimer;
+    /// The session connectToGameSession took.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<questlog::TQuestLogStorage> m_storage;
     TQuestLinesModel m_lines;
     TQuestLinesSortFilterProxyModel m_linesProxy;

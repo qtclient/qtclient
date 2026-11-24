@@ -3,6 +3,9 @@
 #include <cip_gen.h>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace qmlcomponents {
 
 /// QML singleton SoundHelper (CIP: TSoundHelperService, playSound).
@@ -22,8 +25,8 @@ public:
     static void setInstance(TSoundHelperService* service);
 };
 
-/// The pack weather audio follows the sound options.
-void followSoundOptions();
+/// The pack weather audio follows the sound options of `options`.
+void followSoundOptions(config::TClientOptions* options);
 /// Option change: the pack weather audio follows the ambience volume.
 void applyOptionVolumes();
 

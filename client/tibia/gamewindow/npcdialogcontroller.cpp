@@ -37,9 +37,8 @@ using ::tibia::shared::outfitColor;
 
 }
 
-void TNpcDialogOutfit::setFromCreatureNamed(const QString& name)
+void TNpcDialogOutfit::setFromCreatureNamed(const tibia::game::TGameSessionBase* session, const QString& name)
 {
-    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
     tibia::creatures::TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
     if (session && session->hasLocalPlayer() && storage && !name.isEmpty()) {
         const auto ar = tibia::game::awareRange();
@@ -144,10 +143,16 @@ void TNpcDialogController::connectToGameSession(const std::shared_ptr<game::IGam
     bindNpcChannel();
 }
 
-QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds)
+tibia::creatures::TCreatureStorage* TNpcDialogController::creatureStorage() const
+{
+    const auto* session = dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->creatureStorage().get() : nullptr;
+}
+
+QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds) const
 {
     QStringList names;
-    tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
+    tibia::creatures::TCreatureStorage* storage = creatureStorage();
     for (const uint32_t id : npcIds) {
         const std::shared_ptr<tibia::creatures::TCreature> row = storage ? storage->creatureAt(id) : nullptr;
         names << (row ? row->name() : qtTrId("npc_dialog_talk_partner_name_fallback"));
@@ -168,7 +173,7 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
         closeButtonPressed();
         return;
     }
-    if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
+    if (tibia::creatures::TCreatureStorage* storage = creatureStorage()) {
         if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(npcIds.front()))
             m_outfit.setOutfit(row->outfit());
     }
@@ -325,7 +330,7 @@ QString TNpcDialogController::sendChatMessage(const QString& Message, const bool
     if (text.isEmpty())
         return {};
     if (!sayToRemoteNpc(text))
-        if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
+        if (const auto* session = dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get()); session)
             tibia::protocol::gameclient::sendTalk(12, 0, "", text.toStdString()); // CIP chat message mode NpcTo
     // As TChatController::sayInChannel: the server does not echo NPC-channel lines.
     if (m_chatStorage)
@@ -384,7 +389,7 @@ void TNpcDialogController::onRequestOpenNPCTrade()
     if (!m_remote && m_talkPartners.empty()) {
         const QString names = m_storage ? m_storage->npcName() : QString();
         setTalkPartnerNames(names);
-        m_outfit.setFromCreatureNamed(names);
+        m_outfit.setFromCreatureNamed(dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get()), names);
         m_keywordButtons.setItems({});
     }
     setShowTrade(true);

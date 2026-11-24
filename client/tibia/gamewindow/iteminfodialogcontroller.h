@@ -158,6 +158,7 @@ private:
     void onInspectRequestTimeoutReached();
 
     analysers::TAnalyserStorages* storages() const;
+    /// The session's item price storage (connectToCurrentGameSession); null without a session.
     analysers::TItemPriceStorage* prices() const;
     cyclopedia::TItemTrackingStorage* itemTracking() const;
     quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() const;
@@ -166,6 +167,7 @@ private:
     void ensureItemTrackingConnection();
 
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
+    QPointer<config::TClientOptions> m_pClientOptions;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     bool m_entriesBuilt = false;
     bool m_shown = false;
@@ -182,6 +184,8 @@ private:
     qint64 m_lastInspect = 0;
     QMetaObject::Connection m_inspectionConnection;
     QMetaObject::Connection m_exaltationConnection;
+    QPointer<analysers::TItemPriceStorage> m_prices;
+    std::vector<QMetaObject::Connection> m_priceConnections;
 };
 
 }

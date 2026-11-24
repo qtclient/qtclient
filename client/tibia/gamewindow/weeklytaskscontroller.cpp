@@ -1,7 +1,5 @@
 #include "weeklytaskscontroller.h"
 
-#include "app/clientoptions.h"
-#include "config/clientoptions.h"
 #include "container/containergameactionprovider.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -10,7 +8,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "game/gamesessionbase.h"
-#include "game/currentgamesession.h"
 #include "taskboard/taskboardciptypes.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
 
@@ -39,7 +36,6 @@ constexpr int RequiredLevels[] = { 30, 150, 400 };
 
 using A = input::EGameAction;
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
-constexpr auto ControlSchemeOption = "controlSchemeIndex";
 
 /// The context menu of a delivery task's object (CIP: the container slot order).
 constexpr A DeliveryItemContextMenuOrder[] = {
@@ -52,21 +48,13 @@ constexpr A DeliveryItemContextMenuOrder[] = {
 
 }
 
-TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
+TWeeklyTasksController::TWeeklyTasksController(std::shared_ptr<input::TGameActionMapper> GameActionMapper, QObject* parent)
     : cip::tibia::gamewindow::TWeeklyTasksController(parent)
     , m_killModel(new taskboard::TMonsterKillTasksListModel(this))
     , m_deliveryModel(new taskboard::TDeliveryTasksListModel(this))
     , m_deliverTaskConfirmationDialog(new TMessageDialogController(this))
-    , m_mapper(config::controlSchemeForListModelIndex(
-          app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0)))
+    , m_pGameActionMapper(std::move(GameActionMapper))
 {
-    // Host: CipSoft passes the game window's mapper in; qtclient's follows the
-    // control scheme option itself.
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(ControlSchemeOption))
-            m_mapper.setControlScheme(
-                config::controlSchemeForListModelIndex(app::ClientOptions::load().options().value(name).toInt(0)));
-    });
     m_monsterKillTasks = m_killModel;
     m_deliveryTasks = m_deliveryModel;
     for (const auto& [count, factor] : RewardTiers) {
@@ -347,15 +335,15 @@ QVariantList TWeeklyTasksController::getTaskRewardCounts() { return m_taskReward
 
 void TWeeklyTasksController::onDeliveryItemClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
-    if (!m_gameSession)
+    if (!m_gameSession || !m_pGameActionMapper)
         return;
-    const game::TGameSessionBase* session = game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     const std::shared_ptr<container::TContainerGameActionProvider> provider =
         session ? session->containerGameActionProvider() : nullptr;
     const input::TGameActionList candidates =
         provider ? provider->typeActions(static_cast<uint16_t>(TypeID)) : input::TGameActionList{};
     const input::IGameActionPtr action =
-        m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+        m_pGameActionMapper->map(candidates, ContainerContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -366,7 +354,7 @@ void TWeeklyTasksController::onDeliveryItemClicked(const int TypeID, const int M
     if (entries.empty())
         return;
     if (TContextMenuController* menu = TContextMenuController::instance())
-        menu->showGameActions(entries, ContainerContext, m_mapper);
+        menu->showGameActions(entries, ContainerContext, *m_pGameActionMapper);
 }
 
 }

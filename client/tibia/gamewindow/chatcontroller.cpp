@@ -163,6 +163,11 @@ TChatChannelController::TChatChannelController(std::shared_ptr<config::TClientOp
             &TChatChannelController::onChatChannelControllerOptionsChanged);
 }
 
+void TChatChannelController::setItemPriceStorage(std::shared_ptr<analysers::TItemPriceStorage> ItemPriceStorage)
+{
+    m_lootPrices = std::move(ItemPriceStorage);
+}
+
 void TChatChannelController::setChannel(chat::TChatChannel* channel)
 {
     if (m_channel == channel) {
@@ -389,7 +394,10 @@ void TChatChannelController::formatRow(Row& row, const chat::TChatEntry& entry) 
     row.selectionStart = 0;
     row.selectionEnd = 0;
     row.selectionAnchor = 0;
-    row.html = chat::formatEntry(entry, m_showTimestamps, m_showTimestampSeconds, m_showLevels, &row.plainLength);
+    // The old code coloured loot when colorizeLootStyle != 0, with the session's prices.
+    analysers::TItemPriceStorage* lootPrices =
+        m_clientOptions && m_clientOptions->colorizeLootStyle() != 0 ? m_lootPrices.get() : nullptr;
+    row.html = chat::formatEntry(entry, m_showTimestamps, m_showTimestampSeconds, m_showLevels, lootPrices, &row.plainLength);
     row.plain = QString();
     row.size = QSize();
 }
@@ -1113,8 +1121,6 @@ TChatController::TChatController(const uint MaxChatInputHistoryLength, QQuickIte
     connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
     connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
 
-    reloadOptions();
-
     // For 2 s after a session connects, its new channels' tabs do not become
     // current.
     m_makeNewTabsCurrentTimer.setInterval(2000);
@@ -1160,8 +1166,6 @@ TChatController::TChatController(const uint MaxChatInputHistoryLength, QQuickIte
                 if (hasGameSession(m_gameSession) && !name.isEmpty())
                     protocol::gameclient::sendOpenPrivateChannel(name.toStdString());
             });
-
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
@@ -1218,20 +1222,6 @@ void TChatController::bindItem()
     m_chatItem->setProperty("chatChannelModel", QVariant::fromValue<QObject*>(&m_primary));
     m_chatItem->setProperty("secondaryChatChannelModel", QVariant::fromValue<QObject*>(m_secondary.channel() ? &m_secondary : nullptr));
     m_chatItem->setProperty("chatChannelTabModel", QVariant::fromValue<QObject*>(&m_tabs));
-}
-
-void TChatController::reloadOptions()
-{
-    const app::ClientOptions options = app::ClientOptions::load();
-    const QJsonObject values = options.options();
-    if (m_chatProtocolMessageHandler)
-        m_chatProtocolMessageHandler->setOptions(values);
-}
-
-void TChatController::onOptionChanged(const QString& name)
-{
-    if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow")) || name == QLatin1String("openNewPrivateMessagesInNewTab"))
-        reloadOptions();
 }
 
 void TChatController::onWorldEntered()
@@ -2023,6 +2013,8 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
     m_chatChannelStorage.reset();
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_primary.setItemPriceStorage(session ? session->itemPriceStorage() : nullptr);
+    m_secondary.setItemPriceStorage(session ? session->itemPriceStorage() : nullptr);
     if (session && session->chatChannelStorage() && session->chatProtocolMessageHandler()) {
         m_chatChannelStorage = session->chatChannelStorage();
         m_tabs.setChannelStorage(m_chatChannelStorage.get());

@@ -19,7 +19,11 @@ class TAppearanceInstanceFactory;
 }
 namespace game {
 class IGameSession;
+class TPassiveAbilityInfoStorage;
 class TPlayerData;
+}
+namespace spells {
+class TSpellInfoStorage;
 }
 namespace input {
 class IGameActionContext;
@@ -77,7 +81,8 @@ public:
         IsCrossHairSpellRole,
     };
 
-    explicit TSpellListDataModel(QObject* parent = nullptr);
+    /// Every spell of `SpellInfoStorage`, following its modifications.
+    explicit TSpellListDataModel(spells::TSpellInfoStorage* SpellInfoStorage, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -88,6 +93,7 @@ public Q_SLOTS:
     void onSpellDataModificationsApplied();
 
 private:
+    spells::TSpellInfoStorage* m_spellInfoStorage;
     /// The table's spells in id order.
     std::vector<int> m_spellIds;
 };
@@ -100,7 +106,8 @@ class TSpellListDataModelSortFilterProxy final : public cip::tibia::gamewindow::
 {
     Q_OBJECT
 public:
-    explicit TSpellListDataModelSortFilterProxy(QObject* parent = nullptr);
+    /// The spells of `SpellInfoStorage` (its own TSpellListDataModel over it).
+    explicit TSpellListDataModelSortFilterProxy(spells::TSpellInfoStorage* SpellInfoStorage, QObject* parent = nullptr);
     ~TSpellListDataModelSortFilterProxy() override;
 
     /// Checks every box except "only current level", clears the search words.
@@ -151,6 +158,7 @@ protected:
 private:
     void setFlag(bool& flag, bool value);
 
+    spells::TSpellInfoStorage* m_spellInfoStorage;
     TSpellListDataModel* m_model;
     /// The player's base vocation (CIP id) and level, 0 without a session.
     uint8_t m_playerVocation = 0;
@@ -216,7 +224,8 @@ class TAssignSpellActionDialogController final
 {
     Q_OBJECT
 public:
-    explicit TAssignSpellActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
+    /// The dialog of the bar `actionBarId`, listing the spells of `SpellInfoStorage`.
+    TAssignSpellActionDialogController(spells::TSpellInfoStorage* SpellInfoStorage, uint8_t actionBarId, QObject* parent = nullptr);
 
     /// CIP v26: the list's first spell, no parameters.
     void showDialog(uint ButtonId, int MultiActionIndex);
@@ -358,7 +367,9 @@ class TAssignPassiveAbilityActionDialogController final
 {
     Q_OBJECT
 public:
-    explicit TAssignPassiveAbilityActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
+    /// The dialog of the bar `actionBarId`, listing the abilities of `PassiveAbilityInfoStorage`.
+    TAssignPassiveAbilityActionDialogController(game::TPassiveAbilityInfoStorage* PassiveAbilityInfoStorage, uint8_t actionBarId,
+                                                QObject* parent = nullptr);
     /// CIP: the list follows the session's player (vocation filter, usable role).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
@@ -384,6 +395,7 @@ Q_SIGNALS:
 private:
     void refreshSelectedPassive();
 
+    game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
     TPassiveAbilityListDataModelSortFilterProxy* m_proxy = nullptr;
     int m_passiveAbility = 0;
 };

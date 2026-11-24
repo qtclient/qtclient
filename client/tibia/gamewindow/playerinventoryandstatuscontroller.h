@@ -6,6 +6,7 @@
 #include "gamewindow/sidebarpanelcontrollerbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -23,6 +24,10 @@ class TClientOptions;
 }
 namespace container {
 class TContainerSlotQmlInformation;
+}
+namespace game {
+class IGameSession;
+class TGameSessionBase;
 }
 }
 
@@ -52,6 +57,8 @@ public:
     void setPanelItem(QQuickItem* PanelItem) override;
     /// The character's options; null outside the world.
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// Follows `GameSession`'s player data and inventory (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool inventoryMinimized() const override;
     void setInventoryMinimized(bool minimized) override;
@@ -96,8 +103,8 @@ private:
     void onInventoryChanged();
     /// CIP: every player value the panel shows, each emitted when it changed.
     void onPlayerDataChanged();
-    /// Host: connects the current session's player data (playerDataChanged).
-    void onGameSessionChanged();
+    /// The session connectToGameSession took, null when none.
+    const game::TGameSessionBase* gameSession() const;
     void refreshSoul();
     void refreshCapacity();
     void refreshBlessings();
@@ -124,7 +131,9 @@ private:
     /// Option 0x51 autoChaseEnabled (APPLY_AUTOCHASE_SETTING).
     bool m_autoChaseEnabled = false;
     int m_pvpMode = 0;
-    int m_gameSessionListener = 0;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's player data and inventory signals.
+    shared::TQtConnectionManager m_gameSessionConnections;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

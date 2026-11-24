@@ -120,17 +120,19 @@ TLootTrackingWidgetController::TLootTrackingWidgetController(analysers::TAnalyse
 {
     m_valueDialog->setIntOnly(true);
     connect(m_valueDialog, &TGenericEnterTextDialogController::textEntered, this, &TLootTrackingWidgetController::onAutoTrackLootValueChanged);
-    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+    analysers::TItemPriceStorage* prices = m_storages->prices();
     connect(m_storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this,
             &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
     connect(m_storages, &analysers::TAnalyserStorages::premiumTimeChanged, this,
             &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
     connect(m_storage, &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput, this,
             &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
-    connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
-            &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
-    connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this,
-            &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
+    if (prices) {
+        connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
+        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this,
+                &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
+    }
     connect(m_storage, &cyclopedia::TItemTrackingStorage::itemDropTracked, this, &TLootTrackingWidgetController::onItemDropTracked);
     connect(m_storage, &cyclopedia::TItemTrackingStorage::recentLootDropAddedOrRemoved, this,
             &TLootTrackingWidgetController::onRecentLootDropsChanged);
@@ -207,10 +209,10 @@ void TLootTrackingWidgetController::onCharacterConfigurationLoaded()
 void TLootTrackingWidgetController::rebuildTrackedItems()
 {
     const QList<QObject*> old = std::exchange(m_trackedItems, {});
-    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+    analysers::TItemPriceStorage* prices = m_storages->prices();
     for (const cyclopedia::TTrackedItem& item : m_storage->activeTrackedItems()) {
         auto* qmlItem = new TQmlTrackedItem(item, this);
-        qmlItem->setItemValue(static_cast<qint64>(prices->lootPrice(item.objectType)));
+        qmlItem->setItemValue(static_cast<qint64>(prices ? prices->lootPrice(item.objectType) : 0));
         qmlItem->setLootDrops(m_storage->lootDropsForTrackedItem(item.objectType));
         m_trackedItems.append(qmlItem);
     }

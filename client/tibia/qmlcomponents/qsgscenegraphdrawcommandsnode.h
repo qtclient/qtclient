@@ -4,9 +4,13 @@
 
 #include <QSGNode>
 
+#include <unordered_map>
+
 #include <functional>
 #include <memory>
 #include <optional>
+
+class QSGTexture;
 
 namespace tibia {
 namespace renderer {
@@ -45,6 +49,14 @@ private:
     void recycleNode(QSGNode* node);
 
     bool m_animated = false;
+    /// Host: the texture owner of each image node's sprite. The provider lets
+    /// go of a texture outside its cache right away (an asset spritesheet such
+    /// as a satellite chunk) and of a cached one when it evicts; the texture
+    /// creator deletes it once its last owner does. A node that is not drawn
+    /// again (an item that stopped updating, a sprite reloading) would then
+    /// render a deleted texture, so the node keeps its texture's owner until it
+    /// shows another texture or goes back to the provider.
+    std::unordered_map<const QSGNode*, std::shared_ptr<QSGTexture>> m_textureOwners;
     renderer::TSpriteTextureProvider& m_textureProvider;
     std::shared_ptr<renderer::TScenegraphNodeProvider> m_nodeProvider;
 };

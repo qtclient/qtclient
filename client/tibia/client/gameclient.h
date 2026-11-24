@@ -186,6 +186,11 @@ class TTextStorage;
 }
 }
 namespace tibia {
+namespace screenshot {
+class TScreenshotManager;
+}
+}
+namespace tibia {
 namespace news {
 class TNewsDiskIO;
 class TNewsStorage;
@@ -659,6 +664,9 @@ private:
     /// The game window's sidebar manager; null before the game window exists
     /// (in gameclientgamewindow.cpp).
     gamewindow::TSidebarManager* sidebarManager() const;
+    /// The game window's screenshot manager; null before the game window exists
+    /// (in gameclientgamewindow.cpp).
+    screenshot::TScreenshotManager* screenshotManager() const;
     /// The client's keyboard status (CIP +0x268); null before initialize().
     input::TKeyboardStatusStorage* keyboardStatusStorage() const;
     /// The game window's disconnect reaction; null before the game window exists.

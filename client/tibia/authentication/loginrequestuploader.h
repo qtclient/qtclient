@@ -20,6 +20,7 @@ class QNetworkReply;
 namespace tibia {
 namespace game {
 class TGameSessionBase;
+class TPremiumTimeStorage;
 }
 namespace shared {
 class TJsonDocumentHttpPostSender;
@@ -71,6 +72,8 @@ public:
     /// qtclient: the client revision the requests carry (the portal's client
     /// version check reads it from the body).
     void setClientRevision(const QString& ClientRevision) { m_clientRevision = ClientRevision; }
+    /// Host: the game client's premium time storage, set from each login's play session data.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage) { m_pPremiumTimeStorage = PremiumTimeStorage; }
 
     /// The characters, worlds and session of a login answer (also the account
     /// service's answers after a character was created).
@@ -128,6 +131,7 @@ private:
 
     std::unique_ptr<TAuthenticationJsonDocumentHelper> m_helper;
     config::TClientOptions* m_pClientOptions = nullptr;
+    game::TPremiumTimeStorage* m_pPremiumTimeStorage = nullptr;
     std::shared_ptr<game::TGameSessionBase> m_gameSession;
     TCharacterList m_characters;
     TWorldList m_worlds;

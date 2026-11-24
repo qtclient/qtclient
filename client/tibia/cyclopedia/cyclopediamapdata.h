@@ -101,6 +101,7 @@ public:
     {
         m_staticDataStorage = std::move(staticDataStorage);
     }
+    const std::shared_ptr<TCyclopediaMapStaticDataStorage>& staticDataStorage() const { return m_staticDataStorage; }
 
     // The map data message's parts.
     /// The main areas with their status and progress and the two subarea lists.

@@ -42,8 +42,6 @@ class TTutorialHelperQmlService : public cip::tibia::qmlcomponents::TTutorialHel
 public:
     explicit TTutorialHelperQmlService(QObject* parent = nullptr);
 
-    static TTutorialHelperQmlService* instance();
-
     Q_INVOKABLE int nextUniqueTutorialMarkerID() override;
     Q_INVOKABLE void setDebugOverlayVisible(bool Visible) override;
     Q_INVOKABLE cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* findTutorialMarkerQuickItemWithID(int ID) override;

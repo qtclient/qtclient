@@ -6,17 +6,10 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
-#include <QCoreApplication>
 #include <QJsonValue>
-#include <QPointer>
 
 #include <algorithm>
 #include <limits>
-#include <tibia/game/gamenotify.h>
-#include "game/currentgamesession.h"
-#include "game/gamesessionbase.h"
-#include <tibia/game/tgamenotify.h>
-#include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::analysers {
 
@@ -30,11 +23,10 @@ constexpr uint16_t GoldCoin = 3031;
 constexpr uint16_t PlatinumCoin = 3035;
 constexpr uint16_t CrystalCoin = 3043;
 
-QPointer<TItemPriceStorage> s_instance;
-
-const std::vector<tibia::appearances::TNpcTradeData>* npcOffers(const uint16_t typeId)
+/// The NPC offers of the item type `typeId`; null for an unknown type.
+const std::vector<tibia::appearances::TNpcTradeData>* npcOffers(const appearances::TAppearancesManager* appearancesManager, const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+    const TAppearanceTypePtr type = appearancesManager ? appearancesManager->findAppearanceType(ThingCategoryItem, typeId) : nullptr;
     return type ? &type->npcTradeData() : nullptr;
 }
 
@@ -46,35 +38,21 @@ bool paidInOtherCurrency(const tibia::appearances::TNpcTradeData& offer)
 
 }
 
-TItemPriceStorage::TItemPriceStorage(QObject* parent)
+TItemPriceStorage::TItemPriceStorage(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                                     std::shared_ptr<game::TPremiumTimeStorage> PremiumTimeStorage, QObject* parent)
     : cip::tibia::cyclopedia::TItemPriceStorage(parent)
+    , m_appearancesManager(std::move(AppearancesManager))
+    , m_premiumTimeStorage(std::move(PremiumTimeStorage))
 {
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
-        // CIP: the client's premium time storage's premiumTimeChanged. Host:
-        // the storage is the client's one, bound when a game starts.
-        if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
-            connect(premium, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TItemPriceStorage::onPremiumTimeChanged,
-                    Qt::UniqueConnection);
-        onPremiumTimeChanged();
-        const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        setWorldName(session ? session->worldName() : QString());
-    });
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage.get(), &game::TPremiumTimeStorage::premiumTimeChanged, this, &TItemPriceStorage::onPremiumTimeChanged);
     m_lootValueLevelColors = { { 0, QColor(0xf0, 0xf0, 0xf0) }, { 1, QColor(0xaa, 0xaa, 0xaa) }, { 2, QColor(0x00, 0xf0, 0x00) },
                                { 3, QColor(0x20, 0xa0, 0xff) }, { 4, QColor(0xff, 0x68, 0xff) }, { 5, QColor(0xf0, 0xf0, 0x00) } };
 }
 
-TItemPriceStorage* TItemPriceStorage::instance()
-{
-    if (!s_instance)
-        s_instance = new TItemPriceStorage(QCoreApplication::instance());
-    return s_instance;
-}
-
 void TItemPriceStorage::onPremiumTimeChanged()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
-    m_isPremium = session && session->hasLocalPlayer() && premium && premium->isPremium();
+    m_isPremium = m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
 }
 
 QString TItemPriceStorage::configurationName() const { return ConfigurationName; }
@@ -143,7 +121,7 @@ quint32 TItemPriceStorage::npcBuyPrice(const uint16_t typeId) const
         return 100;
     if (typeId == CrystalCoin)
         return 10000;
-    const auto* offers = npcOffers(typeId);
+    const auto* offers = npcOffers(m_appearancesManager.get(), typeId);
     if (!offers)
         return 0;
     quint32 best = 0;
@@ -156,7 +134,7 @@ quint32 TItemPriceStorage::npcBuyPrice(const uint16_t typeId) const
 
 quint32 TItemPriceStorage::npcSalePrice(const uint16_t typeId) const
 {
-    const auto* offers = npcOffers(typeId);
+    const auto* offers = npcOffers(m_appearancesManager.get(), typeId);
     if (!offers)
         return 0;
     quint32 best = 0;

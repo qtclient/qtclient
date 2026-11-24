@@ -6,7 +6,7 @@
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include <utility>
-#include "gamewindow/smoothfiltering.h"
+#include "config/clientoptions.h"
 #include "appearances/appearanceinstance.h"
 #include "qmlcomponents/appearanceinstancerenderer.h"
 
@@ -14,7 +14,6 @@
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
-#include "game/currentgamesession.h"
 #include "game/playerdata.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -647,8 +646,9 @@ void TQmlMonsterRace::rebuildCombobox()
 }
 
 
-TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QObject* parent)
+TMonsterDialogController::TMonsterDialogController(config::TClientOptions* ClientOptions, TBestiaryStorage& storage, QObject* parent)
     : cip::tibia::gamewindow::TMonsterDialogController(parent)
+    , m_pClientOptions(ClientOptions)
     , m_storage(storage)
     , m_confirmDialog(new TMessageDialogController(this))
 {
@@ -666,7 +666,7 @@ TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QO
     hookEvents();
 }
 
-bool TMonsterDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+bool TMonsterDialogController::clientSettingSmoothFiltering() const { return m_pClientOptions && m_pClientOptions->antialiasingMode() == 1; }
 
 TMonsterDialogController::~TMonsterDialogController()
 {
@@ -701,7 +701,8 @@ void TMonsterDialogController::connectToGameSession(const std::shared_ptr<game::
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_monsterRaceStorage = session ? session->monsterRaceStorage() : nullptr;
     m_pCreatureTrackerStorage = session ? session->creatureTrackerStorage() : nullptr;
     if (TMonsterRaceStorage* races = m_monsterRaceStorage.get()) {
@@ -786,7 +787,7 @@ void TMonsterDialogController::showDialogTab()
     m_search.clear();
     m_selectedRace = 0;
     onMonsterClassificationSummaryChanged();
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();
 }
@@ -803,7 +804,7 @@ void TMonsterDialogController::requestClassificationSelection(const QString& Cla
 {
     m_selectedClassification = ClassificationID;
     m_search.clear();
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaMonsters(ClassificationID);
 }
@@ -819,7 +820,7 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
         if (qstr(race.name).toLower().contains(needle))
             raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaMonsters(raceIds);
 }
@@ -864,7 +865,7 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
 void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
 {
     m_selectedRace = static_cast<int>(MonsterRaceID);
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaRace(static_cast<uint16_t>(MonsterRaceID));
 }
@@ -884,7 +885,8 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
 {
     // CIP: the loot tile's menu adds the item to the loot black/whitelist or removes it.
     TContextMenuController* menu = TContextMenuController::instance();
-    quickloot::TQuickLootBlackWhitelistStorage* loot = game::currentQuickLootBlackWhitelistStorage();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    quickloot::TQuickLootBlackWhitelistStorage* loot = session ? session->quickLootBlackWhitelistStorage().get() : nullptr;
     if (!menu || !loot || AppearanceTypeID <= 0)
         return;
     const auto typeId = static_cast<uint16_t>(AppearanceTypeID);
@@ -903,7 +905,7 @@ void TMonsterDialogController::requestToggleBestiaryTracking()
     if (!m_singleMonster)
         return;
     const bool tracked = m_pCreatureTrackerStorage && m_pCreatureTrackerStorage->isMonsterTracked(m_selectedRace);
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session)
         tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !tracked);
 }
@@ -940,7 +942,7 @@ void TMonsterDialogController::assignSelectedCharm(const int SelectedCharmID)
 
 void TMonsterDialogController::onConfirmDialogAccepted()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     cyclopedia::TCyclopediaProtocolMessageHandler* handler =
         session ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
     if (!handler)

@@ -89,7 +89,8 @@ class TCharacterTradeDialogController final : public TDialogController<cip::tibi
 public:
     TCharacterTradeDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TCharacterTradeDialogController() override;
-    static TCharacterTradeDialogController* instance();
+    /// The router's game actions: OPEN_TRADE_CHARACTER_DIALOG shows the dialog.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
     /// CIP connector: the dialog closes and follows `GameSession`'s character
     /// trade configuration.
@@ -133,7 +134,6 @@ private:
     TConfiguration configuration() const;
     void onInfoUpdated(trade::TCharacterTradeStorage::DataType dataType);
     void refreshOverviewModels();
-    static TCharacterTradeDialogController* s_instance;
     /// CIP +0xc8: the current session; +0xd8: its character trade storage.
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<trade::TCharacterTradeStorage> m_storage;
@@ -394,7 +394,6 @@ class TMultiOfflineTrainingDialogController final
 public:
     TMultiOfflineTrainingDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TMultiOfflineTrainingDialogController() override;
-    static TMultiOfflineTrainingDialogController* instance();
 
     /// CIP: SHOW_OFFLINE_TRAINING_SKILLS shows the dialog.
     void handleGameAction(const input::IGameAction& action);
@@ -415,7 +414,6 @@ private:
     void rebuildSkillsModel();
     void clearSkillsModel();
 
-    static TMultiOfflineTrainingDialogController* s_instance;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
     /// Fills the skill rows (precise percent on).
@@ -428,7 +426,6 @@ class TOutfitMemorialDialogController final : public TDialogController<cip::tibi
     Q_OBJECT
 public:
     TOutfitMemorialDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
-    static TOutfitMemorialDialogController* instance();
 
     void showMemorial(const OutfitMemorialData& data);
     /// CIP: the session's game protocol handler opens the memorial.
@@ -437,7 +434,6 @@ public:
     Q_INVOKABLE void requestClose() override;
 
 private:
-    static TOutfitMemorialDialogController* s_instance;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
@@ -467,7 +463,6 @@ public:
 
     TShowImageDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TShowImageDialogController() override;
-    static TShowImageDialogController* instance();
 
     /// Takes the action's data and opens the dialog.
     void handleShowImageDialogGameAction(const input::TGameActionOpenShowImageDialog& pGameAction);
@@ -486,7 +481,6 @@ public Q_SLOTS:
 private:
     void setData(const TData& data);
     void setCurrentIndex(uint index);
-    static TShowImageDialogController* s_instance;
     TData m_data;
 };
 

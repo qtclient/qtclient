@@ -1,6 +1,6 @@
 #include "playerinventoryandstatuscontroller.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "container/containerslotinformation.h"
@@ -14,10 +14,10 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/appearances/appearancetype.h>
-#include "game/currentgamesession.h"
 #include "game/playerdata.h"
 
 #include <QGuiApplication>
+#include <QQmlEngine>
 #include <QStringList>
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
@@ -30,7 +30,6 @@ namespace tibia::gamewindow {
 namespace {
 
 using A = input::EGameAction;
-using Cursor = TMouseCursorController;
 
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
 
@@ -72,14 +71,9 @@ const char* const BlessingNames[] = {
 /// The blessing button's colour for the server's visual state, from 1.
 const char* const BlessingColors[] = { "grey", "gold", "green" };
 
-constexpr auto ShowExpireOption = "showExpireInInventory";
-constexpr auto ShowExpireWhenUnusedOption = "showExpireWhenUnused";
-constexpr auto MoveAllOption = "dragAndDropDefaultActionIsMoveAll";
-constexpr auto AutoChaseOption = "autoChaseEnabled";
-
-container::TInventorySlot slotAppearance(const int slotId)
+container::TInventorySlot slotAppearance(const game::TGameSessionBase* session, const int slotId)
 {
-    if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer())
+    if (const std::shared_ptr<container::TInventoryContainer> inventory = session ? session->inventoryContainer() : nullptr)
         return inventory->slotAt(slotId);
     return {};
 }
@@ -116,8 +110,8 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
     }
     readExpireOptions();
 
-    m_gameSessionListener = tibia::game::subscribeCurrentGameSessionChanged([this] { onGameSessionChanged(); });
-    onGameSessionChanged();
+    onPlayerDataChanged();
+    onInventoryChanged();
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
     });
@@ -127,13 +121,15 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
         Q_EMIT gamesessionDisconnected();
     });
 
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
-            onInventoryOptionsChanged();
-        if (name == QLatin1String(AutoChaseOption))
-            m_autoChaseEnabled = app::ClientOptions::load().options().value(name).toBool(false);
-    });
-    m_autoChaseEnabled = app::ClientOptions::load().options().value(QLatin1String(AutoChaseOption)).toBool(false);
+    if (m_pClientOptions) {
+        connect(m_pClientOptions, &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+            if (id == config::EClientOption::showExpireInInventory || id == config::EClientOption::showExpireWhenUnused)
+                onInventoryOptionsChanged();
+            if (id == config::EClientOption::autoChaseEnabled)
+                m_autoChaseEnabled = m_pClientOptions->boolOption(id);
+        });
+        m_autoChaseEnabled = m_pClientOptions->boolOption(config::EClientOption::autoChaseEnabled);
+    }
 
     m_gameActions.on(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
@@ -141,7 +137,7 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
     m_gameActions.on(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
-        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        const game::TGameSessionBase* session = gameSession();
         if (session && session->isOnline() && session->playerData() && !session->playerData()->hasReachedMain())
             Q_EMIT showCapacityWarning();
         return true;
@@ -157,23 +153,31 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
 
 TPlayerInventoryAndStatusController::~TPlayerInventoryAndStatusController()
 {
-    tibia::game::unsubscribeCurrentGameSessionChanged(m_gameSessionListener);
     // Host: the item (which shows this controller's slot objects) goes while the controller is whole.
     if (QQuickItem* const item = panelItem())
         disconnect(item, nullptr, this, nullptr);
     releasePanelItem();
 }
 
-void TPlayerInventoryAndStatusController::onGameSessionChanged()
+void TPlayerInventoryAndStatusController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (game::TPlayerData* player = tibia::game::currentPlayerData())
-        connect(player, &game::TPlayerData::playerDataChanged, this, &TPlayerInventoryAndStatusController::onPlayerDataChanged,
-                Qt::UniqueConnection);
-    if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer())
-        connect(inventory, &container::TInventoryContainer::inventoryChanged, this,
-                &TPlayerInventoryAndStatusController::onInventoryChanged, Qt::UniqueConnection);
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    if (const game::TGameSessionBase* session = gameSession()) {
+        if (game::TPlayerData* player = session->playerData().get())
+            m_gameSessionConnections.add(connect(player, &game::TPlayerData::playerDataChanged, this,
+                                                 &TPlayerInventoryAndStatusController::onPlayerDataChanged));
+        if (const std::shared_ptr<container::TInventoryContainer> inventory = session->inventoryContainer())
+            m_gameSessionConnections.add(connect(inventory.get(), &container::TInventoryContainer::inventoryChanged, this,
+                                                 &TPlayerInventoryAndStatusController::onInventoryChanged));
+    }
     onPlayerDataChanged();
     onInventoryChanged();
+}
+
+const game::TGameSessionBase* TPlayerInventoryAndStatusController::gameSession() const
+{
+    return dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
 }
 
 void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* PanelItem)
@@ -230,7 +234,7 @@ void TPlayerInventoryAndStatusController::applyPlayerTacticsAndInventorySizeFrom
     Q_EMIT inventoryMinimizedChanged();
     Q_EMIT chaseModeChanged();
     // CIP's login carries the tactics; CIP's server keeps its own until told.
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const game::TPlayerData* player = session ? session->playerData().get() : nullptr;
     if (session && session->isOnline() && player && m_chaseEnabled != player->chaseOpponents())
         publishTactics();
@@ -252,17 +256,17 @@ void TPlayerInventoryAndStatusController::setShowPlayerStatesInBar(const bool sh
 
 input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const int slotId) const
 {
-    const game::TGameSessionBase* session = game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const std::shared_ptr<container::TContainerGameActionProvider> provider =
         session ? session->containerGameActionProvider() : nullptr;
-    return provider ? provider->inventorySlotActions(slotAppearance(slotId), slotId) : input::TGameActionList{};
+    return provider ? provider->inventorySlotActions(slotAppearance(session, slotId), slotId) : input::TGameActionList{};
 }
 
 void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    const game::TGameSessionBase* session = game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const std::shared_ptr<container::TContainerRenderProvider> provider = session ? session->containerRenderProvider() : nullptr;
     if (!provider)
         return;
@@ -295,9 +299,8 @@ void TPlayerInventoryAndStatusController::onInventoryOptionsChanged()
 
 void TPlayerInventoryAndStatusController::readExpireOptions()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    m_showExpire = options.value(QLatin1String(ShowExpireOption)).toBool(true);
-    m_showExpireWhenUnused = options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false);
+    m_showExpire = !m_pClientOptions || m_pClientOptions->boolOption(config::EClientOption::showExpireInInventory);
+    m_showExpireWhenUnused = m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::showExpireWhenUnused);
 }
 
 void TPlayerInventoryAndStatusController::onPlayerDataChanged()
@@ -311,7 +314,7 @@ void TPlayerInventoryAndStatusController::onPlayerDataChanged()
 
 void TPlayerInventoryAndStatusController::refreshSoul()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
     const int soul = player ? player->soul() : 0;
     if (soul == m_soulpoints)
@@ -322,7 +325,7 @@ void TPlayerInventoryAndStatusController::refreshSoul()
 
 void TPlayerInventoryAndStatusController::refreshCapacity()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
     const int capacity = player ? player->freeCapacity() : 0;
     // CIP: no capacity at all (the server's hundredths), not below one oz.
@@ -338,7 +341,7 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
 
 void TPlayerInventoryAndStatusController::refreshBlessings()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
     const uint blessings = player ? player->blessingMask() : 0;
     const int visualState = player ? player->blessVisualState() : 0;
@@ -363,7 +366,8 @@ void TPlayerInventoryAndStatusController::refreshBlessings()
 
 void TPlayerInventoryAndStatusController::refreshTactics()
 {
-    const game::TPlayerData* player = tibia::game::currentPlayerData();
+    const game::TGameSessionBase* session = gameSession();
+    const game::TPlayerData* player = session ? session->playerData().get() : nullptr;
     if (!player)
         return;
     const bool chase = player->chaseOpponents();
@@ -389,9 +393,10 @@ void TPlayerInventoryAndStatusController::refreshTactics()
 
 void TPlayerInventoryAndStatusController::refreshDualWielding()
 {
-    const container::TInventorySlot left = slotAppearance(LeftHandSlot);
+    const game::TGameSessionBase* session = gameSession();
+    const container::TInventorySlot left = slotAppearance(session, LeftHandSlot);
     const bool dualWield = !left.empty() && left.dualWield;
-    const bool hasDualWielding = dualWield && slotAppearance(RightHandSlot).empty();
+    const bool hasDualWielding = dualWield && slotAppearance(session, RightHandSlot).empty();
     const int objectId = dualWield ? static_cast<int>(left.typeId) : 0;
     if (hasDualWielding == m_hasDualWielding && objectId == m_dualWieldingObjectID)
         return;
@@ -402,7 +407,7 @@ void TPlayerInventoryAndStatusController::refreshDualWielding()
 
 void TPlayerInventoryAndStatusController::refreshExpertMode()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     const bool expert = session && session->expertPvpMode();
     if (expert == m_exportModeButtonEnable)
         return;
@@ -492,7 +497,7 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::IGame
 
 void TPlayerInventoryAndStatusController::onBlessingsButtonClicked()
 {
-    const game::TGameSessionBase* session = game::currentGameSession();
+    const game::TGameSessionBase* session = gameSession();
     if (!session)
         return;
     Q_EMIT session->blessingsProtocolMessageHandler()->sendBlessingsDialog(
@@ -528,7 +533,7 @@ void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const 
 void TPlayerInventoryAndStatusController::onSlotEntered(const int slotId)
 {
     m_hoveredSlot = slotId;
-    if (Cursor* cursor = Cursor::instance())
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->onContainerEntered();
     updateMouseCursorForCurrentSlot();
 }
@@ -537,23 +542,23 @@ void TPlayerInventoryAndStatusController::onSlotExited(const int slotId)
 {
     if (m_hoveredSlot == slotId)
         m_hoveredSlot = -1;
-    if (Cursor* cursor = Cursor::instance())
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->onContainerExited();
 }
 
 void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
 {
-    Cursor* cursor = Cursor::instance();
+    TMouseCursorController* cursor = TMouseCursorController::instance();
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::IGameActionPtr action = m_pGameActionMapper->map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
-    cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
+    cursor->setLayerShape(TMouseCursorController::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : TMouseCursorController::Default);
 }
 
 void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObject* source)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(panelItem() ? qmlEngine(panelItem()) : nullptr);
     if (!dnd)
         return;
     if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
@@ -562,13 +567,13 @@ void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObj
 
 void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(panelItem() ? qmlEngine(panelItem()) : nullptr);
     if (!dnd)
         return;
     const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
-    const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
+    const bool moveAll = m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::dragAndDropDefaultActionIsMoveAll);
     const Position destination(UINT16_MAX, static_cast<uint16_t>(std::max(0, slotId)), 0);
     Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }

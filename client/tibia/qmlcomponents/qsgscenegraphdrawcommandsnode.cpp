@@ -141,6 +141,8 @@ QSGNode* TQSGScenegraphDrawCommandsNode::updateNodeWithScenegraphDrawCommand(
             if (texture.texture != nullptr && image->texture() != texture.texture) {
                 image->setTexture(texture.texture);
                 image->setSourceRect(QRectF(QPointF(0, 0), texture.texture->textureSize()));
+                // Host: the shown texture lives as long as this node shows it.
+                self.m_textureOwners[image] = texture.owner;
             }
             const QSGTexture::Filtering filtering = data.secondFlag ? QSGTexture::Linear : QSGTexture::Nearest;
             if (image->filtering() != filtering)
@@ -188,6 +190,8 @@ void TQSGScenegraphDrawCommandsNode::recycleNode(QSGNode* node)
     }
     if (QSGNode* parent = node->parent())
         parent->removeChildNode(node);
+    // The provider gives image nodes out again showing its empty texture.
+    m_textureOwners.erase(node);
     m_nodeProvider->recycle(node);
 }
 

@@ -1,7 +1,6 @@
 #include "appearanceinstanceroledata.h"
 
 #include "analysers/itempricestorage.h"
-#include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "container/containerslotinformation.h"
 #include "container/qmlitemslotdata.h"
@@ -33,14 +32,14 @@ QString alternativeSlotString(const Slot& slot, const TAppearanceInstanceRoleSou
 /// The loot-value frame under (style 1) or over (2) the object.
 QString lootValueImageSource(const Slot& slot, const TAppearanceInstanceRoleSources& sources, const int style)
 {
-    if (!sources.withOptions)
+    if (!sources.withOptions || !sources.clientOptions || !sources.prices)
         return {};
     // gameWindowShowLootHighlighting (CIP 0x42): master gate for loot-value tint frames.
-    if (!app::ClientOptions::load().options().value(QLatin1String("gameWindowShowLootHighlighting")).toBool(true))
+    if (!sources.clientOptions->boolOption(config::EClientOption::gameWindowShowLootHighlighting))
         return {};
-    if (config::TClientOptions::instance()->colorizeLootStyle() != style)
+    if (sources.clientOptions->colorizeLootStyle() != style)
         return {};
-    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(slot.typeId);
+    const int level = sources.prices->lootValueLevel(slot.typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")

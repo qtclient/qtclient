@@ -31,6 +31,10 @@ bool adaptMainWindow(QQuickWindow*)
     return false;
 }
 
+void resetVertexAttribArraysAfterFrames(QQuickWindow*)
+{
+}
+
 void configureNaturalCollator(QCollator& collator)
 {
     collator.setNumericMode(true);

@@ -203,11 +203,9 @@ void TNewsDialogController::onNewsStorageContentsChanged()
     }
     refresh();
     // CIP: with the dialog not open, an unread unlocked entry highlights the
-    // news button.
-    if (m_storage && m_storage->hasUnreadUnlockedEntry() && !dialog()->item()) {
-        if (TNewsButtonController* button = TNewsButtonController::instance())
-            button->highlight();
-    }
+    // news button (the news handler's notification of no particular news).
+    if (m_pNewsProtocolMessageHandler && m_storage && m_storage->hasUnreadUnlockedEntry() && !dialog()->item())
+        Q_EMIT m_pNewsProtocolMessageHandler->showGameNewsMessage(0, true);
 }
 
 void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()
@@ -337,24 +335,22 @@ void TNewsDialogController::requestUpdateNewsFromWebsite()
     Q_EMIT publishGameAction(refresh);
 }
 
-TNewsButtonController* TNewsButtonController::s_instance = nullptr;
-
 TNewsButtonController::TNewsButtonController(QObject* parent)
     : cip::tibia::gamewindow::TNewsButtonController(parent)
 {
-    s_instance = this;
     connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TNewsButtonController::changed);
 }
 
-TNewsButtonController::~TNewsButtonController()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
+TNewsButtonController::~TNewsButtonController() = default;
 
-TNewsButtonController* TNewsButtonController::instance()
+void TNewsButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    return s_instance;
+    m_gameSession = GameSession;
+    disconnect(m_showGameNewsConnection);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session && session->newsProtocolMessageHandler())
+        m_showGameNewsConnection = connect(session->newsProtocolMessageHandler().get(), &news::TNewsProtocolMessageHandler::showGameNewsMessage,
+                                           this, &TNewsButtonController::onShowGameNewsMessage);
 }
 
 void TNewsButtonController::onOpenNewsButtonClicked()
@@ -368,11 +364,6 @@ void TNewsButtonController::onHighlightNewsButtonEnds()
 {
     m_highlightTimer.stop(false);
     m_newsType = 0;
-}
-
-void TNewsButtonController::highlight()
-{
-    m_highlightTimer.start(false);
 }
 
 void TNewsButtonController::onShowGameNewsMessage(const int newsType, const bool notificationOnly)

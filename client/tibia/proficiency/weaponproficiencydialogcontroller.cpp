@@ -117,7 +117,9 @@ QString TWeaponObjectsModel::lootValueImageSource(const uint16_t typeId, const i
 {
     if (!m_clientOptions || m_clientOptions->colorizeLootStyle() != style)
         return {};
-    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(typeId);
+    if (!m_prices)
+        return {};
+    const int level = m_prices->lootValueLevel(typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -204,13 +206,22 @@ void TWeaponObjectsModel::rebuild()
     beginResetModel();
     m_entries = std::move(entries);
     endResetModel();
-    // CIP hands the character's item price storage to the model.
-    if (!m_pricesConnection) {
-        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+}
+
+void TWeaponObjectsModel::setItemPriceStorage(analysers::TItemPriceStorage* prices)
+{
+    if (m_prices == prices)
+        return;
+    disconnect(m_pricesConnection);
+    disconnect(m_marketPricesConnection);
+    m_prices = prices;
+    if (prices) {
         m_pricesConnection = connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
                                      &TWeaponObjectsModel::onItemPriceVisualizationChanged);
-        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TWeaponObjectsModel::onItemPriceVisualizationChanged);
+        m_marketPricesConnection = connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this,
+                                           &TWeaponObjectsModel::onItemPriceVisualizationChanged);
     }
+    onItemPriceVisualizationChanged();
 }
 
 void TWeaponObjectsModel::onObjectProficiencyXPChanged()
@@ -318,12 +329,13 @@ TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObje
 
 int TQmlWeaponTypes::anyWeaponIdentifier() const { return m_types.empty() ? 0 : *m_types.begin(); }
 
-TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine,
+TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions,
+                                                                       TProficiencyStorage* ProficiencyStorage, QQmlEngine* engine,
                                                                        QQuickItem* dialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), engine, dialogParentItem, parent)
     // Host: CIP reads the proficiency storage from the game session; qtclient's
     // is the game client's, alive before any controller.
-    , m_storage(TProficiencyStorage::instance())
+    , m_storage(ProficiencyStorage)
     , m_model(ClientOptions, m_storage)
     , m_proxy(&m_model)
     , m_confirm(new gamewindow::TMessageDialogController(this))
@@ -384,6 +396,8 @@ void TWeaponProficiencyDialogController::connectToGameSession(const std::shared_
     // storage itself.
     m_model.rebuild();
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    // CIP hands the character's item price storage to the weapons list.
+    m_model.setItemPriceStorage(session ? session->itemPriceStorage().get() : nullptr);
     if (!session)
         return;
     // Host: CIP hands the storage to the weapons model, which follows it

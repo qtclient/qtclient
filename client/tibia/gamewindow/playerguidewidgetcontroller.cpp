@@ -407,8 +407,10 @@ void TPlayerGuideWidgetController::onNewsStorageContentsChanged()
     Q_EMIT levelSpecialPopupLevelChanged();
 }
 
-TPlayerGuideWidgetManager::TPlayerGuideWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TPlayerGuideWidgetManager::TPlayerGuideWidgetManager(std::shared_ptr<news::TNewsStorage> NewsStorage, QQuickItem* gameWindowItem,
+                                                     QQmlEngine* engine, QObject* parent)
     : QObject(parent)
+    , m_newsStorage(std::move(NewsStorage))
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {
@@ -435,22 +437,24 @@ TPlayerGuideWidgetManager::~TPlayerGuideWidgetManager() { delete m_controller; }
 
 void TPlayerGuideWidgetManager::onGameStarted()
 {
-    game::TPlayerData* player = tibia::game::currentPlayerData();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    game::TPlayerData* player = session ? session->playerData().get() : nullptr;
     if (!player)
         return;
     connect(player, &game::TPlayerData::playerLevelUp, this, &TPlayerGuideWidgetManager::onPlayerLevelUp, Qt::UniqueConnection);
     // The news entries unlock against the character's level.
-    if (news::TNewsStorage* storage = news::TNewsStorage::current())
+    if (news::TNewsStorage* storage = m_newsStorage.get())
         storage->raiseCharacterLevel(static_cast<ushort>(player->level()));
 }
 
 void TPlayerGuideWidgetManager::onPlayerLevelUp()
 {
-    const game::TPlayerData* player = tibia::game::currentPlayerData();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const game::TPlayerData* player = session ? session->playerData().get() : nullptr;
     if (!player)
         return;
     TPlayerGuideWidgetController::queueLevelSpecialPopup(int(player->level()), m_options);
-    if (news::TNewsStorage* storage = news::TNewsStorage::current())
+    if (news::TNewsStorage* storage = m_newsStorage.get())
         storage->raiseCharacterLevel(static_cast<ushort>(player->level()));
 }
 
@@ -458,7 +462,7 @@ TSidebarWidget* TPlayerGuideWidgetManager::open(config::TSidebarOptions* options
 {
     m_options = options;
     if (!m_controller) {
-        m_controller = new TPlayerGuideWidgetController(news::TNewsStorage::current(), m_gameWindowItem, m_engine);
+        m_controller = new TPlayerGuideWidgetController(m_newsStorage.get(), m_gameWindowItem, m_engine);
         connect(m_controller, &TPlayerGuideWidgetController::publishGameAction, this, &TPlayerGuideWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }

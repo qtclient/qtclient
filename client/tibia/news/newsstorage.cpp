@@ -22,8 +22,6 @@ constexpr int AutoReadAfterDays = 30;
 /// CIP: the server save; cached documents expire with it.
 const QTime ServerSaveTime(10, 0);
 
-TNewsStorage* g_currentNewsStorage = nullptr;
-
 }
 
 QTimeZone serverTimeZone()
@@ -231,16 +229,9 @@ TNewsStorage::TNewsStorage(std::shared_ptr<shared::IClockService> clock, QObject
     : QObject(parent)
     , m_clock(std::move(clock))
 {
-    g_currentNewsStorage = this;
 }
 
-TNewsStorage::~TNewsStorage()
-{
-    if (g_currentNewsStorage == this)
-        g_currentNewsStorage = nullptr;
-}
-
-TNewsStorage* TNewsStorage::current() { return g_currentNewsStorage; }
+TNewsStorage::~TNewsStorage() = default;
 
 void TNewsStorage::setReturnerInformation(const bool returner, const bool showRewardNews)
 {

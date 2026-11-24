@@ -48,6 +48,7 @@ class TDamageInputStorage;
 class TGainWasteStorage;
 class THuntingSessionStorage;
 class TImpactStorage;
+class TItemPriceStorage;
 class TPartyHuntStorage;
 class TProgressStorage;
 }
@@ -119,6 +120,8 @@ public:
         std::shared_ptr<TCyclopediaMapStorage> cyclopediaMap;
         std::shared_ptr<TCharacterInfoStorage> characterInfo;
         std::shared_ptr<THousesStorage> houses;
+        /// The market prices the statistics fill and the party hunt sends.
+        std::shared_ptr<analysers::TItemPriceStorage> itemPrices;
     };
 
     /// The handler of the session's storages. The item price storage's

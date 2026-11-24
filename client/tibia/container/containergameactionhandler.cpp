@@ -79,10 +79,12 @@ constexpr uint32_t StashReopen = 4;
 
 }
 
-TContainerGameActionHandler::TContainerGameActionHandler(std::shared_ptr<TContainerStorage> containerStorage,
+TContainerGameActionHandler::TContainerGameActionHandler(std::shared_ptr<config::TClientOptions> clientOptions,
+                                                         std::shared_ptr<TContainerStorage> containerStorage,
                                                          std::shared_ptr<TObjectCountStorage> objectCountStorage,
                                                          QObject* parent)
     : cip::tibia::container::TContainerGameActionHandler(parent)
+    , m_clientOptions(std::move(clientOptions))
     , m_containerStorage(std::move(containerStorage))
     , m_objectCountStorage(std::move(objectCountStorage))
 {
@@ -156,7 +158,7 @@ void TContainerGameActionHandler::handleMoveObjectGameAction(const std::shared_p
         return;
 
     // A container dropped onto the supply stash: ask before its content is stowed.
-    if (!move.isStashConfirmed() && config::TClientOptions::instance()->boolOption(config::EClientOption::stashAskBeforeStowContainerContent)
+    if (!move.isStashConfirmed() && m_clientOptions && m_clientOptions->boolOption(config::EClientOption::stashAskBeforeStowContainerContent)
         && destinationType == C::LOCATION_CONTAINER_WITH_SLOT) {
         const auto* slot = static_cast<const input::TLocationContainerWithSlotGameActionContext*>(destination.get());
         if (const TStoredContainer* container = m_containerStorage ? m_containerStorage->containerAt(slot->containerId()) : nullptr) {
@@ -262,7 +264,7 @@ void TContainerGameActionHandler::handleStowContainerContentGameAction(
     if (!pStowContainerContentGameAction || !isStashLocation(pStowContainerContentGameAction->location()))
         return;
     if (!pStowContainerContentGameAction->isStashConfirmed()
-        && config::TClientOptions::instance()->boolOption(config::EClientOption::stashAskBeforeStowContainerContent)) {
+        && m_clientOptions && m_clientOptions->boolOption(config::EClientOption::stashAskBeforeStowContainerContent)) {
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowConfirmMoveObjectToStashDialog>(pStowContainerContentGameAction));
         return;
     }

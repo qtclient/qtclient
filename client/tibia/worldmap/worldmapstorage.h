@@ -202,6 +202,7 @@ public:
     void setPathAvoid(const Position& position, bool avoid);
     void clearPathAvoids();
     bool isPathAvoided(const Position& position) const { return m_pathAvoids.contains(position); }
+    const std::unordered_set<Position, Position::Hasher>& pathAvoids() const { return m_pathAvoids; }
     /// Indexed8 waypoint snapshot factory (CIP TWaypointCostMap), set from
     /// TGameClient while the CipSoft minimap is live; cleared on world leave.
     using WaypointCostFactory = std::function<std::shared_ptr<minimap::TWaypointCosts>()>;

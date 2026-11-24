@@ -229,7 +229,8 @@ void TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage(
     market.reserve(prices.size());
     for (const auto& [typeId, price] : prices)
         market.emplace(typeId, price);
-    analysers::TItemPriceStorage::instance()->setMarketPrices(std::move(market));
+    if (m_storages.itemPrices)
+        m_storages.itemPrices->setMarketPrices(std::move(market));
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
@@ -850,7 +851,7 @@ TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler(TStorages S
     : cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler(parent)
     , m_storages(std::move(Storages))
 {
-    if (analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance())
+    if (analysers::TItemPriceStorage* itemPrices = m_storages.itemPrices.get())
         connect(itemPrices, &analysers::TItemPriceStorage::requestMarketStatistics, this, &TCyclopediaProtocolMessageHandler::requestMarketStatistics);
 }
 
@@ -1239,7 +1240,9 @@ void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vec
         return;
     GameclientMessagePartyHuntAnalyser message;
     message.set_action(2);
-    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+    analysers::TItemPriceStorage* prices = m_storages.itemPrices.get();
+    if (!prices)
+        return;
     for (const uint16_t objectId : objectIds) {
         auto* entry = message.add_prices();
         entry->set_object_id(objectId);

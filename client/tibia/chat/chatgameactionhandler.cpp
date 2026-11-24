@@ -86,11 +86,13 @@ int speechVolumeToChatMessageMode(const int speechVolume)
 
 TChatGameActionHandler::TChatGameActionHandler(std::shared_ptr<TChatChannelStorage> chatChannelStorage,
                                                std::shared_ptr<TTextStorage> textStorage,
-                                               ::tibia::spells::TSpellInfoStorage* spellInfoStorage, QObject* parent)
+                                               ::tibia::spells::TSpellInfoStorage* spellInfoStorage,
+                                               std::shared_ptr<config::TClientOptions> clientOptions, QObject* parent)
     : cip::tibia::chat::TChatGameActionHandler(parent)
     , m_chatChannelStorage(std::move(chatChannelStorage))
     , m_textStorage(std::move(textStorage))
     , m_spellInfoStorage(spellInfoStorage)
+    , m_clientOptions(std::move(clientOptions))
 {
 }
 
@@ -327,7 +329,7 @@ void TChatGameActionHandler::handleExcludePlayerFromChannelGameAction(
 void TChatGameActionHandler::handleSetStatusLineGameAction(
     const std::shared_ptr<const ::tibia::input::TGameActionSetStatusLine>& pGameAction)
 {
-    if (!pGameAction || !config::TClientOptions::instance()->boolOption(config::EClientOption::gameWindowShowMessages))
+    if (!pGameAction || !m_clientOptions || !m_clientOptions->boolOption(config::EClientOption::gameWindowShowMessages))
         return;
     m_textStorage->setStatusMessage(pGameAction->text(), colorOrWhite(pGameAction->color()), false);
 }
@@ -343,7 +345,7 @@ void TChatGameActionHandler::handleAddSystemChatMessageGameAction(
 void TChatGameActionHandler::handleAddBeneathMiddleWorldmapMessageGameAction(
     const std::shared_ptr<const ::tibia::input::TGameActionAddTextMessage>& pGameAction)
 {
-    if (!pGameAction || !config::TClientOptions::instance()->boolOption(config::EClientOption::gameWindowShowMessages))
+    if (!pGameAction || !m_clientOptions || !m_clientOptions->boolOption(config::EClientOption::gameWindowShowMessages))
         return;
     m_textStorage->addCenterMessage(pGameAction->text(), colorOrWhite(pGameAction->color()));
 }
@@ -498,7 +500,8 @@ void TChatGameActionHandler::handleRemoveAllTutorialMarkersGameAction()
 
 void TChatGameActionHandler::handleToggleChannelJoinLeaveMessagesGameAction(const bool ShowJoinLeaveMessages)
 {
-    config::TClientOptions::instance()->setBoolOption(config::EClientOption::consoleShowJoinLeaveMessages, ShowJoinLeaveMessages);
+    if (m_clientOptions)
+        m_clientOptions->setBoolOption(config::EClientOption::consoleShowJoinLeaveMessages, ShowJoinLeaveMessages);
 }
 
 void TChatGameActionHandler::emitSendCloseNPCChannel()

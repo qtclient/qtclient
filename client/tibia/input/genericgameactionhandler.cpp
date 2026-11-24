@@ -1,7 +1,6 @@
 #include "genericgameactionhandler.h"
 
 #include "analysers/analyserstorages.h"
-#include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "cyclopedia/itemtrackingstorage.h"
@@ -62,12 +61,10 @@ void toggleBoolOption(config::TClientOptions* options, const O id)
 
 }
 
-TGenericGameActionHandler::TGenericGameActionHandler(QObject* parent)
+TGenericGameActionHandler::TGenericGameActionHandler(std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent)
     : cip::tibia::input::TGenericGameActionHandler(parent)
-{
-    // The option toggles reach the options' listeners and the file through it.
-    app::ClientOptionsNotifier::instance();
-}
+    , m_clientOptions(std::move(ClientOptions))
+{}
 
 TGenericGameActionHandler::~TGenericGameActionHandler() = default;
 
@@ -235,7 +232,7 @@ void TGenericGameActionHandler::handleChangeCharacterAction()
 
 void TGenericGameActionHandler::handleToggleFullscreenAction()
 {
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_clientOptions.get();
     config::TClientWindowOptions window = options->clientWindowOptions();
     window.borderless = !window.borderless;
     options->setClientWindowOptions(window);
@@ -274,7 +271,7 @@ void TGenericGameActionHandler::handleResetHuntingSessionAction()
 
 void TGenericGameActionHandler::handleToggleCreatureHudsVisibleGameAction()
 {
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_clientOptions.get();
     const bool playerParts = options->boolOption(O::playerShowName) || options->boolOption(O::playerShowHealth)
                              || options->boolOption(O::playerShowMana) || options->boolOption(O::playerShowHarmonySerene)
                              || options->boolOption(O::playerShowMarks);
@@ -313,7 +310,7 @@ void TGenericGameActionHandler::handleSaveJsonDocumentToFile(const TGameActionSa
 
 void TGenericGameActionHandler::handleToggleSoundGameAction()
 {
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_clientOptions.get();
     int volume = options->intOption(O::soundMasterVolumeOld);
     if (const int current = options->intOption(O::soundMasterVolume); current != 0) {
         options->setIntOption(O::soundMasterVolumeOld, current);
@@ -324,7 +321,7 @@ void TGenericGameActionHandler::handleToggleSoundGameAction()
 
 void TGenericGameActionHandler::handleToggleFpsLagIndecatorGameAction()
 {
-    toggleBoolOption(config::TClientOptions::instance(), O::showFpsLagIndicator);
+    toggleBoolOption(m_clientOptions.get(), O::showFpsLagIndicator);
 }
 
 }

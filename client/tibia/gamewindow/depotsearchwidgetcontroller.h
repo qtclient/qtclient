@@ -20,6 +20,7 @@
 
 namespace tibia {
 namespace config {
+class TClientOptions;
 class TSidebarOptions;
 }
 namespace container {
@@ -47,7 +48,9 @@ class TDepotSearchWidgetController final : public TSidebarWidgetController<cip::
     Q_OBJECT
 
 public:
-    TDepotSearchWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// The depot and inbox grids and the mouse mapping follow `clientOptions`.
+    TDepotSearchWidgetController(config::TClientOptions* clientOptions, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                 QObject* parent = nullptr);
     ~TDepotSearchWidgetController() override;
     /// The mouse cursor over the hovered slot.
     void updateHoverCursor();
@@ -157,6 +160,7 @@ private:
     input::TGameActionList typeActions(uint16_t typeId) const;
 
     game::TGameSessionBase* m_session = nullptr;
+    QPointer<config::TClientOptions> m_clientOptions;
     QPointer<config::TSidebarOptions> m_options;
     TAppearanceTypeListModelSortFilterProxy m_searchProxy;
     TAppearanceTypeListModelSortFilterProxy m_stashProxy;

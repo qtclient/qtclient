@@ -4,12 +4,15 @@
 
 #include "browser/qtclient_opfs_backend.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <QCollator>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QGuiApplication>
 #include <QObject>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 #include <QScreen>
@@ -82,6 +85,32 @@ bool adaptMainWindow(QQuickWindow* window)
     if (QScreen* screen = window->screen())
         QObject::connect(screen, &QScreen::geometryChanged, window, fillHost);
     return true;
+}
+
+void resetVertexAttribArraysAfterFrames(QQuickWindow* window)
+{
+    if (!window)
+        return;
+    // Qt's GLES backend tracks the first 16 locations (CIP's batchable shaders
+    // use 7 for _qt_order); its state starts empty with every command buffer
+    // run and enables what it binds, so disabling all of them between frames
+    // is safe.
+    QObject::connect(
+        window, &QQuickWindow::afterFrameEnd, window,
+        [] {
+            QOpenGLContext* context = QOpenGLContext::currentContext();
+            if (!context)
+                return;
+            QOpenGLFunctions* functions = context->functions();
+            static const GLuint count = [functions] {
+                GLint max = 0;
+                functions->glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max);
+                return static_cast<GLuint>(std::clamp(max, 0, 16));
+            }();
+            for (GLuint location = 0; location < count; ++location)
+                functions->glDisableVertexAttribArray(location);
+        },
+        Qt::DirectConnection);
 }
 
 void configureNaturalCollator(QCollator&)

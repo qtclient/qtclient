@@ -165,6 +165,7 @@
 #include "sound/soundmetadatamanager.h"
 #include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
+#include "sound/weatheraudio.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/nextframetimestamppredictor.h"
@@ -267,7 +268,7 @@ void finishExit()
 
 /// Mounts `workDir` (monorepo: the directory holding data/assets/; package:
 /// CipSoft's Resources next to the binary) and starts the engine.
-bool startEngineHost(const QString& argv0, const QString& workDir)
+bool startEngineHost(const QString& argv0, const QString& workDir, appearances::TAppearancesManager& appearancesManager)
 {
     if (g_engineRunning)
         return true;
@@ -314,21 +315,21 @@ bool startEngineHost(const QString& argv0, const QString& workDir)
 
     std::signal(SIGTERM, onExitSignal);
     std::signal(SIGINT, onExitSignal);
-    tibia::appearances::TAppearancesManager::instance().init();
+    appearancesManager.init();
 
     tibia::files::data().setupUserWriteDir("tibia/");
     g_engineRunning = true;
     return true;
 }
 
-void stopEngineHost()
+void stopEngineHost(appearances::TAppearancesManager& appearancesManager)
 {
     if (!g_engineRunning)
         return;
     g_engineRunning = false;
     if (game::TGameSessionBase* session = liveSession(); session && session->isOnline())
         session->disconnectGame();
-    tibia::appearances::TAppearancesManager::instance().terminate();
+    appearancesManager.terminate();
 }
 
 /// The engine's GUI thread work: a signalled exit.
@@ -366,13 +367,6 @@ void setSessionInstances(game::TGameSessionBase* session)
 
 /// Set while the client shuts down: a released session is deleted at once.
 bool g_releaseGameSessionsNow = false;
-
-/// Host: an object the client does not own, for a session that keeps it.
-template<typename T>
-std::shared_ptr<T> notOwned(T* object)
-{
-    return std::shared_ptr<T>(object, [](T*) {});
-}
 
 }
 
@@ -579,6 +573,7 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>(
         LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>(), clientOptions());
     pLoginRequestUploader->setClientRevision(m_options.env.revision);
+    pLoginRequestUploader->setPremiumTimeStorage(m_pPremiumTimeStorage.get());
     auto pEMailCodeRequestUploader = std::make_shared<authentication::TEmailCodeRequestUploader>(
         LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
     auto pLoginConfirmationCodeRequestUploader = std::make_shared<authentication::TLoginConfirmationCodeRequestUploader>(
@@ -593,6 +588,8 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         // account; the clearance goes with the next login request.
         authentication::TAuthenticationProcessController::THost host;
         host.resetSessionData = [this] { m_account.session = {}; };
+        host.premiumTimeStorage = [this] { return m_pPremiumTimeStorage.get(); };
+        host.newsStorage = [this] { return m_pNewsStorage.get(); };
         m_authentication->setHost(std::move(host));
     }
     m_authentication->bindLoginUploader(pLoginRequestUploader.get());
@@ -737,7 +734,7 @@ void TGameClient::setForceExitHandler(std::function<void()> handler)
 
 bool TGameClient::startEngine(const QString& argv0, const QString& workDir)
 {
-    if (!startEngineHost(argv0, workDir)) {
+    if (!startEngineHost(argv0, workDir, *appearancesManager())) {
         fail(tr("Could not start the game engine (no assets/catalog-content.json under %1).").arg(workDir));
         return false;
     }
@@ -758,14 +755,15 @@ bool TGameClient::startEngine(const QString& argv0, const QString& workDir)
                                 effectOpacity("monsterBossAreaEffectsOpacity"));
     };
     applyEffectOpacities(clientOptions);
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this, applyEffectOpacities](const QString& name) {
+    connect(this->clientOptions(), &config::TClientOptions::optionChanged, this, [this, applyEffectOpacities](const config::EClientOption id) {
+        using config::EClientOption;
         const QJsonObject options = app::ClientOptions::load().options();
-        if (name == QLatin1String("frameRateLimitEnabled") || name == QLatin1String("frameRateLimit")) {
+        if (id == EClientOption::frameRateLimitEnabled || id == EClientOption::frameRateLimit) {
             m_frameRateLimitEnabled = options.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
             m_frameRateLimit = std::clamp(options.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);
         }
-        if (name == QLatin1String("ownEffectsOpacity") || name == QLatin1String("otherPlayersEffectsOpacity")
-            || name == QLatin1String("monsterEffectsOpacity") || name == QLatin1String("monsterBossAreaEffectsOpacity"))
+        if (id == EClientOption::ownEffectsOpacity || id == EClientOption::otherPlayersEffectsOpacity
+            || id == EClientOption::monsterEffectsOpacity || id == EClientOption::monsterBossAreaEffectsOpacity)
             applyEffectOpacities(options);
     });
     return true;
@@ -894,7 +892,7 @@ void TGameClient::shutdown()
     // QObjects. Map tileBlocks hold raw pointers into that tree; destroying
     // storage first leaves terminate → removeUnawareThings dangling (SIGSEGV
     // on quit Exit).
-    stopEngineHost();
+    stopEngineHost(*appearancesManager());
     m_opcodes.reset();
     // The session goes now, not on the next event loop pass: the engine is down.
     g_releaseGameSessionsNow = true;
@@ -1534,7 +1532,7 @@ void TGameClient::onRenderThreadFrameSwapped()
     QMetaObject::invokeMethod(this, [this] {
         if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
             session->updatePlayerMovementIntentHandler();
-        screenshot::TScreenshotManager* screenshotManager = screenshot::TScreenshotManager::instance();
+        screenshot::TScreenshotManager* screenshotManager = this->screenshotManager();
         gamewindow::TGameWindowController* gameWindow = gameWindowController();
         if (screenshotManager && gameWindow && gameWindow->gameWindowState() == QLatin1String("INGAME")
             && screenshotManager->takeScreenshotIfEventIsWainting() && m_pFPSDropsLogger)
@@ -1702,8 +1700,8 @@ void TGameClient::initializeClientObjects()
     m_pOpenWebsiteGameActionHandler = std::make_shared<input::TOpenWebsiteGameActionHandler>(m_gameWindowSetup.env);
     m_pClipboardGameActionHandler = std::make_shared<input::TClipboardGameActionHandler>(
         m_pTibiaClipboardHelper, sharedClientOptions(), m_pTibiaUrlTools);
-    // CIP: the item prices. Host: the process-wide storage.
-    m_pItemPriceStorage = notOwned(analysers::TItemPriceStorage::instance());
+    // CIP: the item prices, over the client's appearances and premium time.
+    m_pItemPriceStorage = std::make_shared<analysers::TItemPriceStorage>(appearancesManager(), m_pPremiumTimeStorage);
     // CIP: the [GRAPHICS] timings are taken from the client settings once: a
     // missile's flight per field, how long numerical effects show and merge,
     // and how long a creature's temporary mark shows; [DEBUG] whether speech
@@ -1816,9 +1814,8 @@ void TGameClient::initializeSound()
     ::tibia::client::TGameClientBase::initializeSound();
     if (!m_pSoundController)
         return;
-    // Host: qtclient's assets read the sound bank through the sound
-    // controller's instance(), so it is in place before them.
-    sound::TSoundController::setInstance(m_pSoundController.get());
+    // Host: the pack's weather audio plays through the client's controller.
+    sound::TWeatherAudio::instance().setSoundController(m_pSoundController.get());
     // Out of the game the title music plays once the sound bank is known.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
         if (!sessionOnline())

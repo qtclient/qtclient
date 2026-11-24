@@ -111,6 +111,8 @@ private:
 
     std::shared_ptr<cyclopedia::TMonsterBonusEffectStorage> m_bonusEffectStorage;
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
+    /// The session connectToGameSession took.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_sessionConnections;
     TMessageDialogController* m_confirmDialog;
     /// The player's gold the charm list was built with (CIP +0xd8).

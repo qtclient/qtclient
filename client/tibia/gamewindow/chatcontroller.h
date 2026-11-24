@@ -79,6 +79,8 @@ public:
     chat::TChatChannel* channel() const { return m_channel; }
     /// CIP: the rows go and the new channel's entries come.
     void setChannel(chat::TChatChannel* channel);
+    /// The session's item prices for loot colours (colorizeLootStyle != 0).
+    void setItemPriceStorage(std::shared_ptr<analysers::TItemPriceStorage> ItemPriceStorage);
     /// CIP: the channel went away (also the connector without a session).
     void resetChannel();
 
@@ -177,6 +179,7 @@ private:
     bool m_showTimestamps = true;
     bool m_showTimestampSeconds = true;
     bool m_showLevels = true;
+    std::shared_ptr<analysers::TItemPriceStorage> m_lootPrices;
     /// The selected rows and the one the selection ends in.
     int m_selectionHigh = 0;
     int m_selectionLow = 0;
@@ -401,8 +404,6 @@ private:
 
     void onWorldEntered();
     void bindItem();
-    void reloadOptions();
-    void onOptionChanged(const QString& name);
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
     void onChannelListReceived(const std::vector<chat::TChatChannelIdentifier>& channels);
     void storeOpenChannels() const;

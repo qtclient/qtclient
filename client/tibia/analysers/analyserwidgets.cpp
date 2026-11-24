@@ -90,9 +90,8 @@ QString damageTypeIcon(const int element)
 
 namespace {
 
-bool isPremiumPlayer()
+bool isPremiumPlayer(const game::TPremiumTimeStorage* premium)
 {
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
     return premium && premium->isPremium();
 }
 
@@ -222,7 +221,7 @@ void TAnalyticsSelectorWidgetController::setCursorToResizeVertical(const bool En
 void TAnalyticsSelectorWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TAnalyticsSelectorWidgetController::onWidgetQuickItemDestroyed() {}
 
-bool TAnalyticsSelectorWidgetController::isPremium() const { return isPremiumPlayer(); }
+bool TAnalyticsSelectorWidgetController::isPremium() const { return isPremiumPlayer(m_premiumTimeStorage); }
 
 bool TAnalyticsSelectorWidgetController::lootTrackerVisible() const { return m_lootTrackerVisible; }
 bool TAnalyticsSelectorWidgetController::lootAnalyserVisible() const { return m_lootAnalyserVisible; }
@@ -298,7 +297,7 @@ void TAnalyticsSelectorWidgetController::bossTrackerButtonClicked() { toggle(W::
 /// Free accounts get the store's premium page (OPEN_STORE 1 / 0) instead.
 void TAnalyticsSelectorWidgetController::huntingSessionAnalyserButtonClicked()
 {
-    if (isPremiumPlayer())
+    if (isPremiumPlayer(m_premiumTimeStorage))
         toggle(W::HuntingSessionAnalyser);
     else
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
@@ -1053,9 +1052,9 @@ QString TLootAndWasteWidgetController::imagePrefix() const
     return m_side == TGainWasteStorage::Loot ? QStringLiteral("loot") : QStringLiteral("waste");
 }
 
-bool TLootAndWasteWidgetController::isGaugeVisible() const { return m_storage->gaugeVisible(m_side) && isPremiumPlayer(); }
+bool TLootAndWasteWidgetController::isGaugeVisible() const { return m_storage->gaugeVisible(m_side) && isPremiumPlayer(m_premiumTimeStorage); }
 
-bool TLootAndWasteWidgetController::isGraphVisible() const { return m_storage->graphVisible(m_side) && isPremiumPlayer(); }
+bool TLootAndWasteWidgetController::isGraphVisible() const { return m_storage->graphVisible(m_side) && isPremiumPlayer(m_premiumTimeStorage); }
 
 double TLootAndWasteWidgetController::gaugeTargetValue() const { return m_storage->gaugeTarget(m_side); }
 
@@ -1079,7 +1078,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         m_maxY = 1.0;
     });
     menu->addCustomSeparator();
-    const bool premium = isPremiumPlayer();
+    const bool premium = isPremiumPlayer(m_premiumTimeStorage);
     if (premium) {
         connect(menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("set_gauge_target")))), &gamewindow::TContextMenuEntryItem::triggered,
                 this, &TLootAndWasteWidgetController::showTargetDialog);
@@ -1175,11 +1174,11 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
                                 W::DamageInputAnalyser, W::HuntingSessionAnalyser, W::PartyHuntAnalyser })
             controller->onWidgetVisibility(type, m_widgets && m_widgets->isWidgetOpen(type));
         controller->setSidebarOptions(m_options());
-        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        controller->setPremiumTimeStorage(m_storages ? m_storages->premiumTimeStorage() : nullptr);
         return controller;
     });
     add<THuntingSessionWidgetController>(W::HuntingSessionAnalyser, [this]() -> THuntingSessionWidgetController* {
-        if (!isPremiumPlayer()) {
+        if (!isPremiumPlayer(m_storages ? m_storages->premiumTimeStorage() : nullptr)) {
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("battlelist_need_premium")));
             return nullptr;
         }
@@ -1190,22 +1189,25 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     add<TProgressWidgetController>(W::XpAnalyser, [this] {
         auto* controller = new TProgressWidgetController(m_storages->progress(), m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
-        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        controller->setPremiumTimeStorage(m_storages ? m_storages->premiumTimeStorage() : nullptr);
         return controller;
     });
     add<TLootAndWasteWidgetController>(W::LootAnalyser, [this] {
         auto* controller = new TLootAndWasteWidgetController(m_storages->gainWaste(), TGainWasteStorage::Loot, m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(m_storages->premiumTimeStorage());
         return controller;
     });
     add<TLootAndWasteWidgetController>(W::WasteAnalyser, [this] {
         auto* controller = new TLootAndWasteWidgetController(m_storages->gainWaste(), TGainWasteStorage::Waste, m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(m_storages->premiumTimeStorage());
         return controller;
     });
     add<TImpactWidgetController>(W::ImpactAnalyser, [this] {
         auto* controller = new TImpactWidgetController(m_storages->impact(), m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(m_storages->premiumTimeStorage());
         return controller;
     });
     add<TDamageInputWidgetController>(W::DamageInputAnalyser, [this] {
@@ -1218,6 +1220,7 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     add<TPartyHuntWidgetController>(W::PartyHuntAnalyser, [this] {
         auto* controller = new TPartyHuntWidgetController(m_storages->partyHunt(), m_gameWindowItem, m_engine);
         controller->setSidebarOptions(m_options());
+        controller->setPremiumTimeStorage(m_storages->premiumTimeStorage());
         return controller;
     });
 }

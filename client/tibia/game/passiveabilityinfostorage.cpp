@@ -6,8 +6,6 @@
 
 namespace tibia::game {
 
-TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::s_instance = nullptr;
-
 TPassiveAbilityInfoStorage::TIterator::TIterator(std::map<uint8_t, TPassiveAbilityInfo>::const_iterator node)
     : m_node(node)
 {
@@ -43,16 +41,6 @@ TPassiveAbilityInfoStorage::TIterator& TPassiveAbilityInfoStorage::TIterator::op
 TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
     : cip::tibia::game::TPassiveAbilityInfoStorage(parent)
 {
-}
-
-TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::instance()
-{
-    return s_instance;
-}
-
-void TPassiveAbilityInfoStorage::setInstance(TPassiveAbilityInfoStorage* storage)
-{
-    s_instance = storage;
 }
 
 const std::map<uint8_t, TPassiveAbilityInfo>& TPassiveAbilityInfoStorage::infos()

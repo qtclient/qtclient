@@ -26,9 +26,13 @@ class TGameActionMapper;
 namespace game {
 class IGameSession;
 }
+namespace appearances {
+class TAppearancesManager;
+}
 namespace cyclopedia {
 class TCyclopediaMapStorage;
 class TCyclopediaMapCharacterConfigurationStorage;
+class TCyclopediaMapStaticDataStorage;
 }
 }
 
@@ -288,6 +292,9 @@ private:
     TCyclopediaCreatureOccurrencesData creatureOccurrences(quint16 subAreaId) const;
     /// Every donating area, most gold first.
     QString donationsTooltip() const;
+    /// The game client's static map data the session's map storage holds;
+    /// null without a session.
+    const cyclopedia::TCyclopediaMapStaticDataStorage* staticData() const;
     /// The selection and field actions under a pixel of the map.
     input::TGameActionList gameActionsAt(int x, int y) const;
     /// The floor the map's walk targets lie on: the player's while both the
@@ -296,6 +303,7 @@ private:
 
     std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_configuration;
     std::shared_ptr<cyclopedia::TCyclopediaMapStorage> m_storage;
+    std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
     std::vector<QMetaObject::Connection> m_sessionConnections;
     std::shared_ptr<input::TGameActionMapper> m_pGameActionMapper;
     TMessageDialogController* m_confirmDialog;

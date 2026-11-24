@@ -332,6 +332,8 @@ public:
     ~TLootAndWasteWidgetController() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The gauge and graph need premium time.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage) { m_premiumTimeStorage = premiumTimeStorage; }
 
     QString gainWasteValueString() const override;
     QString gainWastePerHourString() const override;
@@ -390,6 +392,7 @@ private:
     void showTargetDialog();
 
     TGainWasteStorage* m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     TGainWasteStorage::Side m_side;
     TGainWasteModel* m_model;
     QPointer<config::TSidebarOptions> m_options;

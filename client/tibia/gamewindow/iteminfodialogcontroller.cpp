@@ -7,7 +7,6 @@
 #include "game/gameciptypes.h"
 #include "game/inspectedobject.h"
 
-#include "app/clientoptions.h"
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
 #include "config/clientoptions.h"
@@ -54,11 +53,11 @@ constexpr uint8_t CyclopediaInspection = 1;
 
 QString englishNumber(const qint64 value) { return QLocale(QLocale::English).toString(value); }
 
-TAppearanceTypePtr itemType(const uint16_t typeId)
+TAppearanceTypePtr itemType(const appearances::TAppearancesManager* appearancesManager, const uint16_t typeId)
 {
-    if (typeId == 0)
+    if (typeId == 0 || !appearancesManager)
         return nullptr;
-    return tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+    return appearancesManager->findAppearanceType(ThingCategoryItem, typeId);
 }
 
 /// CIP : the market category; the coins are "Gold", the rest "Unsorted".
@@ -94,10 +93,10 @@ std::vector<NpcOffer> npcOffers(const TAppearanceTypePtr& type)
     return offers;
 }
 
-QString currencyString(const NpcOffer& offer)
+QString currencyString(const appearances::TAppearancesManager* appearancesManager, const NpcOffer& offer)
 {
     if (offer.currencyTypeId != 0) {
-        const TAppearanceTypePtr currency = itemType(static_cast<uint16_t>(offer.currencyTypeId));
+        const TAppearanceTypePtr currency = itemType(appearancesManager, static_cast<uint16_t>(offer.currencyTypeId));
         return qtTrId("iteminfo_npcdata_other_currency").arg(currency ? QString::fromStdString(currency->getName()) : QString());
     }
     if (!offer.currencyFlag.empty())
@@ -105,10 +104,10 @@ QString currencyString(const NpcOffer& offer)
     return qtTrId("iteminfo_npcdata_common_currency");
 }
 
-QString npcLine(const NpcOffer& offer, const uint32_t price)
+QString npcLine(const appearances::TAppearancesManager* appearancesManager, const NpcOffer& offer, const uint32_t price)
 {
     const QString location = offer.locations.size() == 1 ? offer.locations.front() : qtTrId("iteminfo_npc_multiple_locations");
-    return qtTrId("iteminfo_npcdata").arg(englishNumber(price), currencyString(offer), offer.name, location);
+    return qtTrId("iteminfo_npcdata").arg(englishNumber(price), currencyString(appearancesManager, offer), offer.name, location);
 }
 
 }
@@ -139,6 +138,7 @@ TItemInfoDialogController::TItemInfoDialogController(std::shared_ptr<appearances
                                                      config::TClientOptions* ClientOptions, QObject* parent)
     : cip::tibia::gamewindow::TItemInfoDialogController(parent)
     , m_pAppearancesManager(std::move(AppearancesManager))
+    , m_pClientOptions(ClientOptions)
     , m_proxy(false, true, false, ClientOptions)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
@@ -149,8 +149,6 @@ TItemInfoDialogController::TItemInfoDialogController(std::shared_ptr<appearances
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
     connect(&m_inspectTimer, &QTimer::timeout, this, &TItemInfoDialogController::onInspectRequestTimeoutReached);
 
-    connect(prices(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TItemInfoDialogController::lootValueChanged);
-    connect(prices(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoDialogController::lootValueChanged);
     if (analysers::TAnalyserStorages* container = storages()) {
         // itemTracking is null until connectToGameSession; connecting it here
         // logs QObject::connect(ICharacterConfigurationBase, TItemInfoDialogController).
@@ -167,10 +165,11 @@ TItemInfoDialogController::TItemInfoDialogController(std::shared_ptr<appearances
         });
     }
     // CIP connects the option storage to the loot value (its background).
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("colorizeLootStyle"))
-            Q_EMIT lootValueChanged();
-    });
+    if (m_pClientOptions)
+        connect(m_pClientOptions.data(), &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+            if (id == config::EClientOption::colorizeLootStyle)
+                Q_EMIT lootValueChanged();
+        });
 
     // The session's inspection results and forge classifications; again for each session.
     connectToCurrentGameSession();
@@ -407,7 +406,7 @@ void TItemInfoDialogController::setSelectedTypeId(const uint16_t typeId)
 
 analysers::TAnalyserStorages* TItemInfoDialogController::storages() const { return analysers::TAnalyserStorages::instance(); }
 
-analysers::TItemPriceStorage* TItemInfoDialogController::prices() const { return analysers::TItemPriceStorage::instance(); }
+analysers::TItemPriceStorage* TItemInfoDialogController::prices() const { return m_prices; }
 
 cyclopedia::TItemTrackingStorage* TItemInfoDialogController::itemTracking() const
 {
@@ -431,7 +430,7 @@ void TItemInfoDialogController::setPrimaryLootValueSource(const int source)
 
 void TItemInfoDialogController::onCharacterConfigurationChanged()
 {
-    if (!hasCharacter())
+    if (!hasCharacter() || !prices())
         return;
     setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
     Q_EMIT lootValueChanged();
@@ -445,9 +444,20 @@ void TItemInfoDialogController::connectToCurrentGameSession()
     disconnect(m_exaltationConnection);
     m_inspectionConnection = {};
     m_exaltationConnection = {};
+    for (const QMetaObject::Connection& connection : m_priceConnections)
+        disconnect(connection);
+    m_priceConnections.clear();
     const game::TGameSessionBase* session = game::currentGameSession();
+    m_prices = session ? session->itemPriceStorage().get() : nullptr;
     if (!session)
         return;
+    // The session's item prices: the loot value follows their changes.
+    if (m_prices) {
+        m_priceConnections.push_back(connect(m_prices.data(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                                             &TItemInfoDialogController::lootValueChanged));
+        m_priceConnections.push_back(
+            connect(m_prices.data(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoDialogController::lootValueChanged));
+    }
     // The protocol handler reports the Cyclopedia's item inspections with the
     // inspect dialog's.
     if (const auto& handler = session->gameProtocolMessageHandler())
@@ -488,9 +498,10 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
     if (const game::TGameSessionBase* session = game::currentGameSession(); session && session->isOnline()) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         m_inspectTimer.start(static_cast<int>(std::max(InspectMinimumDelay, m_lastInspect + InspectInterval - now)));
-        setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
+        if (prices())
+            setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
     }
-    if (itemType(m_typeId))
+    if (itemType(m_pAppearancesManager.get(), m_typeId))
         updateNpcData();
 }
 
@@ -508,7 +519,7 @@ void TItemInfoDialogController::updateNpcData()
 {
     m_npcBuyData.clear();
     m_npcSellData.clear();
-    if (const TAppearanceTypePtr type = itemType(m_typeId)) {
+    if (const TAppearanceTypePtr type = itemType(m_pAppearancesManager.get(), m_typeId)) {
         std::vector<NpcOffer> offers = npcOffers(type);
         const auto key = [](const NpcOffer& offer) { return std::tie(offer.buyPrice, offer.locations, offer.name); };
         std::ranges::sort(offers, [](const NpcOffer& a, const NpcOffer& b) {
@@ -516,13 +527,13 @@ void TItemInfoDialogController::updateNpcData()
         });
         for (const NpcOffer& offer : offers) {
             if (offer.buyPrice != 0)
-                m_npcBuyData << npcLine(offer, offer.buyPrice);
+                m_npcBuyData << npcLine(m_pAppearancesManager.get(), offer, offer.buyPrice);
         }
         // CIP re-sorts the sellers by the price they pay, not the one they ask.
         std::ranges::sort(offers, [&key](const NpcOffer& a, const NpcOffer& b) { return key(a) < key(b); });
         for (const NpcOffer& offer : offers) {
             if (offer.salePrice != 0)
-                m_npcSellData << npcLine(offer, offer.salePrice);
+                m_npcSellData << npcLine(m_pAppearancesManager.get(), offer, offer.salePrice);
         }
     }
     Q_EMIT npcDataChanged();
@@ -530,7 +541,7 @@ void TItemInfoDialogController::updateNpcData()
 
 bool TItemInfoDialogController::hasWeaponProficiency() const
 {
-    const TAppearanceTypePtr type = itemType(m_typeId);
+    const TAppearanceTypePtr type = itemType(m_pAppearancesManager.get(), m_typeId);
     return type && type->getProficiencyId() != 0;
 }
 
@@ -542,24 +553,24 @@ int TItemInfoDialogController::primaryLootValueSource() const { return m_primary
 
 QString TItemInfoDialogController::userDefinedValueString() const
 {
-    return m_typeId ? QString::number(prices()->customSalePrice(m_typeId)) : QStringLiteral("0");
+    return m_typeId && prices() ? QString::number(prices()->customSalePrice(m_typeId)) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::marketValueString() const
 {
-    return m_typeId ? englishNumber(static_cast<qint64>(prices()->marketPrice(m_typeId))) : QStringLiteral("0");
+    return m_typeId && prices() ? englishNumber(static_cast<qint64>(prices()->marketPrice(m_typeId))) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::lootValueString() const
 {
-    return m_typeId ? englishNumber(static_cast<qint64>(prices()->lootPrice(m_typeId))) : QStringLiteral("0");
+    return m_typeId && prices() ? englishNumber(static_cast<qint64>(prices()->lootPrice(m_typeId))) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::lootValueBackgroundUrlSource() const
 {
     if (m_typeId == 0 || !hasCharacter())
         return {};
-    if (config::TClientOptions::instance()->colorizeLootStyle() == 0)
+    if (!m_pClientOptions || m_pClientOptions->colorizeLootStyle() == 0 || !prices())
         return {};
     const int level = prices()->lootValueLevel(m_typeId);
     if (level == 0)
@@ -582,7 +593,7 @@ int TItemInfoDialogController::blackWhiteListType() const { return lootBlackWhit
 
 void TItemInfoDialogController::requestPrimaryLootValueSelect(const int PrimaryLootValueSource)
 {
-    if (m_typeId == 0 || !hasCharacter())
+    if (m_typeId == 0 || !hasCharacter() || !prices())
         return;
     prices()->setPrimaryLootValueSource(m_typeId, PrimaryLootValueSource);
     Q_EMIT lootValueChanged();
@@ -590,7 +601,7 @@ void TItemInfoDialogController::requestPrimaryLootValueSelect(const int PrimaryL
 
 void TItemInfoDialogController::requestCustomSaleValue(const QString& CustomSaleValueText)
 {
-    if (m_typeId == 0)
+    if (m_typeId == 0 || !prices())
         return;
     bool ok = false;
     int value = CustomSaleValueText.toInt(&ok);

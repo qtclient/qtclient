@@ -12,25 +12,13 @@
 
 namespace tibia::worldmap {
 
-TWorldMapTutorialMarkerOverlayController* TWorldMapTutorialMarkerOverlayController::s_instance = nullptr;
-
 TWorldMapTutorialMarkerOverlayController::TWorldMapTutorialMarkerOverlayController(QQuickItem* overlay, QObject* parent)
     : cip::tibia::worldmap::TWorldMapTutorialMarkerOverlayController(parent)
     , m_overlay(overlay)
 {
-    s_instance = this;
 }
 
-TWorldMapTutorialMarkerOverlayController::~TWorldMapTutorialMarkerOverlayController()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TWorldMapTutorialMarkerOverlayController* TWorldMapTutorialMarkerOverlayController::instance()
-{
-    return s_instance;
-}
+TWorldMapTutorialMarkerOverlayController::~TWorldMapTutorialMarkerOverlayController() = default;
 
 void TWorldMapTutorialMarkerOverlayController::setSession(const std::shared_ptr<game::IGameSession>& session)
 {

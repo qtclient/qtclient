@@ -687,7 +687,7 @@ void TPreyDialogController::onBalanceChanged()
 void TPreyDialogController::showDialog()
 {
     closeDialog();
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session || !session->hasLocalPlayer() || !session->playerData() || !session->playerData()->hasReachedMain()) {
         m_notOnMain->setButtons(okButton());
         m_notOnMain->showMessage(qtTrId("prey_need_to_reach_main_caption"), qtTrId("prey_need_to_reach_main_text"));

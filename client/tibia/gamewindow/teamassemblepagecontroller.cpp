@@ -158,7 +158,7 @@ void TTeamAssemblePageController::showDialogTab()
                                     &TTeamAssemblePageController::onTeamMembersChanged));
     m_connections.push_back(connect(handler, &TTeamFinderProtocolMessageHandler::ownTeamUpdateAvailable, this,
                                     &TTeamAssemblePageController::onOwnTeamUpdateAvailable));
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     const QString characterName =
         session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->characterNameQString() : QString();
     onTeamParametersChanged();
@@ -254,7 +254,7 @@ void TTeamAssemblePageController::getPremiumClicked()
 
 uint TTeamAssemblePageController::getLeaderlevel()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session || !session->hasLocalPlayer() || !session->playerData())
         return 2;
     return session->playerData()->level();

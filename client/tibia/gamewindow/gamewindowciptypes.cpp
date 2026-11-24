@@ -1,5 +1,4 @@
 #include "gamewindowciptypes.h"
-#include "game/currentgamesession.h"
 #include "creatures/creaturestorage.h"
 #include "game/inspectedobject.h"
 #include "qmlcomponents/texthelper.h"
@@ -699,8 +698,6 @@ void clearInspectList(Controller& controller, QList<QObject*>& list)
 
 } // namespace
 
-TInspectObjectDialogController* TInspectObjectDialogController::s_instance = nullptr;
-
 TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const int torso, const int legs, const int detail,
                                              const int addons, QObject* parent)
     : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
@@ -733,7 +730,6 @@ TInspectObjectDialogController::TInspectObjectDialogController(config::TClientOp
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), Engine, DialogParentItem, parent)
     , m_clientOptions(ClientOptions)
 {
-    s_instance = this;
 }
 
 void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
@@ -773,11 +769,6 @@ void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGam
         protocol::TGameActionContextHelper().fillObjectPosition(location, message.mutable_object_position());
         Q_EMIT session->gameProtocolMessageHandler()->sendInspectObject(message);
     }
-}
-
-TInspectObjectDialogController* TInspectObjectDialogController::instance()
-{
-    return s_instance;
 }
 
 void TInspectObjectDialogController::showObject(const ItemInspectionData& data)
@@ -824,14 +815,11 @@ void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
     }
 }
 
-TInspectPlayerDialogController* TInspectPlayerDialogController::s_instance = nullptr;
-
 TInspectPlayerDialogController::TInspectPlayerDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
                                                                QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), Engine, DialogParentItem, parent)
     , m_clientOptions(ClientOptions)
 {
-    s_instance = this;
 }
 
 void TInspectObjectDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -855,11 +843,6 @@ void TInspectPlayerDialogController::connectToGameSession(const std::shared_ptr<
                                                [this](const std::vector<TInspectObjectData>& list, const creatures::TCreatureID playerId) {
                                                    showPlayer(game::toCharacterInspection(list, playerId));
                                                }));
-}
-
-TInspectPlayerDialogController* TInspectPlayerDialogController::instance()
-{
-    return s_instance;
 }
 
 void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspection& data)
@@ -891,7 +874,7 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
     player->setFromPlayer(data);
     m_hasDualWielding = leftHandDualWield && rightHandEmpty;
     m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_isOwnPlayer = session && session->hasLocalPlayer() && session->creatureStorage()
         && session->creatureStorage()->playerID() == data.creatureId;
     Q_EMIT inspectObjectListChanged();
@@ -928,7 +911,7 @@ void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
 
 void TInspectPlayerDialogController::openSkillWheelDialog()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session || !session->hasLocalPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
         return;
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));

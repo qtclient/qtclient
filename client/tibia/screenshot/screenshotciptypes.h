@@ -89,7 +89,6 @@ public:
                        QObject* parent = nullptr);
     ~TScreenshotManager() override;
 
-    static TScreenshotManager* instance();
     /// Drops the backlog and follows the session (none without one): the
     /// backlog only records during a session.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -124,8 +123,6 @@ private:
     /// CIP circular buffer of 5 images: the oldest is dropped when full.
     std::deque<QImage> m_backlog;
     std::shared_ptr<game::IGameSession> m_gameSession;
-
-    static TScreenshotManager* s_instance;
 };
 
 }

@@ -7,14 +7,21 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <unordered_map>
 
 namespace tibia {
+namespace appearances {
+class TAppearancesManager;
+}
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace analysers {
 
 /// The item values of the loot and waste analysers, the loot value levels and the colours of
 /// coloured item names (CIP: tibia::cyclopedia::TItemPriceStorage, config "itemprices").
-/// One instance per client, created on first use.
+/// One instance per game client, made with the client's appearances and premium time.
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
@@ -26,9 +33,10 @@ public:
         Market = 1,
     };
 
-    explicit TItemPriceStorage(QObject* parent = nullptr);
-
-    static TItemPriceStorage* instance();
+    /// The NPC prices come from `AppearancesManager`'s types; the loot price
+    /// follows `PremiumTimeStorage`'s premium state.
+    TItemPriceStorage(std::shared_ptr<appearances::TAppearancesManager> AppearancesManager,
+                      std::shared_ptr<game::TPremiumTimeStorage> PremiumTimeStorage, QObject* parent = nullptr);
 
     QString configurationName() const override;
     QJsonObject configurationToJson() const override;
@@ -66,6 +74,8 @@ public Q_SLOTS:
     void onPremiumTimeChanged();
 
 private:
+    std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
+    std::shared_ptr<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::unordered_map<uint16_t, quint64> m_customSalePrices;
     std::map<QString, std::unordered_map<uint16_t, quint64>> m_marketPrices;
     std::map<uint16_t, int> m_primaryLootValueSources;

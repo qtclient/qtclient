@@ -119,8 +119,8 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
     const QJsonObject reply = ReplyFromServerJD.object();
     m_helper->parsePlayData(reply, m_characters, m_worlds);
     m_helper->parsePlaySessionData(reply, m_session);
-    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
-        premium->setPremium(m_session.isPremium, static_cast<uint32_t>(m_session.premiumUntil));
+    if (m_pPremiumTimeStorage)
+        m_pPremiumTimeStorage->setPremium(m_session.isPremium, static_cast<uint32_t>(m_session.premiumUntil));
 
     QString loginEmail;
     QString deviceCookie;

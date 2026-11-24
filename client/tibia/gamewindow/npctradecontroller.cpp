@@ -1,6 +1,7 @@
 #include "npctradecontroller.h"
 #include "game/gameactionrouter.h"
 #include "game/gamesessionbase.h"
+#include "config/clientoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 
@@ -20,7 +21,6 @@
 #include <array>
 #include <functional>
 #include <set>
-#include "game/currentgamesession.h"
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
@@ -268,7 +268,9 @@ TNPCTradeController::TNPCTradeController(QQuickItem* DialogParentItem, QQmlEngin
     m_confirmation->setCloseOnButtonClicked(true);
     connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
 
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
+    // Host: the trade options are a host option; a change from elsewhere (the
+    // pack's options.store) refreshes the copy. setOptions refreshes itself.
+    connect(config::TClientOptions::instance(), &config::TClientOptions::extraOptionChanged, this, [this](const QString& name) {
         if (name == OptionsKey)
             onNpcTradeOptionsChanged();
     });
@@ -326,13 +328,13 @@ TNPCTradeController::~TNPCTradeController()
 
 QString TNPCTradeController::bankBalance() const
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     return session && session->hasLocalPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::inventoryBalance() const
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     return session && session->hasLocalPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
 }
 

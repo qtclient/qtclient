@@ -234,25 +234,28 @@ bool hasVocation(const spells::TSpellCastParameters& cast, const uint8_t vocatio
 
 } // namespace
 
-TSpellListDataModel::TSpellListDataModel(QObject* parent)
+TSpellListDataModel::TSpellListDataModel(spells::TSpellInfoStorage* SpellInfoStorage, QObject* parent)
     : cip::tibia::gamewindow::TSpellListDataModel(parent)
+    , m_spellInfoStorage(SpellInfoStorage)
 {
-    for (const auto& [id, spell] : spells::TSpellInfoStorage::instance()->spells())
+    if (!m_spellInfoStorage)
+        return;
+    for (const auto& [id, spell] : m_spellInfoStorage->spells())
         m_spellIds.push_back(id);
-    connect(spells::TSpellInfoStorage::instance(), &spells::TSpellInfoStorage::spellModificationsApplied, this,
+    connect(m_spellInfoStorage, &spells::TSpellInfoStorage::spellModificationsApplied, this,
             &TSpellListDataModel::onSpellDataModificationsApplied);
 }
 
 int TSpellListDataModel::rowCount(const QModelIndex& parent) const
 {
-    return parent.isValid() ? 0 : spells::TSpellInfoStorage::instance()->spellCount();
+    return parent.isValid() || !m_spellInfoStorage ? 0 : m_spellInfoStorage->spellCount();
 }
 
 QVariant TSpellListDataModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= rowCount() || index.row() >= int(m_spellIds.size()))
         return {};
-    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(m_spellIds[size_t(index.row())]);
+    const spells::TSpellInfo spell = m_spellInfoStorage->spellInfoAt(m_spellIds[size_t(index.row())]);
     const spells::TSpellCastParameters& cast = spell.cast;
     const bool weaponScaled = spell.scalings.count(spells::TSpellInfo::Weapon) > 0;
     switch (role) {
@@ -360,9 +363,10 @@ void TSpellListDataModel::onSpellDataModificationsApplied()
     Q_EMIT dataChanged(index(0), index(rowCount() - 1), { CooldownRole, ManaCostRole });
 }
 
-TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(QObject* parent)
+TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(spells::TSpellInfoStorage* SpellInfoStorage, QObject* parent)
     : cip::tibia::gamewindow::TSpellListDataModelSortFilterProxy(parent)
-    , m_model(new TSpellListDataModel(this))
+    , m_spellInfoStorage(SpellInfoStorage)
+    , m_model(new TSpellListDataModel(SpellInfoStorage, this))
 {
     m_showOnlyCurrentVocation = true;
     m_showDruidSpells = m_showKnightSpells = m_showPaladinSpells = m_showSorcererSpells = m_showMonkSpells = true;
@@ -493,7 +497,9 @@ QVariant TSpellListDataModelSortFilterProxy::data(const QModelIndex& index, cons
         return source.model() ? source.model()->data(source, role) : QVariant();
     // A spell can be cast when the player knows it and has its vocation and level.
     const int spellId = source.model() ? source.model()->data(source, TSpellListDataModel::EnumIdRole).toInt() : 0;
-    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(spellId);
+    if (!m_spellInfoStorage)
+        return false;
+    const spells::TSpellInfo spell = m_spellInfoStorage->spellInfoAt(spellId);
     return m_knownSpells.count(uint16_t(spellId)) > 0 && hasVocation(spell.cast, m_playerVocation)
         && spell.cast.minimumLevel <= m_playerLevel;
 }
@@ -505,7 +511,9 @@ bool TSpellListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, c
     if (!index.isValid())
         return false;
     const int spellId = source->data(index, TSpellListDataModel::EnumIdRole).toInt();
-    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(spellId);
+    if (!m_spellInfoStorage)
+        return false;
+    const spells::TSpellInfo spell = m_spellInfoStorage->spellInfoAt(spellId);
     const spells::TSpellCastParameters& cast = spell.cast;
 
     bool playerOk = !m_showOnlyCurrentVocation || hasVocation(cast, m_playerVocation);
@@ -585,8 +593,10 @@ QString actionButtonName(const int actionBarId, const int buttonId)
     return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
 }
 
-TAssignSpellActionDialogController::TAssignSpellActionDialogController(const uint8_t actionBarId, QObject* parent)
+TAssignSpellActionDialogController::TAssignSpellActionDialogController(spells::TSpellInfoStorage* SpellInfoStorage,
+                                                                       const uint8_t actionBarId, QObject* parent)
     : TAssignActionDialogControllerBase(QStringLiteral("AssignSpellActionDialog.qml"), actionBarId, parent)
+    , m_proxy(SpellInfoStorage)
 {
     m_spellListModel = QVariant::fromValue<QObject*>(&m_proxy);
     m_showOnlyKnownSpells = true;
@@ -662,9 +672,6 @@ void TAssignSpellActionDialogController::onCloseClicked()
 
 TAssignObjectActionDialogController::TAssignObjectActionDialogController(const uint8_t actionBarId, QObject* parent)
     : TAssignActionDialogControllerBase(QStringLiteral("AssignObjectActionDialog.qml"), actionBarId, parent)
-    // Host: the client's factory until a session hands its own (the hotkey
-    // options page has no session of its own).
-    , m_appearanceInstanceFactory(appearances::TAppearanceInstanceFactory::installed())
 {
     m_useObjectType = uint(config::EUseType::SelectUseTarget);
 }
@@ -734,7 +741,7 @@ void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const 
     } else {
         data = TObjectData::plain(typeId);
     }
-    showDialog(ButtonId, MultiActionIndex, data, TActionBarManager::defaultUseType(typeId), false, assignWithoutDialog);
+    showDialog(ButtonId, MultiActionIndex, data, TActionBarManager::defaultUseType(type), false, assignWithoutDialog);
 }
 
 void TAssignObjectActionDialogController::setClientSettingSmoothFiltering(const bool enabled)
@@ -920,11 +927,13 @@ void TAssignTextActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(const uint8_t actionBarId, QObject* parent)
+TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(
+    game::TPassiveAbilityInfoStorage* PassiveAbilityInfoStorage, const uint8_t actionBarId, QObject* parent)
     : TAssignActionDialogControllerBase(QStringLiteral("AssignPassiveAbilityActionDialog.qml"), actionBarId, parent)
+    , m_passiveAbilityInfoStorage(PassiveAbilityInfoStorage)
 {
     m_passiveAbilityListIndex = uint(-1);
-    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(game::TPassiveAbilityInfoStorage::instance());
+    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(m_passiveAbilityInfoStorage);
     m_proxy->setParent(this);
     m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
 }
@@ -957,7 +966,7 @@ void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId
 uint TAssignPassiveAbilityActionDialogController::passiveAbilityListIndex() const { return m_passiveAbilityListIndex; }
 QString TAssignPassiveAbilityActionDialogController::passiveAbilityName() const
 {
-    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    const game::TPassiveAbilityInfoStorage* storage = m_passiveAbilityInfoStorage;
     const std::optional<game::TPassiveAbilityInfo> info = storage ? storage->findInfo(uint8_t(m_passiveAbility)) : std::nullopt;
     return info ? info->name : QString();
 }
@@ -965,7 +974,7 @@ QString TAssignPassiveAbilityActionDialogController::passiveAbilityName() const
 QString TAssignPassiveAbilityActionDialogController::passiveAbilityIconUrl() const
 {
     // The selected ability's icon in the passive ability icon strip.
-    const game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    const game::TPassiveAbilityInfoStorage* storage = m_passiveAbilityInfoStorage;
     const std::optional<game::TPassiveAbilityInfo> info = storage ? storage->findInfo(uint8_t(m_passiveAbility)) : std::nullopt;
     return info ? QStringLiteral("image://passiveability-icons-32x32/%1").arg(info->iconId) : QString();
 }

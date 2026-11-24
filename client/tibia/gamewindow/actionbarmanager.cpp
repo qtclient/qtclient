@@ -130,9 +130,8 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
     }
 }
 
-config::EUseType TActionBarManager::defaultUseType(const int objectId)
+config::EUseType TActionBarManager::defaultUseType(const TAppearanceType* type)
 {
-    const TAppearanceTypePtr type = objectId > 0 ? tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, uint16_t(objectId)) : nullptr;
     if (!type)
         return config::EUseType::Use;
     // A worn container (a backpack) is used like any other object.

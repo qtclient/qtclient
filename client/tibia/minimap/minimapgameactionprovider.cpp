@@ -6,27 +6,10 @@ namespace tibia::minimap {
 
 using A = input::EGameAction;
 
-namespace {
-
-/// The marker at the field as the marker actions carry it.
-input::TMinimapMarkerData markerData(const Position& coord)
+input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coord, const TMinimapMarkerStorage* markers) const
 {
-    input::TMinimapMarkerData data{ coord, 0, {} };
-    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active()) {
-        if (const TMinimapMarkerPtr marker = markers->markerAt(worldmap::TWorldMapCoordinate(coord))) {
-            data.icon = marker->icon;
-            data.description = marker->description;
-        }
-    }
-    return data;
-}
-
-}
-
-input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coord) const
-{
-    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active(); markers && markers->markerAt(worldmap::TWorldMapCoordinate(coord)))
-        return markerActions(coord);
+    if (markers && markers->markerAt(worldmap::TWorldMapCoordinate(coord)))
+        return markerActions(markers->markerData(coord));
     return fieldActions(coord);
 }
 
@@ -42,15 +25,16 @@ input::TGameActionList TMinimapGameActionProvider::fieldActions(const Position& 
     };
 }
 
-input::TGameActionList TMinimapGameActionProvider::markerActions(const Position& coord) const
+input::TGameActionList TMinimapGameActionProvider::markerActions(const input::TMinimapMarkerData& marker) const
 {
+    const Position& coord = marker.coordinate;
     const auto movement = input::makeMovementIntent(coord, false);
     return {
         movement,
         input::makeSmartClick(movement),
         std::make_shared<input::TGameActionTeleportToCoordinate>(coord),
         std::make_shared<input::TGameActionContextMenu>(),
-        std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(markerData(coord)),
+        std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(marker),
         std::make_shared<input::TGameActionDeleteMinimapMarker>(coord),
     };
 }

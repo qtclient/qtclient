@@ -398,10 +398,20 @@ void TAuthenticationProcessController::resetSessionData()
         m_pCharacterSelectionController->setLastSelectedCharacterName(QString());
     }
     setAuthenticated(false);
-    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+    if (game::TPremiumTimeStorage* premium = premiumTimeStorage())
         premium->reset();
     if (m_host.resetSessionData)
         m_host.resetSessionData();
+}
+
+game::TPremiumTimeStorage* TAuthenticationProcessController::premiumTimeStorage() const
+{
+    return m_host.premiumTimeStorage ? m_host.premiumTimeStorage() : nullptr;
+}
+
+news::TNewsStorage* TAuthenticationProcessController::newsStorage() const
+{
+    return m_host.newsStorage ? m_host.newsStorage() : nullptr;
 }
 
 std::vector<gamewindow::TCharacterLoginData> TAuthenticationProcessController::characterLoginData() const
@@ -583,13 +593,13 @@ void TAuthenticationProcessController::onShowCharacterSelectionStateEntered()
     const TCharacterList characters = m_pLoginRequestUploader->characters();
     m_loginData.sessionKey = m_pLoginRequestUploader->playSessionData().sessionKey;
     const TPlaySessionData session = m_pLoginRequestUploader->playSessionData();
-    if (news::TNewsStorage* news = news::TNewsStorage::current())
+    if (news::TNewsStorage* news = newsStorage())
         news->setReturnerInformation(session.isReturner, session.showRewardNews);
     // A returner's compendium news are read again.
     if (session.isReturner)
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
     setAuthenticated(true);
-    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+    if (game::TPremiumTimeStorage* premium = premiumTimeStorage())
         m_pCharacterSelectionController->setPremium(premium->premiumState(), premium->remainingDays());
     m_pCharacterSelectionController->setAccountState(static_cast<int>(session.status));
     m_pCharacterSelectionController->setCharacters(characters, m_pLoginRequestUploader->worlds());
@@ -691,7 +701,7 @@ void TAuthenticationProcessController::onLoginAbortedStateEntered()
     m_pLoginConfirmationCodeEnterTextDialogController->dialog()->close();
     if (!m_pGameSession) {
         resetSessionData();
-        if (news::TNewsStorage* news = news::TNewsStorage::current())
+        if (news::TNewsStorage* news = newsStorage())
             news->resetLevels();
     }
     stop();
@@ -848,7 +858,7 @@ void TAuthenticationProcessController::onPlayerDataChanged()
 {
     // The news unlock against the account's highest character, the highest
     // level ever reached and the playing character.
-    news::TNewsStorage* news = news::TNewsStorage::current();
+    news::TNewsStorage* news = newsStorage();
     if (!news)
         return;
     const TCharacterList characters = m_pLoginRequestUploader->characters();

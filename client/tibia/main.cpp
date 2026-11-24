@@ -2,7 +2,6 @@
 #include "mods/modloader.h"
 #include "mods/registry.h"
 
-#include "app/clientoptions.h"
 #include "app/launcherenv.h"
 #include "app/loginsplash.h"
 #include "app/portalurls.h"
@@ -18,6 +17,7 @@
 #include "controllers/characterselectioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
 #ifndef TIBIA_WITH_GAMECORE
+#include "config/clientoptions.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "imageproviders/imagestripimageprovider.h"
@@ -308,7 +308,8 @@ int main(int argc, char** argv)
     // Host: without a game client the shell makes what the client's setup
     // would (the image providers, the mouse cursor and text copy controllers).
     imageproviders::registerImageProviders(engine.get());
-    gamewindow::TMouseCursorController::createInstance(engine.get(), app::ClientOptions::load().options());
+    gamewindow::TMouseCursorController::createInstance(
+        engine.get(), std::shared_ptr<config::TClientOptions>(config::TClientOptions::instance(), [](config::TClientOptions*) {}));
     gamewindow::TTextCopyController::createInstance(engine.get());
 #endif
     // Neutral placeholders; packs replace via ModContext / suite wire.
@@ -340,6 +341,8 @@ int main(int argc, char** argv)
     // qtclient's own window steps once the client window exists.
     const auto setUpHostWindow = [&](QQuickWindow* clientWindow, QQmlEngine* qmlEngine) {
         window = clientWindow;
+        // WebGL: no vertex attribute array outlives a frame (grabToImage's mid-frame finish).
+        tibia::platform::resetVertexAttribArraysAfterFrames(window);
         // QRhi::Timestamps for lastCompletedGpuTime (raycast pass GPU). Must be set before the
         // scene graph creates the RHI. weather.perf also uses rhi->finish stalls when debug.
         if (!qEnvironmentVariableIsEmpty("QTCLIENT_PERF") || !qEnvironmentVariableIsEmpty("QTCLIENT_GPU_PERF")) {

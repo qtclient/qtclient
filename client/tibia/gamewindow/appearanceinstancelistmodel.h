@@ -9,6 +9,12 @@
 #include <vector>
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
+namespace config {
+class TClientOptions;
+}
 namespace gamewindow {
 
 /// A container's slots for container.qml's grid (CIP:
@@ -36,7 +42,10 @@ public:
         DecoItemObjectIdRole,
     };
 
-    explicit TAppearanceInstanceListModel(QObject* parent = nullptr);
+    /// The loot-value frames follow `ClientOptions` (colorizeLootStyle,
+    /// gameWindowShowLootHighlighting; refreshed on its
+    /// appearanceTypeListModelOptionsChanged).
+    explicit TAppearanceInstanceListModel(config::TClientOptions* ClientOptions, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -57,11 +66,21 @@ public:
     /// The type counts follow `counts` (the session's inventory counts);
     /// nullptr detaches.
     void setObjectCountStorage(container::TObjectCountStorage* counts);
+    /// Host: the loot-value frames' prices (the session's item price storage);
+    /// nullptr shows none.
+    void setItemPriceStorage(analysers::TItemPriceStorage* prices);
     /// Every row's typeCount and countString change.
     void onObjectCountsChanged() override;
 
 private:
+    /// The loot-value frame under (style 1) or over (2) the object.
+    QString lootValueImageSource(const container::TInventorySlot& slot, int style) const;
+
     std::vector<container::TInventorySlot> m_objects;
+    QPointer<config::TClientOptions> m_clientOptions;
+    QPointer<analysers::TItemPriceStorage> m_prices;
+    QMetaObject::Connection m_pricesConfigurationChanged;
+    QMetaObject::Connection m_pricesMarketAvailable;
     QMetaObject::Connection m_objectCountsChanged;
     QPointer<container::TObjectCountStorage> m_objectCounts;
     int m_minimumRows = 0;

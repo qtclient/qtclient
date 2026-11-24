@@ -89,6 +89,8 @@ public:
     void setObjectInfoName(const QString& objectInfoName);
     /// The object instance of the shown slot.
     const appearances::TObjectAppearanceInstanceTypeID& objectInstance() const { return shown()->m_objectInstance; }
+    /// The session's appearance instance factory (null without a session).
+    const std::shared_ptr<appearances::TAppearanceInstanceFactory>& appearanceInstanceFactory() const { return m_appearanceInstanceFactory; }
     /// The shown slot's object as the tooltip names it: the server's name
     /// (with the tier when it has one), else a placeholder.
     QString objectTooltipName() const;

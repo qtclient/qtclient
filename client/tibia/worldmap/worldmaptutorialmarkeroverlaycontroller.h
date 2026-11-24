@@ -40,8 +40,6 @@ public:
     explicit TWorldMapTutorialMarkerOverlayController(QQuickItem* overlay, QObject* parent = nullptr);
     ~TWorldMapTutorialMarkerOverlayController() override;
 
-    static TWorldMapTutorialMarkerOverlayController* instance();
-
     QQuickItem* overlay() const { return m_overlay; }
     /// The markers are placed with the session's viewport and camera; without
     /// a session they are no longer placed.
@@ -66,8 +64,6 @@ private:
     std::map<int, Position> m_markerFields;
     /// The shown marker items by marker id.
     std::map<int, QPointer<qmlcomponents::TTutorialMarkerQuickItem>> m_markerItems;
-
-    static TWorldMapTutorialMarkerOverlayController* s_instance;
 };
 
 }

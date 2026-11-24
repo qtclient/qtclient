@@ -735,6 +735,9 @@ public:
     explicit TAppearanceInstanceFactory(std::shared_ptr<TAppearancesManager> AppearancesManager);
     ~TAppearanceInstanceFactory();
 
+    /// The manager the factory makes its instances from.
+    const std::shared_ptr<TAppearancesManager>& appearancesManager() const { return m_pAppearancesManager; }
+
     /// Host: the game client's factory while a client exists (install), else
     /// one factory over the process-wide appearances manager. For code that
     /// does not hold the factory CipSoft hands it.

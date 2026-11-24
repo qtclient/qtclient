@@ -63,15 +63,17 @@ QString trackedItemName(const uint16_t objectType)
     return qtTrId("dummy_unknown");
 }
 
-TItemTrackingStorage::TItemTrackingStorage(analysers::TItemPriceStorage* prices, QObject* parent)
+TItemTrackingStorage::TItemTrackingStorage(analysers::TItemPriceStorage* prices,
+                                           std::shared_ptr<config::TClientOptions> clientOptions, QObject* parent)
     : cip::tibia::cyclopedia::TItemTrackingStorage(parent)
     , m_prices(prices)
+    , m_clientOptions(std::move(clientOptions))
 {
     if (m_prices)
         connect(m_prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemTrackingStorage::onMarketPricesAvailable);
-    if (config::TClientOptions* options = config::TClientOptions::instance()) {
-        m_colorizeLootStyle = options->colorizeLootStyle();
-        connect(options, &config::TClientOptions::itemTrackingStorageOptionsChanged, this,
+    if (m_clientOptions) {
+        m_colorizeLootStyle = m_clientOptions->colorizeLootStyle();
+        connect(m_clientOptions.get(), &config::TClientOptions::itemTrackingStorageOptionsChanged, this,
                 &TItemTrackingStorage::onItemTrackingStorageOptionsChanged);
     }
     m_updateSignalTimer.setInterval(UpdateSignalIntervalMs);
@@ -310,7 +312,8 @@ void TItemTrackingStorage::onUpdateSignalTimerExpired()
 
 void TItemTrackingStorage::onItemTrackingStorageOptionsChanged()
 {
-    m_colorizeLootStyle = config::TClientOptions::instance()->colorizeLootStyle();
+    if (m_clientOptions)
+        m_colorizeLootStyle = m_clientOptions->colorizeLootStyle();
 }
 
 void TItemTrackingStorage::setPremiumTimeStorage(game::TPremiumTimeStorage* storage) { m_premiumTimeStorage = storage; }

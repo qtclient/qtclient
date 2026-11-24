@@ -29,9 +29,8 @@ namespace {
 
 using A = input::EGameAction;
 
-bool isPremiumPlayer()
+bool isPremiumPlayer(const game::TPremiumTimeStorage* premium)
 {
-    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
     return premium && premium->isPremium();
 }
 
@@ -309,9 +308,9 @@ QString TImpactWidgetController::dpsString() const { return rateString(damagePer
 
 QString TImpactWidgetController::hpsString() const { return rateString(healingPerSecond()); }
 
-bool TImpactWidgetController::isDpsGaugeVisible() const { return m_storage->gaugeVisible(TImpactStorage::Damage) && isPremiumPlayer(); }
+bool TImpactWidgetController::isDpsGaugeVisible() const { return m_storage->gaugeVisible(TImpactStorage::Damage) && isPremiumPlayer(m_premiumTimeStorage); }
 
-bool TImpactWidgetController::isHpsGaugeVisible() const { return m_storage->gaugeVisible(TImpactStorage::Healing) && isPremiumPlayer(); }
+bool TImpactWidgetController::isHpsGaugeVisible() const { return m_storage->gaugeVisible(TImpactStorage::Healing) && isPremiumPlayer(m_premiumTimeStorage); }
 
 double TImpactWidgetController::dpsTargetValue() const { return m_storage->gaugeTarget(TImpactStorage::Damage); }
 
@@ -321,9 +320,9 @@ QString TImpactWidgetController::dpsTargetValueString() const { return rateStrin
 
 QString TImpactWidgetController::hpsTargetValueString() const { return rateString(hpsTargetValue()); }
 
-bool TImpactWidgetController::isDpsGraphVisible() const { return m_storage->graphVisible(TImpactStorage::Damage) && isPremiumPlayer(); }
+bool TImpactWidgetController::isDpsGraphVisible() const { return m_storage->graphVisible(TImpactStorage::Damage) && isPremiumPlayer(m_premiumTimeStorage); }
 
-bool TImpactWidgetController::isHpsGraphVisible() const { return m_storage->graphVisible(TImpactStorage::Healing) && isPremiumPlayer(); }
+bool TImpactWidgetController::isHpsGraphVisible() const { return m_storage->graphVisible(TImpactStorage::Healing) && isPremiumPlayer(m_premiumTimeStorage); }
 
 double TImpactWidgetController::dpsGraphMaxY() const { return m_dpsGraphMaxY; }
 
@@ -359,7 +358,7 @@ void TImpactWidgetController::onShowContextMenu()
     connect(menu->addCustomEntry(qtTrId("impact_reset_all_time")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         m_storage->resetAllTimeMax();
     });
-    const bool premium = isPremiumPlayer();
+    const bool premium = isPremiumPlayer(m_premiumTimeStorage);
     const bool session = m_storage->showSessionValues();
     connect(menu->addCustomEntry(qtTrId(session ? "impact_show_recent_values" : "impact_show_session_values")),
             &gamewindow::TContextMenuEntryItem::triggered, this, [this, session] { m_storage->setShowSessionValues(!session); });
@@ -409,7 +408,7 @@ void TImpactWidgetController::addGraphEntry(const TImpactStorage::Kind kind, con
 void TImpactWidgetController::setVisibleIfPremium(void (TImpactStorage::*set)(TImpactStorage::Kind, bool), const TImpactStorage::Kind kind,
                                                   const bool visible)
 {
-    if (isPremiumPlayer())
+    if (isPremiumPlayer(m_premiumTimeStorage))
         (m_storage->*set)(kind, visible);
     else
         Q_EMIT publishGameAction(premiumStoreAction());
@@ -421,7 +420,7 @@ void TImpactWidgetController::onShowDpsGaugeContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGaugeEntries(TImpactStorage::Damage, isPremiumPlayer());
+    addGaugeEntries(TImpactStorage::Damage, isPremiumPlayer(m_premiumTimeStorage));
     menu->showCustomMenu();
 }
 
@@ -431,7 +430,7 @@ void TImpactWidgetController::onShowHpsGaugeContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGaugeEntries(TImpactStorage::Healing, isPremiumPlayer());
+    addGaugeEntries(TImpactStorage::Healing, isPremiumPlayer(m_premiumTimeStorage));
     menu->showCustomMenu();
 }
 
@@ -441,7 +440,7 @@ void TImpactWidgetController::onShowDpsGraphContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGraphEntry(TImpactStorage::Damage, isPremiumPlayer());
+    addGraphEntry(TImpactStorage::Damage, isPremiumPlayer(m_premiumTimeStorage));
     menu->showCustomMenu();
 }
 
@@ -451,7 +450,7 @@ void TImpactWidgetController::onShowHpsGraphContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGraphEntry(TImpactStorage::Healing, isPremiumPlayer());
+    addGraphEntry(TImpactStorage::Healing, isPremiumPlayer(m_premiumTimeStorage));
     menu->showCustomMenu();
 }
 
@@ -923,7 +922,7 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
                         s && s->cyclopediaProtocolMessageHandler())
                         s->cyclopediaProtocolMessageHandler()->sendResetPartyHuntAnalyser();
                 });
-        if (isPremiumPlayer())
+        if (isPremiumPlayer(m_premiumTimeStorage))
             connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 0 ? "partyhunt_set_loot_type_leader" : "partyhunt_set_loot_type_market")),
                     &gamewindow::TContextMenuEntryItem::triggered, this,
                     [this] {

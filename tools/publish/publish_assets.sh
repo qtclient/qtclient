@@ -79,8 +79,11 @@ publish_things() {
     echo "[assets] WARN: no CIP minimap/ (or minimap.otmm) under $src — CipSoft starts with an empty map" >&2
   fi
 
-  # CIP satellite-/minimap-*.bmp.lzma chunks and the backdrop map stay out.
-  # Only the catalog's appearances ship (older ones linger after an extract).
+  # CIP satellite-/minimap-*.bmp.lzma chunks are not catalog assets and stay out.
+  # Every catalog file ships (CipSoft's asset manager loads all of them; a missing
+  # one is a broken install: "Update failed. Please reinstall"), including the
+  # fullmap backdrop. Only the catalog's appearances ship (older ones linger after
+  # an extract).
   local appearances
   appearances="$(python3 -c 'import json,sys; print(next(e["file"] for e in json.load(open(sys.argv[1])) if e.get("type") == "appearances"))' \
     "$src/catalog-content.json")"
@@ -93,9 +96,20 @@ publish_things() {
   trap cleanup_tree RETURN
   # CipSoft: Resources/minimap is a sibling of Resources/assets (not nested under assets).
   rsync -a --delete --exclude 'minimap-*.bmp.lzma' --exclude 'satellite-*.bmp.lzma' \
-    --exclude 'backdrop_map-*' --exclude 'sounds' --exclude 'graphics_resources.rcc' \
+    --exclude 'sounds' --exclude 'graphics_resources.rcc' \
     --exclude 'minimap' --exclude 'minimap.otmm' \
     --include "$appearances" --exclude 'appearances-*' "$src/" "$assets_dir/"
+
+  # Every catalog file must be in the package (CipSoft's asset manager fails the
+  # install otherwise).
+  python3 - "$src/catalog-content.json" "$assets_dir" <<'PY'
+import json, sys
+from pathlib import Path
+catalog, root = sys.argv[1], Path(sys.argv[2])
+missing = [e["file"] for e in json.load(open(catalog)) if not (root / e["file"]).is_file()]
+if missing:
+    sys.exit(f"[assets] catalog files missing from the package: {missing[:5]} (+{max(0, len(missing) - 5)})")
+PY
 
   # Engine UI art — CIP ships this in the client package; keep it on the assets
   # tip too so WASM/desktop Play has chrome before the engine slice is complete.

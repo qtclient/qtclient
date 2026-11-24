@@ -31,7 +31,8 @@ class TSpellListWidgetController final
 {
     Q_OBJECT
 public:
-    TSpellListWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TSpellListWidgetController(spells::TSpellInfoStorage* SpellInfoStorage, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                               QObject* parent = nullptr);
 
     /// Follows the session's spell list widget options (applied at once) and
     /// hands the session to the spell list.

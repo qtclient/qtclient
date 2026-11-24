@@ -23,9 +23,6 @@ namespace tibia::proficiency {
 
 namespace {
 
-
-TProficiencyStorage* g_instance = nullptr;
-
 /// CIP DAT_1022f530c / / (also .. and ..): crossbows,
 /// knight-only weapons, the rest.
 constexpr std::array<uint32_t, 10> CrossbowXP { 0, 600, 8000, 30000, 150000, 650000, 2500000, 10000000, 20000000, 30000000 };
@@ -206,7 +203,6 @@ const TShapedSlot* TProficiencyData::shapedSlot(const int level, const int perk)
 TProficiencyStorage::TProficiencyStorage(std::shared_ptr<appearances::TAppearancesManager> appearancesManager)
     : m_appearancesManager(std::move(appearancesManager))
 {
-    g_instance = this;
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int) { Q_EMIT resourceBalanceChanged(); });
 }
@@ -221,13 +217,7 @@ void TProficiencyStorage::clear()
     Q_EMIT unspentPerkChanged();
 }
 
-TProficiencyStorage::~TProficiencyStorage()
-{
-    if (g_instance == this)
-        g_instance = nullptr;
-}
-
-TProficiencyStorage* TProficiencyStorage::instance() { return g_instance; }
+TProficiencyStorage::~TProficiencyStorage() = default;
 
 void TProficiencyStorage::setProficiencyData(const uint16_t typeId, TProficiencyData data)
 {

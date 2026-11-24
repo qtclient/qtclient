@@ -389,7 +389,7 @@ void TSkillWheelPageController::validatePresets()
     if (!hasOwnWheel())
         return;
     const std::map<QString, TWheel> presets = m_storage->presets();
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     const int vocation = session && session->playerData() ? session->playerData()->vocation() % 10 : 0;
     std::map<QString, TWheel> valid;
     bool changed = false;

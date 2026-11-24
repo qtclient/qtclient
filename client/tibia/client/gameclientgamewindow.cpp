@@ -456,9 +456,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     Q_EMIT gameWindowController->bindFocusToChatInput();
             });
     // Before the dialogs: the Cyclopedia item page and the loot widgets read its item storages.
-    g.analyserStorages = std::make_unique<analysers::TAnalyserStorages>();
+    g.analyserStorages = std::make_unique<analysers::TAnalyserStorages>(m_pItemPriceStorage, m_pPremiumTimeStorage);
     g.dragAndDrop = std::make_unique<gamewindow::TDragAndDropController>(
-        window->contentItem(), gameWindowController->gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
+        window->contentItem(), gameWindowController->gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")),
+        appearanceInstanceFactory());
     g.dragAndDrop->registerContextProperty(engine->rootContext());
 
     // CIP: lenshelp mode and its popup over the game window's main frame.
@@ -481,7 +482,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // CIP: the action bar manager takes the client options, the client's
     // premium time storage and the spell table; the three groups (bottom,
     // left, right) are made here and added to it.
-    g.actionBars = std::make_unique<gamewindow::TActionBarManager>(config::TClientOptions::instance(),
+    g.actionBars = std::make_unique<gamewindow::TActionBarManager>(clientOptions(),
                                                                    m_pPremiumTimeStorage.get(), spellInfoStorage());
     {
         const std::array<std::pair<gamewindow::EActionBarPosition, const char*>, 3> actionBarContainers{
@@ -492,7 +493,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         for (const auto& [position, name] : actionBarContainers) {
             QQuickItem* container = gameWindowItem ? gameWindowItem->findChild<QQuickItem*>(QLatin1String(name)) : nullptr;
             g.actionBars->addGroup(std::make_shared<gamewindow::TActionBarGroup>(container, engine, dialogParentItem, mapWindowPane,
-                                                                                 config::TClientOptions::instance(),
+                                                                                 clientOptions(),
                                                                                  &chat->chatModeManager(), spellInfoStorage(),
                                                                                  passiveAbilityInfoStorage(), position));
         }
@@ -604,14 +605,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // portal url handler maps the tibia.com hosts, www.test.tibia.com among them).
     g.skillWheelDialog = std::make_unique<skillwheel::TSkillWheelDialogController>(
         tibiaConfig()->wheelOfDestinyPlannerDirectUrl().toString(), engine, dialogParentItem);
-    m_pWeaponProficiencyDialogController =
-        std::make_unique<proficiency::TWeaponProficiencyDialogController>(clientOptions(), engine, dialogParentItem);
+    m_pWeaponProficiencyDialogController = std::make_unique<proficiency::TWeaponProficiencyDialogController>(
+        clientOptions(), proficiencyStorage(), engine, dialogParentItem);
     m_pWeaponProficiencyShapeDialogController =
-        std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(engine, dialogParentItem);
+        std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(proficiencyStorage(), engine, dialogParentItem);
     m_pWeaponProficiencyShapeOptionsDialogController =
         std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>(engine, dialogParentItem);
     m_pWeaponProficiencyReshapeDialogController = std::make_unique<proficiency::TWeaponProficiencyReshapeDialogController>(
-        engine, dialogParentItem, m_pWeaponProficiencyShapeDialogController.get());
+        proficiencyStorage(), engine, dialogParentItem, m_pWeaponProficiencyShapeDialogController.get());
     // CIP: the event schedule from the client services, its storage and the
     // calendar that shows it.
     g.eventsUploader = news::TEventsUploader::create(clientWebService, tibiaFileSystemHelper(),
@@ -807,17 +808,17 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     containers->setLootScheme(lootScheme);
     sidebarWidgets->setControlScheme(controlScheme);
     m_pCyclopediaDialogController->setControlScheme(controlScheme);
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, gameWindowItem,
-            [this, &g](const QString& name) {
+    connect(clientOptions(), &config::TClientOptions::optionChanged, gameWindowItem,
+            [this, &g](const config::EClientOption id) {
                 const QJsonObject opts = app::ClientOptions::load().options();
-                if (name == QLatin1String("controlSchemeIndex")) {
-                    const int scheme = config::controlSchemeForListModelIndex(opts.value(name).toInt(0));
+                if (id == config::EClientOption::controlSchemeIndex) {
+                    const int scheme = config::controlSchemeForListModelIndex(opts.value(QLatin1String("controlSchemeIndex")).toInt(0));
                     if (m_pGameActionMapper)
                         m_pGameActionMapper->setControlScheme(scheme);
                     g.containers->setControlScheme(scheme);
                     g.sidebarWidgets->setControlScheme(scheme);
-                } else if (name == QLatin1String("lootSchemeIndex")) {
-                    const int scheme = config::lootSchemeForListModelIndex(opts.value(name).toInt(0));
+                } else if (id == config::EClientOption::lootSchemeIndex) {
+                    const int scheme = config::lootSchemeForListModelIndex(opts.value(QLatin1String("lootSchemeIndex")).toInt(0));
                     if (m_pGameActionMapper)
                         m_pGameActionMapper->setLootScheme(scheme);
                     g.containers->setLootScheme(scheme);
@@ -966,6 +967,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     handleFromRouter(g.actionBars.get());
     handleFromRouter(m_pRewardWallDialogController.get());
     handleFromRouter(g.inspectObjectDialog.get());
+    handleFromRouter(g.characterTradeDialog.get());
     handleFromRouter(m_pCyclopediaDialogController.get());
     handleFromRouter(m_pTaskboardDialogController.get());
     handleFromRouter(g.socialDialog.get());
@@ -996,7 +998,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     handleFromRouter(g.sessionBootstrap.get());
     // CIP: the action bars restore their last configuration once connected.
     g.actionBars->restoreLastAktionBarConfiguration();
-    qmlcomponents::followSoundOptions();
+    qmlcomponents::followSoundOptions(clientOptions());
     // Host: the session starts once every controller exists and hears the
     // router, so login errors can show (a replay's session connects them
     // when it becomes the current one).
@@ -1213,6 +1215,11 @@ gamewindow::TGameWindowController* TGameClient::gameWindowController() const
 gamewindow::TSidebarManager* TGameClient::sidebarManager() const
 {
     return m_gameWindow ? m_gameWindow->sidebarManager.get() : nullptr;
+}
+
+screenshot::TScreenshotManager* TGameClient::screenshotManager() const
+{
+    return m_gameWindow ? m_gameWindow->screenshotManager.get() : nullptr;
 }
 
 gamewindow::TTargetSelectionController* TGameClient::targetSelectionController() const

@@ -13,6 +13,15 @@
 struct CyclopediaCharacterItemSummary;
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
+namespace appearances {
+class TAppearancesManager;
+}
+namespace config {
+class TClientOptions;
+}
 namespace gamewindow {
 
 /// CIP: one 0x38-byte TCharacterInfoStorage item summary row (+0x98).
@@ -32,7 +41,9 @@ struct ItemSummaryEntry
 
 /// CIP case 6: the five wire lists merged into one row per
 /// (type, tier), kept sorted by type then tier .
-std::vector<ItemSummaryEntry> mergeItemSummary(const CyclopediaCharacterItemSummary& data);
+/// The names are `appearances`' and the loot value levels `prices`' (none without them).
+std::vector<ItemSummaryEntry> mergeItemSummary(const CyclopediaCharacterItemSummary& data, appearances::TAppearancesManager* appearancesManager,
+                                               analysers::TItemPriceStorage* prices);
 
 /// CIP: TItemSummaryModel (vtable , roles , data
 /// ).
@@ -54,7 +65,8 @@ public:
         LootValueSourceOver,
     };
 
-    TItemSummaryModel(std::vector<ItemSummaryEntry> entries, QObject* parent);
+    /// The loot-value frames follow `clientOptions`' colorizeLootStyle.
+    TItemSummaryModel(std::vector<ItemSummaryEntry> entries, const config::TClientOptions* clientOptions, QObject* parent);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -62,6 +74,7 @@ public:
 
 private:
     std::vector<ItemSummaryEntry> m_entries;
+    const config::TClientOptions* m_clientOptions;
 };
 
 /// CIP: TItemSummaryModelSortFilterProxy (ctor , vtable
@@ -69,7 +82,7 @@ private:
 class TItemSummaryModelSortFilterProxy final : public cip::tibia::gamewindow::TItemSummaryModelSortFilterProxy
 {
 public:
-    TItemSummaryModelSortFilterProxy(std::vector<ItemSummaryEntry> entries, QObject* parent);
+    TItemSummaryModelSortFilterProxy(std::vector<ItemSummaryEntry> entries, const config::TClientOptions* clientOptions, QObject* parent);
 
     /// CIP ...
     void setShowInventory(bool v) override;

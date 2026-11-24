@@ -193,6 +193,8 @@ void tibia::gamewindow::TSidebarPanelsManager::connectToGameSession(const std::s
         minimapController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
     if (m_hitpointManabar)
         m_hitpointManabar->connectToGameSession(GameSession);
+    if (m_inventory)
+        m_inventory->connectToGameSession(GameSession);
     if (m_buttonBar)
         m_buttonBar->connectToGameSession(GameSession);
 }

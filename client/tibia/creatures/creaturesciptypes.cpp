@@ -10,7 +10,7 @@
 #include <client/staticdata.h>
 
 #include "appearances/appearanceinstance.h"
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "creatures/creatureprotocolapply.h"
 #include "clockservice.h"
 #include "protocol/protocolciptypes.h"
@@ -59,9 +59,9 @@ Position positionFromPb(const ::tibia::protobuf::protocol::ProtocolCoordinate& c
 
 namespace {
 
-bool showAttackAnimationOption()
+bool showAttackAnimationOption(const config::TClientOptions* options)
 {
-    return app::ClientOptions::load().options().value(QLatin1String("gameWindowShowAttackAnimation")).toBool(true);
+    return !options || options->boolOption(config::EClientOption::gameWindowShowAttackAnimation);
 }
 
 /// The attack animation of a weapon type (1 fist, 2 sword, 3 club, 4 axe, 5 distance, 6 wand).
@@ -105,11 +105,13 @@ TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(
     , m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
     , m_clockService(std::move(clockService))
     , m_clientOptions(std::move(clientOptions))
-    , m_showAttackAnimation(showAttackAnimationOption())
+    , m_showAttackAnimation(showAttackAnimationOption(m_clientOptions.get()))
 {
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("gameWindowShowAttackAnimation"))
-            m_showAttackAnimation = showAttackAnimationOption();
+    if (!m_clientOptions)
+        return;
+    connect(m_clientOptions.get(), &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+        if (id == config::EClientOption::gameWindowShowAttackAnimation)
+            m_showAttackAnimation = showAttackAnimationOption(m_clientOptions.get());
     });
 }
 
@@ -137,12 +139,13 @@ void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creature
         // The swing points from the player towards the attacked creature.
         const auto player = storage->player();
         const uint16_t effectId = attackAnimationEffect(value);
-        if (!player || !effectId || !tibia::appearances::TAppearancesManager::instance().isValidDatId(effectId, ThingCategoryEffect))
+        if (!player || !effectId || !m_appearanceInstanceFactory
+            || !m_appearanceInstanceFactory->appearancesManager()->isValidDatId(effectId, ThingCategoryEffect))
             break;
         const Position& from = player->position();
         const Position& at = creature->position();
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
-        const auto effect = appearances::TAppearanceInstanceFactory::installed()->createDirectionalFieldEffect(
+        const auto effect = m_appearanceInstanceFactory->createDirectionalFieldEffect(
             effectId, at, direction, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         if (m_worldMapStorage)
             m_worldMapStorage->addEffectAppearance(effect, at);

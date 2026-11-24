@@ -36,7 +36,6 @@ const game::TGameSessionBase* playerSession()
 }
 
 using A = input::EGameAction;
-using Cursor = TMouseCursorController;
 
 /// The context menu of a minimap field is "create mark", that of a marker
 /// "edit mark" and "delete mark". The fields' actions here already carry the
@@ -317,7 +316,7 @@ void TMinimapController::dispatchClick(const input::TGameActionList& actions, co
 void TMinimapController::onMinimapClick(const int x, const int y, const int triggeringMouseButton, const Qt::KeyboardModifiers modifiers)
 {
     m_mouse = QPoint(x, y);
-    dispatchClick(m_actions.actionsAt(m_area.itemToWorld(m_mouse)), triggeringMouseButton, static_cast<int>(modifiers),
+    dispatchClick(m_actions.actionsAt(m_area.itemToWorld(m_mouse), m_markerStorage), triggeringMouseButton, static_cast<int>(modifiers),
                   FieldContextMenuOrder);
 }
 
@@ -329,7 +328,8 @@ void TMinimapController::onMinimapMarkerClick(QObject* pMinimapMarkerQmlRenderIn
     if (!info)
         return;
     const minimap::TMinimapMarker marker = info->marker();
-    dispatchClick(m_actions.markerActions(marker.coordinate.toPosition()), TriggeringMouseButton, static_cast<int>(Modifiers),
+    dispatchClick(m_actions.markerActions(input::TMinimapMarkerData{ marker.coordinate.toPosition(), marker.icon, marker.description }),
+                  TriggeringMouseButton, static_cast<int>(Modifiers),
                   MarkerContextMenuOrder);
 }
 
@@ -344,15 +344,15 @@ void TMinimapController::updateMouseCursor()
 {
     // CIP : stop hover candidates while a modal dialog is open.
     if (TDialogStackController* dialogs = TDialogStackController::instance(); dialogs && !dialogs->isEmpty()) {
-        if (auto* cursor = Cursor::instance())
-            cursor->setLayerShape(Cursor::Minimap, Cursor::Default);
+        if (auto* cursor = TMouseCursorController::instance())
+            cursor->setLayerShape(TMouseCursorController::Minimap, TMouseCursorController::Default);
         return;
     }
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::IGameActionPtr action = m_pGameActionMapper->map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
-    const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
-    if (auto* cursor = Cursor::instance())
-        cursor->setLayerShape(Cursor::Minimap, shape);
+    const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : TMouseCursorController::Default;
+    if (auto* cursor = TMouseCursorController::instance())
+        cursor->setLayerShape(TMouseCursorController::Minimap, shape);
 }
 
 // CIP .
@@ -462,7 +462,7 @@ bool TMinimapController::crosshairIsDark() const
 
 input::TGameActionList TMinimapController::actionsAtMouse() const
 {
-    return m_actions.actionsAt(m_area.itemToWorld(m_mouse));
+    return m_actions.actionsAt(m_area.itemToWorld(m_mouse), m_markerStorage);
 }
 
 }

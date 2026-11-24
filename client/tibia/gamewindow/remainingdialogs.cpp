@@ -1,5 +1,4 @@
 #include "remainingdialogs.h"
-#include "game/currentgamesession.h"
 #include "protocol/clientmessages.h"
 #include "shared/experiencegainchangetracker.h"
 #include "colorhelper.h"
@@ -168,8 +167,6 @@ void TCharacterAuctionConfiguration::reset()
     Q_EMIT configurationChanged();
 }
 
-TCharacterTradeDialogController* TCharacterTradeDialogController::s_instance = nullptr;
-
 TCharacterTradeDialogController::TCharacterTradeDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("charactertrade/CharacterTradeDialog.qml"), Engine, DialogParentItem, parent)
     , m_auction(new TCharacterAuctionConfiguration(this))
@@ -180,7 +177,6 @@ TCharacterTradeDialogController::TCharacterTradeDialogController(QQmlEngine* Eng
     , m_overviewHighlights(new TTextualHighlightsAbstractListModel(this))
     , m_overviewItems(new TItemHighlightsAbstractListModel(this))
 {
-    s_instance = this;
     m_auctionConfiguration = m_auction;
     m_characterData = new TQMLCharacterData(this);
     m_conditionsModel = m_conditions;
@@ -206,16 +202,12 @@ void TCharacterTradeDialogController::connectToGameSession(const std::shared_ptr
         connect(m_storage, &trade::TCharacterTradeStorage::infoUpdated, this, &TCharacterTradeDialogController::onInfoUpdated));
 }
 
-TCharacterTradeDialogController* TCharacterTradeDialogController::instance()
-{
-    return s_instance;
-}
+TCharacterTradeDialogController::~TCharacterTradeDialogController() = default;
 
-TCharacterTradeDialogController::~TCharacterTradeDialogController()
+void TCharacterTradeDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
-    // Host: the game window's dialog goes with the game window.
-    if (s_instance == this)
-        s_instance = nullptr;
+    if (pGameAction && pGameAction->gameActionType() == input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG)
+        showDialog();
 }
 
 QObject* TCharacterTradeDialogController::characterData() const
@@ -274,12 +266,10 @@ void TCharacterTradeDialogController::showDialog()
 {
     dialog()->create();
     dialog()->show();
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session)
+    if (m_gameSession) {
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
-        session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(1);
+    }
     m_hasUnfulfilledConditions = true;
     m_hasConfirmationError = true;
     m_auction->reset();
@@ -349,7 +339,7 @@ TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController:
 
 void TCharacterTradeDialogController::requestConditions()
 {
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
     m_hasUnfulfilledConditions = true;
@@ -359,7 +349,7 @@ void TCharacterTradeDialogController::requestConditions()
 void TCharacterTradeDialogController::requestCheckConfiguration()
 {
     const TConfiguration config = configuration();
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(2, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
     m_hasConfirmationError = true;
@@ -369,7 +359,7 @@ void TCharacterTradeDialogController::requestCheckConfiguration()
 void TCharacterTradeDialogController::requestConfirmConfiguration()
 {
     const TConfiguration config = configuration();
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session)
         tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(3, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
 }
@@ -939,8 +929,6 @@ void TMainCharacterChangeDialogController::requestMainCharChange(const QString& 
     closeDialog();
 }
 
-TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::s_instance = nullptr;
-
 namespace {
 
 using OfflineTrainingSkill = cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType;
@@ -961,7 +949,6 @@ TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QQm
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), Engine, DialogParentItem, parent)
     , m_skillsWidgetEntryUpdater(std::make_shared<shared::TExperienceGainChangeTracker>())
 {
-    s_instance = this;
     m_skillsWidgetEntryUpdater.setPrecisePercent(true);
 }
 
@@ -983,13 +970,6 @@ void TMultiOfflineTrainingDialogController::connectToGameSession(const std::shar
 TMultiOfflineTrainingDialogController::~TMultiOfflineTrainingDialogController()
 {
     clearSkillsModel();
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::instance()
-{
-    return s_instance;
 }
 
 QList<QObject*> TMultiOfflineTrainingDialogController::skillsModel() const { return m_skillsModel; }
@@ -1049,12 +1029,9 @@ void TMultiOfflineTrainingDialogController::startOfflineTraining(
     closeDialog();
 }
 
-TOutfitMemorialDialogController* TOutfitMemorialDialogController::s_instance = nullptr;
-
 TOutfitMemorialDialogController::TOutfitMemorialDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("OutfitMemorialDialog.qml"), Engine, DialogParentItem, parent)
 {
-    s_instance = this;
 }
 
 void TOutfitMemorialDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -1070,11 +1047,6 @@ void TOutfitMemorialDialogController::connectToGameSession(const std::shared_ptr
     m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
                                                &game::TGameProtocolMessageHandler::requestOpenOutfitMemorialDialog,
                                                this, &TOutfitMemorialDialogController::showMemorial));
-}
-
-TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
-{
-    return s_instance;
 }
 
 void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& data)
@@ -1126,24 +1098,14 @@ void TReturnerRewardDialogController::onContinueClicked()
     Q_EMIT dialogClosed();
 }
 
-TShowImageDialogController* TShowImageDialogController::s_instance = nullptr;
-
 TShowImageDialogController::TShowImageDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : TDialogController(QStringLiteral("ShowImageDialog.qml"), Engine, DialogParentItem, parent)
 {
-    s_instance = this;
 }
 
 TShowImageDialogController::~TShowImageDialogController()
 {
     setData({});
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TShowImageDialogController* TShowImageDialogController::instance()
-{
-    return s_instance;
 }
 
 void TShowImageDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
@@ -1355,7 +1317,7 @@ void TSoulSealsDialogController::onFightConfirmed()
 {
     if (!m_gameSession)
         return;
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && static_cast<uint16_t>(m_selectedMonsterRaceID) != 0)
         tibia::protocol::gameclient::sendSoulSealsAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
     closeDialog();

@@ -2,11 +2,9 @@
 #include "game/gamesessionbase.h"
 #include <client/staticdata.h>
 
-#include "app/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "chat/chatgameactionhandler.h"
 #include "protocol/protocolciptypes.h"
-#include "config/clientoptiondefaults.h"
 #include "config/clientoptions.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/vipstorage.h"
@@ -92,12 +90,6 @@ enum Mode : int
 /// Missing key → CIP default from (option id table; 0x1a
 /// openNewPrivateMessagesInNewTab = 0, 0x1b..0x20 / 0x45..0x46 console and
 /// spell filters = 1).
-bool option(const QJsonObject& options, const char* name)
-{
-    const QLatin1String key(name);
-    return options.value(key).toBool(config::defaultClientOptions().value(key).toBool());
-}
-
 }
 
 TWhiteBlacklist::TWhiteBlacklist(config::TClientOptions* pClientOptions)
@@ -277,53 +269,47 @@ void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistA
 }
 
 TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
-                                                         std::weak_ptr<::tibia::creatures::TCreature> pPlayer, QObject* parent)
+                                                         std::weak_ptr<::tibia::creatures::TCreature> pPlayer,
+                                                         std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent)
     : cip::tibia::chat::TChatProtocolMessageHandler(parent)
     , m_storage(storage)
     , m_chatStorage(chatStorage)
+    , m_clientOptions(std::move(ClientOptions))
 {
-    // CIP onChatProtocolMessageHandlerOptionsChanged .
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            [this](const QString& name) {
-                if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow"))
-                    || name == QLatin1String("openNewPrivateMessagesInNewTab") || name.endsWith(QLatin1String("MessagesEnabled"))
-                    || name == QLatin1String("ChatEnabled") || name == QLatin1String("colorizeLootStyle")) {
-                    onChatProtocolMessageHandlerOptionsChanged();
-                }
-            });
+    if (m_clientOptions) {
+        connect(m_clientOptions.get(), &config::TClientOptions::chatProtocolMessageHandlerOptionsChanged, this,
+                &TChatProtocolMessageHandler::onChatProtocolMessageHandlerOptionsChanged);
+    }
     onChatProtocolMessageHandlerOptionsChanged();
     onPlayerCreatureAddedToCreatureStorage(std::move(pPlayer));
 }
 
 TChatProtocolMessageHandler::~TChatProtocolMessageHandler() = default;
 
-void TChatProtocolMessageHandler::setOptions(const QJsonObject& options)
-{
-    m_showEventMessages = option(options, "consoleShowEventMessages");
-    m_showInfoMessages = option(options, "consoleShowInfoMessages");
-    m_showStatusMessagesOwn = option(options, "consoleShowStatusMessagesOwn");
-    m_showStatusMessagesOfOthers = option(options, "consoleShowStatusMessagesOfOthers");
-    m_showJoinLeaveMessages = option(options, "consoleShowJoinLeaveMessages");
-    m_openPrivateMessagesInNewTab = option(options, "openNewPrivateMessagesInNewTab");
-    m_showOwnSpells = option(options, "gameWindowShowOwnSpells");
-    m_showOthersSpells = option(options, "gameWindowShowOthersSpells");
-    m_showTextualEffects = option(options, "gameWindowShowTextualEffects");
-    m_colorizeLootStyle = options.value(QLatin1String("colorizeLootStyle"))
-                              .toInt(config::defaultClientOptions().value(QLatin1String("colorizeLootStyle")).toInt());
-    m_showMessages = option(options, "gameWindowShowMessages");
-    m_showPrivateMessages = option(options, "gameWindowShowPrivateMessages");
-    m_showBoostedCreatureMessages = option(options, "gameWindowShowBoostedCreatureMessages");
-    m_showOfflineTrainingMessages = option(options, "gameWindowShowOfflineTrainingMessages");
-    m_showStoreMessages = option(options, "gameWindowShowStoreMessages");
-    m_showPotionMessages = option(options, "gameWindowShowPotionMessages");
-    m_showHotkeyUsageMessages = option(options, "gameWindowShowHotkeyUsageMessages");
-    m_showLootMessages = option(options, "gameWindowShowLootMessages");
-}
-
 void TChatProtocolMessageHandler::onChatProtocolMessageHandlerOptionsChanged()
 {
-    // — options object is the CIP-named console / UI-Sounds section.
-    setOptions(app::ClientOptions::load().options());
+    if (!m_clientOptions)
+        return;
+    using O = config::EClientOption;
+    const config::TClientOptions& options = *m_clientOptions;
+    m_showEventMessages = options.boolOption(O::consoleShowEventMessages);
+    m_showInfoMessages = options.boolOption(O::consoleShowInfoMessages);
+    m_showStatusMessagesOwn = options.boolOption(O::consoleShowStatusMessagesOwn);
+    m_showStatusMessagesOfOthers = options.boolOption(O::consoleShowStatusMessagesOfOthers);
+    m_showJoinLeaveMessages = options.boolOption(O::consoleShowJoinLeaveMessages);
+    m_openPrivateMessagesInNewTab = options.boolOption(O::openNewPrivateMessagesInNewTab);
+    m_showOwnSpells = options.boolOption(O::gameWindowShowOwnSpells);
+    m_showOthersSpells = options.boolOption(O::gameWindowShowOthersSpells);
+    m_showTextualEffects = options.boolOption(O::gameWindowShowTextualEffects);
+    m_showMessages = options.boolOption(O::gameWindowShowMessages);
+    m_showPrivateMessages = options.boolOption(O::gameWindowShowPrivateMessages);
+    m_showBoostedCreatureMessages = options.boolOption(O::gameWindowShowBoostedCreatureMessages);
+    m_showOfflineTrainingMessages = options.boolOption(O::gameWindowShowOfflineTrainingMessages);
+    m_showStoreMessages = options.boolOption(O::gameWindowShowStoreMessages);
+    m_showPotionMessages = options.boolOption(O::gameWindowShowPotionMessages);
+    m_showHotkeyUsageMessages = options.boolOption(O::gameWindowShowHotkeyUsageMessages);
+    m_showLootMessages = options.boolOption(O::gameWindowShowLootMessages);
+    m_colorizeLootStyle = options.colorizeLootStyle();
 }
 
 void TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage(
@@ -628,7 +614,7 @@ void TChatProtocolMessageHandler::handleLootMessageForChannelAndStatusMessage(co
 {
     const QColor color = m_colorizeLootStyle != 0 ? QColor(Qt::white) : overlayColor(Loot);
     if (m_textStorage && m_showLootMessages && m_showMessages)
-        m_textStorage->setLookMessage(formatLootRichText(text), color, true);
+        m_textStorage->setLookMessage(formatLootRichText(text, m_colorizeLootStyle != 0 ? m_itemPrices : nullptr), color, true);
     if (m_storage.lootChannel() || m_showInfoMessages)
         m_storage.addLootEntry(color, text);
 }

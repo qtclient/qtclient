@@ -183,6 +183,7 @@ TActionBarController::TActionBarController(const uint8_t actionBarId, const EAct
     , m_chatModeManager(chatModeManager)
     , m_spellInfoStorage(spellInfoStorage)
     , m_passiveAbilityInfoStorage(passiveAbilityInfoStorage)
+    , m_engine(engine)
 {
     m_actionBarId = actionBarId;
     m_position = position;
@@ -190,10 +191,10 @@ TActionBarController::TActionBarController(const uint8_t actionBarId, const EAct
     m_buttonsDisplayOptions = &m_buttonsDisplayOptionsPage;
     m_gameWindowQuickItem = gameWindowItem;
     m_mapWindowPane = mapWindowPane;
-    m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(actionBarId);
+    m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(m_spellInfoStorage, actionBarId);
     m_objectDialog = std::make_unique<TAssignObjectActionDialogController>(actionBarId);
     m_textDialog = std::make_unique<TAssignTextActionDialogController>(actionBarId);
-    m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(actionBarId);
+    m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(m_passiveAbilityInfoStorage, actionBarId);
     m_hotkeyDialog = std::make_unique<TRecordKeyboardShortcutDialogController>();
     m_buttons.reserve(size_t(std::max(buttonCount, 0)));
     m_objectInfosTimer.setInterval(0);
@@ -314,7 +315,7 @@ void TActionBarController::applySetting(TActionButtonController* button, const S
             button->clearMultiActions();
         break;
     case Setting::TEXT: {
-        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spellOfText(setting.text);
+        const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spellOfText(setting.text) : nullptr;
         if (!spell || !setting.sendAutomatically)
             button->setText(setting.text, setting.sendAutomatically);
         else
@@ -381,7 +382,7 @@ TActionBarController::TObjectInstance TActionBarController::objectInstanceOfSett
     using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
     TObjectInstance object;
     const auto typeId = static_cast<uint16_t>(setting.objectId);
-    const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, typeId);
+    const auto* type = m_appearancesManager ? m_appearancesManager->findAppearanceType(ThingCategoryItem, typeId) : nullptr;
     TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
     if (setting.liquidType.has_value() && typeId != 0) {
         instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, uint32_t(*setting.liquidType));
@@ -458,7 +459,7 @@ bool TActionBarController::insertSpell(const int spellId, const bool newlyUnlock
         TActionButtonController* button = m_buttons[size_t(index)];
         if (!button->isShownEmpty())
             continue;
-        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+        const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
         if (!spell)
             return false;
         Setting setting;
@@ -495,6 +496,7 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
     m_objectInfoStorage.reset();
     m_inventory.reset();
     m_appearanceInstanceFactory.reset();
+    m_appearancesManager.reset();
     m_playerData.reset();
     m_actionBarOptions = nullptr;
     m_gameSession = GameSession;
@@ -529,6 +531,7 @@ void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGam
         m_gameSessionConnections.add(
             connect(m_gameSession.get(), &game::IGameSession::gameLoginSuccessful, this, &TActionBarController::onGameLoginSuccessful));
         m_appearanceInstanceFactory = session->appearanceInstanceFactory();
+        m_appearancesManager = session->appearancesManager();
         onObjectInfosChanged();
         onInventoryChanged();
         onEnableConditionsChanged();
@@ -551,8 +554,8 @@ void TActionBarController::tick(const qint64 now)
         return;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (const game::TCooldownStorage* cooldowns = session ? session->cooldownStorage().get() : nullptr) {
-        const spells::TSpellInfoStorage* spellStorage = spells::TSpellInfoStorage::instance();
-        const game::TPassiveAbilityInfoStorage* passiveAbilities = game::TPassiveAbilityInfoStorage::instance();
+        const spells::TSpellInfoStorage* spellStorage = m_spellInfoStorage;
+        const game::TPassiveAbilityInfoStorage* passiveAbilities = m_passiveAbilityInfoStorage;
         for (TActionButtonController* bar : m_buttons) {
             // The button, then its multi-action slots.
             std::vector<TActionButtonController*> buttons{ bar };
@@ -579,7 +582,7 @@ void TActionBarController::tick(const qint64 now)
                         const game::TCooldown cooldown = cooldowns->objectCooldown(objectId, now);
                         if (now <= cooldown.end)
                             button->setCooldown(cooldown.duration, cooldown.end);
-                    } else if (const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId);
+                    } else if (const auto* type = m_appearancesManager ? m_appearancesManager->findAppearanceType(ThingCategoryItem, objectId) : nullptr;
                                type && type->isMultiUse()) {
                         const game::TCooldown cooldown = cooldowns->multiUseCooldown(now);
                         if (now <= cooldown.end)
@@ -686,7 +689,9 @@ void TActionBarController::onEnableConditionsChanged()
     if (!m_objectInfoStorage || !m_playerData)
         return;
     const game::TPlayerData& player = *m_playerData;
-    const spells::TSpellInfoStorage* spellStorage = spells::TSpellInfoStorage::instance();
+    const spells::TSpellInfoStorage* spellStorage = m_spellInfoStorage;
+    if (!spellStorage)
+        return;
     // The vocation, promotion and powerless rules a spell and a rune share.
     const auto castAllowed = [&player](const spells::TSpellCastParameters& cast) {
         if (!cast.vocations.contains(player.vocation()))
@@ -710,7 +715,7 @@ void TActionBarController::onEnableConditionsChanged()
                 if (action->objectID() == 0)
                     break;
                 const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
-                const auto* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, instance.typeId);
+                const auto* type = m_appearancesManager ? m_appearancesManager->findAppearanceType(ThingCategoryItem, instance.typeId) : nullptr;
                 uint count = uint(m_objectInfoStorage->count(instance));
                 if (const std::optional<uint16_t> counterpart = type ? type->expireCounterpart() : std::nullopt)
                     count += uint(m_objectInfoStorage->count(TObjectAppearanceInstanceTypeID::plain(*counterpart)));
@@ -741,8 +746,8 @@ void TActionBarController::onEnableConditionsChanged()
                 const auto ability = uint8_t(action->passiveAbility());
                 bool enabled = false;
                 const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-                if (const game::TCooldownStorage* cooldowns = session ? session->cooldownStorage().get() : nullptr) {
-                    const game::TPassiveAbilityInfo info = game::TPassiveAbilityInfoStorage::instance()->info(ability);
+                if (const game::TCooldownStorage* cooldowns = session ? session->cooldownStorage().get() : nullptr; cooldowns && m_passiveAbilityInfoStorage) {
+                    const game::TPassiveAbilityInfo info = m_passiveAbilityInfoStorage->info(ability);
                     // An ability with a counter needs its maximum, one with a
                     // cooldown its duration.
                     enabled = info.flag ? cooldowns->passiveAbilityCounter(ability).maximum != 0
@@ -769,7 +774,7 @@ void TActionBarController::onInventoryChanged()
             if (action->type() != TActionButtonController::OBJECT || action->useType() != config::EUseType::Equip)
                 continue;
             const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
-            const auto* type = action->objectID() != 0 ? tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, instance.typeId) : nullptr;
+            const auto* type = action->objectID() != 0 && m_appearancesManager ? m_appearancesManager->findAppearanceType(ThingCategoryItem, instance.typeId) : nullptr;
             if (!type)
                 continue;
             const std::optional<uint8_t> tier = instance.hasTier() ? std::optional<uint8_t>(instance.tier) : std::nullopt;
@@ -778,7 +783,7 @@ void TActionBarController::onInventoryChanged()
             if (action->useEquipSmartMode() && counterpartId) {
                 const auto* shown = type;
                 if (!equipped) {
-                    const auto* counterpart = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, *counterpartId);
+                    const auto* counterpart = m_appearancesManager->findAppearanceType(ThingCategoryItem, *counterpartId);
                     equipped = m_inventory->isObjectEquipped(*counterpartId, tier);
                     if (counterpart)
                         shown = counterpart;
@@ -916,7 +921,7 @@ void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint But
 void TActionBarController::onRequestAssignSpell(const uint ButtonId, const int MultiActionIndex, const int SpellId,
                                                 const QString& Parameters, const int CastType)
 {
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(SpellId);
+    const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(SpellId) : nullptr;
     if (!spell)
         return;
     Setting setting;
@@ -1023,7 +1028,7 @@ void TActionBarController::onDropped(const uint ButtonId, const int MultiActionI
 {
     if (!m_gameSession)
         return;
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_engine);
     if (!dnd)
         return;
     const input::TMoveObjectPtr dropped = dnd->takeAction();
@@ -1052,7 +1057,7 @@ void TActionBarController::onSpellIconDropped(const uint ButtonId, const int Spe
     // Spell ids past the client's spell table are ignored.
     if (SpellEnumId >= 0x142)
         return;
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(SpellEnumId);
+    const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(SpellEnumId) : nullptr;
     if (!spell)
         return;
     if (spell->parameterHints.isEmpty())
@@ -1093,12 +1098,10 @@ TActionBarGroup::TActionBarGroup(QQuickItem* container, QQmlEngine* engine, QQui
     , m_passiveAbilityInfoStorage(passiveAbilityInfoStorage)
     , m_position(position)
 {
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (!name.startsWith(QLatin1String("actionBar")))
-            return;
-        Q_EMIT lockedChanged();
-        onActionBarsOptionsChanged();
-    });
+    if (m_clientOptions) {
+        connect(m_clientOptions, &config::TClientOptions::actionBarsOptionsChanged, this, &TActionBarGroup::lockedChanged);
+        connect(m_clientOptions, &config::TClientOptions::actionBarsOptionsChanged, this, &TActionBarGroup::onActionBarsOptionsChanged);
+    }
     if (container)
         container->setProperty("controller", QVariant::fromValue<QObject*>(this));
 }

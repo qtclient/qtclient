@@ -14,9 +14,14 @@ TWeatherAudio& TWeatherAudio::instance()
 
 TWeatherAudio::TWeatherAudio() = default;
 
+void TWeatherAudio::setSoundController(TSoundController* controller)
+{
+    m_controller = controller;
+}
+
 float TWeatherAudio::ambienceVolume() const
 {
-    const TSoundController* controller = TSoundController::instance();
+    const TSoundController* controller = m_controller;
     if (!controller || !controller->configuration()->isAmbienceEnabled())
         return 0.0f;
     return controller->configuration()->ambienceVolume();
@@ -24,7 +29,7 @@ float TWeatherAudio::ambienceVolume() const
 
 uint16_t TWeatherAudio::currentAmbienceId() const
 {
-    const TSoundController* controller = TSoundController::instance();
+    const TSoundController* controller = m_controller;
     return controller ? controller->ambienceStream().ambienceStreamId() : 0;
 }
 
@@ -33,7 +38,7 @@ void TWeatherAudio::beginAmbienceHold()
     if (m_held)
         return;
     m_held = true;
-    if (TSoundController* controller = TSoundController::instance())
+    if (TSoundController* controller = m_controller)
         controller->ambienceStream().setAmbienceStream(0);
 }
 
@@ -46,7 +51,7 @@ void TWeatherAudio::endAmbienceHold(const uint16_t fallbackRestoreId)
     m_gain = 1.0f;
     if (m_bed)
         m_bed->close();
-    if (TSoundController* controller = TSoundController::instance())
+    if (TSoundController* controller = m_controller)
         controller->setAmbienceStream(restore);
 }
 
@@ -61,7 +66,7 @@ bool TWeatherAudio::deferAmbienceStream(const uint16_t streamId)
 
 bool TWeatherAudio::playHeldAmbience(const uint16_t ambienceStreamId, const bool /*loop*/)
 {
-    TSoundController* controller = TSoundController::instance();
+    TSoundController* controller = m_controller;
     if (!controller)
         return false;
     if (m_bed)
@@ -72,13 +77,13 @@ bool TWeatherAudio::playHeldAmbience(const uint16_t ambienceStreamId, const bool
 
 bool TWeatherAudio::playHeldAmbiencePath(const std::string& virtualPath, const bool loop)
 {
-    if (virtualPath.empty() || !TSoundController::instance())
+    if (virtualPath.empty() || !m_controller)
         return false;
     if (!m_bed)
         m_bed = std::make_unique<TAudioSource>();
     if (!m_bed->openFile(virtualPath))
         return false;
-    TSoundController::instance()->ambienceStream().setAmbienceStream(0);
+    m_controller->ambienceStream().setAmbienceStream(0);
     m_bed->setLooping(loop);
     m_bed->setVolume(ambienceVolume() * m_gain);
     m_bed->play();
@@ -99,7 +104,7 @@ void TWeatherAudio::updateVolume()
 
 bool TWeatherAudio::playEffect(const uint16_t soundEffectId, const float gain, const float /*pan*/)
 {
-    TSoundController* controller = TSoundController::instance();
+    TSoundController* controller = m_controller;
     if (!controller || soundEffectId == 0 || gain <= 0.0f)
         return false;
     TSoundEffectRequest request;

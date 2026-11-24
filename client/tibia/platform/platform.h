@@ -59,6 +59,14 @@ QStringList extraQmlPluginPaths();
 /// Called once the main window exists: the browser makes it fill the page; the
 /// desktop returns false and restores its saved geometry instead.
 bool adaptMainWindow(QQuickWindow* window);
+/// Browser (WebGL): disables every vertex attribute array after each frame of
+/// `window`. Qt's GLES backend only disables the arrays it enabled at the end of
+/// a frame; QRhi::finish() in the middle of one (QQuickItem::grabToImage, e.g.
+/// CIP's outlined text images) executes the commands so far without that end,
+/// and their arrays stay enabled. Once the next frame releases their buffers,
+/// draws not using those locations fail ("no buffer is bound to enabled
+/// attribute"). Nothing on the desktop.
+void resetVertexAttribArraysAfterFrames(QQuickWindow* window);
 
 // ---- Text sorting --------------------------------------------------------------
 

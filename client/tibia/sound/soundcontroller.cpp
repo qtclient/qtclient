@@ -11,20 +11,6 @@
 
 namespace tibia::sound {
 
-namespace {
-TSoundController* g_soundController = nullptr;
-}
-
-TSoundController* TSoundController::instance()
-{
-    return g_soundController;
-}
-
-void TSoundController::setInstance(TSoundController* controller)
-{
-    g_soundController = controller;
-}
-
 TSoundController::TSoundController(std::shared_ptr<TSoundMetadataManager> metadata,
                                    std::shared_ptr<TSoundManager> soundManager,
                                    std::weak_ptr<TSoundPlayerManager> playerManager,
@@ -44,8 +30,6 @@ TSoundController::TSoundController(std::shared_ptr<TSoundMetadataManager> metada
 
 TSoundController::~TSoundController()
 {
-    if (g_soundController == this)
-        g_soundController = nullptr;
     for (const QMetaObject::Connection& connection : m_gameSessionConnections)
         disconnect(connection);
 }

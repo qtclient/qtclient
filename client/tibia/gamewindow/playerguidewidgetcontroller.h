@@ -177,7 +177,8 @@ class TPlayerGuideWidgetManager final : public QObject
 {
     Q_OBJECT
 public:
-    TPlayerGuideWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TPlayerGuideWidgetManager(std::shared_ptr<news::TNewsStorage> NewsStorage, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                              QObject* parent = nullptr);
     ~TPlayerGuideWidgetManager() override;
 
     TSidebarWidget* open(config::TSidebarOptions* options);
@@ -195,6 +196,7 @@ private:
     void onGameStarted();
     void onPlayerLevelUp();
 
+    std::shared_ptr<news::TNewsStorage> m_newsStorage;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TPlayerGuideWidgetController> m_controller;

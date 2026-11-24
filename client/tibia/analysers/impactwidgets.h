@@ -20,6 +20,7 @@ class TSidebarOptions;
 }
 namespace game {
 class IGameSession;
+class TPremiumTimeStorage;
 }
 }
 
@@ -96,6 +97,8 @@ public:
     ~TImpactWidgetController() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The gauges and graphs need premium time.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage) { m_premiumTimeStorage = premiumTimeStorage; }
 
     QString damageSumString() const override;
     QString maxDpsString() const override;
@@ -177,6 +180,7 @@ private:
     double perSecond(TImpactStorage::Kind kind) const;
 
     TImpactStorage* m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     /// CIP: damage value changes are coalesced through a zero-interval single shot.
     QTimer m_damageValuesTimer;
     TDamageTypedModel* m_typedModel;
@@ -309,6 +313,8 @@ public:
     TPartyHuntWidgetController(TPartyHuntStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The menu's premium entries need premium time.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage) { m_premiumTimeStorage = premiumTimeStorage; }
 
     QString sessionLengthString() const override;
     QString lootTypeString() const override;
@@ -355,6 +361,7 @@ private:
     QString exportText() const;
 
     TPartyHuntStorage* m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     TPartyHuntMembersListModel* m_model;
     gamewindow::TPartyHuntMembersListModelSortFilterProxy* m_proxy;
     QPointer<config::TSidebarOptions> m_options;

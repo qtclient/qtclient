@@ -223,6 +223,9 @@ private:
     /// Errors reported before the client window was visible.
     QList<QString> m_pendingErrorMessages;
     QTimer m_clientWindowChangedReactionTimer;
+    /// Host: saves the client options once after a run of changes (an option
+    /// toggled outside the options dialog reaches the file without a quit).
+    QTimer m_clientOptionsSaveTimer;
     bool m_firstStart = false;
     /// Host: the browser's window fills the page; its geometry is not the
     /// client options'.

@@ -306,15 +306,15 @@ std::vector<TImbuementSource> ownedAstralSources(const TImbuingStorage& storage,
 }
 
 /// An object type's name with each space-separated word capitalised.
-QString objectTypeName(const uint16_t typeId)
+QString objectTypeName(const appearances::TAppearanceInstanceFactory* factory, const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+    const TAppearanceTypePtr type = factory ? factory->appearanceType(ThingCategoryItem, typeId) : nullptr;
     return type ? imbuing::capitalizedWords(type->getName()) : QString();
 }
 
-uint32_t imbuementSlotCount(const uint16_t typeId)
+uint32_t imbuementSlotCount(const appearances::TAppearanceInstanceFactory* factory, const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+    const TAppearanceTypePtr type = factory ? factory->appearanceType(ThingCategoryItem, typeId) : nullptr;
     return type ? type->getImbueSlots() : 0;
 }
 
@@ -418,8 +418,8 @@ void TImbuingDialogController::setImbuementFilter(const QString& v)
 QString TImbuingDialogController::selectedItemText() const
 {
     switch (m_storage->mode()) {
-        case TImbuingStorage::MODE_SCROLL: return objectTypeName(BlankImbuementScrollTypeId);
-        case TImbuingStorage::MODE_ITEM: return objectTypeName(m_storage->itemTypeId());
+        case TImbuingStorage::MODE_SCROLL: return objectTypeName(m_pAppearanceInstanceFactory.get(), BlankImbuementScrollTypeId);
+        case TImbuingStorage::MODE_ITEM: return objectTypeName(m_pAppearanceInstanceFactory.get(), m_storage->itemTypeId());
         default: return QStringLiteral("");
     }
 }
@@ -585,7 +585,7 @@ void TImbuingDialogController::updateImbuedItem()
             else
                 m_imbuedItemInstance = m_pAppearanceInstanceFactory->createObject(m_storage->itemTypeId());
             // An item without imbuement slots, or fewer than the index, starts at the first.
-            if (imbuementSlotCount(m_storage->itemTypeId()) <= m_selectedImbuementSlotIndex)
+            if (imbuementSlotCount(m_pAppearanceInstanceFactory.get(), m_storage->itemTypeId()) <= m_selectedImbuementSlotIndex)
                 m_selectedImbuementSlotIndex = 0;
             break;
         case TImbuingStorage::MODE_SCROLL:
@@ -633,7 +633,7 @@ void TImbuingDialogController::updateExistingImbuement()
             break;
         case TImbuingStorage::MODE_ITEM: {
             // Only an imbueable item has slots to show.
-            if (imbuementSlotCount(m_storage->itemTypeId()) == 0)
+            if (imbuementSlotCount(m_pAppearanceInstanceFactory.get(), m_storage->itemTypeId()) == 0)
                 break;
             const TImbuementSlot* slot = selectedSlot();
             if (slot && !slot->isEmpty) {

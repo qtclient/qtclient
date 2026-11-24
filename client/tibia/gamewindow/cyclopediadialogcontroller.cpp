@@ -61,7 +61,7 @@ TCyclopediaDialogController::TCyclopediaDialogController(std::shared_ptr<appeara
     , m_bestiary(new cyclopedia::TBestiaryStorage(this))
     , m_itemInfo(new TItemInfoDialogController(AppearancesManager, ClientOptions, this))
     , m_characterInfo(new TCharacterInfoDialogController(ClientOptions, Engine, DialogParentItem, this))
-    , m_monsters(new TMonsterDialogController(*m_bestiary, this))
+    , m_monsters(new TMonsterDialogController(ClientOptions, *m_bestiary, this))
     , m_bonusEffects(new TMonsterBonusEffectsDialogController(this))
     , m_bosstiary(new TBosstiaryDialogController(this))
     , m_bossSlots(new TBossSlotsDialogController(this))
@@ -120,6 +120,7 @@ void TCyclopediaDialogController::connectToGameSession(const std::shared_ptr<gam
     m_bosstiary->connectToGameSession(GameSession);
     m_bossSlots->connectToGameSession(GameSession);
     m_bonusEffects->connectToGameSession(GameSession);
+    m_magicalArchive->connectToGameSession(GameSession);
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();

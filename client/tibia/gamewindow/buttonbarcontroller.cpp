@@ -333,11 +333,6 @@ TButtonBarController::TButtonBarController(config::TClientOptions* ClientOptions
     connect(m_cyclopediaButton.get(), &TCyclopediaButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
     connect(m_bosstiaryButton.get(), &TBosstiaryButtonController::publishGameAction, this, &TButtonBarController::publishGameAction);
 
-    // Host: product shortcuts write controlButtonsOptions straight to the options file.
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("controlButtonsOptions"))
-            onButtonOptionsChanged();
-    });
     const auto setRewardWallHighlight = [this](const bool on) {
         if (m_highlightRewardWallButton == on)
             return;
@@ -430,6 +425,7 @@ void TButtonBarController::connectToGameSession(const std::shared_ptr<game::IGam
     m_storeButton->connectToGameSession(m_gameSession);
     m_cyclopediaButton->connectToGameSession(m_gameSession);
     m_bosstiaryButton->connectToGameSession(m_gameSession);
+    m_newsButton->connectToGameSession(m_gameSession);
     Q_EMIT highlightSkillWheelButtonChanged();
     Q_EMIT highlightExaltationForgeDialogButtonChanged();
 }

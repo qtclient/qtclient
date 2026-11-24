@@ -31,12 +31,6 @@ using Setting = config::TActionSetting;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 using A = input::EGameAction;
 
-bool isMultiUse(const int objectId)
-{
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, objectId);
-    return type && type->isMultiUse();
-}
-
 /// CIP .
 QString row(const char* labelId, const QString& value)
 {
@@ -509,7 +503,8 @@ bool TPrioritySolverAdapter::hasLiquidType() const
 {
     if (!hasObject())
         return false;
-    const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId());
+    const auto& factory = action()->appearanceInstanceFactory();
+    const TAppearanceType* type = factory ? factory->appearanceType(ThingCategoryItem, objectId()) : nullptr;
     return type && (type->isFluidContainer() || type->isSplash());
 }
 
@@ -522,7 +517,8 @@ bool TPrioritySolverAdapter::hasUpgradeTier() const
 {
     if (!hasObject())
         return false;
-    const TAppearanceType* type = tibia::appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, objectId());
+    const auto& factory = action()->appearanceInstanceFactory();
+    const TAppearanceType* type = factory ? factory->appearanceType(ThingCategoryItem, objectId()) : nullptr;
     return type && type->hasUpgradeClassification();
 }
 

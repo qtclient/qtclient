@@ -668,8 +668,9 @@ void TMinimapRendererQuickItem::updateMarkerHits()
             addPin(m_raidIcon, QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, tooltipText(worldmap::TActiveRaidMapAreaData{}), TMarkerHit::ActiveRaid, 0);
         }
     }
-    // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
-    if (minimap::TMinimapMarkerStorage* markers = minimap::TMinimapMarkerStorage::active()) {
+    // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer; the
+    // static map data holds the client's marker storage).
+    if (const minimap::TMinimapMarkerStorage* markers = TStaticData::instance().minimapMarkerStorage()) {
         const int flagSize = m_flagStrip.isNull() ? 0 : m_flagStrip.height();
         const int columns = flagSize > 0 ? std::max(1, m_flagStrip.width() / flagSize) : 1;
         const auto onFloor = [z](const worldmap::TWorldMapCoordinate& coordinate) { return coordinate.z == z; };

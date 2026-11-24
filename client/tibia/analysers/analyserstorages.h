@@ -28,6 +28,7 @@ class TItemTrackingStorage;
 }
 namespace game {
 class IGameSession;
+class TPremiumTimeStorage;
 }
 namespace quickloot {
 class TQuickLootBlackWhitelistStorage;
@@ -596,7 +597,9 @@ class TAnalyserStorages final : public QObject
 {
     Q_OBJECT
 public:
-    explicit TAnalyserStorages(QObject* parent = nullptr);
+    /// The game client's item prices; premiumTimeChanged follows its `PremiumTimeStorage`.
+    TAnalyserStorages(std::shared_ptr<TItemPriceStorage> ItemPriceStorage, std::shared_ptr<game::TPremiumTimeStorage> PremiumTimeStorage,
+                      QObject* parent = nullptr);
     ~TAnalyserStorages() override;
 
     static TAnalyserStorages* instance();
@@ -606,8 +609,11 @@ public:
     /// next one (the widgets open with a session close with its world).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
+    /// The game client's premium time storage (the analysers' premium gates).
+    game::TPremiumTimeStorage* premiumTimeStorage() const { return m_premiumTimeStorage.get(); }
+    /// The game client's item prices.
+    TItemPriceStorage* prices() const { return m_itemPriceStorage.get(); }
     TProgressStorage* progress() { return m_progress.get(); }
-    TItemPriceStorage* prices();
     TGainWasteStorage* gainWaste() { return m_gainWaste.get(); }
     TImpactStorage* impact() { return m_impact.get(); }
     TDamageInputStorage* damageInput() { return m_damageInput.get(); }
@@ -635,6 +641,8 @@ Q_SIGNALS:
     void premiumTimeChanged();
 
 private:
+    std::shared_ptr<TItemPriceStorage> m_itemPriceStorage;
+    std::shared_ptr<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::shared_ptr<TProgressStorage> m_progress;
     std::shared_ptr<TGainWasteStorage> m_gainWaste;
     std::shared_ptr<TImpactStorage> m_impact;

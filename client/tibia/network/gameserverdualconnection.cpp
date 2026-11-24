@@ -3,7 +3,7 @@
 #include "network/dualconnectioninfo.h"
 #include "network/gameservernetworkpacketconnection.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "iclockservice.h"
 
 #include <QDebug>
@@ -12,23 +12,21 @@
 
 namespace tibia::network {
 
-namespace {
-
-const QLatin1String OptimizeConnectionStabilityOption("connectionStabilityOptimizationEnabled");
-
-}
-
 TGameserverDualConnection::TGameserverDualConnection(std::shared_ptr<TDualConnectionInfo> DualConnectionInfo,
-                                                     std::shared_ptr<shared::IClockService> ClockService)
+                                                     std::shared_ptr<shared::IClockService> ClockService,
+                                                     std::shared_ptr<config::TClientOptions> ClientOptions)
     : QObject(nullptr)
     , m_clockService(std::move(ClockService))
+    , m_clientOptions(std::move(ClientOptions))
     , m_dualConnectionInfo(std::move(DualConnectionInfo))
 {
-    onOptimizeConnectionStabilityOptionChanged();
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& Name) {
-        if (Name == OptimizeConnectionStabilityOption)
-            onOptimizeConnectionStabilityOptionChanged();
-    });
+    if (m_clientOptions) {
+        onOptimizeConnectionStabilityOptionChanged();
+        connect(m_clientOptions.get(), &config::TClientOptions::optionChanged, this, [this](const config::EClientOption Id) {
+            if (Id == config::EClientOption::connectionStabilityOptimizationEnabled)
+                onOptimizeConnectionStabilityOptionChanged();
+        });
+    }
     if (!m_dualConnectionInfo)
         return;
     for (const auto& connection : m_dualConnectionInfo->connections()) {
@@ -201,7 +199,7 @@ void TGameserverDualConnection::processDisconnectEvents()
 
 void TGameserverDualConnection::onOptimizeConnectionStabilityOptionChanged()
 {
-    m_optimizeConnectionStability = optimizeConnectionStabilityOption();
+    m_optimizeConnectionStability = m_clientOptions->boolOption(config::EClientOption::connectionStabilityOptimizationEnabled);
     if (m_optimizeConnectionStability || connectionsUsed() != EConnectionsUsed::PrimaryAndSecondary)
         return;
     const auto& connections = m_dualConnectionInfo->connections();
@@ -231,11 +229,6 @@ void TGameserverDualConnection::connectNextConnection()
         qInfo().noquote() << QStringLiteral("Request connection to gameserver ") << url.url() << m_worldName;
         connection->connectToGameserver(url, m_worldName);
     }
-}
-
-bool TGameserverDualConnection::optimizeConnectionStabilityOption()
-{
-    return app::ClientOptions::load().options().value(OptimizeConnectionStabilityOption).toBool(true);
 }
 
 }

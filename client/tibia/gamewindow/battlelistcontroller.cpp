@@ -40,7 +40,6 @@ namespace {
 
 using A = input::EGameAction;
 using Filter = BattleListOptions::Filter;
-using Cursor = TMouseCursorController;
 
 constexpr int UpdateIntervalMs = 100;
 /// CIP : the mapper context of a battle list and the party list.
@@ -667,9 +666,9 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
     const input::IGameActionPtr temporarySelect = findAction(actions, A::TEMPORARY_SELECT_CREATURE);
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::IGameActionPtr action = m_mapper.map(actions, mapperContext(), Qt::LeftButton, modifiers);
-    if (Cursor* cursor = Cursor::instance()) {
+    if (TMouseCursorController* cursor = TMouseCursorController::instance()) {
         if (action)
-            cursor->setLayerShape(Cursor::BattleList, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
+            cursor->setLayerShape(TMouseCursorController::BattleList, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
         if (creatureId == 0)
             cursor->onBattleListExited();
         else

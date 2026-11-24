@@ -46,9 +46,9 @@ public:
     /// Hands the markers to the disk as a marker file.
     void saveMarkers();
 
-    /// Host: the client's storage (the game client base sets it); used by render / menus.
-    static TMinimapMarkerStorage* active();
-    static void setActive(TMinimapMarkerStorage* storage);
+    /// The marker at `coord` as the marker actions carry it (no icon or text
+    /// without one).
+    input::TMinimapMarkerData markerData(const Position& coord) const;
 
 Q_SIGNALS:
     void startSavingMinimapMarkerFileContentToDisk(

@@ -16,6 +16,9 @@
 #include <vector>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace cyclopedia {
 class TCreatureTrackerStorage;
 class TMonsterRaceStorage;
@@ -108,7 +111,7 @@ class TMonsterDialogController final : public cip::tibia::gamewindow::TMonsterDi
 {
     Q_OBJECT
 public:
-    TMonsterDialogController(cyclopedia::TBestiaryStorage& storage, QObject* parent = nullptr);
+    TMonsterDialogController(config::TClientOptions* ClientOptions, cyclopedia::TBestiaryStorage& storage, QObject* parent = nullptr);
     ~TMonsterDialogController() override;
     bool clientSettingSmoothFiltering() const override;
 
@@ -176,9 +179,13 @@ private:
     void onSelectedCharmChanged();
     TQmlMonsterRace* singleRace() const;
 
+    /// CIP +0x10: clientSettingSmoothFiltering reads its antialiasing mode.
+    config::TClientOptions* m_pClientOptions = nullptr;
     cyclopedia::TBestiaryStorage& m_storage;
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
     std::shared_ptr<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
+    /// The session connectToGameSession took.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<tibia::game::SoftHook> m_hooks;
     TMessageDialogController* m_confirmDialog;

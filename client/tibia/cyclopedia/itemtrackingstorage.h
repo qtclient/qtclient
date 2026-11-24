@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <vector>
 
 namespace tibia {
@@ -24,6 +25,9 @@ class TItemPriceStorage;
 namespace chat {
 class TChatChannelStorage;
 class TTextStorage;
+}
+namespace config {
+class TClientOptions;
 }
 namespace game {
 class TPremiumTimeStorage;
@@ -72,7 +76,9 @@ class TItemTrackingStorage final : public cip::tibia::cyclopedia::TItemTrackingS
 public:
     static constexpr qint64 RecentDropDurationMs = 60000;
 
-    explicit TItemTrackingStorage(analysers::TItemPriceStorage* prices, QObject* parent = nullptr);
+    /// The loot colours follow the colorizeLootStyle option of `clientOptions`.
+    TItemTrackingStorage(analysers::TItemPriceStorage* prices, std::shared_ptr<config::TClientOptions> clientOptions,
+                         QObject* parent = nullptr);
 
     QString configurationName() const override;
     QJsonObject configurationToJson() const override;
@@ -125,6 +131,7 @@ private:
     chat::TTextStorage* m_textStorage = nullptr;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     analysers::TItemPriceStorage* m_prices;
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
     quint32 m_autoTrackAboveValue = 0;
     std::deque<TTrackedItem> m_trackedItems;
     std::vector<TDroppedLoot> m_recentLootDrops;

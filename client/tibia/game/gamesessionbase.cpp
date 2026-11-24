@@ -232,7 +232,7 @@ void TGameSessionBase::createStorages()
     // The storages the character configuration manager saves with the character.
     analysers::TItemPriceStorage* itemPrices = m_itemPriceStorage.get();
     m_progressStorage = std::make_shared<analysers::TProgressStorage>();
-    m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices);
+    m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices, m_clientOptions);
     // The drop tracker announces on the session's status line and follows the premium state.
     m_itemTrackingStorage->setTextStorage(m_textStorage.get());
     m_gainWasteStorage = std::make_shared<analysers::TGainWasteStorage>(itemPrices);
@@ -321,10 +321,11 @@ void TGameSessionBase::createProtocolMessageHandlers()
         clockService(), m_worldMapViewport, m_creatureProtocolMessageHandler);
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>(m_effectStorage, m_worldMapStorage,
                                                                                             m_soundStorage, clockService());
-    m_chatProtocolMessageHandler =
-        std::make_shared<chat::TChatProtocolMessageHandler>(*m_chatChannelStorage, *m_chatStorage, m_creatureStorage->player());
+    m_chatProtocolMessageHandler = std::make_shared<chat::TChatProtocolMessageHandler>(
+        *m_chatChannelStorage, *m_chatStorage, m_creatureStorage->player(), m_clientOptions);
     m_chatProtocolMessageHandler->setTextStorage(m_textStorage.get());
     m_chatProtocolMessageHandler->setEffectStorage(m_effectStorage.get());
+    m_chatProtocolMessageHandler->setItemPriceStorage(m_itemPriceStorage.get());
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatProtocolMessageHandler.get(),
             &chat::TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage);
     // The own creature's name reaches the channels.
@@ -394,6 +395,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
     cyclopediaStorages.cyclopediaMap = m_cyclopediaMapStorage;
     cyclopediaStorages.characterInfo = m_characterInfoStorage;
     cyclopediaStorages.houses = m_housesStorage;
+    cyclopediaStorages.itemPrices = m_itemPriceStorage;
     m_cyclopediaProtocolMessageHandler = std::make_shared<cyclopedia::TCyclopediaProtocolMessageHandler>(std::move(cyclopediaStorages));
     m_bestiaryTrackerProtocolMessageHandler = std::make_shared<cyclopedia::TBestiaryTrackerProtocolMessageHandler>(m_creatureTrackerStorage);
     m_managedContainersProtocolMessageHandler =
@@ -503,15 +505,16 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
         std::make_shared<creatures::TVipWidgetGameActionProvider>(m_vipStorage.get(), m_exivaOptionsStorage.get());
     if (!m_gameActionContextHelper)
         m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
-    m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>();
+    m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>(m_clientOptions);
     m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>(m_creatureStorage, m_clipboardHelper);
     m_playerGameActionHandler = std::make_shared<TPlayerGameActionHandler>(m_creatureStorage, m_playerData);
-    m_containerGameActionHandler = std::make_shared<container::TContainerGameActionHandler>(m_containerStorage, m_objectCountStorage);
+    m_containerGameActionHandler =
+        std::make_shared<container::TContainerGameActionHandler>(m_clientOptions, m_containerStorage, m_objectCountStorage);
     m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>(m_gameActionContextHelper);
     m_useWithGameActionHandler = std::make_shared<input::TUseWithGameActionHandler>(m_gameActionContextHelper);
     m_crossHairSpellGameActionHandler = std::make_shared<input::TCrossHairSpellGameActionHandler>();
-    m_chatGameActionHandler =
-        std::make_shared<chat::TChatGameActionHandler>(m_chatChannelStorage, m_textStorage, m_spellInfoStorage);
+    m_chatGameActionHandler = std::make_shared<chat::TChatGameActionHandler>(m_chatChannelStorage, m_textStorage,
+                                                                            m_spellInfoStorage, m_clientOptions);
     m_vipGameActionHandler = std::make_shared<creatures::TVipGameActionHandler>(m_vipStorage.get());
     m_playerTradeGameActionHandler = std::make_shared<trade::TPlayerTradeGameActionHandler>(m_creatureStorage.get());
     m_storeGameActionHandler = std::make_shared<store::TStoreGameActionHandler>(m_storeProtocolMessageHandler);
@@ -522,7 +525,8 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardProtocolMessageHandler,
                                                                                                   m_dailyRewardStorage.get());
     m_questLogGameActionHandler = std::make_shared<questlog::TQuestLogGameActionHandler>(m_questLogStorage);
-    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>(m_managedContainersProtocolMessageHandler);
+    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>(
+        m_managedContainersProtocolMessageHandler, m_quickLootBlackWhitelistStorage, m_clientOptions);
     m_exivaOptionsGameActionHandler =
         std::make_shared<exivaoptions::TExivaOptionsGameActionHandler>(m_exivaOptionsProtocolMessageHandler, m_exivaOptionsStorage);
     m_marketGameActionHandler = std::make_shared<market::TMarketGameActionHandler>(m_marketProtocolMessageHandler);
@@ -1180,13 +1184,13 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedGemAtelierGemResponseMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleGemAtelierGemResponseMessage);
     link(&Queue::receivedBugReportsAllowedMessage, m_bugReportProtocolMessageHandler.get(),
          &reporting::TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage);
-    // The handler fills the game client's proficiency storage. Host: the game
-    // window makes that storage, and a replay's session starts before it, so the
-    // handler is made (again) when the storage it would fill changed.
-    if (!m_proficiencyProtocolMessageHandler || m_proficiencyProtocolMessageHandler->storage() != proficiency::TProficiencyStorage::instance()) {
+    // The handler fills the game client's proficiency storage (the session's
+    // ctor argument); it is made again when the storage it would fill changed.
+    if (!m_proficiencyProtocolMessageHandler || m_proficiencyProtocolMessageHandler->storage() != m_proficiencyStorage) {
         m_proficiencyProtocolMessageHandler.reset();
-        if (auto* storage = proficiency::TProficiencyStorage::instance())
-            m_proficiencyProtocolMessageHandler = std::make_shared<TProficiencyProtocolMessageHandler>(storage, inventoryContainer());
+        if (m_proficiencyStorage)
+            m_proficiencyProtocolMessageHandler =
+                std::make_shared<TProficiencyProtocolMessageHandler>(m_proficiencyStorage, inventoryContainer());
     }
     if (auto* proficiencyHandler = m_proficiencyProtocolMessageHandler.get()) {
         link(&Queue::receivedWeaponProficiencyMessage, proficiencyHandler, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
@@ -1381,7 +1385,7 @@ void TGameSessionBase::processInventoryChange(const uint8_t slot, const containe
     container::TInventorySlot row = item;
     if (!row.empty() && row.durationSeconds > 0) {
         TAppearanceType* type = row.appearance ? row.appearance->thingType()
-                                               : appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, row.typeId);
+                                               : m_appearancesManager->findAppearanceType(ThingCategoryItem, row.typeId);
         // expirestop-only items are paused server-side when equipped in their cloth slot.
         if (type && type->getClothSlot() == static_cast<int>(slot) && type->hasExpire()) {
             row.decaying = true;

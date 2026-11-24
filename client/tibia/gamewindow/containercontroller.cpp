@@ -2,6 +2,7 @@
 
 #include "app/clientoptions.h"
 #include "config/characterconfigurationmanager.h"
+#include "config/clientoptions.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
@@ -33,7 +34,6 @@ container::TContainerStorage* sessionContainerStorage(const std::shared_ptr<game
 }
 
 using A = input::EGameAction;
-using Cursor = TMouseCursorController;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
@@ -53,9 +53,6 @@ constexpr uint8_t ParentContainerSlot = 254;
 /// Drops on the container but on no slot.
 constexpr uint8_t AnySlot = 0xff;
 
-constexpr auto ShowExpireOption = "showExpireInContainers";
-constexpr auto ShowExpireWhenUnusedOption = "showExpireWhenUnused";
-constexpr auto MoveAllOption = "dragAndDropDefaultActionIsMoveAll";
 constexpr auto MoveToManagedRecursiveOption = "containerMoveToManagedContainerRecursive";
 constexpr auto MoveToManagedRecursiveWarningOption = "containerMoveToManagedContainerRecursiveShowWarningAgain";
 constexpr auto SortBackpacksFirstOption = "containerSortBackpacksFirst";
@@ -94,10 +91,13 @@ input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A
 }
 
 TContainerController::TContainerController(const int containerId, container::TContainerProtocolMessageHandler* messages,
-                                           QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+                                           config::TClientOptions* clientOptions, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                           QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_containerId(containerId)
     , m_messages(messages)
+    , m_clientOptions(clientOptions)
+    , m_model(clientOptions)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_model);
     readExpireOptions();
@@ -108,10 +108,9 @@ TContainerController::TContainerController(const int containerId, container::TCo
     connect(&m_propertyTimer, &QTimer::timeout, this,
             &cip::tibia::gamewindow::TContainerController::containerPropertyChanged);
 
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
-            readExpireOptions();
-    });
+    if (m_clientOptions)
+        connect(m_clientOptions.data(), &config::TClientOptions::appearanceTypeListModelOptionsChanged, this,
+                &TContainerController::readExpireOptions);
 
     widget()->createItem(QStringLiteral("container.qml"));
     QQuickItem* item = quickItem();
@@ -132,6 +131,7 @@ void TContainerController::connectToGameSession(const std::shared_ptr<game::IGam
 {
     m_gameSessionConnections.disconnectAll();
     m_model.setObjectCountStorage(nullptr);
+    m_model.setItemPriceStorage(nullptr);
     m_options = nullptr;
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
@@ -143,6 +143,7 @@ void TContainerController::connectToGameSession(const std::shared_ptr<game::IGam
         m_gameSessionConnections.add(connect(m_options, &config::TSidebarOptions::optionsForAllContainersChanged, this,
                                              &TContainerController::onWidgetOptionsChanged));
     m_model.setObjectCountStorage(session->objectCountStorage().get());
+    m_model.setItemPriceStorage(session->itemPriceStorage().get());
     onWidgetOptionsChanged();
 }
 
@@ -408,7 +409,7 @@ void TContainerController::update(const bool resetScrollView)
     // The hovered slot's cursor region depends on isUpdatable: leave it before switching.
     if (properties->isUpdatable != m_isUpdatable && m_hoveredSlot != -1) {
         m_hoveredSlot = -1;
-        if (Cursor* cursor = Cursor::instance()) {
+        if (TMouseCursorController* cursor = TMouseCursorController::instance()) {
             if (m_isUpdatable)
                 cursor->onContainerExited();
             else
@@ -467,7 +468,7 @@ void TContainerController::onSlotClicked(const int slotId, const int mouseButton
 void TContainerController::onSlotEntered(const int slotId)
 {
     m_hoveredSlot = slotId;
-    if (Cursor* cursor = Cursor::instance()) {
+    if (TMouseCursorController* cursor = TMouseCursorController::instance()) {
         if (m_isUpdatable)
             cursor->onContainerEntered();
         else
@@ -480,7 +481,7 @@ void TContainerController::onSlotExited(const int slotId)
 {
     if (m_hoveredSlot == slotId)
         m_hoveredSlot = -1;
-    if (Cursor* cursor = Cursor::instance()) {
+    if (TMouseCursorController* cursor = TMouseCursorController::instance()) {
         if (m_isUpdatable)
             cursor->onContainerExited();
         else
@@ -490,18 +491,18 @@ void TContainerController::onSlotExited(const int slotId)
 
 void TContainerController::updateMouseCursorForCurrentSlot()
 {
-    Cursor* cursor = Cursor::instance();
+    TMouseCursorController* cursor = TMouseCursorController::instance();
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::IGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
-    cursor->setLayerShape(m_isUpdatable ? Cursor::Container : Cursor::ContainerNoDrop,
-                          action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
+    cursor->setLayerShape(m_isUpdatable ? TMouseCursorController::Container : TMouseCursorController::ContainerNoDrop,
+                          action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : TMouseCursorController::Default);
 }
 
 void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(widget()->engine());
     if (!dnd)
         return;
     if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
@@ -510,14 +511,14 @@ void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
 
 void TContainerController::onSlotDragDropped(const int slotId)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(widget()->engine());
     const container::TStoredContainer* row = stored();
     if (!dnd || !row)
         return;
     const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
-    const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
+    const bool moveAll = m_clientOptions && m_clientOptions->boolOption(config::EClientOption::dragAndDropDefaultActionIsMoveAll);
     const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex()) : AnySlot;
     const Position destination = slotPosition(pageSlot);
     Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
@@ -563,9 +564,10 @@ void TContainerController::onLevelUpClicked()
 
 void TContainerController::readExpireOptions()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    m_model.setExpireOptions(options.value(QLatin1String(ShowExpireOption)).toBool(true),
-                             options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false));
+    if (!m_clientOptions)
+        return;
+    m_model.setExpireOptions(m_clientOptions->boolOption(config::EClientOption::showExpireInContainers),
+                             m_clientOptions->boolOption(config::EClientOption::showExpireWhenUnused));
 }
 
 void TContainerController::updateWithTimestamp(const qint64)

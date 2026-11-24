@@ -422,11 +422,11 @@ private:
     /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
     std::shared_ptr<worldmap::TLightMap> buildLightMap(bool withLights);
 
-    /// The storages drawn from (the session's when not given).
+    /// The storages drawn from.
     worldmap::TWorldMapStorage* worldMapStorage() const;
     creatures::TCreatureStorage* creatureStorage() const;
     worldmap::TAmbientLightStorage* ambientLightStorage() const;
-    /// The tracker the frame's appearance types go to (the factory's when not given).
+    /// The tracker the frame's appearance types go to.
     std::shared_ptr<appearances::TAppearanceInstanceTracker> instanceTracker() const;
 
     std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;

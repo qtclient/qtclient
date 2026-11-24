@@ -112,7 +112,6 @@ public:
     /// The storage keeps the game client's appearances manager.
     explicit TProficiencyStorage(std::shared_ptr<appearances::TAppearancesManager> appearancesManager);
     ~TProficiencyStorage() override;
-    static TProficiencyStorage* instance();
     /// The game client's new session (or none) starts without the weapons'
     /// records, the wielded weapon's progress, the unspent perk, the list
     /// request and the orbs; the perk tables stay.

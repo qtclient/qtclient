@@ -38,6 +38,9 @@ class GameserverMessageTalk;
 }
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
 namespace config {
 class TClientOptions;
 }
@@ -163,18 +166,19 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
 {
     Q_OBJECT
 public:
-    /// Reads the console options and keeps the own name of `pPlayer` when the
-    /// player is already known.
+    /// Reads the console options of `ClientOptions` (and again on their
+    /// chatProtocolMessageHandlerOptionsChanged) and keeps the own name of
+    /// `pPlayer` when the player is already known.
     TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
-                                std::weak_ptr<::tibia::creatures::TCreature> pPlayer, QObject* parent = nullptr);
+                                std::weak_ptr<::tibia::creatures::TCreature> pPlayer,
+                                std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent = nullptr);
     ~TChatProtocolMessageHandler() override;
-
-    /// : the console options by CIP name.
-    void setOptions(const QJsonObject& options);
     /// CIP +0x20: the session's texts.
     void setTextStorage(TTextStorage* textStorage) { m_textStorage = textStorage; }
     /// CIP +0x10: the session's numerical effects.
     void setEffectStorage(effects::TEffectStorage* effects) { m_effects = effects; }
+    /// The session's item prices the loot lines are coloured with.
+    void setItemPriceStorage(analysers::TItemPriceStorage* itemPrices) { m_itemPrices = itemPrices; }
     /// CIP +0x98: the client's ignore and white lists (null filters nothing).
     void setWhiteBlacklist(TWhiteBlacklist* whiteBlacklist) { m_whiteBlacklist = whiteBlacklist; }
     TWhiteBlacklist* whiteBlacklist() const { return m_whiteBlacklist; }
@@ -190,7 +194,7 @@ public:
     void handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters& Message);
 
 public Q_SLOTS:
-    /// CIP moc slot (cip_gen virtual) — reload console / UI-Sounds chat options.
+    /// CIP: reads the console and game window message options.
     void onChatProtocolMessageHandlerOptionsChanged() override;
     /// CIP moc slot (shared_ptr skipped from cip_gen) — own-name for filter/sound.
     void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<::tibia::creatures::TCreature> pPlayer);
@@ -225,9 +229,11 @@ private:
     TTextStorage* m_textStorage = nullptr;
     effects::TEffectStorage* m_effects = nullptr;
     TWhiteBlacklist* m_whiteBlacklist = nullptr;
+    analysers::TItemPriceStorage* m_itemPrices = nullptr;
+    /// CIP +0x70: the client's options.
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
 
-    /// Prefaults match (ids 0x1c/0x1d/0x20/0x1f/0x1b/0x1a/0x46/0x45)
-    /// until setOptions runs.
+    /// Read from the options by the constructor.
     bool m_showEventMessages = true;
     bool m_showInfoMessages = true;
     bool m_showStatusMessagesOwn = true;

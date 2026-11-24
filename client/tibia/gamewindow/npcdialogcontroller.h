@@ -32,8 +32,12 @@ class TClientOptions;
 namespace chat {
 class TChatChannelStorage;
 }
+namespace creatures {
+class TCreatureStorage;
+}
 namespace game {
 class IGameSession;
+class TGameSessionBase;
 }
 namespace input {
 class TEventFilterManager;
@@ -63,8 +67,8 @@ public:
     bool secondAddOn() const { return m_addons & 2; }
     bool isObjectOutfit() const { return m_isObject; }
 
-    /// The outfit of the creature named `name` on screen, or none.
-    void setFromCreatureNamed(const QString& name);
+    /// The outfit of the creature named `name` on `session`'s screen, or none.
+    void setFromCreatureNamed(const game::TGameSessionBase* session, const QString& name);
     void setOutfit(const Outfit& outfit);
 
 Q_SIGNALS:
@@ -193,7 +197,9 @@ private:
     /// first partner's outfit, the names and the buttons, then shows it.
     void onNpcChatWindow(const std::vector<uint32_t>& npcIds, std::vector<TNpcKeywordButtonModel::Button> buttons);
     /// CIP : "A", "A, B and C"; a partner not on screen is the fallback name.
-    static QString partnerNamesOf(const std::vector<uint32_t>& npcIds);
+    QString partnerNamesOf(const std::vector<uint32_t>& npcIds) const;
+    /// The session's creatures, null without a session.
+    creatures::TCreatureStorage* creatureStorage() const;
     /// CIP: "npc_dialog_talking_to" in the NPCs channel when the talk partners change.
     void postTalkingTo(const QString& names);
 

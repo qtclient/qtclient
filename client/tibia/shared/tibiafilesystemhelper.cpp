@@ -107,6 +107,20 @@ QDir resourcesDirectory()
     return directory;
 }
 
+/// The package directory (the launcher's package of this client: package.json,
+/// assets.json.sha256, FORCE_PATCH). CIP: <package>/Contents/Resources, two up.
+/// Host: the browser package has no bundle; bin/ and assets/ sit in the package
+/// directory, which is then the resources directory itself.
+QDir packageDirectory()
+{
+    QDir directory = resourcesDirectory();
+    if (directory.dirName() == QLatin1String("Resources")) {
+        directory.cdUp();
+        directory.cdUp();
+    }
+    return directory;
+}
+
 void removeMatchingFiles(QDir directory, const QStringList& nameFilters)
 {
     directory.setNameFilters(nameFilters);
@@ -426,9 +440,7 @@ void TTibiaFileSystemHelper::setBaseDirectory(const QDir& directory)
 
 QString TTibiaFileSystemHelper::readAssetsJsonSha256() const
 {
-    QDir directory = resourcesDirectory();
-    directory.cdUp();
-    directory.cdUp();
+    QDir directory = packageDirectory();
     const QFile file(directory.absoluteFilePath(kAssetsJsonSha256));
     const QByteArray data = m_fileSystemHelper->readFile(file.fileName());
     return QString::fromUtf8(data).trimmed();
@@ -552,9 +564,7 @@ bool TTibiaFileSystemHelper::startLauncherToPatchClient()
 
 void TTibiaFileSystemHelper::createForcePatchMarker()
 {
-    QDir directory = resourcesDirectory();
-    directory.cdUp();
-    directory.cdUp();
+    QDir directory = packageDirectory();
     QFile file(directory.absoluteFilePath(kForcePatchMarkerName));
     (void)file.open(QIODevice::WriteOnly);
     file.close();
@@ -562,9 +572,7 @@ void TTibiaFileSystemHelper::createForcePatchMarker()
 
 bool TTibiaFileSystemHelper::hasForcePatchMarker()
 {
-    QDir directory = resourcesDirectory();
-    directory.cdUp();
-    directory.cdUp();
+    QDir directory = packageDirectory();
     const QFile file(directory.absoluteFilePath(kForcePatchMarkerName));
     return file.exists();
 }

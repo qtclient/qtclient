@@ -44,11 +44,6 @@ public:
 
     void update(int64_t nowMs) override;
 
-    /// The client's controller (CIP hands it to each session's protocol
-    /// handler; qtclient's sessions find it here). nullptr without sound.
-    static TSoundController* instance();
-    static void setInstance(TSoundController* controller);
-
     /// Plays `GameSession`'s world sounds; follows its player's position, its
     /// player data (the music's fight flag) and its ambience objects.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);

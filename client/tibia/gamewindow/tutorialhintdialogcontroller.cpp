@@ -1,5 +1,4 @@
 #include "tutorialhintdialogcontroller.h"
-#include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
 
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
@@ -8,7 +7,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/tutorialhelper.h"
-#include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 
 #include <QQuickItem>
 #include <QUrl>
@@ -152,7 +150,7 @@ void TTutorialHintDialogController::closeDialog()
 
 QPoint TTutorialHintDialogController::youAreHereCoordianteWithinImage() const
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session || !session->hasLocalPlayer())
         return {};
     const Position position = session->localPlayerPosition();
@@ -168,22 +166,13 @@ TTutorialShell::TTutorialShell(QQmlEngine* engine, QQuickItem* dialogParentItem,
     , m_hint(new TTutorialHintDialogController(engine, dialogParentItem, mapWindowPane, std::move(CyclopediaMapStaticDataStorage), this))
     , m_vocation(new TVocationSelectionDialogController(engine, dialogParentItem, mapWindowPane, this))
 {
+    // The map's markers: the map window's overlay controller takes the action
+    // from the router (its handleGameAction).
     m_gameActions.on(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameActionAddGUITutorialMarker& action) {
-        if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
-                worldmap::TWorldMapTutorialMarkerOverlayController::instance())
-            overlay->addGuiMarker(action);
-        if (qmlcomponents::TTutorialHelperQmlService* helper = qmlcomponents::TTutorialHelperQmlService::instance()) {
-            if (action.markerId() > 0) {
-                if (auto* item = helper->findTutorialMarkerQuickItemWithID(action.markerId()))
-                    item->setVisible(true);
-            }
+        if (action.markerId() > 0) {
+            if (auto* item = qmlcomponents::TTutorialMarkerRegistry::instance().find(action.markerId()))
+                item->setVisible(true);
         }
-        return true;
-    });
-    m_gameActions.on(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::IGameAction&) {
-        if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
-                worldmap::TWorldMapTutorialMarkerOverlayController::instance())
-            overlay->removeAllMarkers();
         return true;
     });
     m_gameActions.on(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {

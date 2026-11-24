@@ -1,5 +1,4 @@
 #include "storedialogcontroller.h"
-#include "game/currentgamesession.h"
 #include "game/playerdata.h"
 
 #include "app/clientoptions.h"
@@ -629,7 +628,7 @@ void TStoreDialogController::onTransferCoinsReceipientAndAmountSpecified(const Q
 void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
 {
     m_messageDialog->dialog()->close();
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!m_messages || !session || !session->hasLocalPlayer())
         return;
     const uint64_t states = session->playerData() ? session->playerData()->states().flags.to_ullong() : 0;

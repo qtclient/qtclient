@@ -6,6 +6,8 @@
 
 #include "sound/audiobackend.h"
 
+#include <QPointer>
+
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -14,10 +16,16 @@
 namespace tibia {
 namespace sound {
 
+class TSoundController;
+
 class TWeatherAudio final
 {
 public:
     static TWeatherAudio& instance();
+
+    /// The game client's sound controller the weather plays through (null:
+    /// no sound).
+    void setSoundController(TSoundController* controller);
 
     /// The place's ambience stream (the server's), 0 for none.
     uint16_t currentAmbienceId() const;
@@ -49,6 +57,7 @@ private:
     TWeatherAudio();
     float ambienceVolume() const;
 
+    QPointer<TSoundController> m_controller;
     bool m_held = false;
     bool m_hasDeferred = false;
     uint16_t m_deferredStreamId = 0;

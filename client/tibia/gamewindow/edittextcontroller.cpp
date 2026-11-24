@@ -82,12 +82,15 @@ void TEditTextController::showItemText(const uint32_t id, const QString& text, c
     const uint itemId = object ? object->id() : 0;
     bool editable = false;
     bool reportable = false;
-    if (tibia::appearances::TAppearancesManager::instance().isValidDatId(itemId, ThingCategoryItem)) {
-        const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, itemId);
-        editable = type->isWritable() || (type->isWritableOnce() && text.isEmpty());
-        reportable = type->isReportable();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const appearances::TAppearancesManager* appearancesManager = session ? session->appearancesManager().get() : nullptr;
+    if (appearancesManager && appearancesManager->isValidDatId(itemId, ThingCategoryItem)) {
+        if (const TAppearanceTypePtr type = appearancesManager->findAppearanceType(ThingCategoryItem, itemId)) {
+            editable = type->isWritable() || (type->isWritableOnce() && text.isEmpty());
+            reportable = type->isReportable();
+        }
     }
-    const bool stampedLetter = itemId != 0 && itemId == tibia::appearances::TAppearancesManager::instance().getStampedLetterId();
+    const bool stampedLetter = appearancesManager && itemId != 0 && itemId == appearancesManager->getStampedLetterId();
     m_mode = EMode::ItemText;
     m_id = id;
     m_doorId = 0;

@@ -1,5 +1,4 @@
 #include "unjustifiedpointswidgetcontroller.h"
-#include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
@@ -134,7 +133,7 @@ void TUnjustifiedPointsWidgetController::refresh()
     // is black after those and red otherwise. Without a player both are empty.
     m_currentSkullSource.clear();
     m_nextSkullSource.clear();
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (session && session->isOnline()) {
         const std::shared_ptr<creatures::TCreature> player =
             session->hasLocalPlayer() && session->creatureStorage() ? session->creatureStorage()->player() : nullptr;
@@ -174,7 +173,8 @@ void TUnjustifiedPointsWidgetController::connectToGameSession(const std::shared_
     disconnect(m_playerKillerMarkChanged);
     m_unjustifiedPointsStorage.reset();
     m_creatureStorage.reset();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
         return;
     m_unjustifiedPointsStorage = session->unjustifiedPointsStorage();

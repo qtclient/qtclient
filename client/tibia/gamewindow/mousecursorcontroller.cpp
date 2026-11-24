@@ -1,6 +1,6 @@
 #include "mousecursorcontroller.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 
 #include <QDateTime>
 #include <QGuiApplication>
@@ -22,13 +22,15 @@ std::shared_ptr<TMouseCursorController> s_sharedInstance;
 
 }
 
-TMouseCursorController::TMouseCursorController(const QJsonObject& options, QObject* parent)
+TMouseCursorController::TMouseCursorController(std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent)
     : cip::tibia::gamewindow::TMouseCursorController(parent)
+    , m_pClientOptions(std::move(ClientOptions))
 {
     s_instance = this;
-    loadCursors(options);
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            [this](const QString&) { onOptionsChanged(); });
+    loadCursors();
+    if (m_pClientOptions)
+        connect(m_pClientOptions.get(), &config::TClientOptions::mouseCursorControllerOptionsChanged, this,
+                &TMouseCursorController::onOptionsChanged);
     m_timer.setInterval(60);
     m_timer.setSingleShot(false);
     m_timer.start();
@@ -46,9 +48,9 @@ TMouseCursorController* TMouseCursorController::instance()
     return s_instance;
 }
 
-void TMouseCursorController::createInstance(QQmlEngine* Engine, const QJsonObject& Options)
+void TMouseCursorController::createInstance(QQmlEngine* Engine, std::shared_ptr<config::TClientOptions> ClientOptions)
 {
-    std::shared_ptr<TMouseCursorController> controller(new TMouseCursorController(Options));
+    std::shared_ptr<TMouseCursorController> controller(new TMouseCursorController(std::move(ClientOptions)));
     Engine->rootContext()->setContextProperty(QStringLiteral("tibiaMouseCursorController"), controller.get());
     s_sharedInstance = std::move(controller);
     // Host: released with the engine, before the application goes.
@@ -57,18 +59,20 @@ void TMouseCursorController::createInstance(QQmlEngine* Engine, const QJsonObjec
 
 void TMouseCursorController::onOptionsChanged()
 {
-    loadCursors(app::ClientOptions::load().options());
+    loadCursors();
 }
 
-void TMouseCursorController::loadCursors(const QJsonObject& options)
+void TMouseCursorController::loadCursors()
 {
-    if (options.value(QLatin1String("mouseSystemCursor")).toBool(false)) {
+    using config::EClientOption;
+    const config::TClientOptions* options = m_pClientOptions.get();
+    if (options && options->boolOption(EClientOption::mouseSystemCursor)) {
         loadSystemCursors();
         return;
     }
-    const bool big = options.value(QLatin1String("mouseBigCursor")).toBool(false);
+    const bool big = options && options->boolOption(EClientOption::mouseBigCursor);
     loadStaticCursors(big);
-    loadAnimatedCursors(options.value(QLatin1String("mouseAnimatedCursor")).toBool(true), big);
+    loadAnimatedCursors(!options || options->boolOption(EClientOption::mouseAnimatedCursor), big);
 }
 
 void TMouseCursorController::loadStaticCursors(const bool big)

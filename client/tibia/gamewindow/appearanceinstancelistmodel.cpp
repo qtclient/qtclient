@@ -1,7 +1,6 @@
 #include "appearanceinstancelistmodel.h"
 #include "appearanceinstanceroledata.h"
 
-#include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
 #include "analysers/itempricestorage.h"
 #include "config/clientoptions.h"
@@ -31,17 +30,21 @@ QString alternativeSlotString(const Slot& slot, const bool showExpire, const boo
     return container::hasClock(slot) ? container::clockText(slot, whenUnused) : QString();
 }
 
+}
+
 /// CIP / : loot-value frame under (style 1) or over (2).
-QString lootValueImageSource(const Slot& slot, const int style)
+QString TAppearanceInstanceListModel::lootValueImageSource(const Slot& slot, const int style) const
 {
-    if (slot.empty())
+    if (slot.empty() || !m_clientOptions)
         return {};
     // gameWindowShowLootHighlighting (CIP 0x42): master gate for loot-value tint frames.
-    if (!app::ClientOptions::load().options().value(QLatin1String("gameWindowShowLootHighlighting")).toBool(true))
+    if (!m_clientOptions->boolOption(config::EClientOption::gameWindowShowLootHighlighting))
         return {};
-    if (config::TClientOptions::instance()->colorizeLootStyle() != style)
+    if (m_clientOptions->colorizeLootStyle() != style)
         return {};
-    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(slot.typeId);
+    if (!m_prices)
+        return {};
+    const int level = m_prices->lootValueLevel(slot.typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -49,18 +52,29 @@ QString lootValueImageSource(const Slot& slot, const int style)
         .arg(level - 1);
 }
 
+TAppearanceInstanceListModel::TAppearanceInstanceListModel(config::TClientOptions* ClientOptions, QObject* parent)
+    : cip::tibia::gamewindow::TAppearanceInstanceListModel(parent)
+    , m_clientOptions(ClientOptions)
+{
+    if (m_clientOptions)
+        connect(m_clientOptions.data(), &config::TClientOptions::appearanceTypeListModelOptionsChanged, this,
+                &TAppearanceInstanceListModel::refreshLootValues);
 }
 
-TAppearanceInstanceListModel::TAppearanceInstanceListModel(QObject* parent)
-    : cip::tibia::gamewindow::TAppearanceInstanceListModel(parent)
+void TAppearanceInstanceListModel::setItemPriceStorage(analysers::TItemPriceStorage* prices)
 {
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("colorizeLootStyle") || name == QLatin1String("gameWindowShowLootHighlighting"))
-            refreshLootValues();
-    });
-    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
-    connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TAppearanceInstanceListModel::refreshLootValues);
-    connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TAppearanceInstanceListModel::refreshLootValues);
+    if (m_prices == prices)
+        return;
+    QObject::disconnect(m_pricesConfigurationChanged);
+    QObject::disconnect(m_pricesMarketAvailable);
+    m_prices = prices;
+    if (m_prices) {
+        m_pricesConfigurationChanged = connect(m_prices.data(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                                               &TAppearanceInstanceListModel::refreshLootValues);
+        m_pricesMarketAvailable = connect(m_prices.data(), &analysers::TItemPriceStorage::marketPricesAvailable, this,
+                                          &TAppearanceInstanceListModel::refreshLootValues);
+    }
+    refreshLootValues();
 }
 
 int TAppearanceInstanceListModel::rowCount(const QModelIndex& parent) const
@@ -80,6 +94,8 @@ QVariant TAppearanceInstanceListModel::data(const QModelIndex& index, const int 
         // is the player's count of the type and tier when a count storage is set.
         TAppearanceInstanceRoleSources sources;
         sources.withOptions = true;
+        sources.clientOptions = m_clientOptions.data();
+        sources.prices = m_prices.data();
         sources.showExpire = m_showExpire;
         sources.showExpireWhenUnused = m_showExpireWhenUnused;
         if (const container::TObjectCountStorage* counts = m_objectCounts.data())

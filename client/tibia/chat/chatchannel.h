@@ -14,6 +14,9 @@
 #include <vector>
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
 namespace creatures {
 class TCreature;
 }
@@ -344,12 +347,15 @@ QColor systemRed();
 QColor systemWhite();
 
 /// CIP's chat line: "[hh:mm[:ss] ]name[ (Traded)][ [level]]: text"
-/// as rich text in the entry's colour with a hanging indent.
-QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool levels, int* plainLength = nullptr);
+/// as rich text in the entry's colour with a hanging indent. Loot lines are
+/// formatted with formatLootRichText(…, lootPrices).
+QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool levels,
+                    analysers::TItemPriceStorage* lootPrices, int* plainLength = nullptr);
 
-/// Loot / look rich text: {id|name} (item-value colours when colorizeLootStyle ≠ 0)
+/// Loot / look rich text: {id|name} (item-value colours from `prices`; the
+/// caller passes them when colorizeLootStyle ≠ 0, else null for plain names)
 /// then {#rrggbb|text}. Shared by console + map bubbles.
-QString formatLootRichText(QString text);
+QString formatLootRichText(QString text, analysers::TItemPriceStorage* prices);
 /// "{#rrggbb|text}" -> "<font color="#rrggbb">text</font>".
 QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings);
 

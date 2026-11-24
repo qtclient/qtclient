@@ -1,6 +1,6 @@
 #include "soundhelper.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "input/gameaction.h"
 #include "sound/soundcontroller.h"
 #include "sound/weatheraudio.h"
@@ -39,13 +39,10 @@ void applyOptionVolumes()
     sound::TWeatherAudio::instance().updateVolume();
 }
 
-void followSoundOptions()
+void followSoundOptions(config::TClientOptions* options)
 {
-    QObject::connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged,
-                     app::ClientOptionsNotifier::instance(), [](const QString& name) {
-                         if (name.startsWith(QLatin1String("sound")))
-                             applyOptionVolumes();
-                     });
+    if (options)
+        QObject::connect(options, &config::TClientOptions::soundOptionsChanged, options, &applyOptionVolumes);
 }
 
 }

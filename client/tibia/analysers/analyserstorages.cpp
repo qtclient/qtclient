@@ -15,8 +15,6 @@
 #include <QStandardPaths>
 
 #include <chrono>
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::analysers {
 
@@ -185,17 +183,15 @@ void TPartyHuntStorage::clear()
     }
 }
 
-TAnalyserStorages::TAnalyserStorages(QObject* parent)
+TAnalyserStorages::TAnalyserStorages(std::shared_ptr<TItemPriceStorage> ItemPriceStorage,
+                                     std::shared_ptr<game::TPremiumTimeStorage> PremiumTimeStorage, QObject* parent)
     : QObject(parent)
+    , m_itemPriceStorage(std::move(ItemPriceStorage))
+    , m_premiumTimeStorage(std::move(PremiumTimeStorage))
 {
     s_instance = this;
-    // Host: the client's premium time storage, bound when a game starts.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
-        if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
-            connect(premium, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TAnalyserStorages::premiumTimeChanged,
-                    Qt::UniqueConnection);
-        Q_EMIT premiumTimeChanged();
-    });
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage.get(), &game::TPremiumTimeStorage::premiumTimeChanged, this, &TAnalyserStorages::premiumTimeChanged);
 }
 
 void TAnalyserStorages::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -230,8 +226,6 @@ TAnalyserStorages::~TAnalyserStorages()
 }
 
 TAnalyserStorages* TAnalyserStorages::instance() { return s_instance; }
-
-TItemPriceStorage* TAnalyserStorages::prices() { return TItemPriceStorage::instance(); }
 
 qint64 TAnalyserStorages::nowMs()
 {

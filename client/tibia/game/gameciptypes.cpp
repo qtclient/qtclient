@@ -769,26 +769,12 @@ void TEditTextProtocolMessageHandler::handleEditGuildMessageMessage(const ::tibi
     Q_EMIT requestEditGuildMessageDialog(QString::fromStdString(m.text()));
 }
 
-namespace {
-TPremiumTimeStorage* g_livePremiumTimeStorage = nullptr;
-}
-
 TPremiumTimeStorage::TPremiumTimeStorage(QObject* parent)
     : cip::tibia::game::TPremiumTimeStorage(parent)
 {
-    g_livePremiumTimeStorage = this;
 }
 
-TPremiumTimeStorage::~TPremiumTimeStorage()
-{
-    if (g_livePremiumTimeStorage == this)
-        g_livePremiumTimeStorage = nullptr;
-}
-
-TPremiumTimeStorage* TPremiumTimeStorage::liveInstance()
-{
-    return g_livePremiumTimeStorage;
-}
+TPremiumTimeStorage::~TPremiumTimeStorage() = default;
 
 int TPremiumTimeStorage::premiumState() const
 {

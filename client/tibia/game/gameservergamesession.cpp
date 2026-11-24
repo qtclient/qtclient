@@ -129,7 +129,8 @@ std::shared_ptr<network::TGameserverNetworkPacketConnection> newGameserverNetwor
 }
 
 /// The game server login from the meta info's login and character data.
-authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGameserverGameSessionMetaInfo& MetaInfo)
+authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGameserverGameSessionMetaInfo& MetaInfo,
+                                                                       const appearances::TAppearancesManager& AppearancesManager)
 {
     const authentication::TLoginRequestData& login = MetaInfo.loginRequestData;
     const gamewindow::TCharacterLoginData& character = MetaInfo.characterLoginData;
@@ -143,7 +144,7 @@ authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGa
     data.worldPortUnprotected = character.worldPortUnprotected;
     data.worldPortProtected = character.worldPortProtected;
     data.worldName = character.worldName;
-    data.assetsIdentifier = QString::fromStdString(tibia::appearances::TAppearancesManager::instance().getAssetIdentifier());
+    data.assetsIdentifier = QString::fromStdString(AppearancesManager.getAssetIdentifier());
     return data;
 }
 
@@ -241,7 +242,7 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createSoundProviders();
     createGameActionProvidersAndHandlers();
     createNetworkStack();
-    m_loginData = gameserverLoginRequestData(*gameserverMetaInfo);
+    m_loginData = gameserverLoginRequestData(*gameserverMetaInfo, *appearancesManager());
     m_recordTo = gameserverMetaInfo->recordTo;
     createSessionControllers();
     // Host: --record keeps every server message of the session in CipSoft's
@@ -297,7 +298,7 @@ void TGameserverGameSession::createNetworkStack()
     auto primaryConnection = newGameserverNetworkPacketConnection();
     auto secondaryConnection = newGameserverNetworkPacketConnection();
     auto dualConnectionInfo = std::make_shared<network::TDualConnectionInfo>(primaryConnection, secondaryConnection);
-    m_dualConnection = std::make_shared<TGameserverDualConnection>(dualConnectionInfo, clockService());
+    m_dualConnection = std::make_shared<TGameserverDualConnection>(dualConnectionInfo, clockService(), clientOptions());
     m_serverMessageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
     m_compressionHelper = std::make_shared<shared::TCompressionHelper>();
     m_sequenceFlowProcessor = std::make_shared<TGameserverNetworkPacketSequenceFlowProcessor>();

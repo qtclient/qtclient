@@ -25,6 +25,7 @@ class GameserverMessageUpdateManagedContainers;
 namespace tibia {
 namespace config {
 class TCharacterConfigurationManager;
+class TClientOptions;
 }
 namespace input {
 class IGameAction;
@@ -32,6 +33,7 @@ class IGameAction;
 namespace quickloot {
 
 class TManagedContainerStorage;
+class TQuickLootBlackWhitelistStorage;
 
 /// The session's managed container messages, into its managed container
 /// storage; it sends the character's quick loot list whenever the character
@@ -95,9 +97,12 @@ class TQuickLootGameActionHandler final : public cip::tibia::quickloot::TQuickLo
 {
     Q_OBJECT
 public:
-    /// The requests go through the session's managed containers protocol message handler.
-    explicit TQuickLootGameActionHandler(std::shared_ptr<TManagedContainersProtocolMessageHandler> protocolMessageHandler,
-                                         QObject* parent = nullptr);
+    /// The requests go through the session's managed containers protocol
+    /// message handler; the list is the session's black/whitelist and the
+    /// area loot follows the client's options.
+    TQuickLootGameActionHandler(std::shared_ptr<TManagedContainersProtocolMessageHandler> protocolMessageHandler,
+                                std::shared_ptr<TQuickLootBlackWhitelistStorage> blackWhitelistStorage,
+                                std::shared_ptr<config::TClientOptions> clientOptions, QObject* parent = nullptr);
     ~TQuickLootGameActionHandler() override;
 
     bool handleGameAction(const input::IGameAction& action);
@@ -107,6 +112,9 @@ private:
     void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
 
     std::shared_ptr<TManagedContainersProtocolMessageHandler> m_protocolMessageHandler;
+    std::shared_ptr<TQuickLootBlackWhitelistStorage> m_blackWhitelistStorage;
+    /// CIP +0x30: the client's options.
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

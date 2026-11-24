@@ -8,7 +8,6 @@
 #include "container/containerciptypes.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
-#include "gamewindow/remainingdialogs.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -165,10 +164,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
                                                                              qtTrId("you_see_nothing"), QColor(Qt::green)));
         break;
     }
-    case A::OPEN_TRADE_CHARACTER_DIALOG:
-        if (gamewindow::TCharacterTradeDialogController* trade = gamewindow::TCharacterTradeDialogController::instance())
-            trade->showDialog();
-        break;
     case A::REQUEST_SELECT_ALL_TEXT:
         // The chat controller handles its own input and output (it listens too).
         if (QObject* field = focusedTextField())

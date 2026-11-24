@@ -488,8 +488,6 @@ public:
     explicit TPremiumTimeStorage(QObject* parent = nullptr);
     ~TPremiumTimeStorage() override;
 
-    static TPremiumTimeStorage* liveInstance();
-
     bool isPremium() const { return m_premium; }
     /// Premium without an end date.
     bool hasUnlimitedPremium() const { return m_premiumUntil == 0 && m_premium; }

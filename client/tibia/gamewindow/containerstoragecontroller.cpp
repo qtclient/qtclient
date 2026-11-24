@@ -146,7 +146,7 @@ TContainerController* TContainerStorageController::createContainerController(con
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     auto* controller = new TContainerController(containerId, session ? session->containerProtocolMessageHandler().get() : nullptr,
-                                                m_parentItem, m_sidebars->engine(), this);
+                                                m_clientOptions, m_parentItem, m_sidebars->engine(), this);
     m_containerControllers[containerId] = controller;
     updateContainerController(containerId, isNewContainer);
     // CIP connects the controller to the session; the input schemes are the host's.
@@ -262,7 +262,8 @@ void tibia::gamewindow::TContainerStorageController::connectToGameSession(const 
         return;
     using Self = TContainerStorageController;
     m_gameSessionConnections.add(connect(m_gameSession.get(), &game::IGameSession::loginRampUpFinished, this, &Self::onLoginRampUpFinished));
-    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session)
         m_containerStorage = session->containerStorage();
     if (!m_containerStorage)
         return;
@@ -273,7 +274,7 @@ void tibia::gamewindow::TContainerStorageController::connectToGameSession(const 
         m_gameSessionConnections.add(connect(m_characterConfigurationManager.data(),
                                              &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
                                              &Self::onOptionsChanged));
-    if (analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance())
+    if (analysers::TItemPriceStorage* itemPrices = session->itemPriceStorage().get())
         m_gameSessionConnections.add(
             connect(itemPrices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &Self::onOptionsChanged));
     m_gameSessionConnections.add(connect(storage, &container::TContainerStorage::manualSortModeChanged, this, &Self::onManualSortModeChanged));

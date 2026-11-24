@@ -269,32 +269,43 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(
 {
     loadLightOptions();
     loadLootHighlightOption();
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name.startsWith(QLatin1String("light")))
+    if (!m_clientOptions)
+        return;
+    connect(m_clientOptions.get(), &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+        switch (id) {
+        case config::EClientOption::lightAmbientLevel:
+        case config::EClientOption::lightLevelSeparatorLevel:
+        case config::EClientOption::lightAttenuationCloudsIndoor:
+        case config::EClientOption::lightEffectsEnabled:
             loadLightOptions();
-        else if (name == QLatin1String("gameWindowShowLootHighlighting"))
+            break;
+        case config::EClientOption::gameWindowShowLootHighlighting:
             loadLootHighlightOption();
+            break;
+        default:
+            break;
+        }
     });
 }
 
 worldmap::TWorldMapStorage* TWorldMapRenderProvider::worldMapStorage() const
 {
-    return m_worldMapStorage ? m_worldMapStorage.get() : game::currentWorldMapStorage();
+    return m_worldMapStorage.get();
 }
 
 creatures::TCreatureStorage* TWorldMapRenderProvider::creatureStorage() const
 {
-    return m_creatureStorage ? m_creatureStorage.get() : game::currentCreatureStorage();
+    return m_creatureStorage.get();
 }
 
 worldmap::TAmbientLightStorage* TWorldMapRenderProvider::ambientLightStorage() const
 {
-    return m_ambientLightStorage ? m_ambientLightStorage.get() : game::currentAmbientLightStorage();
+    return m_ambientLightStorage.get();
 }
 
 std::shared_ptr<appearances::TAppearanceInstanceTracker> TWorldMapRenderProvider::instanceTracker() const
 {
-    return m_instanceTracker ? m_instanceTracker : appearances::TAppearanceInstanceFactory::installed()->instanceTracker();
+    return m_instanceTracker;
 }
 
 void TWorldMapRenderProvider::setVisibleFields(const int width, const int height)

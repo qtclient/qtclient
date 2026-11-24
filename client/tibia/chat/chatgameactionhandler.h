@@ -19,6 +19,9 @@ namespace tibia {
 namespace shared {
 class IClockService;
 }
+namespace config {
+class TClientOptions;
+}
 namespace spells {
 class TSpellInfoStorage;
 }
@@ -50,7 +53,8 @@ class TChatGameActionHandler final : public cip::tibia::chat::TChatGameActionHan
     Q_OBJECT
 public:
     TChatGameActionHandler(std::shared_ptr<TChatChannelStorage> chatChannelStorage, std::shared_ptr<TTextStorage> textStorage,
-                           ::tibia::spells::TSpellInfoStorage* spellInfoStorage, QObject* parent = nullptr);
+                           ::tibia::spells::TSpellInfoStorage* spellInfoStorage,
+                           std::shared_ptr<config::TClientOptions> clientOptions, QObject* parent = nullptr);
     ~TChatGameActionHandler() override;
     TChatGameActionHandler(const TChatGameActionHandler&) = delete;
     TChatGameActionHandler& operator=(const TChatGameActionHandler&) = delete;
@@ -135,6 +139,8 @@ private:
     std::shared_ptr<TChatChannelStorage> m_chatChannelStorage;
     std::shared_ptr<TTextStorage> m_textStorage;
     ::tibia::spells::TSpellInfoStorage* m_spellInfoStorage = nullptr;
+    /// CIP +0x48: the client's options.
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
     TWhiteBlacklist* m_whiteBlacklist = nullptr;
 };
 

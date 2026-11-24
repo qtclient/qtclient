@@ -13,6 +13,9 @@
 #include <memory>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace shared {
 class IClockService;
 }
@@ -31,8 +34,10 @@ class TGameserverDualConnection : public QObject
 {
     Q_OBJECT
 public:
+    /// Without `ClientOptions` the secondary connection stays off.
     TGameserverDualConnection(std::shared_ptr<TDualConnectionInfo> DualConnectionInfo,
-                              std::shared_ptr<shared::IClockService> ClockService);
+                              std::shared_ptr<shared::IClockService> ClockService,
+                              std::shared_ptr<config::TClientOptions> ClientOptions);
     ~TGameserverDualConnection() override;
 
     /// Starts connecting to the URLs of `UrlInfo` for game world `WorldName`.
@@ -76,9 +81,9 @@ public Q_SLOTS:
 private:
     /// Starts the next connection when one is due.
     void connectNextConnection();
-    static bool optimizeConnectionStabilityOption();
 
     std::shared_ptr<shared::IClockService> m_clockService;
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
     QString m_worldName;
     bool m_optimizeConnectionStability = false;
     bool m_disconnecting = false;

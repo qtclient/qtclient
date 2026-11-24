@@ -53,9 +53,10 @@ public:
     /// Every group restores the bars of its saved configuration.
     void restoreLastAktionBarConfiguration();
 
-    /// The default use of an object on a button: Equip for clothes that are
-    /// not containers; otherwise SelectUseTarget for multi-use, else Use.
-    static config::EUseType defaultUseType(int objectId);
+    /// The default use of an object of `type` on a button: Equip for clothes
+    /// that are not containers; otherwise SelectUseTarget for multi-use, else
+    /// Use (also without a type).
+    static config::EUseType defaultUseType(const TAppearanceType* type);
 
     /// Per frame: ticks every group.
     void tick(qint64 now);

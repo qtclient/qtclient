@@ -96,6 +96,8 @@ private:
     /// The game session's creature storage, for the own creature's skull.
     std::weak_ptr<creatures::TCreatureStorage> m_creatureStorage;
     QMetaObject::Connection m_playerKillerMarkChanged;
+    /// The session connectToGameSession took.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<config::TSidebarOptions> m_options;
 };
 

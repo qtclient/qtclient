@@ -1187,7 +1187,7 @@ THotkeysOptionsPage::THotkeysOptionsPage(QQmlEngine* Engine, QQuickItem* DialogP
     , m_enterTextDialog(std::make_unique<gamewindow::TGenericEnterTextDialogController>(QString(), QString(), 255, m_pEngine,
                                                                                          m_pDialogParentItem))
     , m_messageDialog(std::make_unique<gamewindow::TMessageDialogController>(m_pEngine, m_pDialogParentItem))
-    , m_assignSpellDialog(std::make_unique<gamewindow::TAssignSpellActionDialogController>(NoActionBar))
+    , m_assignSpellDialog(std::make_unique<gamewindow::TAssignSpellActionDialogController>(m_pSpellInfoStorage, NoActionBar))
     , m_assignObjectDialog(std::make_unique<gamewindow::TAssignObjectActionDialogController>(NoActionBar))
     , m_assignTextDialog(std::make_unique<gamewindow::TAssignTextActionDialogController>(NoActionBar))
     , m_recordKeyboardShortcutDialog(std::make_unique<gamewindow::TRecordKeyboardShortcutDialogController>())

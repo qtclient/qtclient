@@ -9,6 +9,7 @@
 
 class QMimeData;
 class QQmlContext;
+class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
@@ -56,13 +57,18 @@ class TDragAndDropController final : public cip::tibia::gamewindow::TDragAndDrop
     Q_OBJECT
 public:
     /// `root` is searched for drop areas; `icon` is gamewindow.qml's
-    /// dragApperanceInstanceIcon, shown at the mouse while dragging.
-    TDragAndDropController(QQuickItem* root, QQuickItem* icon, QObject* parent = nullptr);
+    /// dragApperanceInstanceIcon, shown at the mouse while dragging, with the
+    /// dragged object's instance made by `AppearanceInstanceFactory`.
+    TDragAndDropController(QQuickItem* root, QQuickItem* icon,
+                           std::shared_ptr<appearances::TAppearanceInstanceFactory> AppearanceInstanceFactory,
+                           QObject* parent = nullptr);
     ~TDragAndDropController() override;
 
-    static TDragAndDropController* instance();
     /// QML reaches the controller as tibiaDragAndDropController.
     void registerContextProperty(QQmlContext* context);
+    /// The controller `engine`'s root context holds as
+    /// tibiaDragAndDropController (how CipSoft's panels reach it), or null.
+    static TDragAndDropController* fromEngine(const QQmlEngine* engine);
 
     /// CIP . `source` is the item the drag started from.
     void startDrag(const input::TMoveObjectPtr& action, QObject* source);
@@ -94,6 +100,7 @@ private:
 
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_icon;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
     TDragAndDropControllerEventFilter* m_filter;
     input::TMoveObjectPtr m_action;
     QPointer<QQuickItem> m_source;

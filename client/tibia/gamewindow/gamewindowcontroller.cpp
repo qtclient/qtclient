@@ -189,11 +189,8 @@ TGameWindowController::TGameWindowController(std::shared_ptr<game::TGameActionRo
     m_initialLoginEmail = options.value(QLatin1String(LoginEmail)).toString();
     m_showCreateAccountOption = false;
     syncAnthemButton();
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("soundAnthemEnabled") || name == QLatin1String("soundMusicVolume")
-            || name == QLatin1String("soundMasterVolume"))
-            syncAnthemButton();
-    });
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::soundOptionsChanged, this, &TGameWindowController::syncAnthemButton);
 
     connect(this, &TGameWindowController::newLeftAndRightStatusActionBarWidth, this, [this](const int width) {
         if (m_container) {
@@ -265,8 +262,9 @@ void TGameWindowController::connectToGameSession(const std::shared_ptr<game::IGa
 void TGameWindowController::setGameWindowItem(QQuickItem* gameWindowItem)
 {
     m_gameWindowItem = gameWindowItem;
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
-            &TGameWindowController::onClientOptionsChangedAfterShowGameWindows, Qt::UniqueConnection);
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::gameWindowControllerOptionsChanged, this,
+                &TGameWindowController::onClientOptionsChangedAfterShowGameWindows, Qt::UniqueConnection);
     onClientOptionsChangedAfterShowGameWindows();
     if (auto* renderDriver = qobject_cast<qmlcomponents::TRenderDriver*>(gameWindowChild(QStringLiteral("renderDriver"))))
         m_renderDriver = renderDriver;

@@ -24,6 +24,7 @@ class QQuickItem;
 namespace tibia {
 namespace appearances {
 class TAppearanceInstanceFactory;
+class TAppearancesManager;
 }
 namespace chat {
 class TChatModeManager;
@@ -222,6 +223,9 @@ private:
     QPointer<chat::TChatModeManager> m_chatModeManager;
     spells::TSpellInfoStorage* m_spellInfoStorage;
     game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
+    /// The engine the bar's item is made in; its root context holds the
+    /// drag and drop controller.
+    QQmlEngine* m_engine;
     QPointer<QQuickItem> m_item;
     shared::TQtConnectionManager m_connections;
     shared::TQtConnectionManager m_gameSessionConnections;
@@ -239,6 +243,7 @@ private:
     std::shared_ptr<container::TInventoryContainer> m_inventory;
     /// The session's appearance instance factory, handed to the object dialog.
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<appearances::TAppearancesManager> m_appearancesManager;
     std::shared_ptr<game::TPlayerData> m_playerData;
     QPointer<config::TActionBarOptions> m_actionBarOptions;
     std::vector<TActionButtonController*> m_buttons;

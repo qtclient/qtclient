@@ -29,6 +29,10 @@ public:
 
     void handleShowGameNewsMessage(const ::tibia::protobuf::protocol::GameserverMessageShowGameNews& ShowGameNewsMessage);
 
+Q_SIGNALS:
+    /// The news button opens or highlights the news (0: no particular news).
+    void showGameNewsMessage(int NewsType, bool NotificationOnly);
+
 private:
     std::shared_ptr<TNewsStorage> m_pNewsStorage;
 };

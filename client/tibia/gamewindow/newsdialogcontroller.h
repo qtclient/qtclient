@@ -141,21 +141,22 @@ public:
     explicit TNewsButtonController(QObject* parent = nullptr);
     ~TNewsButtonController() override;
 
-    static TNewsButtonController* instance();
+    /// CIP: the session's news handler's game news messages reach
+    /// onShowGameNewsMessage.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool highlighted() const override { return m_highlightTimer.isHighlighted(); }
     /// Opens the news dialog on the remembered news, then drops the highlight.
     void onOpenNewsButtonClicked() override;
     void onHighlightNewsButtonEnds() override;
 
-    /// Highlights the button (the news dialog's unread entry check).
-    void highlight();
     /// Remembers the news and highlights; unless it is a notification only, a
     /// named news opens the dialog at once.
     void onShowGameNewsMessage(int newsType, bool notificationOnly);
 
 private:
-    static TNewsButtonController* s_instance;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QMetaObject::Connection m_showGameNewsConnection;
     shared::THighlightTimer m_highlightTimer{ 600000 };
     int m_newsType = 0;
 };

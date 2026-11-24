@@ -158,7 +158,8 @@ void TMonsterBonusEffectsDialogController::connectToGameSession(const std::share
         disconnect(connection);
     m_sessionConnections.clear();
     m_confirmDialog->dialog()->close();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_bonusEffectStorage = session ? session->monsterBonusEffectStorage() : nullptr;
     m_monsterRaceStorage = session ? session->monsterRaceStorage() : nullptr;
     if (!m_bonusEffectStorage || !m_monsterRaceStorage)
@@ -295,7 +296,7 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
     if (!m_bonusEffectStorage)
         return;
     // CIP: the charm page asks for the bestiary overview.
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
         session && session->cyclopediaProtocolMessageHandler())
         session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();
 }
@@ -559,7 +560,7 @@ bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms
 
 void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()
 {
-    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     cyclopedia::TCyclopediaProtocolMessageHandler* handler =
         session ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
     if (!handler)

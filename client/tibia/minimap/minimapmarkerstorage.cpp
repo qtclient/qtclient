@@ -23,13 +23,7 @@ constexpr A HandledActions[] = {
     A::UPDATE_MINIMAP_MARKER,
 };
 
-TMinimapMarkerStorage* g_activeMarkers = nullptr;
-
 }
-
-TMinimapMarkerStorage* TMinimapMarkerStorage::active() { return g_activeMarkers; }
-
-void TMinimapMarkerStorage::setActive(TMinimapMarkerStorage* storage) { g_activeMarkers = storage; }
 
 TMinimapMarkerStorage::TMinimapMarkerStorage(QObject* parent)
     : cip::tibia::minimap::TMinimapMarkerStorage(parent)
@@ -39,8 +33,6 @@ TMinimapMarkerStorage::TMinimapMarkerStorage(QObject* parent)
 
 TMinimapMarkerStorage::~TMinimapMarkerStorage()
 {
-    if (g_activeMarkers == this)
-        g_activeMarkers = nullptr;
     unbindActions();
 }
 
@@ -48,6 +40,16 @@ TMinimapMarkerPtr TMinimapMarkerStorage::markerAt(const TWorldMapCoordinate& coo
 {
     const auto it = m_markers.find(coordinate);
     return it != m_markers.end() ? it->second : nullptr;
+}
+
+input::TMinimapMarkerData TMinimapMarkerStorage::markerData(const Position& coord) const
+{
+    input::TMinimapMarkerData data{ coord, 0, {} };
+    if (const TMinimapMarkerPtr marker = markerAt(TWorldMapCoordinate(coord))) {
+        data.icon = marker->icon;
+        data.description = marker->description;
+    }
+    return data;
 }
 
 void TMinimapMarkerStorage::addMarker(const TMinimapMarker& marker)

@@ -7,6 +7,12 @@
 #include <functional>
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+}
+namespace config {
+class TClientOptions;
+}
 namespace gamewindow {
 
 /// The object roles list models share (CIP's appearance-instance role helper), in CIP's order.
@@ -32,6 +38,10 @@ struct TAppearanceInstanceRoleSources
 {
     /// The client options and item prices are there.
     bool withOptions = false;
+    /// The loot-value frames' options (colorizeLootStyle,
+    /// gameWindowShowLootHighlighting) and prices; none without them.
+    const config::TClientOptions* clientOptions = nullptr;
+    analysers::TItemPriceStorage* prices = nullptr;
     /// Options showExpireInContainers and showExpireWhenUnused.
     bool showExpire = true;
     bool showExpireWhenUnused = false;

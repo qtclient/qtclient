@@ -9,6 +9,10 @@
 
 #include <memory>
 
+namespace tibia::config {
+class TClientOptions;
+}
+
 namespace tibia::container {
 
 class TContainerStorage;
@@ -29,7 +33,7 @@ class TContainerGameActionHandler final : public cip::tibia::container::TContain
 {
     Q_OBJECT
 public:
-    TContainerGameActionHandler(std::shared_ptr<TContainerStorage> containerStorage,
+    TContainerGameActionHandler(std::shared_ptr<config::TClientOptions> clientOptions, std::shared_ptr<TContainerStorage> containerStorage,
                                 std::shared_ptr<TObjectCountStorage> objectCountStorage, QObject* parent = nullptr);
     ~TContainerGameActionHandler() override;
     TContainerGameActionHandler(const TContainerGameActionHandler&) = delete;
@@ -84,6 +88,8 @@ public Q_SLOTS:
         const std::shared_ptr<const ::tibia::input::TGameActionDepotSearchRetrieve>& pDepotSearchRetrieveGameAction);
 
 private:
+    /// CIP +0x10: the client's options.
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
     std::shared_ptr<TContainerStorage> m_containerStorage;
     std::shared_ptr<TObjectCountStorage> m_objectCountStorage;
 };

@@ -1,5 +1,4 @@
 #include "questlogcontroller.h"
-#include "game/currentgamesession.h"
 #include "protocol/clientmessages.h"
 
 #include "game/gamesessionbase.h"
@@ -298,7 +297,8 @@ TQuestLogController::TQuestLogController(QQmlEngine* Engine, QQuickItem* DialogP
 
 void TQuestLogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     std::shared_ptr<questlog::TQuestLogStorage> storage = session ? session->questLogStorage() : nullptr;
     if (storage == m_storage)
         return;
@@ -374,7 +374,7 @@ bool TQuestLogController::showHidden() const
 /// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
 void TQuestLogController::showDialog(const int parameter)
 {
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()); session)
         tibia::protocol::gameclient::sendRequestQuestLog();
     if ((parameter & 0xff0000) == 0) {
         m_lines.setLines({});
@@ -507,7 +507,7 @@ void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
 {
     if (QuestLineID == m_selectedQuestLineId)
         return;
-    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session)
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()); session)
         tibia::protocol::gameclient::sendRequestQuestLine(QuestLineID);
     m_selectedQuestLineId = QuestLineID;
     Q_EMIT selectedQuestLineChanged();

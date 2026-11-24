@@ -3,7 +3,6 @@
 #include "animation/phaseanimator.h"
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
-#include "app/clientoptions.h"
 #include "appearances/genericstorage.h"
 #include "assets/assetasyncloader.h"
 #include "assets/assetfilesystemhelper.h"
@@ -87,7 +86,6 @@ TGameClientBase::TGameClientBase(QQmlEngine* Engine,
     appearances::TAppearancesManager::setInstance(m_pAppearancesManager.get());
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(m_pCyclopediaMapStaticDataStorage.get());
     spells::TSpellInfoStorage::setInstance(m_pSpellInfoStorage.get());
-    game::TPassiveAbilityInfoStorage::setInstance(m_pPassiveAbilityInfoStorage.get());
 }
 
 TGameClientBase::~TGameClientBase()
@@ -99,12 +97,10 @@ TGameClientBase::~TGameClientBase()
             sprites::TSpriteSystem::instance().setResolver(nullptr);
         sprites::TSpriteSystem::instance().setSpritesheetManager(nullptr);
         m_pMinimapWorldFeed.reset();
-        minimap::TMinimapMarkerStorage::setActive(nullptr);
         m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(nullptr);
         saveMinimapToDisk();
     }
     spells::TSpellInfoStorage::setInstance(nullptr);
-    game::TPassiveAbilityInfoStorage::setInstance(nullptr);
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(nullptr);
     appearances::TAppearanceInstanceFactory::install(nullptr);
     appearances::TAppearancesManager::setInstance(nullptr);
@@ -193,8 +189,6 @@ void TGameClientBase::initializeStorages()
     // CIP: the engine's image providers (the HUD flags and the other image
     // strips).
     imageproviders::registerImageProviders(m_pEngine);
-    // Host: the code that still reaches the markers through these finds them.
-    minimap::TMinimapMarkerStorage::setActive(m_pMinimapMarkerStorage.get());
     m_pCyclopediaMapStaticDataStorage->setMinimapMarkerStorage(m_pMinimapMarkerStorage.get());
 }
 
@@ -309,9 +303,8 @@ void TGameClientBase::onAssetsError() {}
 void TGameClientBase::initializeQmlContext()
 {
     // CIP: the process-wide mouse cursor controller (with the client options)
-    // and text copy controller, both root context properties. Host: qtclient's
-    // cursor reads the options as the host's option JSON.
-    gamewindow::TMouseCursorController::createInstance(m_pEngine, app::ClientOptions::load().options());
+    // and text copy controller, both root context properties.
+    gamewindow::TMouseCursorController::createInstance(m_pEngine, sharedClientOptions());
     gamewindow::TTextCopyController::createInstance(m_pEngine);
     m_pStoreAndResourceBalanceHelperController = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
     m_pStoreAndResourceBalanceHelperController->registerInRootContext(m_pEngine->rootContext());

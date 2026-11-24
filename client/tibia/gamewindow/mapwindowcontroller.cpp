@@ -46,7 +46,6 @@ bool sessionIsOnline(const std::shared_ptr<game::IGameSession>& gameSession)
     return session && session->isOnline();
 }
 
-using Cursor = TMouseCursorController;
 using qmlcomponents::TWorldMapRenderProvider;
 using A = input::EGameAction;
 
@@ -151,13 +150,17 @@ TMapWindowController::TMapWindowController(QQmlEngine* engine, QQuickItem* pane,
     if (m_pClientOptions)
         connect(m_pClientOptions, &config::TClientOptions::mapWindowControllerOptionsChanged, this,
                 &TMapWindowController::onMapWindowControllerOptionsChanged);
-    // Host: the pack's classic / immersive view and the target highlight options.
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String("modImmersiveGameView") || name == QLatin1String("modClassicGameView"))
-            refreshClassicView();
-        else if (name == QLatin1String("gameWindowShowAttackAnimation") || name == QLatin1String("gameWindowShowTargetHighlight"))
-            applyTargetHighlightOption();
-    });
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::optionChanged, this, [this](const config::EClientOption id) {
+            if (id == config::EClientOption::gameWindowShowAttackAnimation || id == config::EClientOption::gameWindowShowTargetHighlight)
+                applyTargetHighlightOption();
+        });
+    // Host: the pack's classic / immersive view (pack options no CIP option names).
+    if (m_pClientOptions)
+        connect(m_pClientOptions, &config::TClientOptions::extraOptionChanged, this, [this](const QString& name) {
+            if (name == QLatin1String("modImmersiveGameView") || name == QLatin1String("modClassicGameView"))
+                refreshClassicView();
+        });
 
     if (m_mapWindow) {
         connect(m_mapWindow, SIGNAL(mapWindowClicked(int, int, int, int)), this, SLOT(onMapWindowClicked(int, int, int, int)));
@@ -200,11 +203,11 @@ void TMapWindowController::applyTargetHighlightOption()
 {
     if (!m_provider)
         return;
-    // CIP 0x4c ShowTargetHighlight + 0x4d ShowAttackAnimation both gate the
-    // red/green creature tint (options.json has both keys).
-    const QJsonObject options = app::ClientOptions::load().options();
-    m_provider->setTargetHighlightEnabled(options.value(QLatin1String("gameWindowShowAttackAnimation")).toBool(true)
-                                          || options.value(QLatin1String("gameWindowShowTargetHighlight")).toBool(true));
+    // ShowTargetHighlight and ShowAttackAnimation both gate the red/green
+    // creature tint.
+    m_provider->setTargetHighlightEnabled(!m_pClientOptions
+                                          || m_pClientOptions->boolOption(config::EClientOption::gameWindowShowAttackAnimation)
+                                          || m_pClientOptions->boolOption(config::EClientOption::gameWindowShowTargetHighlight));
 }
 
 void TMapWindowController::updateTrackedUseAtMouseCursor()
@@ -471,8 +474,7 @@ bool TMapWindowController::filterWindowPointer(QEvent* event)
         }
         if (!m_mapPressActive || m_mapDragStarted || !(mouse->buttons() & Qt::LeftButton))
             return false;
-        if (TDragAndDropController::instance()
-            && TDragAndDropController::instance()->isDragging()) {
+        if (const TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine); dnd && dnd->isDragging()) {
             m_mapDragStarted = true;
             return false;
         }
@@ -514,9 +516,8 @@ bool TMapWindowController::filterWindowPointer(QEvent* event)
         const auto* mouse = static_cast<QMouseEvent*>(event);
         if (!m_mapPressActive || mouse->button() != m_mapPressButton)
             return false;
-        const bool dragged = m_mapDragStarted
-            || (TDragAndDropController::instance()
-                && TDragAndDropController::instance()->isDragging());
+        const TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine);
+        const bool dragged = m_mapDragStarted || (dnd && dnd->isDragging());
         const QPointF local = m_mapWindow->mapFromScene(mouse->scenePosition());
         const bool inMap = local.x() >= 0 && local.y() >= 0 && local.x() < m_mapWindow->width()
             && local.y() < m_mapWindow->height();
@@ -628,12 +629,12 @@ void TMapWindowController::updateMouseTarget()
             m_provider->clearMouseHighlightField();
         return;
     }
-    Cursor* cursor = Cursor::instance();
+    TMouseCursorController* cursor = TMouseCursorController::instance();
     // CIP : no hover candidates while a modal dialog is open.
     if (TDialogStackController* dialogs = TDialogStackController::instance();
         dialogs && !dialogs->isEmpty()) {
         if (cursor)
-            cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
+            cursor->setLayerShape(TMouseCursorController::MapWindow, TMouseCursorController::Default);
         m_provider->setMouseTargetObject(0, {}, -1);
         m_provider->clearMouseHighlightField();
         return;
@@ -665,7 +666,7 @@ void TMapWindowController::updateMouseTarget()
     const input::IGameActionPtr action = m_pGameActionMapper->map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
     if (!action) {
         if (cursor)
-            cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
+            cursor->setLayerShape(TMouseCursorController::MapWindow, TMouseCursorController::Default);
         m_provider->setMouseTargetObject(0, {}, -1);
         // Keep the baseplate field — empty tiles still show the square.
     } else {
@@ -673,7 +674,7 @@ void TMapWindowController::updateMouseTarget()
         // (cursorShapeOf → Crosshair for MOVE_OBJECT). mouseAnimatedCursor is owned
         // by TMouseCursorController (static vs animated cursor frames), not here.
         if (cursor)
-            cursor->setLayerShape(Cursor::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
+            cursor->setLayerShape(TMouseCursorController::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
         const auto target = worldmap::TWorldMapGameActionProvider::mouseTargetOf(action);
         if (target.creatureId)
             m_provider->setMouseTargetCreatureId(target.creatureId);
@@ -746,7 +747,7 @@ m_pGameActionMapper->map(candidates, input::TGameActionMapper::WorldMapContext,
 
 void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mouseY, QObject* source)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine);
     if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !sessionIsOnline(m_gameSession))
         return;
     for (const input::IGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
@@ -759,7 +760,7 @@ void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mous
 
 void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mouseY)
 {
-    TDragAndDropController* dnd = TDragAndDropController::instance();
+    TDragAndDropController* dnd = TDragAndDropController::fromEngine(m_pEngine);
     if (!dnd || !m_provider || !m_mapWindow || !m_worldMap)
         return;
     const input::TMoveObjectPtr move = dnd->takeAction();
@@ -768,7 +769,7 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(QPointF(mouseX, mouseY)));
     if (!pick.isValid())
         return;
-    const bool moveAll = app::ClientOptions::load().options().value(QLatin1String("dragAndDropDefaultActionIsMoveAll")).toBool(false);
+    const bool moveAll = m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::dragAndDropDefaultActionIsMoveAll);
     Q_EMIT publishGameAction(
         input::finalizeDrop(move, pick.position, static_cast<int>(dnd->modifiers()), moveAll));
 }
@@ -798,6 +799,9 @@ void TMapWindowController::handleGameAction(const input::IGameActionPtr& pGameAc
 {
     if (!pGameAction)
         return;
+    // The tutorial's map markers (ADD_GUI_TUTORIAL_MARKER, REMOVE_ALL_TUTORIAL_MARKERS).
+    if (m_tutorialMarkers)
+        m_tutorialMarkers->handleGameAction(pGameAction);
     if (pGameAction->gameActionType() == input::EGameAction::USE_AT_MOUSECURSOR) {
         if (auto use = std::dynamic_pointer_cast<const input::TGameActionUseAtMouseCursor>(pGameAction))
             handleGameActionAtMouseCursor(use);
@@ -822,8 +826,8 @@ void TMapWindowController::handleGameActionAtMouseCursor(const std::shared_ptr<c
 {
     // The use waits a frame for a window to take it; off the map the battle lists may.
     trackUseAtMouseCursorGameAction(action);
-    Cursor* cursor = Cursor::instance();
-    if (!cursor || cursor->topRegion() != Cursor::MapWindow)
+    TMouseCursorController* cursor = TMouseCursorController::instance();
+    if (!cursor || cursor->topRegion() != TMouseCursorController::MapWindow)
         return;
     // Over the map the map window takes it, with or without a target there.
     bool onMap = false;
@@ -844,8 +848,8 @@ void TMapWindowController::handleGameActionAtMouseCursor(const std::shared_ptr<c
 
 void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)
 {
-    Cursor* cursor = Cursor::instance();
-    if (!cursor || cursor->topRegion() != Cursor::MapWindow)
+    TMouseCursorController* cursor = TMouseCursorController::instance();
+    if (!cursor || cursor->topRegion() != TMouseCursorController::MapWindow)
         return;
     bool onMap = false;
     const QPointF point = mouseCursorPosition(onMap);

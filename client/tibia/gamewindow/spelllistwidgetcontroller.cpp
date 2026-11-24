@@ -53,9 +53,10 @@ const std::array<TFilterBox, 13>& filterBoxes()
 
 }
 
-TSpellListWidgetController::TSpellListWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TSpellListWidgetController::TSpellListWidgetController(spells::TSpellInfoStorage* SpellInfoStorage, QQuickItem* gameWindowItem,
+                                                       QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_proxy(new TSpellListDataModelSortFilterProxy(this))
+    , m_proxy(new TSpellListDataModelSortFilterProxy(SpellInfoStorage, this))
 {
     m_spellListModel = QVariant::fromValue<QObject*>(m_proxy);
     m_gameWindowQuickItem = gameWindowItem;
@@ -221,7 +222,8 @@ TSpellListWidgetManager::~TSpellListWidgetManager() { delete m_controller; }
 TSidebarWidget* TSpellListWidgetManager::open(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     if (!m_controller) {
-        m_controller = new TSpellListWidgetController(m_gameWindowItem, m_engine);
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+        m_controller = new TSpellListWidgetController(session ? session->spellInfoStorage() : nullptr, m_gameWindowItem, m_engine);
         connect(m_controller, &TSpellListWidgetController::publishGameAction, this, &TSpellListWidgetManager::publishGameAction);
         m_controller->connectToGameSession(GameSession);
     }

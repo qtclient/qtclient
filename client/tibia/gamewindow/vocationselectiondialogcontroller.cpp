@@ -27,8 +27,10 @@ void TVocationSelectionDialogController::connectToGameSession(std::shared_ptr<ga
     m_gameSession = std::move(GameSession);
     if (!m_gameSession)
         return;
-    // Host: qtclient's proxy reads the spell infos itself (CipSoft hands it the session's).
-    TSpellListDataModelSortFilterProxy* const spellList = new TSpellListDataModelSortFilterProxy(this);
+    // CipSoft hands the proxy the session's spell infos.
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    TSpellListDataModelSortFilterProxy* const spellList =
+        new TSpellListDataModelSortFilterProxy(session ? session->spellInfoStorage() : nullptr, this);
     if (m_spellList)
         m_spellList->deleteLater();
     m_spellList = spellList;

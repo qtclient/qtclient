@@ -55,11 +55,10 @@ QString keywordLinks(QString text)
 
 }
 
-QString formatLootRichText(QString text)
+QString formatLootRichText(QString text, analysers::TItemPriceStorage* prices)
 {
     static const QRegularExpression item(QStringLiteral("\\{([0-9]+)\\|([^\\}]*)\\}"));
-    if (config::TClientOptions::instance()->colorizeLootStyle() != 0) {
-        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+    if (prices) {
         QString out;
         out.reserve(text.size() + 32);
         qsizetype pos = 0;
@@ -587,7 +586,8 @@ QColor systemWhite()
     return QColor(0xf0, 0xf0, 0xf0);
 }
 
-QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool seconds, const bool levels, int* plainLength)
+QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool seconds, const bool levels,
+                    analysers::TItemPriceStorage* lootPrices, int* plainLength)
 {
     // The prefix: time, speaker, traded mark and level.
     QString prefix;
@@ -608,7 +608,7 @@ QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool s
     if (entry.kind == TChatEntry::Speaker)
         body = keywordLinks(body);
     else if (entry.kind == TChatEntry::Loot)
-        body = formatLootRichText(body);
+        body = formatLootRichText(body, lootPrices);
     if (plainLength)
         *plainLength = static_cast<int>(prefix.size() + QTextDocumentFragment::fromHtml(body).toPlainText().size());
 

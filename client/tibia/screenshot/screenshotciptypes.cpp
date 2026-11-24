@@ -64,8 +64,6 @@ QString eventName(const int event)
 
 }
 
-TScreenshotManager* TScreenshotManager::s_instance = nullptr;
-
 TOutstandingScreenshot::TOutstandingScreenshot(const QSharedPointer<QQuickItemGrabResult>& grabResult, const int eventType)
     : m_id(s_nextOutstandingScreenshotId++)
     , m_grabResult(grabResult)
@@ -85,7 +83,6 @@ TScreenshotManager::TScreenshotManager(config::TClientOptions* clientOptions,
     , m_rootItem(contentItem)
     , m_mapWindow(mapWindowPane ? mapWindowPane->findChild<QQuickItem*>(QStringLiteral("mapWindow")) : nullptr)
 {
-    s_instance = this;
     m_backlogTimer.setInterval(BacklogIntervalMs);
     m_backlogTimer.setSingleShot(false);
     connect(&m_backlogTimer, &QTimer::timeout, this, &TScreenshotManager::onBacklockUpdateTriggered);
@@ -94,16 +91,7 @@ TScreenshotManager::TScreenshotManager(config::TClientOptions* clientOptions,
                 &TScreenshotManager::onScreenshotMangerOptionsChanged);
 }
 
-TScreenshotManager::~TScreenshotManager()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TScreenshotManager* TScreenshotManager::instance()
-{
-    return s_instance;
-}
+TScreenshotManager::~TScreenshotManager() = default;
 
 bool TScreenshotManager::isScreenshotEnabled(const int event) const
 {

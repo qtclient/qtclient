@@ -19,6 +19,7 @@
 
 namespace tibia {
 namespace config {
+class TClientOptions;
 class TSidebarOptions;
 }
 namespace game {
@@ -40,9 +41,10 @@ class TContainerController final : public TSidebarWidgetController<cip::tibia::g
     Q_OBJECT
 public:
     /// `messages` is the session's container protocol handler the widget's
-    /// requests go to.
-    TContainerController(int containerId, container::TContainerProtocolMessageHandler* messages, QQuickItem* gameWindowItem,
-                         QQmlEngine* engine, QObject* parent = nullptr);
+    /// requests go to; the slots follow `clientOptions` (expiry texts,
+    /// loot-value frames).
+    TContainerController(int containerId, container::TContainerProtocolMessageHandler* messages, config::TClientOptions* clientOptions,
+                         QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TContainerController() override;
     /// CIP: the frame update: the counting-down slot texts.
     void updateWithTimestamp(qint64 TimestampMilliseconds);
@@ -154,6 +156,7 @@ private:
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<container::TContainerProtocolMessageHandler> m_messages;
+    QPointer<config::TClientOptions> m_clientOptions;
     TAppearanceInstanceListModel m_model;
     input::TGameActionMapper m_mapper;
     QPointer<config::TSidebarOptions> m_options;

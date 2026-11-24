@@ -1,6 +1,6 @@
 #include "playerstatestracker.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
@@ -26,9 +26,7 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
         m_restingAreaText.clear();
         m_model.setEntries({});
     });
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name != QLatin1String("specialConditionsOptions"))
-            return;
+    connect(config::TClientOptions::instance(), &config::TClientOptions::specialConditionsOptionsChanged, this, [this] {
         reloadOptions();
         Q_EMIT optionsChanged();
     });

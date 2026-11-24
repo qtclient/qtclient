@@ -3,17 +3,20 @@
 #include <cip_gen.h>
 
 #include <QCursor>
-#include <QJsonObject>
 #include <QList>
 #include <QMap>
 #include <QTimer>
 
 #include <array>
+#include <memory>
 #include <vector>
 
 class QQmlEngine;
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace gamewindow {
 
 /// The application cursor (CIP: TMouseCursorController): the shape of the
@@ -59,18 +62,17 @@ public:
         ShapeCount
     };
 
-    explicit TMouseCursorController(const QJsonObject& options, QObject* parent = nullptr);
+    explicit TMouseCursorController(std::shared_ptr<config::TClientOptions> ClientOptions, QObject* parent = nullptr);
     ~TMouseCursorController() override;
 
     /// The controller exposed to QML as tibiaMouseCursorController, if any.
     static TMouseCursorController* instance();
 
     /// CIP: makes the process-wide controller (a new one replaces the old)
-    /// and offers it to the engine's QML as `tibiaMouseCursorController`.
-    /// Host: the options are the host's option JSON (CipSoft: the client
-    /// options), and the controller goes with the engine (Qt objects must
-    /// not outlive the application).
-    static void createInstance(QQmlEngine* Engine, const QJsonObject& Options);
+    /// with the client options and offers it to the engine's QML as
+    /// `tibiaMouseCursorController`. Host: the controller goes with the
+    /// engine (Qt objects must not outlive the application).
+    static void createInstance(QQmlEngine* Engine, std::shared_ptr<config::TClientOptions> ClientOptions);
 
     /// The region the mouse entered last and has not left, 0 for none.
     int topRegion() const { return m_regions.isEmpty() ? 0 : m_regions.last(); }
@@ -117,7 +119,9 @@ private:
         int fps = 0;
     };
 
-    void loadCursors(const QJsonObject& options);
+    /// The cursors the options mouseSystemCursor, mouseBigCursor and
+    /// mouseAnimatedCursor select.
+    void loadCursors();
     void loadStaticCursors(bool big);
     void loadAnimatedCursors(bool animated, bool big);
     void loadSystemCursors();
@@ -130,6 +134,7 @@ private:
     int currentShape() const;
     void update();
 
+    std::shared_ptr<config::TClientOptions> m_pClientOptions;
     QTimer m_timer;
     QList<int> m_regions;
     QMap<int, int> m_layerShapes;

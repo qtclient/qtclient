@@ -27,18 +27,18 @@ namespace tibia::gamewindow {
 
 namespace {
 
-QString appearanceName(const uint16_t typeId)
+QString appearanceName(const appearances::TAppearancesManager* appearancesManager, const uint16_t typeId)
 {
-    const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
+    const TAppearanceTypePtr type = appearancesManager ? appearancesManager->findAppearanceType(ThingCategoryItem, typeId) : nullptr;
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
 /// CIP : adds one wire list to the rows, the amount going to
 /// `amount` (row +0x24 inventory, +0x28 depot, +0x2c stash, +0x30 inbox,
 /// +0x34 store inbox).
-void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummary>& list, uint32_t ItemSummaryEntry::* amount)
+void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummary>& list, uint32_t ItemSummaryEntry::* amount,
+               const appearances::TAppearancesManager* appearancesManager, analysers::TItemPriceStorage* prices)
 {
-    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
     rows.reserve(rows.size() + list.size());
     for (const ItemSummary& item : list) {
         const auto it = std::lower_bound(rows.begin(), rows.end(), item, [](const ItemSummaryEntry& row, const ItemSummary& key) {
@@ -52,16 +52,16 @@ void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummar
         row.typeId = item.itemId;
         row.upgradeTier = item.tier;
         row.*amount = item.amount;
-        row.name = appearanceName(item.itemId);
-        row.lootValueLevel = prices->lootValueLevel(item.itemId);
+        row.name = appearanceName(appearancesManager, item.itemId);
+        row.lootValueLevel = prices ? prices->lootValueLevel(item.itemId) : 0;
         rows.insert(it, std::move(row));
     }
 }
 
 /// CIP.
-QString lootValueImage(const int level, const int style)
+QString lootValueImage(const int level, const int style, const config::TClientOptions* clientOptions)
 {
-    if (level == 0 || config::TClientOptions::instance()->colorizeLootStyle() != style)
+    if (level == 0 || !clientOptions || clientOptions->colorizeLootStyle() != style)
         return QStringLiteral("");
     return QStringLiteral("image://%1/%2")
         .arg(style == 1 ? QStringLiteral("containerslot-glowingborders") : QStringLiteral("containerslot-coloredges"))
@@ -70,20 +70,22 @@ QString lootValueImage(const int level, const int style)
 
 }
 
-std::vector<ItemSummaryEntry> mergeItemSummary(const CyclopediaCharacterItemSummary& data)
+std::vector<ItemSummaryEntry> mergeItemSummary(const CyclopediaCharacterItemSummary& data, appearances::TAppearancesManager* appearancesManager,
+                                               analysers::TItemPriceStorage* prices)
 {
     std::vector<ItemSummaryEntry> rows;
-    mergeList(rows, data.inventory, &ItemSummaryEntry::inventoryAmount);
-    mergeList(rows, data.stash, &ItemSummaryEntry::stashAmount);
-    mergeList(rows, data.depot, &ItemSummaryEntry::depotAmount);
-    mergeList(rows, data.inbox, &ItemSummaryEntry::inboxAmount);
-    mergeList(rows, data.store, &ItemSummaryEntry::storeInboxAmount);
+    mergeList(rows, data.inventory, &ItemSummaryEntry::inventoryAmount, appearancesManager, prices);
+    mergeList(rows, data.stash, &ItemSummaryEntry::stashAmount, appearancesManager, prices);
+    mergeList(rows, data.depot, &ItemSummaryEntry::depotAmount, appearancesManager, prices);
+    mergeList(rows, data.inbox, &ItemSummaryEntry::inboxAmount, appearancesManager, prices);
+    mergeList(rows, data.store, &ItemSummaryEntry::storeInboxAmount, appearancesManager, prices);
     return rows;
 }
 
-TItemSummaryModel::TItemSummaryModel(std::vector<ItemSummaryEntry> entries, QObject* parent)
+TItemSummaryModel::TItemSummaryModel(std::vector<ItemSummaryEntry> entries, const config::TClientOptions* clientOptions, QObject* parent)
     : QAbstractListModel(parent)
     , m_entries(std::move(entries))
+    , m_clientOptions(clientOptions)
 {}
 
 int TItemSummaryModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_entries.size()); }
@@ -104,8 +106,8 @@ QVariant TItemSummaryModel::data(const QModelIndex& index, const int role) const
         case StoreInboxAmount: return entry.storeInboxAmount;
         case TotalAmount:
             return entry.inboxAmount + entry.depotAmount + entry.stashAmount + entry.inventoryAmount + entry.storeInboxAmount;
-        case LootValueSourceUnder: return lootValueImage(entry.lootValueLevel, 1);
-        case LootValueSourceOver: return lootValueImage(entry.lootValueLevel, 2);
+        case LootValueSourceUnder: return lootValueImage(entry.lootValueLevel, 1, m_clientOptions);
+        case LootValueSourceOver: return lootValueImage(entry.lootValueLevel, 2, m_clientOptions);
         default: return {};
     }
 }
@@ -125,9 +127,10 @@ QHash<int, QByteArray> TItemSummaryModel::roleNames() const
              { LootValueSourceOver, "lootValueSourceOver" } };
 }
 
-TItemSummaryModelSortFilterProxy::TItemSummaryModelSortFilterProxy(std::vector<ItemSummaryEntry> entries, QObject* parent)
+TItemSummaryModelSortFilterProxy::TItemSummaryModelSortFilterProxy(std::vector<ItemSummaryEntry> entries,
+                                                                   const config::TClientOptions* clientOptions, QObject* parent)
     : cip::tibia::gamewindow::TItemSummaryModelSortFilterProxy(parent)
-    , m_model(new TItemSummaryModel(std::move(entries), this))
+    , m_model(new TItemSummaryModel(std::move(entries), clientOptions, this))
 {
     m_showInventory = true;
     setSourceModel(m_model);
@@ -561,7 +564,10 @@ void TCharacterInfoDialogController::updateItemSummary()
     if (!characterInfoStorage())
         return;
     const CyclopediaCharacterItemSummary summary = characterInfoStorage()->itemSummary();
-    replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(summary), this));
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    std::vector<ItemSummaryEntry> entries = mergeItemSummary(summary, session ? session->appearancesManager().get() : nullptr,
+                                                             session ? session->itemPriceStorage().get() : nullptr);
+    replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(std::move(entries), m_pClientOptions, this));
     Q_EMIT dataModelChanged();
 }
 

@@ -7,7 +7,6 @@
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
 #include "game/gamesessionbase.h"
-#include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -359,9 +358,8 @@ void TStashDialogController::saveFilter()
 
 void TStashDialogController::showDialog()
 {
-    // Host: the session's item price storage is the live instance.
-    if (m_gameSession) {
-        if (analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance(); prices && prices->hasMarketPricesForWorld())
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        if (analysers::TItemPriceStorage* prices = session->itemPriceStorage().get(); prices && prices->hasMarketPricesForWorld())
             prices->requestMarketPricesIfMissing();
     }
     if (m_proxy.category() == -1)
@@ -412,7 +410,7 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     const auto stored = counts.find({ typeId, 0 });
     if (stored == counts.end())
         return {};
-    const game::TGameSessionBase* session = game::currentGameSession();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     const std::shared_ptr<container::TContainerGameActionProvider> provider =
         session ? session->containerGameActionProvider() : nullptr;
     return provider ? provider->stashTypeActions(typeId, stored->second) : input::TGameActionList{};

@@ -11,12 +11,6 @@
 
 namespace tibia::qmlcomponents {
 
-namespace {
-
-TTutorialHelperQmlService* g_instance = nullptr;
-
-}
-
 TTutorialMarkerRegistry& TTutorialMarkerRegistry::instance()
 {
     static TTutorialMarkerRegistry registry;
@@ -55,10 +49,7 @@ bool TTutorialMarkerRegistry::debugOverlayVisible() { return s_debugOverlayVisib
 TTutorialHelperQmlService::TTutorialHelperQmlService(QObject* parent)
     : cip::tibia::qmlcomponents::TTutorialHelperQmlService(parent)
 {
-    g_instance = this;
 }
-
-TTutorialHelperQmlService* TTutorialHelperQmlService::instance() { return g_instance; }
 
 int TTutorialHelperQmlService::nextUniqueTutorialMarkerID() { return TTutorialMarkerRegistry::instance().nextUniqueMarkerID(); }
 

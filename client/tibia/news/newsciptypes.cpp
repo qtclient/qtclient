@@ -1,6 +1,5 @@
 #include "news/newsciptypes.h"
 
-#include "gamewindow/newsdialogcontroller.h"
 #include "news/newsstorage.h"
 
 #include <protocol.pb.h>
@@ -8,18 +7,6 @@
 #include <utility>
 
 namespace tibia::news {
-
-namespace {
-
-/// The handler's showGameNewsMessage: the news button opens or highlights the
-/// news (nothing without a game window).
-void showGameNewsMessage(const int newsType, const bool notificationOnly)
-{
-    if (auto* button = tibia::gamewindow::TNewsButtonController::instance())
-        button->onShowGameNewsMessage(newsType, notificationOnly);
-}
-
-}
 
 TNewsProtocolMessageHandler::TNewsProtocolMessageHandler()
     : cip::tibia::news::TNewsProtocolMessageHandler(nullptr)
@@ -38,11 +25,11 @@ void TNewsProtocolMessageHandler::handleShowGameNewsMessage(const ::tibia::proto
     if (newsType != 0) {
         const TNewsStorage* storage = m_pNewsStorage.get();
         if (storage && storage->firstEntryOfType(newsType)) {
-            showGameNewsMessage(newsType, notificationOnly);
+            Q_EMIT showGameNewsMessage(newsType, notificationOnly);
             return;
         }
     }
-    showGameNewsMessage(0, notificationOnly);
+    Q_EMIT showGameNewsMessage(0, notificationOnly);
 }
 
 }

@@ -127,9 +127,6 @@ public:
     explicit TNewsStorage(std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
     ~TNewsStorage() override;
 
-    /// qtclient host accessor: the storage of the running client, null before one exists.
-    static TNewsStorage* current();
-
     /// The server's maxeditdate the entries are from.
     int version() const { return m_version; }
     bool isReturner() const { return m_returnerInformation && m_isReturner; }

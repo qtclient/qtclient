@@ -89,26 +89,19 @@ namespace {
 using A = input::EGameAction;
 using P = TManagedContainersProtocolMessageHandler;
 
-TQuickLootBlackWhitelistStorage* lootBlackWhitelist()
-{
-    return game::currentQuickLootBlackWhitelistStorage();
-}
-
 constexpr A QuickLootActions[] = { A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER, A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR,
                                    A::LOOT_CONTAINER_OPEN, A::OBTAIN_CONTAINER_SELECT, A::OBTAIN_CONTAINER_CLEAR, A::OBTAIN_CONTAINER_OPEN,
                                    A::LOOT_CONTAINER_FALLBACK, A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST };
 
-bool quickLootAllCorpsesInArea()
-{
-    return config::TClientOptions::instance()->boolOption(cip::EClientOption::quickLootAllCorpsesInAreaEnabled);
-}
-
 }
 
 TQuickLootGameActionHandler::TQuickLootGameActionHandler(std::shared_ptr<TManagedContainersProtocolMessageHandler> protocolMessageHandler,
-                                                         QObject* parent)
+                                                         std::shared_ptr<TQuickLootBlackWhitelistStorage> blackWhitelistStorage,
+                                                         std::shared_ptr<config::TClientOptions> clientOptions, QObject* parent)
     : cip::tibia::quickloot::TQuickLootGameActionHandler(parent)
     , m_protocolMessageHandler(std::move(protocolMessageHandler))
+    , m_blackWhitelistStorage(std::move(blackWhitelistStorage))
+    , m_clientOptions(std::move(clientOptions))
 {
     for (const A type : QuickLootActions)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
@@ -124,7 +117,9 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
     switch (pGameAction.gameActionType()) {
     case A::QUICK_LOOT:
         if (const auto* loot = input::gameActionAs<input::TGameActionQuickLoot>(&pGameAction))
-            m_protocolMessageHandler->quickLoot(loot->position(), loot->objectClientId(), loot->stackPosition(), quickLootAllCorpsesInArea());
+            m_protocolMessageHandler->quickLoot(
+                loot->position(), loot->objectClientId(), loot->stackPosition(),
+                m_clientOptions && m_clientOptions->boolOption(cip::EClientOption::quickLootAllCorpsesInAreaEnabled));
         return true;
     case A::QUICK_LOOT_AREA_AT_PLAYER:
         m_protocolMessageHandler->quickLootAreaAtPlayer();
@@ -161,7 +156,7 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
             handleAddToBlackWhitelistStatusAction(listStatus->typeId());
         return true;
     case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        if (TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist(); storage && listStatus)
+        if (TQuickLootBlackWhitelistStorage* storage = m_blackWhitelistStorage.get(); storage && listStatus)
             storage->removeItem(listStatus->typeId());
         return true;
     default:
@@ -171,7 +166,7 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
 
 void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const uint16_t objectId)
 {
-    TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist();
+    TQuickLootBlackWhitelistStorage* storage = m_blackWhitelistStorage.get();
     if (!storage)
         return;
     if (!storage->isListFull()) {
