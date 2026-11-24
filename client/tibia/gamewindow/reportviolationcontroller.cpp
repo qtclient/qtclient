@@ -6,7 +6,6 @@
 #include "reporting/reportingciptypes.h"
 
 #include <creatures/creaturestorage.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>

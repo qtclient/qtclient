@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include "container/containerciptypes.h"

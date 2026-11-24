@@ -1,4 +1,5 @@
 #include "unjustifiedpointswidgetcontroller.h"
+#include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
@@ -10,7 +11,6 @@
 #include <QJsonObject>
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -134,8 +134,11 @@ void TUnjustifiedPointsWidgetController::refresh()
     // is black after those and red otherwise. Without a player both are empty.
     m_currentSkullSource.clear();
     m_nextSkullSource.clear();
-    if (tibia::game::isOnline()) {
-        const int skull = tibia::game::localPlayerSkull();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (session && session->isOnline()) {
+        const std::shared_ptr<creatures::TCreature> player =
+            session->hasLocalPlayer() && session->creatureStorage() ? session->creatureStorage()->player() : nullptr;
+        const int skull = player ? player->skull() : 0;
         const bool redOrBlack = (skull & 0xfe) == 4;
         if (redOrBlack)
             m_currentSkullSource = skullSource(skull);

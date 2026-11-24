@@ -18,10 +18,11 @@
 #include <tibia/game/tgamenotify.h>
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 
 #include <protocol.pb.h>
-#include <tibia/game/gamesession_forward.h>
 
 #include <stdexcept>
 #include <utility>
@@ -151,7 +152,9 @@ void setModGrade(TGrades& grades, const int mod, const int grade)
 void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const GameserverMessageSkillWheel& m)
 {
     if (!m.can_view()) {
-        const int profession = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
+        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        const game::TPlayerData* player = session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+        const int profession = player ? player->vocation() % 10 : 0;
         const bool hasVocation = profession >= 1 && profession <= VocationCount;
         Q_EMIT publishGameAction(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                      : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
@@ -176,8 +179,9 @@ void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const Gameserver
     if (creature) {
         ownCharacter = creature->isLocalPlayer();
         name = creature->name();
-    } else if (tibia::game::hasLocalPlayer() && tibia::game::localPlayerId() == m.player_id()) {
-        name = QString::fromStdString(tibia::game::localPlayerName());
+    } else if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+               session && session->hasLocalPlayer() && m_creatureStorage && m_creatureStorage->playerID() == m.player_id()) {
+        name = session->playerData() ? session->playerData()->characterNameQString() : QString();
         ownCharacter = true;
     }
 
@@ -298,13 +302,16 @@ void TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction(const TWheel& 
 
 void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
 {
-    if (m_playerId == 0 || !tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+    if (m_playerId == 0 || !player)
         return;
-    if (tibia::game::localPlayerLevel() > RequiredLevel - 1 && (tibia::game::localPlayerIsPremium() || (m_premiumTimeStorage && !m_premiumTimeStorage->isPremium()))) {
+    const bool premium = m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
+    if (player->level() > RequiredLevel - 1 && (premium || (m_premiumTimeStorage && !m_premiumTimeStorage->isPremium()))) {
         m_pProtocolMessageHandler->requestSkillWheel(m_playerId);
         return;
     }
-    const int profession = tibia::game::localPlayerVocation() % 10;
+    const int profession = player->vocation() % 10;
     const bool hasVocation = profession >= 1 && profession <= VocationCount;
     Q_EMIT publishGameAction(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                  : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));

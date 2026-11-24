@@ -14,7 +14,16 @@
 #include "shared/iodevicereader.h"
 
 #include <client/const.h>
-#include <tibia/game/gamesession.h>
+#include <client/const.h>
+#include <client/declarations.h>
+#include <client/outfit.h>
+#include <client/position.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/mapsession.h"
+#include "game/objectreference.h"
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
 #include "network/gameserverconnection.h"

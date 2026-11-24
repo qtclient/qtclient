@@ -1,6 +1,8 @@
 #include "playerguidewidgetcontroller.h"
 
 #include "config/sidebaroptions.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include "game/igamesession.h"
 #include "game/playerdata.h"
 #include "gamewindow/remainingdialogs.h"
@@ -14,7 +16,6 @@
 #include <QQuickItem>
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -169,13 +170,13 @@ TPlayerGuideWidgetController::TPlayerGuideWidgetController(news::TNewsStorage* n
     widget()->createItem(QStringLiteral("PlayerGuideWidget.qml"));
     if (m_newsStorage)
         connect(m_newsStorage, &news::TNewsStorage::contentsChanged, this, &TPlayerGuideWidgetController::onNewsStorageContentsChanged);
-    if (tibia::game::isOnline())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->isOnline())
         onGameSessionChanged();
 }
 
 void TPlayerGuideWidgetController::onGameSessionChanged()
 {
-    if (game::TPlayerData* player = game::TPlayerData::liveInstance()) {
+    if (game::TPlayerData* player = tibia::game::currentPlayerData()) {
         connect(player, &game::TPlayerData::playerLevelUp, this, &TPlayerGuideWidgetController::onPlayerLevelUp, Qt::UniqueConnection);
         onWidgetOptionsChanged();
         refreshPlayerGuideEntries();
@@ -195,7 +196,7 @@ void TPlayerGuideWidgetController::onPlayerLevelUp()
 {
     m_hideTimer.start();
     setFlag(m_isShowLevelUp, true, &TPlayerGuideWidgetController::showLevelUpChanged);
-    const game::TPlayerData* player = game::TPlayerData::liveInstance();
+    const game::TPlayerData* player = tibia::game::currentPlayerData();
     const int level = player ? int(player->level()) : 0;
     if (m_playerLevelToShow != level) {
         m_playerLevelToShow = level;
@@ -271,7 +272,8 @@ void TPlayerGuideWidgetController::refreshPlayerGuideEntries()
 
 std::optional<int> TPlayerGuideWidgetController::levelSpecialPopupLevel() const
 {
-    const game::TPlayerData* player = tibia::game::isOnline() ? game::TPlayerData::liveInstance() : nullptr;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
     if (!player || !m_options)
         return std::nullopt;
     const std::set<int> pending = levelSet(m_options->section(QLatin1String(OptionsKey)).toObject(), PendingPopupsKey);
@@ -433,7 +435,7 @@ TPlayerGuideWidgetManager::~TPlayerGuideWidgetManager() { delete m_controller; }
 
 void TPlayerGuideWidgetManager::onGameStarted()
 {
-    game::TPlayerData* player = game::TPlayerData::liveInstance();
+    game::TPlayerData* player = tibia::game::currentPlayerData();
     if (!player)
         return;
     connect(player, &game::TPlayerData::playerLevelUp, this, &TPlayerGuideWidgetManager::onPlayerLevelUp, Qt::UniqueConnection);
@@ -444,7 +446,7 @@ void TPlayerGuideWidgetManager::onGameStarted()
 
 void TPlayerGuideWidgetManager::onPlayerLevelUp()
 {
-    const game::TPlayerData* player = game::TPlayerData::liveInstance();
+    const game::TPlayerData* player = tibia::game::currentPlayerData();
     if (!player)
         return;
     TPlayerGuideWidgetController::queueLevelSpecialPopup(int(player->level()), m_options);

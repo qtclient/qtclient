@@ -20,7 +20,8 @@
 
 #include <algorithm>
 #include <cmath>
-#include <tibia/game/gamesession.h>
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "game/gameciptypes.h"
 
 namespace tibia::analysers {
 
@@ -30,7 +31,8 @@ using A = input::EGameAction;
 
 bool isPremiumPlayer()
 {
-    return tibia::game::localPlayerIsPremium();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    return premium && premium->isPremium();
 }
 
 QString percentString(const double fraction) { return QString::number(fraction * 100.0, 'f', 1); }
@@ -906,17 +908,29 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    const uint8_t shield = tibia::game::localPlayerShield();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const creatures::TCreatureStorage* creatureStorage =
+        session && session->hasLocalPlayer() ? session->creatureStorage().get() : nullptr;
+    const std::shared_ptr<creatures::TCreature> player = creatureStorage ? creatureStorage->player() : nullptr;
+    const uint8_t shield = player ? player->shield() : 0;
     const bool inParty = static_cast<uint8_t>(shield - 3) < 8;
-    const bool leader = m_storage->leaderId() == tibia::game::localPlayerId();
+    const bool leader = m_storage->leaderId() == (creatureStorage ? creatureStorage->playerID() : 0);
     bool hasEntries = true;
     if (leader && inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_for_group")), &gamewindow::TContextMenuEntryItem::triggered, this,
-                [] { tibia::game::sendPartyAnalyzerReset(); });
+                [] {
+                    if (const game::TGameSessionBase* s = tibia::game::currentGameSession();
+                        s && s->canPerformGameAction() && s->cyclopediaProtocolMessageHandler())
+                        s->cyclopediaProtocolMessageHandler()->sendResetPartyHuntAnalyser();
+                });
         if (isPremiumPlayer())
             connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 0 ? "partyhunt_set_loot_type_leader" : "partyhunt_set_loot_type_market")),
                     &gamewindow::TContextMenuEntryItem::triggered, this,
-                    [this] { tibia::game::sendPartyAnalyzerPriceType(m_storage->priceType() == 0 ? 1 : 0); });
+                    [this] {
+                        if (const game::TGameSessionBase* s = tibia::game::currentGameSession();
+                            s && s->canPerformGameAction() && s->cyclopediaProtocolMessageHandler())
+                            s->cyclopediaProtocolMessageHandler()->sendPartyHuntLootType(m_storage->priceType() == 0 ? 1 : 0);
+                    });
     } else if (!inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_local")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_storage->clear(); });

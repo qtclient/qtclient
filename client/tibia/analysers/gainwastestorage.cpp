@@ -7,7 +7,6 @@
 #include <tibia/assets/things.h>
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::analysers {
 

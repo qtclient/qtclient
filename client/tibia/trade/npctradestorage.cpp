@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/playerdata.h"
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::trade {
@@ -185,9 +185,9 @@ void TNPCTradeStorage::setQuestFlagCurrencyBalance(const int balance)
 
 void TNPCTradeStorage::onPlayerDataChanged()
 {
-    if (!tibia::game::hasLocalPlayer())
+    if (!m_playerData)
         return;
-    const uint32_t capacity = tibia::game::localPlayerFreeCapacity();
+    const auto capacity = static_cast<uint32_t>(m_playerData->freeCapacity());
     if (capacity == m_freeCapacity)
         return;
     m_freeCapacity = capacity;
@@ -205,7 +205,7 @@ uint32_t TNPCTradeStorage::ownedCount(const TNPCTradeGood& good, const bool incl
     // Without the "sell equipped" option one piece is held back when the type
     // is equipped (whatever the stack size).
     bool equipped = false;
-    if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+    if (const container::TInventoryContainer* inventory = m_inventoryContainer.get()) {
         for (int slot = tibia::client::InventorySlotHead; slot <= tibia::client::InventorySlotAmmo && !equipped; ++slot) {
             const container::TInventorySlot& row = inventory->slotAt(slot);
             equipped = !row.empty() && row.typeId == type;
@@ -222,17 +222,17 @@ uint64_t TNPCTradeStorage::money() const
     }
     if (currencyIsName())
         return static_cast<uint64_t>(std::max(m_questFlagCurrencyBalance, 0));
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
+    return m_playerData ? m_playerData->totalMoney() : 0;
 }
 
 uint64_t TNPCTradeStorage::bankBalance() const
 {
-    return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BANK_BALANCE);
+    return m_playerData ? m_playerData->resourceBalance(tibia::client::RESOURCE_BANK_BALANCE) : 0;
 }
 
 uint64_t TNPCTradeStorage::inventoryBalance() const
 {
-    return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
+    return m_playerData ? m_playerData->resourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED) : 0;
 }
 
 void TNPCTradeStorage::look(const TNPCTradeGood& good) const

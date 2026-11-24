@@ -17,12 +17,10 @@ public:
     StorageScope()
     {
         m_storage = std::make_unique<tibia::creatures::TCreatureStorage>();
-        tibia::creatures::TCreatureStorage::setInstance(m_storage.get());
     }
 
     ~StorageScope()
     {
-        tibia::creatures::TCreatureStorage::setInstance(nullptr);
         m_storage.reset();
     }
 

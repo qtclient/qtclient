@@ -21,7 +21,6 @@
 
 #include <algorithm>
 #include <set>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {

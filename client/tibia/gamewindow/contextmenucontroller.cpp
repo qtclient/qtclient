@@ -1,4 +1,5 @@
 #include "contextmenucontroller.h"
+#include "game/currentgamesession.h"
 
 #include "chat/chatchannel.h"
 
@@ -29,7 +30,7 @@ std::shared_ptr<TContextMenuController> g_sharedInstance;
 QString nameOf(const input::IGameAction& action)
 {
     if (const uint32_t creatureId = input::creatureIdOf(action)) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
             if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId))
                 return row->name();
         }

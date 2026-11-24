@@ -4,6 +4,7 @@
 
 #include "container/containerciptypes.h"
 #include "creatures/creaturestorage.h"
+#include "game/currentgamesession.h"
 #include "gamewindow/inspectobjectdata.h"
 
 #include <client/const.h>
@@ -111,7 +112,7 @@ inline CyclopediaCharacterInspection toCharacterInspection(const std::vector<::t
         data.inventoryItems.push_back(std::move(item));
     }
     if (data.outfit.getId() == 0) {
-        if (auto* storage = ::tibia::creatures::TCreatureStorage::instance()) {
+        if (auto* storage = ::tibia::game::currentCreatureStorage()) {
             if (const auto row = storage->creatureAt(playerId))
                 data.outfit = row->outfit();
         }

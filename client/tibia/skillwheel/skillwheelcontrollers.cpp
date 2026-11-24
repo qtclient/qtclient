@@ -23,7 +23,8 @@
 #include <QGuiApplication>
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 #include <tibia/game/tgamenotify.h>
 #include <tibia/appearances/appearanceinstance.h>
 
@@ -388,7 +389,8 @@ void TSkillWheelPageController::validatePresets()
     if (!hasOwnWheel())
         return;
     const std::map<QString, TWheel> presets = m_storage->presets();
-    const int vocation = tibia::game::localPlayerVocation() % 10;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const int vocation = session && session->playerData() ? session->playerData()->vocation() % 10 : 0;
     std::map<QString, TWheel> valid;
     bool changed = false;
     for (const auto& [name, preset] : presets) {
@@ -1750,9 +1752,10 @@ namespace {
 /// without a player.
 std::optional<int> playerWheelVocation()
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || !session->playerData())
         return std::nullopt;
-    return tibia::game::localPlayerVocation() % 10;
+    return session->playerData()->vocation() % 10;
 }
 
 /// CIP: the code decodes and is of the current format, a vocation letter followed by version 1 (the
@@ -2015,7 +2018,7 @@ void TSkillWheelDialogController::handleGameAction(const ::tibia::input::IGameAc
 }
 
 /// CIP: the premium state of the session's player.
-bool TSkillWheelDialogController::isPremium() const { return tibia::game::localPlayerIsPremium(); }
+bool TSkillWheelDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 
 /// CIP: the message boxes of the dialog and its pages close; a dialog without its item is made and
 /// shown.
@@ -2148,9 +2151,9 @@ void TSkillWheelDialogController::requestSkillWheelPreview()
 {
     QString name = qtTrId("skill_wheel_dialog_name_dummy");
     int vocation = 1;
-    if (tibia::game::hasLocalPlayer()) {
-        name = QString::fromStdString(tibia::game::localPlayerName());
-        vocation = tibia::game::localPlayerVocation() % 10;
+    if (const std::optional<int> playerVocation = playerWheelVocation()) {
+        name = tibia::game::currentGameSession()->playerData()->characterNameQString();
+        vocation = *playerVocation;
     }
     skillWheelStorage()->setPreview(name, vocation);
     Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));

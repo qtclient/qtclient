@@ -16,7 +16,6 @@
 #include <QTimer>
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

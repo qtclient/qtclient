@@ -13,7 +13,8 @@
 #include <stdexcept>
 #include <utility>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::store {
@@ -812,10 +813,10 @@ void TStoreProtocolMessageHandler::handleCreditBalanceMessage(const GameserverMe
     if (m_marketStorage)
         m_marketStorage->setTibiaCoins(balance ? static_cast<uint64_t>(balance->confirmed) : 0);
     // Host: the player's coin resources follow the balance.
-    if (balance) {
-        tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_NORMAL, static_cast<uint64_t>(balance->total));
-        tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE, static_cast<uint64_t>(balance->confirmed));
-        tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_AUCTION, static_cast<uint64_t>(balance->reserved));
+    if (tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && balance) {
+        data->setResourceBalance(tibia::client::RESOURE_COIN_NORMAL, static_cast<uint64_t>(balance->total));
+        data->setResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE, static_cast<uint64_t>(balance->confirmed));
+        data->setResourceBalance(tibia::client::RESOURE_COIN_AUCTION, static_cast<uint64_t>(balance->reserved));
     }
 }
 

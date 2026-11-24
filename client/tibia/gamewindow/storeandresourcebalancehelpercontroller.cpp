@@ -65,8 +65,7 @@ void TStoreAndResourceBalanceHelperController::connectToGameSession(std::shared_
         add(connect(m_skillWheelStorage, &skillwheel::TSkillWheelStorage::lesserFragmentsChanged, this, &Self::onLesserFragmentsChanged));
         add(connect(m_skillWheelStorage, &skillwheel::TSkillWheelStorage::greaterFragmentsChanged, this, &Self::onGreaterFragmentsChanged));
     }
-    // Host: the proficiency storage is the client's (CipSoft: the session's).
-    if (proficiency::TProficiencyStorage* proficiencyStorage = proficiency::TProficiencyStorage::instance())
+    if (proficiency::TProficiencyStorage* proficiencyStorage = session->proficiencyStorage())
         add(connect(proficiencyStorage, &proficiency::TProficiencyStorage::resourceBalanceChanged, this,
                     &Self::onLunarAscensionOrbsAmountChanged));
     add(connect(session->dailyRewardStorage().get(), &dailyreward::TDailyRewardStorage::cosmeticTokenCountChanged, this,
@@ -241,8 +240,9 @@ void TStoreAndResourceBalanceHelperController::onGreaterFragmentsChanged()
 
 void TStoreAndResourceBalanceHelperController::onLunarAscensionOrbsAmountChanged()
 {
-    const proficiency::TProficiencyStorage* proficiencyStorage = proficiency::TProficiencyStorage::instance();
-    if (!m_gameSession || !proficiencyStorage)
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const proficiency::TProficiencyStorage* proficiencyStorage = session ? session->proficiencyStorage() : nullptr;
+    if (!proficiencyStorage)
         return;
     const auto orbs = static_cast<uint>(proficiencyStorage->lunarAscensionOrbs());
     if (orbs == m_lunarAscensionOrbsAmount)

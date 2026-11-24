@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "config/optionsarchive.h"
 #include "config/clientoptionsmodeswitcher.h"
 #include "config/configciptypes.h"

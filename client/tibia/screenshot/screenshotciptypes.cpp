@@ -2,7 +2,8 @@
 
 #include "config/clientoptions.h"
 #include "chat/chatchannel.h"
-#include "game/gamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "input/gameactionhandlers.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "clockservice.h"
@@ -274,8 +275,8 @@ void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, cons
     const QString part = QStringLiteral("_%1");
     QString fileName = m_pClockService->currentDateTime().toString(QStringLiteral("yyyy-MM-dd_hhmmsszzz%1%2%3.png"));
     QString characterPart;
-    if (m_gameSession) {
-        const std::string characterName = game::localPlayerName();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()); session && session->playerData()) {
+        const std::string characterName = session->playerData()->characterName();
         if (!characterName.empty())
             characterPart = part.arg(QString::fromStdString(characterName));
     }

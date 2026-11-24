@@ -25,8 +25,8 @@ QByteArray loginRsaPublicKey();
 /// Encrypts the RSA blocks of the login messages.
 shared::TRsaHelper& loginRsaHelper();
 
-/// Host: the classic session state's view of the running session's game server
-/// connection. The live game server session (game::TGameserverGameSession) owns
+/// Host: the classic packet path's view of the running session's game server
+/// connection (the session's game connection, game::TGameSessionBase::gameConnection). The live game server session (game::TGameserverGameSession) owns
 /// the network stack, as CipSoft's does; it reports its connection state here,
 /// hands the decoded server data to the classic packet parser through it and
 /// writes the frames the classic senders and the product transport put here.
@@ -48,6 +48,8 @@ public:
     /// The owning session writes the client frames and closes its connection.
     void setFrameWriter(std::function<void(const QByteArray&)> writer);
     void setDisconnector(std::function<void()> disconnector);
+    /// The owning session ends its game when the connection fails (called once, from fail).
+    void setFailureHandler(std::function<void()> handler);
     /// The session's connections are in use (true) or none is (false).
     void setConnected(bool connected);
     /// A packet arrived (the "connection ok" timer restarts).
@@ -100,6 +102,7 @@ private:
 
     std::function<void(const QByteArray&)> m_frameWriter;
     std::function<void()> m_disconnector;
+    std::function<void()> m_failureHandler;
     QElapsedTimer m_readTimer;
     bool m_connected = false;
     bool m_disconnected = false;

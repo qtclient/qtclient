@@ -11,7 +11,8 @@
 #include <utility>
 
 #include <QPointer>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 namespace tibia::input {
 
@@ -77,7 +78,8 @@ void TUseWithGameActionHandler::handleGameAction(const IGameActionPtr pGameActio
         return;
     case A::USE_ON_TARGET:
         // CIP (TCreaturesGameActionHandler): on the attack target, else a USE_WITH selection.
-        if (const uint32_t targetId = tibia::game::attackingCreatureId())
+        if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+            const uint32_t targetId = session ? session->attackingCreatureId() : 0)
             Q_EMIT publishGameAction(std::make_shared<TGameActionUseOnCreature>(
                 static_cast<const TObjectGameAction&>(*pGameAction).context(), targetId));
         else
@@ -85,7 +87,8 @@ void TUseWithGameActionHandler::handleGameAction(const IGameActionPtr pGameActio
         return;
     case A::USE_ON_YOURSELF:
         // CIP (TCreaturesGameActionHandler): on the own character, if any.
-        if (const uint32_t id = tibia::game::localPlayerId(); id)
+        if (const tibia::creatures::TCreatureStorage* creatureRows = tibia::game::currentCreatureStorage();
+            const uint32_t id = creatureRows ? creatureRows->playerID() : 0)
             Q_EMIT publishGameAction(
                 std::make_shared<TGameActionUseOnCreature>(static_cast<const TObjectGameAction&>(*pGameAction).context(), id));
         return;
@@ -202,7 +205,7 @@ void TCrossHairSpellGameActionHandler::handleCrossHairSpell(const std::shared_pt
         break;
     case EGameActionContextType::LOCATION_BATTLE_LIST:
         if (target.object() && target.object()->gameActionContextType() == EGameActionContextType::OBJECT_CREATURE) {
-            tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+            tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
             if (const std::shared_ptr<tibia::creatures::TCreature> creature = storage ? storage->creatureAt(target.creatureId()) : nullptr)
                 target = TObjectGameActionContext(std::make_shared<TLocationWorldMapCoordinateContext>(creature->position()), target.object());
         }

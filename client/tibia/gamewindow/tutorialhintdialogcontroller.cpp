@@ -1,4 +1,6 @@
 #include "tutorialhintdialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "gamewindow/battlelistcontroller.h"
@@ -11,7 +13,6 @@
 #include <QQuickItem>
 #include <QUrl>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -151,9 +152,10 @@ void TTutorialHintDialogController::closeDialog()
 
 QPoint TTutorialHintDialogController::youAreHereCoordianteWithinImage() const
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer())
         return {};
-    const Position position = tibia::game::localPlayerPosition();
+    const Position position = session->localPlayerPosition();
     return { int(position.x) - 0x7b80, int(position.y) - 0x7800 };
 }
 

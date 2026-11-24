@@ -8,7 +8,6 @@
 
 #include <tibia/creatures/creaturestorage.h>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::game {
@@ -115,23 +114,22 @@ void TPlayerStatesTracker::reloadOptions()
 
 void TPlayerStatesTracker::refresh()
 {
-    if (tibia::game::localPlayerId() == 0) {
+    const TGameSessionBase* session = currentGameSession();
+    tibia::creatures::TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
+    const TPlayerData* data = session ? session->playerData().get() : nullptr;
+    const std::shared_ptr<tibia::creatures::TCreature> player = storage ? storage->player() : nullptr;
+    if (!session || !session->hasLocalPlayer() || !storage || storage->playerID() == 0 || !data) {
         m_model.setEntries({});
         return;
     }
     PlayerStatesInput input;
-    input.states = static_cast<quint32>(tibia::game::localPlayerStates());
+    input.states = static_cast<quint32>(data->states().flags.to_ullong());
     input.inRestingArea = m_inRestingArea;
     input.restingAreaText = m_restingAreaText;
-    input.playerKillerFlag = tibia::game::localPlayerSkull();
-    bool guildWar = false;
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const auto row = storage->creatureAt(tibia::game::localPlayerId()))
-            guildWar = row->isInGuildWar();
-    }
-    input.guildWar = guildWar;
-    input.rottenBlood = tibia::game::localPlayerRottenBloodState();
-    input.hungry = tibia::game::localPlayerRegenerationTime() == 0;
+    input.playerKillerFlag = player ? player->skull() : 0;
+    input.guildWar = player && player->isInGuildWar();
+    input.rottenBlood = data->rottenBloodState();
+    input.hungry = data->regenerationTime() == 0;
     m_model.setEntries(buildPlayerStates(input, m_options, m_filter));
 }
 

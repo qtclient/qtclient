@@ -10,7 +10,7 @@
 #include "sprites/resourcespritesmanager.h"
 
 #include "client/gameclient.h"
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "gamewindow/tooltiptextvisitor.h"
@@ -42,7 +42,8 @@
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 namespace tibia::qmlcomponents {
 
@@ -292,9 +293,10 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
     // Host: the player marker follows the local player.
     m_playerTimer.setInterval(250);
     connect(&m_playerTimer, &QTimer::timeout, this, [this] {
-        if (!tibia::game::hasLocalPlayer())
+        const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+        if (!session || !session->hasLocalPlayer())
             return;
-        const Position position = tibia::game::localPlayerPosition();
+        const Position position = session->localPlayerPosition();
         if (QPoint(position.x, position.y) == m_playerField && position.z == m_playerLayer)
             return;
         m_playerField = QPoint(position.x, position.y);
@@ -556,7 +558,7 @@ QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zo
 {
     if (const auto it = m_missionZoneImages.find(zone.id); it != m_missionZoneImages.end())
         return it->second;
-    const std::string path = client::gamecore::assetsRoot(client::TGameClient::ClientVersion)
+    const std::string path = tibia::files::data().assetsRoot()
         + zone.file.toStdString();
     std::string data;
     try {
@@ -702,8 +704,8 @@ void TMinimapRendererQuickItem::updateMarkerHits()
                    passage.coordinate.y, z, tooltip, TMarkerHit::Passage, 0);
         }
     }
-    if (tibia::game::hasLocalPlayer()) {
-        const Position position = tibia::game::localPlayerPosition();
+    if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->hasLocalPlayer()) {
+        const Position position = session->localPlayerPosition();
         const bool drawn = position.z == z || (z <= GroundLayer && position.z > z && position.z <= GroundLayer && m_tileType != ETileType::LocalMinimap);
         if (position.isValid() && drawn)
             addPin(m_playerIcon, QColor(0x66, 0xff, 0x5e), position.x, position.y, position.z,

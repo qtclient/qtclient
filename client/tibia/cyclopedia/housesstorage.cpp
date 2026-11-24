@@ -1,7 +1,6 @@
 #include "housesstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 
-#include <tibia/game/gamesession.h>
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
 

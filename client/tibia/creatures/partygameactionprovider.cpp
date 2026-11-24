@@ -3,7 +3,6 @@
 #include "creatures/creaturestorage.h"
 #include "game/playerdata.h"
 
-#include <tibia/game/gamesession.h>
 
 namespace tibia::creatures {
 
@@ -50,7 +49,7 @@ void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, co
 {
     if (!m_creatureStorage)
         return;
-    const std::shared_ptr<TCreature> player = m_creatureStorage->creatureAt(game::localPlayerId());
+    const std::shared_ptr<TCreature> player = m_creatureStorage->player();
     const std::shared_ptr<TCreature> creature = m_creatureStorage->creatureAt(creatureId);
     if (!player || !creature)
         return;

@@ -420,9 +420,6 @@ public:
     explicit TContainerStorage(QObject* parent = nullptr);
     ~TContainerStorage() override;
 
-    static TContainerStorage* instance();
-    static void setInstance(TContainerStorage* storage);
-
     /// The open containers, by id.
     const QMap<TContainerID, TStoredContainer>& containers() const { return m_containers; }
     /// The player's equipment slots; the storage makes and owns them.
@@ -504,8 +501,6 @@ public:
     explicit TInventoryContainer(QObject* parent = nullptr);
     ~TInventoryContainer() override;
 
-    /// The inventory of the installed container storage.
-    static TInventoryContainer* instance();
 
     void setSlot(int slotId, const TInventorySlot& slot);
     void clearSlot(int slotId);

@@ -18,7 +18,6 @@
 
 #include <QLocale>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -65,6 +64,13 @@ constexpr int MonkProfession = 5;
 float ratio(const uint32_t value, const uint32_t max)
 {
     return max == 0 ? 0.f : std::clamp(static_cast<float>(value) / static_cast<float>(max), 0.f, 1.f);
+}
+
+/// The connected session's player data; null without a session.
+const game::TPlayerData* sessionPlayerData(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->playerData().get() : nullptr;
 }
 
 using proficiency::TProficiencyStorage;
@@ -135,7 +141,7 @@ void TStatusBarController::connectToGameSession(const std::shared_ptr<game::IGam
             m_gameSessionConnections.add(
                 connect(playerData.get(), &game::TPlayerData::vocationChanged, this, &TStatusBarController::comboPointsSereneChanged));
         // The progress follows the unspent perk, the weapon's XP and what the hands hold.
-        m_proficiencyStorage = TProficiencyStorage::instance();
+        m_proficiencyStorage = session->proficiencyStorage();
         if (m_proficiencyStorage) {
             m_gameSessionConnections.add(connect(m_proficiencyStorage, &TProficiencyStorage::unspentPerkChanged, this,
                                                  &TStatusBarController::proficiencyStatusChanged));
@@ -295,8 +301,10 @@ game::SkillsWidgetEntry TStatusBarController::experienceEntry() const
     const auto perMinute = static_cast<qint64>(progress->finalXp().perMinute());
     if (static_cast<qint64>(perHour) < 1)
         return entry;
-    const qint64 experience = static_cast<qint64>(tibia::game::localPlayerExperience());
-    const qint64 remaining = std::max<qint64>(0, game::experienceForLevel(tibia::game::localPlayerLevel() + 1) - experience);
+    const game::TPlayerData* player = session->playerData().get();
+    const qint64 experience = player ? player->experience() : 0;
+    const int level = player ? static_cast<int>(player->level()) : 0;
+    const qint64 remaining = std::max<qint64>(0, game::experienceForLevel(level + 1) - experience);
     const qint64 minutes = perMinute < 1 ? 0 : remaining / perMinute;
     const double percent = entry.progressBarValue * 100.0;
     const QString progressText = percent <= 99.0 ? qtTrId("skill_progress_tooltip").arg(100.0 - percent, 0, 'f', 2)
@@ -320,35 +328,65 @@ void TStatusBarController::refreshSkills()
         static_cast<game::TSkillsWidgetEntryData*>(m_remainingSkill)->assign(game::buildSkillEntry(m_remainingSkillType));
 }
 
-int TStatusBarController::maxHitpoints() const { return static_cast<int>(tibia::game::localPlayerMaxHealth()); }
-int TStatusBarController::currentHitpoints() const { return static_cast<int>(tibia::game::localPlayerHealth()); }
+int TStatusBarController::maxHitpoints() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->maxHealth() : 0;
+}
+int TStatusBarController::currentHitpoints() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->health() : 0;
+}
 float TStatusBarController::hitpointsPercent() const
 {
-    return ratio(tibia::game::localPlayerHealth(), tibia::game::localPlayerMaxHealth());
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? ratio(uint32_t(player->health()), uint32_t(player->maxHealth())) : 0.f;
 }
-int TStatusBarController::maxMana() const { return static_cast<int>(tibia::game::localPlayerMaxMana()); }
-int TStatusBarController::currentMana() const { return static_cast<int>(tibia::game::localPlayerMana()); }
+int TStatusBarController::maxMana() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->maxMana() : 0;
+}
+int TStatusBarController::currentMana() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->mana() : 0;
+}
 float TStatusBarController::manaPercent() const
 {
-    return ratio(tibia::game::localPlayerMana(), tibia::game::localPlayerMaxMana());
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? ratio(uint32_t(player->mana()), uint32_t(player->maxMana())) : 0.f;
 }
-int TStatusBarController::manaShield() const { return static_cast<int>(tibia::game::localPlayerManaShield()); }
-int TStatusBarController::maxManaShield() const { return static_cast<int>(tibia::game::localPlayerMaxManaShield()); }
+int TStatusBarController::manaShield() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->manaShield() : 0;
+}
+int TStatusBarController::maxManaShield() const
+{
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? player->maxManaShield() : 0;
+}
 float TStatusBarController::manaShieldPercent() const
 {
-    return ratio(tibia::game::localPlayerManaShield(), tibia::game::localPlayerMaxManaShield());
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? ratio(uint32_t(player->manaShield()), uint32_t(player->maxManaShield())) : 0.f;
 }
 bool TStatusBarController::showCombopointsAndSerene() const
 {
-    return tibia::game::localPlayerVocation() % 10 == MonkProfession;
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player && player->vocation() % 10 == MonkProfession;
 }
 int TStatusBarController::comboPoints() const
 {
-    return static_cast<int>(tibia::game::localPlayerHarmony());
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player ? static_cast<int>(player->harmony()) : 0;
 }
 bool TStatusBarController::isSerene() const
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsSerene();
+    const game::TPlayerData* player = sessionPlayerData(m_pGameSession);
+    return player && player->serene();
 }
 bool TStatusBarController::showPlayerStatesInBar() const { return m_states.options().showInBar; }
 QAbstractListModel* TStatusBarController::playerStates() const

@@ -26,8 +26,8 @@ bool TMinimapWorldFeed::isKnown(const Position& coord) const
 // The world storage's minimap data of the field (its defaults without one).
 TMinimapDataOfOneField TMinimapWorldFeed::fieldData(const Position& coord) const
 {
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->minimapDataOfField(
-        tibia::worldmap::TWorldMapCoordinate(coord));
+    const tibia::worldmap::TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
+    return storage ? storage->minimapDataOfField(tibia::worldmap::TWorldMapCoordinate(coord)) : TMinimapDataOfOneField{};
 }
 
 void TMinimapWorldFeed::forEachKnownField(const int z, const std::function<void(const Position&)>& visit) const
@@ -42,7 +42,10 @@ void TMinimapWorldFeed::forEachKnownField(const int z, const std::function<void(
 // of perspective away from its shear floor).
 QRect TMinimapWorldFeed::areaOn(const int z) const
 {
-    const tibia::worldmap::TWorldMapCuboid area = tibia::worldmap::TWorldMapStorage::ensureStorage()->storedVolume().shearedFloorArea(z);
+    const tibia::worldmap::TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
+    if (!storage)
+        return {};
+    const tibia::worldmap::TWorldMapCuboid area = storage->storedVolume().shearedFloorArea(z);
     return QRect(area.origin.x, area.origin.y, area.extent.width, area.extent.height);
 }
 

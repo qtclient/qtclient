@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "game/premiummessagerenewpremium.h"
 #include "gamewindow/sidebarpanelcontrollerbase.h"
 

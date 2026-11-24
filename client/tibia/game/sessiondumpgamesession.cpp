@@ -27,7 +27,6 @@
 #include <exception>
 #include <filesystem>
 #include <stdexcept>
-#include <tibia/game/gamesession.h>
 #include "gameservergamesession.h"
 
 namespace tibia::game {
@@ -62,7 +61,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(
     m_replayTimer.setSingleShot(true);
     connect(&m_replayTimer, &QTimer::timeout, this, &TSessiondumpGameSession::pumpReplay);
     m_sessiondumpTimer.setParent(this);
-    // Host: the classic session state ends the replay when the user leaves it
+    // Host: the session's game state ends the replay when the user leaves it
     // (disconnectNow) or a qtclient text dump reaches its end: the session
     // announces disconnected, once.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
@@ -72,7 +71,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(
         Q_EMIT disconnected();
     });
     // Host: when the session announces its end itself (the tutorial's end),
-    // the classic session state lets go of the replay before the game client
+    // the session's game state lets go of the replay before the game client
     // connects the next session.
     connect(this, &IGameSession::disconnected, this, &TSessiondumpGameSession::endDecodedReplay);
     connect(TGameNotify::instance(), &TGameNotify::connectionFailing, this, [this](bool failing) {
@@ -128,8 +127,8 @@ void TSessiondumpGameSession::startSession()
     gameActionRouter()->handleGameAction(std::make_shared<input::gameactions::TGameActionSimple>(
         input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS));
     if (m_sessiondumpPlayer) {
-        // Host: the classic session state starts the replay.
-        tibia::game::startDecodedReplay();
+        // Host: the session's classic packet path starts the replay.
+        startDecodedReplay();
         // Host: the frame clock (qtclient's frame timestamp, which the effects,
         // texts and animations are made and advanced with) follows the dump's
         // clock while this session plays it.
@@ -183,7 +182,7 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
     TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
     connect(player, &TSessiondumpPlayer::finished, this, &TSessiondumpGameSession::onSessiondumpFinished);
     // The player's server messages go into the session's protocol queue.
-    // Host: the classic session state enters the game on PendingStateEntered;
+    // Host: the session's game state enters the game on PendingStateEntered;
     // a dump that starts at WorldEntered gets one first.
     m_sawPendingStateEntered = false;
     connect(player, &TSessiondumpPlayer::gameserverMessageAvailable, this,
@@ -243,7 +242,7 @@ void TSessiondumpGameSession::endDecodedReplay()
     stopDmpd();
     m_replaying = false;
     m_replayTimer.stop();
-    hubDisconnectNow();
+    disconnectGame();
 }
 
 void TSessiondumpGameSession::releaseFrameSource()
@@ -307,7 +306,7 @@ void TSessiondumpGameSession::replayHexDump(const QString& file)
 void TSessiondumpGameSession::startReplay()
 {
     try {
-        tibia::game::startDecodedReplay();
+        startDecodedReplay();
     } catch (const std::exception& e) {
         Q_EMIT connectionError(QString::fromUtf8(e.what()));
         return;
@@ -326,13 +325,13 @@ void TSessiondumpGameSession::pumpReplay()
     while (m_replaying && m_replayIndex < int(m_replayPackets.size()) && m_replayPackets[size_t(m_replayIndex)].atMs <= now) {
         const QByteArray body = m_replayPackets[size_t(m_replayIndex)].bytes;
         ++m_replayIndex;
-        tibia::game::deliverReplayPacket(reinterpret_cast<const uint8_t*>(body.constData()), size_t(body.size()));
+        deliverReplayPacket(reinterpret_cast<const uint8_t*>(body.constData()), size_t(body.size()));
     }
     if (!m_replaying)
         return;
     if (m_replayIndex >= int(m_replayPackets.size())) {
         m_replaying = false;
-        tibia::game::finishDecodedReplay();
+        finishDecodedReplay();
         return;
     }
     const int wait = int(m_replayPackets[size_t(m_replayIndex)].atMs - now);
@@ -360,31 +359,16 @@ void TSessiondumpGameSession::disconnectNow()
 {
     // The dump's clock stands still.
     m_sessiondumpProgressClock->pause();
-    // Host: the replay stops and the classic session state lets go of it
+    // Host: the replay stops and the session's game state lets go of it
     // (its end announces disconnected).
     releaseFrameSource();
     stopReplay();
-    hubDisconnectNow();
+    disconnectGame();
 }
 
 std::shared_ptr<shared::IClockService> TSessiondumpGameSession::clockService() const
 {
     return m_sessiondumpProgressClock;
-}
-
-bool TSessiondumpGameSession::isOnline() const
-{
-    return tibia::game::isOnline();
-}
-
-QString TSessiondumpGameSession::characterName() const
-{
-    return QString::fromStdString(tibia::game::characterName());
-}
-
-QString TSessiondumpGameSession::worldName() const
-{
-    return QString::fromStdString(tibia::game::getWorldName());
 }
 
 void TSessiondumpGameSession::onRequestResetOfStorages()

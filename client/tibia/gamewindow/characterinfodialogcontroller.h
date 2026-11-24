@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/cyclopediadialogcontext.h"
 
 #include <cip_gen.h>

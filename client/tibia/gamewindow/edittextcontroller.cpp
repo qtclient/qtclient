@@ -8,7 +8,6 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
-#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 

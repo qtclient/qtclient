@@ -24,7 +24,6 @@
 #include "minimap/minimaptilestorage.h"
 #include "systemsurvey/slidingfpscounter.h"
 
-#include <tibia/game/gamesession.h>
 
 #include <QDesktopServices>
 #include <QDir>

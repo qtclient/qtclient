@@ -9,6 +9,7 @@
 #include "creatures/creaturesciptypes.h"
 #include "game/gameciptypes.h"
 #include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -32,7 +33,6 @@
 #include <cstdlib>
 #include <utility>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -457,11 +457,14 @@ bool TBattleListController::handleGameActionCastSpellAtMouseCursor(const input::
     if (!target || !target->creatureId())
         return false;
     // The creature's field, or no field when the creature is gone.
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId()) : nullptr;
-    tibia::game::setNextTalkAim(creature ? creature->position() : Position());
-    tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<uint32_t>(action.talkMode()), 0, action.words().toStdString());
+    game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session)
+        return true;
+    const TCreaturePtr creature = session->creatureStorage() ? session->creatureStorage()->creatureAt(target->creatureId()) : nullptr;
+    session->setNextTalkAim(creature ? creature->position() : Position());
+    session->setNextTalkAimMode(2);
+    if (session->canPerformGameAction() && !action.words().isEmpty())
+        tibia::protocol::gameclient::sendTalk(static_cast<uint32_t>(action.talkMode()), 0, "", action.words().toStdString());
     return true;
 }
 
@@ -719,7 +722,6 @@ void TBattleListController::onCreatureTargetSelected(const int creatureId)
 // ---------------------------------------------------------------------------
 
 namespace {
-TBattleListControllerStorage* g_battleListStorage = nullptr;
 
 /// The controller struct from the sidebar options' typed record.
 BattleListOptions fromSidebarOptions(const config::TBattleListOptions& o)
@@ -766,7 +768,6 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     , m_engine(engine)
     , m_dataModel(this)
 {
-    g_battleListStorage = this;
     m_updateTimer.setInterval(UpdateIntervalMs);
     connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::onUpdateTimer);
 
@@ -787,7 +788,8 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     m_gameActions.on(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
         setTemporarySelectedCreature(action.creatureId());
         if (m_worldMapRenderProvider) {
-            creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+            const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+            const creatures::TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
             const bool highlighted = creatures::TCreature::markOptions().mouseHighlightTarget && storage
                 && storage->creatureAt(action.creatureId());
             m_worldMapRenderProvider->setMouseTargetCreatureId(highlighted ? action.creatureId() : 0);
@@ -798,15 +800,8 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
 
 TBattleListControllerStorage::~TBattleListControllerStorage()
 {
-    if (g_battleListStorage == this)
-        g_battleListStorage = nullptr;
     for (auto& [id, controller] : m_controllers)
         delete controller;
-}
-
-TBattleListControllerStorage* TBattleListControllerStorage::instance()
-{
-    return g_battleListStorage;
 }
 
 void TBattleListControllerStorage::setSidebarOptions(config::TSidebarOptions* options)
@@ -1087,7 +1082,8 @@ std::vector<std::pair<int, TSidebarWidget*>> TBattleListControllerStorage::widge
 
 void TBattleListControllerStorage::setTemporarySelectedCreature(const uint32_t creatureId)
 {
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    creatures::TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
     if (!storage || creatureId == storage->temporarySelectedID())
         return;
     storage->setTemporarySelectedID(creatureId);

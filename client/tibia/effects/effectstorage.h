@@ -24,11 +24,6 @@ class TEffectStorage final : public cip::tibia::effects::TEffectStorage
 public:
     using TEffectPtr = appearances::TAppearanceInstancePtr;
 
-    /// The game session's storage (an empty one before a session exists).
-    static TEffectStorage& instance();
-    /// The active game session's storage (instance() falls back to an empty one).
-    static void setInstance(TEffectStorage* storage);
-
     /// `maximumEffects`: how many effects, numbers included, the storage holds.
     explicit TEffectStorage(size_t maximumEffects = maximumEffectsSetting(), QObject* parent = nullptr);
     ~TEffectStorage() override;

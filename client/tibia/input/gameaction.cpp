@@ -5,6 +5,7 @@
 #include "protocol/protocolcodes.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
+#include "game/currentgamesession.h"
 
 #include <algorithm>
 
@@ -222,7 +223,7 @@ uint32_t creatureOfObject(const TObjectGameActionContext& object)
     if (const uint32_t creatureId = object.creatureId())
         return creatureId;
     const auto* field = gameActionContextAs<TLocationWorldMapCoordinateWithStackPositionContext>(object.location());
-    worldmap::TWorldMapStorage* map = field ? worldmap::TWorldMapStorage::instance() : nullptr;
+    worldmap::TWorldMapStorage* map = field ? game::currentWorldMapStorage() : nullptr;
     worldmap::TWorldMapField* mapField = map ? map->fieldAt(field->coordinate()) : nullptr;
     return mapField ? mapField->stackCreatureId(field->stackPosition()) : 0;
 }

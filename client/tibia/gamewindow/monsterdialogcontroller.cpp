@@ -1,4 +1,5 @@
 #include "monsterdialogcontroller.h"
+#include "protocol/clientmessages.h"
 #include "colorhelper.h"
 
 #include "analysers/analyserstorages.h"
@@ -22,7 +23,6 @@
 #include "skillwheel/skillwheeldata.h"
 
 #include <client/const.h>
-#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 
 #include <QLocale>
@@ -786,7 +786,9 @@ void TMonsterDialogController::showDialogTab()
     m_search.clear();
     m_selectedRace = 0;
     onMonsterClassificationSummaryChanged();
-    tibia::game::requestBestiary();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();
 }
 
 void TMonsterDialogController::hideDialogTab()
@@ -801,7 +803,9 @@ void TMonsterDialogController::requestClassificationSelection(const QString& Cla
 {
     m_selectedClassification = ClassificationID;
     m_search.clear();
-    tibia::game::requestBestiaryOverview(ClassificationID.toStdString());
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaMonsters(ClassificationID);
 }
 
 void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
@@ -815,7 +819,9 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
         if (qstr(race.name).toLower().contains(needle))
             raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }
-    tibia::game::requestBestiaryOverview("", true, raceIds);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaMonsters(raceIds);
 }
 
 void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage)
@@ -858,7 +864,9 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
 void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
 {
     m_selectedRace = static_cast<int>(MonsterRaceID);
-    tibia::game::requestBestiarySearch(static_cast<uint16_t>(MonsterRaceID));
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaRace(static_cast<uint16_t>(MonsterRaceID));
 }
 
 void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onMonsterClassificationSummaryChanged(); }
@@ -895,7 +903,9 @@ void TMonsterDialogController::requestToggleBestiaryTracking()
     if (!m_singleMonster)
         return;
     const bool tracked = m_pCreatureTrackerStorage && m_pCreatureTrackerStorage->isMonsterTracked(m_selectedRace);
-    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !tracked);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !tracked);
 }
 
 void TMonsterDialogController::viewSelectedCharm(const int charmID)
@@ -930,10 +940,17 @@ void TMonsterDialogController::assignSelectedCharm(const int SelectedCharmID)
 
 void TMonsterDialogController::onConfirmDialogAccepted()
 {
-    // Crystal's charm actions: 1 assign, 2 remove.
-    const uint8_t action = m_confirmAction == 1 ? 2 : 1;
-    tibia::game::requestSendBuyCharmRune(action, static_cast<uint8_t>(m_confirmCharm), action == 1 ? static_cast<uint16_t>(m_selectedRace) : 0);
-    tibia::game::requestBestiarySearch(static_cast<uint16_t>(m_selectedRace));
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    cyclopedia::TCyclopediaProtocolMessageHandler* handler =
+        session && session->canPerformGameAction() ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
+    if (!handler)
+        return;
+    // m_confirmAction 1 confirms the removal, else the assignment.
+    if (m_confirmAction == 1)
+        handler->sendRemoveCharm(static_cast<uint8_t>(m_confirmCharm));
+    else
+        handler->sendAssignCharm(static_cast<uint8_t>(m_confirmCharm), static_cast<uint16_t>(m_selectedRace));
+    handler->requestMonsterCyclopediaRace(static_cast<uint16_t>(m_selectedRace));
 }
 
 void TMonsterDialogController::setDialogState(const DialogState state)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "cyclopedia/bestiarystorage.h"
 #include "gamewindow/cyclopediadialogcontext.h"
 

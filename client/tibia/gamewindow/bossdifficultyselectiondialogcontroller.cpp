@@ -1,9 +1,9 @@
 #include "bossdifficultyselectiondialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "game/gamesessionbase.h"
 #include "protocol/protocolciptypes.h"
 
-#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 
@@ -110,7 +110,7 @@ void TBossDifficultySelectionDialogController::onStartClicked()
 void TBossDifficultySelectionDialogController::sendSelection(const uint32_t action, const bool withDifficulty) const
 {
     // Host: the session refuses game actions while it cannot perform them.
-    if (!tibia::game::canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->canPerformGameAction())
         return;
     using namespace ::tibia::protobuf::protocol;
     auto message = tibia::protocol::newGameclientMessage(194);

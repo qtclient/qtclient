@@ -21,7 +21,8 @@
 #include <algorithm>
 #include <array>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 #include <tibia/game/tgamenotify.h>
 #include <tibia/appearances/appearanceinstance.h>
 
@@ -43,9 +44,36 @@ constexpr int SecondModifyDustCost = 1000;
 /// CIP 's REQUEST_RESOURCE_BALANCE resources.
 constexpr std::array<int, 2> DialogResources { 70, 73 };
 
+/// The current session's player data while the session has a character.
+const tibia::game::TPlayerData* localPlayerData()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+}
+
+bool sessionIsOnline()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->isOnline();
+}
+
+bool sessionCanPerformGameAction()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->canPerformGameAction();
+}
+
+uint64_t localPlayerResource(const tibia::client::ResourceTypes_t type)
+{
+    const tibia::game::TPlayerData* data = localPlayerData();
+    return data ? data->resourceBalance(type) : 0;
+}
+
 int profession()
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
+    // The classic vocation id counts promoted vocations from 11; its last digit is the profession.
+    const tibia::game::TPlayerData* data = localPlayerData();
+    return data ? (data->vocation() + (data->promoted() ? 10 : 0)) % 10 : 0;
 }
 
 bool vocationMatches(const std::vector<uint32_t>& professions)
@@ -263,13 +291,13 @@ uint16_t TWeaponObjectsProxy::typeIdAt(const int row) const
 /// for the player's level and profession.
 bool TWeaponObjectsProxy::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    if (sourceRow < 0 || sourceRow >= m_model->size() || !tibia::game::hasLocalPlayer())
+    if (sourceRow < 0 || sourceRow >= m_model->size() || !localPlayerData())
         return false;
     const TWeaponEntry& entry = m_model->entry(sourceRow);
     bool accepted = m_name.isEmpty() || entry.type.name.indexOf(m_name, 0, Qt::CaseInsensitive) != -1;
     if (!m_weaponTypes.empty())
         accepted = accepted && m_weaponTypes.contains(static_cast<int>(entry.weaponType));
-    return m_filter.accepts(entry.type, std::nullopt, tibia::game::localPlayerLevel(), profession()) && accepted;
+    return m_filter.accepts(entry.type, std::nullopt, localPlayerData()->level(), profession()) && accepted;
 }
 
 bool TWeaponObjectsProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
@@ -383,7 +411,8 @@ TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 
 void TWeaponProficiencyDialogController::sendItemInfo(const uint16_t typeId) const
 {
-    tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_ITEM_INFO, typeId);
+    if (sessionCanPerformGameAction())
+        tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_ITEM_INFO, typeId);
 }
 
 void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
@@ -408,11 +437,12 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
         setWeaponTypeFilter(static_cast<int>(type->getAppearanceWeaponType()));
     }
 
-    if (tibia::game::isOnline()) {
+    if (sessionIsOnline()) {
         if (m_storage->listRequested()) {
             sendItemInfo(static_cast<uint16_t>(m_currentTypeId));
         } else {
-            tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_LIST_INFO);
+            if (sessionCanPerformGameAction())
+                tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_LIST_INFO);
             m_storage->setListRequested(true);
         }
     }
@@ -428,7 +458,8 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 
 void TWeaponProficiencyDialogController::sendInspectObject(const uint16_t typeId) const
 {
-    tibia::game::inspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
+    if (sessionCanPerformGameAction())
+        tibia::protocol::gameclient::sendInspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
 }
 
 bool TWeaponProficiencyDialogController::select(const uint16_t typeId)
@@ -533,7 +564,7 @@ bool TWeaponProficiencyDialogController::picksEqual(const std::vector<TPerkPick>
 
 bool TWeaponProficiencyDialogController::localDiffersFromServer() const
 {
-    if (!tibia::game::isOnline() || m_currentTypeId == 0)
+    if (!sessionIsOnline() || m_currentTypeId == 0)
         return false;
     const TProficiencyData* server = m_storage->data(static_cast<uint16_t>(m_currentTypeId));
     return server && !picksEqual(server->picks, m_local.picks);
@@ -571,15 +602,17 @@ void TWeaponProficiencyDialogController::onApplyClicked()
 {
     const auto typeId = static_cast<uint16_t>(m_currentTypeId);
     const TProficiencyData* server = m_storage->data(typeId);
-    if (m_pendingReset && tibia::game::isOnline() && server && !flaggedPicks(*server).empty())
-        tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_RESET_PERKS, typeId);
+    if (m_pendingReset && sessionIsOnline() && server && !flaggedPicks(*server).empty())
+        if (sessionCanPerformGameAction())
+            tibia::protocol::gameclient::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_RESET_PERKS, typeId);
     std::vector<uint8_t> levels;
     std::vector<uint8_t> perks;
     for (const TPerkPick& pick : flaggedPicks(m_local)) {
         levels.push_back(pick.level);
         perks.push_back(pick.perk);
     }
-    tibia::game::sendWeaponProficiencyApply(typeId, levels, perks);
+    if (sessionCanPerformGameAction())
+        tibia::protocol::gameclient::sendWeaponProficiencyApply(typeId, levels, perks);
     m_pendingReset = false;
 }
 
@@ -619,7 +652,7 @@ void TWeaponProficiencyDialogController::setFilter(const bool FilterByLevel, con
 
 void TWeaponProficiencyDialogController::pickPerk(const uint LevelIndex, const uint PerkIndex)
 {
-    if (!tibia::game::isOnline())
+    if (!sessionIsOnline())
         return;
     m_local.pick(static_cast<int>(LevelIndex), static_cast<int>(PerkIndex));
     rebuildModel();
@@ -700,9 +733,7 @@ bool TWeaponProficiencyDialogController::hasEnoughDust() const
     const size_t shaped = m_local.shaped.size();
     if (m_currentTypeId == 0 || shaped >= 2)
         return true;
-    const uint64_t dust = tibia::game::hasLocalPlayer()
-                              ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_FORGE_DUST)
-                              : 0;
+    const uint64_t dust = localPlayerResource(tibia::client::RESOURCE_FORGE_DUST);
     const uint64_t cost = shaped == 0 ? FirstModifyDustCost : SecondModifyDustCost;
     return cost <= static_cast<uint16_t>(dust);
 }
@@ -710,14 +741,15 @@ bool TWeaponProficiencyDialogController::hasEnoughDust() const
 void TWeaponProficiencyDialogController::onModifyShapeClicked()
 {
     const auto typeId = static_cast<uint16_t>(m_currentTypeId);
-    if (!m_selectedPerkActionPossible || !tibia::game::isOnline() || typeId == 0)
+    if (!m_selectedPerkActionPossible || !sessionIsOnline() || typeId == 0)
         return;
     const auto level = static_cast<uint8_t>(m_selectedLevelIndex);
     const auto perk = static_cast<uint8_t>(m_selectedPerkIndex);
     if (!m_selectedPerkCanBeShaped) {
         m_onAccept = [this, typeId, level, perk] {
             onApplyClicked();
-            tibia::game::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_MODIFY_SLOT, typeId, level, perk);
+            if (sessionCanPerformGameAction())
+                tibia::protocol::gameclient::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_MODIFY_SLOT, typeId, level, perk);
         };
         m_onDiscard = nullptr;
         m_confirm->showMessage(qtTrId("weapon_proficiency_modify") + QLatin1Char('?'),
@@ -757,9 +789,9 @@ bool TWeaponProficiencyDialogController::currentIsUseRestricted() const
     if (m_currentTypeId == 0 || !tibia::appearances::TAppearancesManager::instance().isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
         return true;
     const TAppearanceTypePtr type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, static_cast<uint16_t>(m_currentTypeId));
-    if (!type || !tibia::game::hasLocalPlayer())
+    if (!type || !localPlayerData())
         return true;
-    return tibia::game::localPlayerLevel() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());
+    return localPlayerData()->level() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());
 }
 
 QString TWeaponProficiencyDialogController::currentDecorationSource() const
@@ -811,7 +843,8 @@ uint TWeaponProficiencyDialogController::masteryProficiencyXP() const
 
 bool TWeaponProficiencyDialogController::canEditPerks() const
 {
-    return tibia::game::isOnline() && (tibia::game::localPlayerStates() & tibia::client::IconPz) != 0;
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return sessionIsOnline() && data && (data->states().flags.to_ullong() & tibia::client::IconPz) != 0;
 }
 
 bool TWeaponProficiencyDialogController::currentProficiencyChanged() const { return localDiffersFromServer(); }

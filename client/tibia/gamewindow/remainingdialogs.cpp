@@ -1,4 +1,6 @@
 #include "remainingdialogs.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 #include "shared/experiencegainchangetracker.h"
 #include "colorhelper.h"
 
@@ -35,7 +37,6 @@
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/gamesession.h>
 
 #include <QColor>
 
@@ -51,7 +52,6 @@ namespace tibia::gamewindow {
 namespace {
 using A = input::EGameAction;
 using Args = std::vector<std::any>;
-using client::gamecore::argString;
 constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
 
@@ -274,8 +274,12 @@ void TCharacterTradeDialogController::showDialog()
 {
     dialog()->create();
     dialog()->show();
-    tibia::game::requestCharacterTradeConfiguration(0);
-    tibia::game::requestCharacterTradeConfiguration(1);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(1);
     m_hasUnfulfilledConditions = true;
     m_hasConfirmationError = true;
     m_auction->reset();
@@ -345,7 +349,9 @@ TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController:
 
 void TCharacterTradeDialogController::requestConditions()
 {
-    tibia::game::requestCharacterTradeConfiguration(0);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(0);
     m_hasUnfulfilledConditions = true;
     Q_EMIT hasUnfulfilledConditionsChanged();
 }
@@ -353,8 +359,9 @@ void TCharacterTradeDialogController::requestConditions()
 void TCharacterTradeDialogController::requestCheckConfiguration()
 {
     const TConfiguration config = configuration();
-    tibia::game::confirmCharacterTradeConfiguration(config.minimumBid, config.auctionEnd, config.items, config.storeItems,
-                                              config.highlights, false);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(2, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
     m_hasConfirmationError = true;
     Q_EMIT hasConfirmationErrorChanged();
 }
@@ -362,8 +369,9 @@ void TCharacterTradeDialogController::requestCheckConfiguration()
 void TCharacterTradeDialogController::requestConfirmConfiguration()
 {
     const TConfiguration config = configuration();
-    tibia::game::confirmCharacterTradeConfiguration(config.minimumBid, config.auctionEnd, config.items, config.storeItems,
-                                              config.highlights, true);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCharacterTradeConfigurationAction(3, config.minimumBid, config.auctionEnd, config.items, config.storeItems, config.highlights);
 }
 
 void TCharacterTradeDialogController::onInfoUpdated(const trade::TCharacterTradeStorage::DataType dataType)
@@ -1347,7 +1355,9 @@ void TSoulSealsDialogController::onFightConfirmed()
 {
     if (!m_gameSession)
         return;
-    tibia::game::soulsealFightAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && static_cast<uint16_t>(m_selectedMonsterRaceID) != 0)
+        tibia::protocol::gameclient::sendSoulSealsAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
     closeDialog();
 }
 

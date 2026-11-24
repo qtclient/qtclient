@@ -15,7 +15,6 @@
 
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -25,6 +24,13 @@
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The connected session's container storage; null without a session.
+container::TContainerStorage* sessionContainerStorage(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->containerStorage().get() : nullptr;
+}
 
 using A = input::EGameAction;
 using Cursor = TMouseCursorController;
@@ -191,7 +197,7 @@ TContainerController::~TContainerController() = default;
 void TContainerController::onShowConfigurationMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();
-    container::TContainerStorage* storage = container::TContainerStorage::instance();
+    container::TContainerStorage* storage = sessionContainerStorage(m_gameSession);
     const container::TStoredContainer* row = stored();
     if (!menu || !storage || !row)
         return;
@@ -203,7 +209,7 @@ void TContainerController::onShowConfigurationMenu()
     };
     // Picking a category stores it and asks the server for the filtered content.
     const auto setFilter = [this](const uint32_t category) {
-        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+        if (container::TContainerStorage* storage = sessionContainerStorage(m_gameSession)) {
             storage->setFilterCategory(m_containerId, category);
             if (m_messages)
                 m_messages->requestUpdateContainer(m_containerId);
@@ -252,8 +258,8 @@ void TContainerController::onShowConfigurationMenu()
         };
         addOption("container_sortoptions_backpacks_first", SortBackpacksFirstOption);
         addOption("container_sortoptions_recursive", SortRecursiveOption);
-        TContextMenuEntryItem* manualSort = addEntry(qtTrId("container_sortoptions_manual_sort_mode"), [] {
-            if (container::TContainerStorage* storage = container::TContainerStorage::instance())
+        TContextMenuEntryItem* manualSort = addEntry(qtTrId("container_sortoptions_manual_sort_mode"), [this] {
+            if (container::TContainerStorage* storage = sessionContainerStorage(m_gameSession))
                 storage->setManualSortMode(!container::TContainerStorage::manualSortMode());
         });
         manualSort->setCheckable(true);
@@ -424,9 +430,8 @@ void TContainerController::update(const bool resetScrollView)
 
 const container::TStoredContainer* TContainerController::stored() const
 {
-    return container::TContainerStorage::instance()
-        ? container::TContainerStorage::instance()->containerAt(m_containerId)
-        : nullptr;
+    const container::TContainerStorage* storage = sessionContainerStorage(m_gameSession);
+    return storage ? storage->containerAt(m_containerId) : nullptr;
 }
 
 Position TContainerController::slotPosition(const int pageSlot) const

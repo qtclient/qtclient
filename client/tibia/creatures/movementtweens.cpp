@@ -1,6 +1,7 @@
 #include "creatures/movementtweens.h"
 
-#include "client/gamecore.h"
+#include "clockservice.h"
+#include "game/currentgamesession.h"
 #include "creatures/creaturestorage.h"
 
 namespace tibia::creatures {
@@ -14,8 +15,8 @@ void advanceAllMovementTweens(const int64_t timestampMs)
         return;
     s_inAdvance = true;
 
-    client::gamecore::advanceTo(timestampMs * 1000);
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    shared::TClockService::advanceFrameTo(timestampMs * 1000);
+    TCreatureStorage* storage = game::currentCreatureStorage();
     if (!storage) {
         s_inAdvance = false;
         return;
@@ -33,14 +34,14 @@ void advanceAllMovementTweens(const int64_t timestampMs)
 
 void resumeMovementClock()
 {
-    client::gamecore::resumeRealTime();
+    shared::TClockService::updateFrame();
 }
 
 QPoint walkOffsetFor(const uint32_t creatureId)
 {
     if (!creatureId)
         return {};
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = game::currentCreatureStorage();
     if (!storage)
         return {};
     if (const std::shared_ptr<TCreature> row = storage->creatureAt(creatureId))

@@ -50,6 +50,11 @@ public:
     static void setFrameMicros(qint64 micros);
     /// Moves the frame clock to the frame source's now.
     static void updateFrame();
+    /// Moves the frame clock to `micros`, never backward. The predicted time is
+    /// now+offset, and when the frame-duration offset shrinks the prediction can
+    /// fall below the previous frame's; a rewind made the movement tweens and foot
+    /// clocks jump. updateFrame() returns to the real time.
+    static void advanceFrameTo(qint64 micros);
     /// Host: the clock the frame clock follows (a replay's clock while it
     /// plays; null: the process clock). Setting it moves the frame clock there.
     static void setFrameSource(std::shared_ptr<IClockService> source);

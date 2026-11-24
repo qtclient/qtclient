@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "qmlcomponents/outfittypes.h"
 

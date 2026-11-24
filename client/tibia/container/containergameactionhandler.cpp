@@ -208,7 +208,7 @@ void TContainerGameActionHandler::handleTryToEquipGameAction(const std::shared_p
             counterpart = TObjectAppearanceInstanceTypeID::withTier(counterpartId, object.tier);
         const std::optional<uint8_t> tier =
             type->hasUpgradeClassification() ? std::optional<uint8_t>(object.tier) : std::nullopt;
-        const TInventoryContainer* inventory = TInventoryContainer::instance();
+        const TInventoryContainer* inventory = m_containerStorage ? m_containerStorage->inventoryContainer().get() : nullptr;
         const auto count = [this](const TObjectAppearanceInstanceTypeID& instance) {
             return m_objectCountStorage ? m_objectCountStorage->count(instance.typeId, instance.tier) : 0u;
         };

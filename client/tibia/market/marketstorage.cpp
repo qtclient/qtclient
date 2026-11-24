@@ -5,7 +5,9 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include <tibia/appearances/appearanceinstance.h>
 
 #include <algorithm>
@@ -103,7 +105,7 @@ TMarketStorage::TMarketStorage(QObject* parent)
         return std::any{};
     });
     m_hooks.emplace_back("onStoreInit", [this](const Args& args) {
-        m_coinsPacketSize = std::max(1, static_cast<int>(client::gamecore::argInt(args, 1)));
+        m_coinsPacketSize = std::max(1, static_cast<int>(tibia::game::argInt(args, 1)));
         return std::any{};
     });
 }
@@ -151,7 +153,8 @@ uint32_t TMarketStorage::maximumOfferAmount(const uint16_t typeId, const std::op
     const uint64_t byTotal = MaximumTotalPrice / (piecePrice + (piecePrice == 0 ? 1 : 0));
     if (byTotal < maximum)
         maximum = static_cast<uint32_t>(byTotal);
-    const uint64_t gold = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const uint64_t gold = session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->totalMoney() : 0;
     if (type == EMarketOfferType::SELL) {
         const uint32_t owned = tier ? count(typeId, *tier) : count(typeId);
         return std::min(std::min(maximum, owned), maximumAmountByFee(gold, piecePrice));

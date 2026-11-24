@@ -5,7 +5,6 @@
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 
-#include <tibia/game/gamesession.h>
 #include <protocol.pb.h>
 
 #include <QQuickItem>

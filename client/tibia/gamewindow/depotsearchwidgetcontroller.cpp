@@ -23,7 +23,6 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 #include <QGuiApplication>
@@ -174,9 +173,9 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
     for (TAppearanceInstanceListModel* model : { &m_depotModel, &m_inboxModel })
         model->setObjectCountStorage(session ? session->objectCountStorage().get() : nullptr);
     if (session) {
-        m_searchProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+        m_searchProxy.connectToStorages(session->playerData(), session->itemPriceStorage().get(),
                                         session->itemTrackingStorage(), session->objectCountStorage(), nullptr);
-        m_stashProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+        m_stashProxy.connectToStorages(session->playerData(), session->itemPriceStorage().get(),
                                        session->itemTrackingStorage(), nullptr, nullptr);
     } else {
         m_searchProxy.disconnectFromStorages();

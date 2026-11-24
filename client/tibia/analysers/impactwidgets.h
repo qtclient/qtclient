@@ -1,7 +1,6 @@
 #pragma once
 
 #include "analysers/analyserstorages.h"
-#include "client/gamecore.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "qtconnectionmanager.h"

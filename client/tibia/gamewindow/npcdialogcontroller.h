@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "gamewindow/chatchannelfiltercontroller.h"
 #include "gamewindow/chatcontroller.h"
 #include "gamewindow/dialogcontrollerwithfocushandlingbase.h"

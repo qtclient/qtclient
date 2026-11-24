@@ -3,7 +3,12 @@
 // CIP-named game surfaces (promoted from cipwire).
 
 #include <deque>
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
+
+#include <QDir>
+#include <QStringList>
+
+#include <functional>
 #include "config/icharacterconfiguration.h"
 #include "game/configurecreaturepodiumdata.h"
 #include "game/passiveabilityinfostorage.h"

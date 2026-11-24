@@ -14,7 +14,6 @@
 #include "taskboard/taskboardciptypes.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
 
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 

@@ -15,7 +15,16 @@
 #include "network/unencryptedrawmessagestream.h"
 #include "shared/iodevicereader.h"
 
-#include <tibia/game/gamesession.h>
+#include <client/const.h>
+#include <client/declarations.h>
+#include <client/outfit.h>
+#include <client/position.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/mapsession.h"
+#include "game/objectreference.h"
 
 #include <string>
 
@@ -44,7 +53,8 @@ bool readCharacterSwitch(ClassicReader& packet)
     std::string characterName;
     if (!packet.string(characterName))
         return false;
-    tibia::game::processCharacterSwitch(characterName);
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
+        session->processCharacterSwitch(characterName);
     // The server follows with a full login burst for the new body on this socket.
     if (auto* processor = network::TGameserverSessionNetwork::live())
         processor->setGameInitialized(false);

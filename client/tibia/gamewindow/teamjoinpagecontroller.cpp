@@ -6,7 +6,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 
 namespace tibia::gamewindow {
 
@@ -66,10 +67,11 @@ void TTeamJoinPageController::showDialogTab()
     m_connections.push_back(connect(handler, &teamfinder::TTeamFinderProtocolMessageHandler::teamLisUpdateAvailable, this,
                                     &TTeamJoinPageController::onTeamLisUpdateAvailable));
     // The first time: filter for the own level and vocation; the own character's team shows as led.
-    if (!m_proxy->characterFiltersSet() && tibia::game::hasLocalPlayer()) {
-        m_proxy->model()->setCharacterName(QString::fromStdString(tibia::game::localPlayerName()));
-        m_proxy->setCharacterFilters(static_cast<uint32_t>(tibia::game::localPlayerLevel()),
-                                     static_cast<uint8_t>(tibia::game::localPlayerVocation() % 10));
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+    if (!m_proxy->characterFiltersSet() && player) {
+        m_proxy->model()->setCharacterName(player->characterNameQString());
+        m_proxy->setCharacterFilters(static_cast<uint32_t>(player->level()), static_cast<uint8_t>(player->vocation() % 10));
     }
     m_proxy->model()->setResolver(&m_resolver);
     onTeamsChanged();

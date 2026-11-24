@@ -13,7 +13,6 @@
 #include "app/clientoptions.h"
 #include "app/sessionbootstrap.h"
 #include "bossbestiary/bosstrackerstorage.h"
-#include "client/gamecore.h"
 #include "client/gameapplication.h"
 #include "config/tibiaconfig.h"
 #include "config/characterconfigurationmanager.h"
@@ -155,7 +154,9 @@
 #include <QGuiApplication>
 #include <qtclient/pack_host.h>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/mapsession.h"
 #include <client/outfit.h>
 #include <client/position.h>
 #include <tibia/assets/things.h>
@@ -200,7 +201,6 @@ struct TGameClient::TGameWindow
     /// Host: the game actions the game window handles until their CipSoft
     /// handler hears the router (the quest log).
     input::TGameActionDispatch gameActions;
-    std::unique_ptr<gamewindow::TMessageDialogController> clientOutOfDateDialog;
     std::shared_ptr<gamewindow::TGameWindowController> gameWindowController;
     std::unique_ptr<QObject> gameWindow;
     QQuickItem* gameWindowItem = nullptr;
@@ -380,30 +380,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     }
     QCoreApplication* application = QCoreApplication::instance();
 
-    // Host: ShowClientOutOfDate: caption "info", body client_too_old, single
-    // Restart (YES/Return). Restart writes QTCLIENT_RESTART_FILE so the
-    // launcher updates.
-    using OutOfDateBox = gamewindow::TMessageDialogController;
-    g.clientOutOfDateDialog = std::make_unique<OutOfDateBox>();
-    OutOfDateBox* outOfDate = g.clientOutOfDateDialog.get();
-    outOfDate->setCloseOnButtonClicked(true);
-    outOfDate->setButtons({ new gamewindow::TMessageDialogButton(qtTrId("restart"), OutOfDateBox::Button::YES,
-                                                                 QKeySequence(QStringLiteral("Return"))) });
-    connect(this, &TGameClient::clientOutOfDate, outOfDate, [outOfDate] {
-        if (!outOfDate->dialog()->isInStack())
-            outOfDate->showMessage(qtTrId("info"), qtTrId("client_too_old"));
-    });
-    // Restart: the launcher updates the client (QTCLIENT_RESTART_FILE) once it quit.
-    const auto quitAndPatchClient = [] {
-        const QString marker = qEnvironmentVariable("QTCLIENT_RESTART_FILE");
-        if (!marker.isEmpty()) {
-            QSaveFile file(marker);
-            if (file.open(QIODevice::WriteOnly) && file.write("1") == 1)
-                file.commit();
-        }
-        QCoreApplication::quit();
-    };
-    connect(outOfDate, &OutOfDateBox::acceptClicked, application, quitAndPatchClient);
 
     // CIP: the game window controller: the start screen until the world is
     // entered, then the map, sidebars, chat and bars. Dialogs go into its
@@ -420,7 +396,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         tibiaFileSystemHelper(), shared::TClockService::process());
     gamewindow::TGameWindowController* gameWindowController = g.gameWindowController.get();
     // Host: kill / SIGTERM / Ctrl+C: same Exit / Logout / Cancel prompt as the window close.
-    gamecore::setForceExitHandler([gameWindowController] { gameWindowController->quitPressed(); });
+    setForceExitHandler([gameWindowController] { gameWindowController->quitPressed(); });
     m_gameWindowPlaceholder = setup.placeholder;
     g.gameWindow = gameWindowController->createGameWindow(engine);
     g.gameWindowItem = qobject_cast<QQuickItem*>(g.gameWindow.get());
@@ -575,7 +551,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     if (!gameWindowController->property("gameWindowState").toString().isEmpty())
                         return;
                     QTimer::singleShot(0, gameWindowController, [this, characterSelectionController, gameWindowController] {
-                        if (game::isOnline() || game::isSwitchingCharacter() || characterSelectionController->dialog()->isShown())
+                        const game::TGameSessionBase* session = game::currentGameSession();
+                        if ((session && (session->isOnline() || session->isSwitchingCharacter()))
+                            || characterSelectionController->dialog()->isShown())
                             return;
                         if (!gameWindowController->property("isAuthenticated").toBool())
                             return;
@@ -1257,7 +1235,7 @@ void TGameClient::onKeyboardStatusStorageChanged()
     const input::TMovementIntentPtr intent = m_pKeyboardInputToGameActionConverter->changedMovementIntent();
     if (!intent)
         return;
-    // Host (pack notify, as TGameSessionState::walk): a manual step, e.g. to stop a pack's travel.
+    // Host (pack notify, as the session walk did): a manual step, e.g. to stop a pack's travel.
     if (intent->kind() == input::TMovementIntentKind::Direction)
         tibia::game::notify("onWalk", static_cast<tibia::client::Direction>(
                                           static_cast<const input::TMovementIntentDirection&>(*intent).direction()));

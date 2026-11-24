@@ -7,7 +7,6 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 

@@ -6,13 +6,12 @@
 #include "config/clientoptiondefaults.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::chat {
 
 namespace {
 
-using client::gamecore::argString;
+using tibia::game::argString;
 using Args = std::vector<std::any>;
 
 /// CIP's chat message modes: the protocol's (identity table).

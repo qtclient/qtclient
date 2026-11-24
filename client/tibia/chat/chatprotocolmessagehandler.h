@@ -1,7 +1,7 @@
 #pragma once
 
 #include "chat/chatchannel.h"
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include <client/position.h>
 
 #include <QColor>

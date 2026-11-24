@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <set>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
@@ -333,7 +332,7 @@ void TManageLootContainerDialogController::connectToGameSession(const std::share
         m_lootBlackWhitelist = session->quickLootBlackWhitelistStorage().get();
         if (m_lootBlackWhitelist)
             m_blackWhiteListType = m_lootBlackWhitelist->listType();
-        m_listProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+        m_listProxy.connectToStorages(session->playerData(), session->itemPriceStorage().get(),
                                       session->itemTrackingStorage(), nullptr, nullptr);
         using Self = TManageLootContainerDialogController;
         m_gameSessionConnections.add(
@@ -460,7 +459,7 @@ void TManageLootContainerDialogController::finishPick(const input::TTargetSelect
             m_info->showMessage(qtTrId("managecontainer_invalid_container_caption"), qtTrId("managecontainer_invalid_container_text"));
         }
     }
-    if (tibia::game::isOnline())
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()); session && session->isOnline())
         dialog()->show();
 }
 

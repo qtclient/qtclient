@@ -7,7 +7,8 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 #include <protocol.pb.h>
 
 #include <algorithm>
@@ -220,7 +221,8 @@ bool TDailyRewardGameActionHandler::handleGameAction(const input::IGameAction& a
 /// A character that has not reached the main land gets a message instead.
 void TDailyRewardGameActionHandler::handleRequestOpenRewardWallGameAction()
 {
-    if (!tibia::game::localPlayerHasReachedMain()) {
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    if (!data || !data->hasReachedMain()) {
         Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE));
         return;
     }
@@ -391,6 +393,8 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage
     TDailyRewardStorage& storage = *m_storage;
     Q_EMIT publishGameAction(input::makeGameAction(message.collected() ? A::DAILY_REWARD_READY_TO_PICK_UP : A::DAILY_REWARD_NOT_COLLECTABLE));
     storage.setDailyRewardReadyToPickUp(message.collected());
+    // Pack ABI field: the server's state, 1 while the reward waits to be picked up.
+    tibia::game::notify("onDailyRewardCollectionState", static_cast<int>(message.collected() ? 1 : 0));
 }
 
 void TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& message)

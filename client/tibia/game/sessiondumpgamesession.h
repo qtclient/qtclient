@@ -1,9 +1,14 @@
 #pragma once
 
 #include "game/gamesessionbase.h"
+#include "game/tgamenotify.h"
+
+#include <QDir>
+#include <QStringList>
+
+#include <functional>
 #include "game/sessiondumpgamesessionmetainfo.h"
 
-#include "client/gamecore.h"
 
 #include "qtconnectionmanager.h"
 
@@ -107,12 +112,7 @@ public:
     /// No server logout in replay; same as disconnectNow for UI wiring.
     void requestLogout();
 
-    bool isOnline() const;
-    QString characterName() const;
-    QString worldName() const;
-
 Q_SIGNALS:
-    void clientOutOfDate();
     /// CIP SessionDumpStart (S 0x04) when a server begins a dump (Crystal TBD).
     void sessionDumpStart(const QString& sessionKey);
 
@@ -141,7 +141,7 @@ private:
     /// A server message of the dump's player into the session's protocol queue.
     void enqueueGameserverMessage(const std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage>& message);
     void stopDmpd();
-    /// Host: the session announced its end; the classic session state lets go
+    /// Host: the session announced its end; the session's game state lets go
     /// of the replay (once).
     void endDecodedReplay();
     /// Host: the frame clock follows the process clock again when it followed

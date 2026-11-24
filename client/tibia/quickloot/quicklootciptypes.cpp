@@ -5,7 +5,8 @@
 #include <algorithm>
 #include <vector>
 #include <stdexcept>
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
 #include "protocol/protocolciptypes.h"
 
 #include "app/clientoptions.h"

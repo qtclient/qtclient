@@ -5,7 +5,7 @@
 
 #include <client/const.h>
 #include <client/outfit.h>
-#include <tibia/game/gamesession_forward.h>
+#include <client/staticdata.h>
 
 #include <protocol.pb.h>
 

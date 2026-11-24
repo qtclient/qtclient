@@ -29,7 +29,6 @@
 #include <QJsonArray>
 #include <QMetaObject>
 #include <QStringList>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -415,8 +414,7 @@ void TButtonBarController::connectToGameSession(const std::shared_ptr<game::IGam
             m_gameSessionConnections.add(connect(exaltation, &cip::tibia::exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged,
                                                  this, &Self::highlightExaltationForgeDialogButtonChanged));
         }
-        // Host: the proficiency storage is the client's one instance.
-        if (proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance())
+        if (proficiency::TProficiencyStorage* proficiencies = session->proficiencyStorage())
             m_gameSessionConnections.add(connect(proficiencies, &proficiency::TProficiencyStorage::unspentPerkChanged, this,
                                                  &Self::highlightWeaponProficiencyButtonChanged));
         if (taskboard::TTaskboardWeeklyTasksStorage* weeklyTasks = session->taskboardWeeklyTasksStorage().get())
@@ -463,9 +461,10 @@ bool TButtonBarController::highlightWeaponProficiencyButton() const
 {
     if (m_attention && m_attention->proficiency())
         return true;
-    if (!m_gameSession)
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
         return false;
-    const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
+    const proficiency::TProficiencyStorage* proficiencies = session->proficiencyStorage();
     return proficiencies != nullptr && proficiencies->hasUnspentPerk();
 }
 
@@ -580,7 +579,7 @@ void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::I
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
     uint16_t typeId = 0;
-    if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+    if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer()) {
         const container::TInventorySlot& left = inventory->leftHandSlot();
         if (!left.empty())
             typeId = static_cast<uint16_t>(left.typeId);

@@ -14,8 +14,6 @@ void initRuntimeGameConfig();
 void terminateRuntimeGameConfig();
 
 uint8_t spriteSize();
-uint16_t lastSupportedVersion();
-void setLastSupportedVersion(uint16_t version);
 std::string typingIcon();
 
 int mapViewPortWidth();

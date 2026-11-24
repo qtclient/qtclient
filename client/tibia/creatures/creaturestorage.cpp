@@ -7,7 +7,9 @@
 #include "tibia/creatures/attachedeffect.h"
 #include "game/playerdata.h"
 #include "worldmap/worldmapfield.h"
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include <tibia/game/gamenotify.h>
 #include <tibia/worldmap/worldmapstorage.h>
 
 #include <tibia/assets/things.h>
@@ -22,8 +24,6 @@
 namespace tibia::creatures {
 
 namespace {
-
-TCreatureStorage* g_creatureStorage = nullptr;
 
 /// Every creature made (or renewed) takes the next identity.
 int g_nextCreatureUniqueId = 0;
@@ -329,7 +329,7 @@ void TCreature::setMounted(const bool mounted)
 void TCreature::syncLocalPlayerStats()
 {
     m_isLocalPlayer = true;
-    if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance()) {
+    if (tibia::game::TPlayerData* data = tibia::game::currentPlayerData()) {
         m_mana = data->mana();
         m_maxMana = data->maxMana();
         m_manaShield = data->manaShield();
@@ -388,19 +388,41 @@ QColor TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
     return COLOR6;
 }
 
+namespace {
+
+/// Host: the name as qtclient shows it, each word starting upper case.
+QString formatCreatureName(const QString& name)
+{
+    QString formatted = name;
+    bool upNext = true;
+    for (QChar& ch : formatted) {
+        const bool space = ch == u' ';
+        if (upNext && ch.unicode() < 0x80)
+            ch = ch.toUpper();
+        upNext = space;
+    }
+    return formatted;
+}
+
+} // namespace
+
 void TCreature::setName(const QString& name)
 {
     m_name = name;
-    m_formattedName = QString::fromStdString(tibia::game::formatCreatureName(name.toStdString()));
+    m_formattedName = formatCreatureName(name);
 }
 
 void TCreature::setPosition(const Position& position)
 {
     const bool floorChanged = m_position.z != position.z;
+    const Position oldPosition = m_position;
     m_position = position;
     if (floorChanged)
         resetMovement();
     Q_EMIT positionWasUpdated(worldmap::TWorldMapCoordinate(m_position));
+    // Pack ABI field: (creature id, new position, old position).
+    if (oldPosition != m_position)
+        tibia::game::notify("onCreaturePositionChange", static_cast<uint32_t>(m_creatureId), m_position, oldPosition);
 }
 
 void TCreature::setOutfit(const Outfit& outfit)
@@ -430,6 +452,8 @@ void TCreature::setShield(const uint8_t shield)
         return;
     m_shield = shield;
     Q_EMIT playerPartyFlagChanged();
+    // Pack ABI field: (creature id, shield).
+    tibia::game::notify("onShieldChange", static_cast<uint32_t>(m_creatureId), static_cast<int>(m_shield));
 }
 
 void TCreature::setEmblem(const uint8_t emblem)
@@ -582,18 +606,6 @@ TCreatureStorage::TCreatureStorage(QObject* parent)
 
 TCreatureStorage::~TCreatureStorage()
 {
-    if (g_creatureStorage == this)
-        g_creatureStorage = nullptr;
-}
-
-TCreatureStorage* TCreatureStorage::instance()
-{
-    return g_creatureStorage;
-}
-
-void TCreatureStorage::setInstance(TCreatureStorage* storage)
-{
-    g_creatureStorage = storage;
 }
 
 std::shared_ptr<TCreature> TCreatureStorage::getOrCreate(const TCreatureID id)
@@ -736,8 +748,10 @@ std::vector<std::shared_ptr<TCreature>> TCreatureStorage::spectatorsNear(const P
     int minZ = center.z;
     int maxZ = center.z;
     if (multiFloor) {
-        minZ = tibia::worldmap::TWorldMapStorage::ensureStorage()->firstAwareFloor();
-        maxZ = tibia::worldmap::TWorldMapStorage::ensureStorage()->lastAwareFloor();
+        if (const game::TGameSessionBase* session = game::currentGameSession(); session && session->worldMapStorage()) {
+            minZ = session->worldMapStorage()->firstAwareFloor();
+            maxZ = session->worldMapStorage()->lastAwareFloor();
+        }
     }
 
     const int startX = center.x - left;
@@ -789,7 +803,7 @@ void TCreatureStorage::leaveMap(const TCreatureID id)
 {
     if (id == 0)
         return;
-    if (const uint32_t localId = tibia::game::localPlayerId(); localId != 0 && localId == id) {
+    if (m_playerID != 0 && m_playerID == id) {
         // Own character stays in storage for the whole session (name/HUD).
         return;
     }
@@ -842,7 +856,7 @@ void TCreatureStorage::publishCreatureUpdated(const std::shared_ptr<TCreature>& 
 
 void protocolAttachEffect(const TCreatureID id, const AttachedEffectPtr& effect)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = game::currentCreatureStorage();
     if (!storage || !effect)
         return;
     const auto row = storage->getOrCreate(id);
@@ -852,7 +866,7 @@ void protocolAttachEffect(const TCreatureID id, const AttachedEffectPtr& effect)
 
 void protocolDetachEffect(const TCreatureID id, const uint16_t effectId)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = game::currentCreatureStorage();
     if (!storage)
         return;
     const auto row = storage->getOrCreate(id);
@@ -862,7 +876,7 @@ void protocolDetachEffect(const TCreatureID id, const uint16_t effectId)
 
 void protocolClearTemporaryAttachedEffects(const TCreatureID id)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = game::currentCreatureStorage();
     if (!storage)
         return;
     const auto row = storage->getOrCreate(id);

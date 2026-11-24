@@ -4,7 +4,6 @@
 #include <algorithm>
 
 #include "client/gameclient.h"
-#include "client/gamecore.h"
 #include "creatures/creaturestorage.h"
 
 #include <QCoreApplication>

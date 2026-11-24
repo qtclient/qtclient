@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "highlighttimer.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cyclopedia/cyclopediamapgameactionprovider.h"
-#include "client/gamecore.h"
 #include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "input/gameactionmapper.h"

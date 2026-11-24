@@ -12,7 +12,16 @@
 
 #include <QtGlobal>
 #include <format>
-#include <tibia/game/gamesession.h>
+#include <client/const.h>
+#include <client/declarations.h>
+#include <client/outfit.h>
+#include <client/position.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/mapsession.h"
+#include "game/objectreference.h"
 #include <tibia/assets/things.h>
 #include <tibia/appearances/appearancetype.h>
 
@@ -395,8 +404,10 @@ void sendLookCreature(const uint32_t creatureId)
 void sendTalk(const uint32_t mode, const uint16_t channelId, const std::string_view receiver, const std::string_view message)
 {
     // Consume any staged crosshair aim up front so an aborted/empty say never leaks it to the next one.
-    const Position talkAimPos = tibia::game::takeNextTalkAim();
-    const uint8_t talkAimMode = tibia::game::takeNextTalkAimMode();
+    tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const Position talkAimPos = session ? session->takeNextTalkAim()
+                                        : Position(static_cast<int32_t>(UINT16_MAX), static_cast<int32_t>(UINT16_MAX), UINT8_MAX);
+    const uint8_t talkAimMode = session ? session->takeNextTalkAimMode() : 0;
     if (message.empty())
         return;
     if (message.length() > UINT8_MAX) {
@@ -1451,7 +1462,7 @@ void sendExivaRestrictions(
     const std::vector<std::string>& guildWhiteList,
     const std::vector<std::string>& removeGuild)
 {
-    if (!tibia::game::canExivaOptions())
+    if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->canExivaOptions())
         return;
     auto message = tibia::protocol::newGameclientMessage(202);
     auto* m = message->MutableExtension(GameclientMessageUpdateExivaOptions::gameclient_message_update_exiva_options);

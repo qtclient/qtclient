@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "bossbestiary/bosstiarystorage.h"
 #include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/assignablebossmodels.h"

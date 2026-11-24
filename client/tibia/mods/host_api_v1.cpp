@@ -14,7 +14,18 @@
 
 #include "game/creaturesession.h"
 #include "game/currentgamesession.h"
-#include "game/gamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/objectreference.h"
+#include "game/playerdata.h"
+#include "game/sessionhooks.h"
+#include "container/containerciptypes.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "config/runtimegameconfig.h"
+#include "input/playermovementintent.h"
+#include "input/playermovementintenthandler.h"
+#include "protocol/clientmessages.h"
+#include "clockservice.h"
+#include <client/outfit.h>
 #include "game/mapsession.h"
 #include "game/thingsession.h"
 #include "game/gamenotify.h"
@@ -53,7 +64,9 @@
 #include <string_view>
 #include <functional>
 #include <memory>
+#include <limits>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -71,15 +84,15 @@ Position toTipPosition(const QtClientMapPos p)
     return Position(p.x, p.y, static_cast<uint8_t>(p.z));
 }
 
-void fillAbiInventory(const tibia::game::InventorySlotInfo& src, QtClientInventorySlotInfo* dst)
+void fillAbiInventory(const tibia::container::TInventorySlot* src, QtClientInventorySlotInfo* dst)
 {
     if (!dst)
         return;
-    dst->empty = src.empty ? 1 : 0;
-    dst->type_id = src.typeId;
-    dst->stackable = src.stackable ? 1 : 0;
-    dst->count = src.count;
-    dst->charges = src.charges;
+    dst->empty = !src || src->empty() ? 1 : 0;
+    dst->type_id = src ? src->typeId : 0;
+    dst->stackable = src && src->stackable ? 1 : 0;
+    dst->count = src ? src->count : 0;
+    dst->charges = src ? src->charges : 0;
 }
 
 void fillAbiOutfit(const tibia::game::CreatureOutfitInfo& src, QtClientCreatureOutfitInfo* dst)
@@ -560,17 +573,183 @@ void abiHostOs(char* buf, size_t buf_len)
     std::snprintf(buf, buf_len, "%s", os.c_str());
 }
 
+// --- Host peels: the session ABI over the current CipSoft session ---
+//
+// Each login, replay or tutorial is a new session (game/currentgamesession.h):
+// these read the current one at call time and do nothing between sessions.
+
+namespace gameclient = tibia::protocol::gameclient;
+
+tibia::game::TGameSessionBase* liveSession() { return tibia::game::currentGameSession(); }
+
+/// Online, with a living character and a connected game connection.
+bool canPerformGameAction()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->canPerformGameAction();
+}
+
+bool hasLocalPlayer()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->hasLocalPlayer();
+}
+
+/// The own creature (null before the server described it).
+std::shared_ptr<tibia::creatures::TCreature> localPlayerCreature()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    if (!session || !session->hasLocalPlayer() || !session->creatureStorage())
+        return nullptr;
+    return session->creatureStorage()->player();
+}
+
+tibia::input::TPlayerMovementIntentHandler* movementIntent()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session ? session->movementIntent() : nullptr;
+}
+
+/// The inventory slot (null without a local player).
+const tibia::container::TInventorySlot* inventorySlot(const uint8_t slot)
+{
+    tibia::container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer();
+    if (!hasLocalPlayer() || !inventory)
+        return nullptr;
+    return &inventory->slotAt(static_cast<int>(slot));
+}
+
+int emptyContainerId()
+{
+    tibia::container::TContainerStorage* storage = tibia::game::currentContainerStorage();
+    return storage ? storage->findEmptyId() : 0;
+}
+
+/// Replay / screenshot harness only: `QTCLIENT_DEBUG_WORLD_LIGHT=<intensity>[:<color>]`
+/// pins the world ambient light intensity (session dumps keep whatever time
+/// they were recorded at).
+std::optional<uint8_t> debugWorldLightIntensity()
+{
+    static const std::optional<uint8_t> pinned = []() -> std::optional<uint8_t> {
+        const QByteArray spec = qgetenv("QTCLIENT_DEBUG_WORLD_LIGHT");
+        if (spec.isEmpty())
+            return std::nullopt;
+        bool ok = false;
+        const int intensity = spec.split(':').value(0).trimmed().toInt(&ok);
+        if (!ok)
+            return std::nullopt;
+        return static_cast<uint8_t>(std::clamp(intensity, 0, 255));
+    }();
+    return pinned;
+}
+
+/// The first inventory or open-container object of `itemId` (any subtype when -1).
+std::optional<tibia::game::TObjectReference> findPlayerItem(const uint32_t itemId, const int subType)
+{
+    using tibia::container::TInventorySlot;
+    if (tibia::container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer()) {
+        for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
+            const TInventorySlot& row = inventory->slotAt(slot);
+            if (row.empty() || row.typeId != itemId)
+                continue;
+            const uint8_t fluidOrSub = row.fluidOrSplash ? row.fluid : 0;
+            if (subType != -1 && fluidOrSub != static_cast<uint8_t>(subType))
+                continue;
+            return tibia::game::TObjectReference{ row.typeId, Position(UINT16_MAX, static_cast<uint16_t>(slot), 0), 0,
+                                                  static_cast<uint16_t>(row.stackable ? row.count : 0), row.tier, fluidOrSub };
+        }
+    }
+    tibia::container::TContainerStorage* storage = tibia::game::currentContainerStorage();
+    if (!storage)
+        return std::nullopt;
+    for (const tibia::container::TContainerID containerId : storage->openIds()) {
+        const tibia::container::TStoredContainer* row = storage->containerAt(containerId);
+        if (!row)
+            continue;
+        for (size_t i = 0; i < row->items().size(); ++i) {
+            const TInventorySlot& slot = row->items()[i];
+            if (slot.empty() || slot.typeId != itemId || slot.tier != 0)
+                continue;
+            const uint8_t fluidOrSub = slot.fluidOrSplash ? slot.fluid : 0;
+            if (subType != -1 && fluidOrSub != static_cast<uint8_t>(subType))
+                continue;
+            const int pageSlot = static_cast<int>(i);
+            return tibia::game::TObjectReference{ slot.typeId,
+                                                  Position(0xffff, static_cast<uint16_t>(containerId | 0x40), static_cast<uint8_t>(pageSlot)),
+                                                  pageSlot, static_cast<uint16_t>(slot.stackable ? slot.count : 0), slot.tier, fluidOrSub };
+        }
+    }
+    return std::nullopt;
+}
+
+/// The server's count of everything the player carries, else the inventory
+/// and the open containers.
+uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    if (!session || !session->hasLocalPlayer())
+        return 0;
+    if (const auto& counts = session->objectCountStorage(); counts && !counts->counts().empty()) {
+        const auto it = counts->counts().find({ itemId, tier });
+        if (it != counts->counts().end())
+            return it->second;
+    }
+    uint64_t total = 0;
+    const auto add = [&](const tibia::container::TInventorySlot& slot) {
+        if (!slot.empty() && slot.typeId == itemId && slot.tier == tier)
+            total += slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+    };
+    if (tibia::container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer()) {
+        for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot)
+            add(inventory->slotAt(slot));
+    }
+    if (tibia::container::TContainerStorage* storage = tibia::game::currentContainerStorage()) {
+        for (const tibia::container::TContainerID containerId : storage->openIds()) {
+            if (const tibia::container::TStoredContainer* row = storage->containerAt(containerId)) {
+                for (const tibia::container::TInventorySlot& slot : row->items())
+                    add(slot);
+            }
+        }
+    }
+    return static_cast<uint32_t>(std::min<uint64_t>(total, std::numeric_limits<uint32_t>::max()));
+}
+
+void useMapObject(const Position& position, const uint16_t itemId, const int stackPos)
+{
+    if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
+        return;
+    gameclient::sendUseItem(position, itemId, static_cast<uint8_t>(stackPos), emptyContainerId());
+    tibia::game::notify("onUse", position, itemId, stackPos, 0);
+}
+
 // --- Session nested API ---
 
-int sessIsOnline() { return tibia::game::isOnline() ? 1 : 0; }
-int sessIsDead() { return tibia::game::isDead() ? 1 : 0; }
-int sessIsFrozen() { return tibia::game::isSceneFrozen() ? 1 : 0; }
-void sessSetFrozen(int frozen) { tibia::game::setSceneFrozen(frozen != 0); }
-int sessPlayerPresent() { return tibia::game::hasLocalPlayer() ? 1 : 0; }
+int sessIsOnline()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->isOnline() ? 1 : 0;
+}
+int sessIsDead()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->isDead() ? 1 : 0;
+}
+int sessIsFrozen()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->isSceneFrozen() ? 1 : 0;
+}
+void sessSetFrozen(int frozen)
+{
+    if (tibia::game::TGameSessionBase* session = liveSession())
+        session->setSceneFrozen(frozen != 0);
+}
+int sessPlayerPresent() { return hasLocalPlayer() ? 1 : 0; }
 
 QtClientMapPos sessPlayerMapPos()
 {
-    const auto p = tibia::game::localPlayerMapPos();
+    const tibia::game::TGameSessionBase* session = liveSession();
+    const Position p = session ? session->localPlayerPosition() : Position();
     return QtClientMapPos{p.x, p.y, p.z};
 }
 
@@ -578,84 +757,211 @@ int sessPlayerName(char* buf, size_t buf_len)
 {
     if (!buf || buf_len == 0)
         return -1;
-    const std::string name = tibia::game::localPlayerName();
+    std::string name;
+    if (const tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && !data->characterName().empty())
+        name = data->characterName();
+    else if (hasLocalPlayer())
+        name = liveSession()->characterName().toStdString();
     std::snprintf(buf, buf_len, "%s", name.c_str());
     return static_cast<int>(std::strlen(buf));
 }
 
-uint32_t sessPlayerId() { return tibia::game::localPlayerId(); }
-int sessPlayerLevel() { return tibia::game::localPlayerLevel(); }
-void sessStopWalk() { tibia::game::localPlayerStopAutoWalk(); }
-int sessIsWalking() { return tibia::game::localPlayerIsAutoWalking() ? 1 : 0; }
+uint32_t sessPlayerId()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    if (!session || !session->hasLocalPlayer() || !session->creatureStorage())
+        return 0;
+    return session->creatureStorage()->playerID();
+}
 
+int sessPlayerLevel()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<int>(data->level()) : 0;
+}
+
+void sessStopWalk()
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->stopWalking();
+}
+
+int sessIsWalking()
+{
+    const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    return intent && intent->hasGoal() ? 1 : 0;
+}
+
+/// Walks to `goal` (map click, travel); the path may end on a goal that cannot
+/// be stood on. `retry` and `path_mode` are kept for the ABI.
 int sessAutoWalk(QtClientMapPos goal, int retry, int path_mode)
 {
-    tibia::game::MapPos pos{goal.x, goal.y, goal.z};
-    return tibia::game::localPlayerAutoWalk(
-               pos, retry != 0, static_cast<tibia::client::AutoWalkPathMode>(path_mode))
-        ? 1
-        : 0;
+    (void)retry;
+    (void)path_mode;
+    const Position target = toTipPosition(goal);
+    const tibia::game::TGameSessionBase* session = liveSession();
+    tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    if (!intent || !target.isValid() || !session || !session->isOnline())
+        return 0;
+    intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentTargetCoordinate>(target.x, target.y, target.z, true));
+    return intent->hasGoal() ? 1 : 0;
 }
 
 void sessTalk(const char* text)
 {
-    if (text)
-        tibia::game::talk(text);
+    // A say (CIP chat message mode Say).
+    if (text && *text && canPerformGameAction())
+        gameclient::sendTalk(1, 0, "", text);
 }
 
 void sessTurn(int direction)
 {
-    tibia::game::turn(static_cast<tibia::client::Direction>(direction));
+    if (!canPerformGameAction())
+        return;
+    switch (static_cast<tibia::client::Direction>(direction)) {
+    case tibia::client::North: gameclient::sendTurnNorth(); break;
+    case tibia::client::East: gameclient::sendTurnEast(); break;
+    case tibia::client::South: gameclient::sendTurnSouth(); break;
+    case tibia::client::West: gameclient::sendTurnWest(); break;
+    default: break;
+    }
 }
 
-uint64_t sessMillis() { return tibia::game::millis(); }
-uint8_t sessSeaFloor() { return tibia::game::mapSeaFloor(); }
-uint8_t sessWorldLight() { return tibia::game::worldLightIntensity(); }
-uint32_t sessItemRev() { return tibia::game::mapItemRevision(); }
+uint64_t sessMillis() { return static_cast<uint64_t>(tibia::shared::TClockService::frameMillis()); }
+uint8_t sessSeaFloor() { return tibia::config::mapSeaFloor(); }
+uint8_t sessWorldLight()
+{
+    if (const std::optional<uint8_t> pinned = debugWorldLightIntensity())
+        return *pinned;
+    const tibia::worldmap::TWorldMapStorage* map = tibia::game::currentWorldMapStorage();
+    return map ? map->worldLight().intensity : 0;
+}
+uint32_t sessItemRev()
+{
+    const tibia::worldmap::TWorldMapStorage* map = tibia::game::currentWorldMapStorage();
+    return map ? map->itemRevision() : 0;
+}
 
-int sessHasReachedMain() { return tibia::game::localPlayerHasReachedMain() ? 1 : 0; }
+int sessHasReachedMain()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data && data->hasReachedMain() ? 1 : 0;
+}
 
 uint16_t sessInvTypeId(uint8_t slot)
 {
-    return tibia::game::localPlayerInventoryTypeId(static_cast<tibia::client::InventorySlot>(slot));
+    const tibia::container::TInventorySlot* row = inventorySlot(slot);
+    return row ? row->typeId : 0;
 }
 
 void sessInvSlot(uint8_t slot, QtClientInventorySlotInfo* out)
 {
-    if (!out)
-        return;
-    const auto info = tibia::game::localPlayerInventorySlot(static_cast<tibia::client::InventorySlot>(slot));
-    fillAbiInventory(info, out);
+    fillAbiInventory(inventorySlot(slot), out);
 }
 
+/// Uses the inventory slot's object (opens the container there).
 void sessOpenInv(uint8_t slot)
 {
-    tibia::game::openLocalPlayerInventory(static_cast<tibia::client::InventorySlot>(slot));
+    const tibia::container::TInventorySlot* row = inventorySlot(slot);
+    if (!row || row->empty() || row->typeId == 0 || !canPerformGameAction())
+        return;
+    // The inventory slot's wire position: Position(UINT16_MAX, slot, 0).
+    const Position position(UINT16_MAX, static_cast<uint16_t>(slot), 0);
+    const uint16_t typeId = row->typeId;
+    gameclient::sendUseItem(position, typeId, 0, emptyContainerId());
+    tibia::game::notify("onUse", position, typeId, 0, 0);
 }
 
-uint8_t sessBlessVisual() { return tibia::game::localPlayerBlessVisualState(); }
+uint8_t sessBlessVisual()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? data->blessVisualState() : 0;
+}
 
-void sessSetInfoChannel(uint32_t ms) { tibia::game::localPlayerSetInformationChannel(ms); }
-void sessClearInfoChannel() { tibia::game::localPlayerClearInformationChannel(); }
-void sessSetSoftDead(int v) { tibia::game::localPlayerSetSoftDead(v != 0); }
+void sessSetInfoChannel(uint32_t ms)
+{
+    if (const auto player = localPlayerCreature())
+        player->setInformationChannel(ms, tibia::shared::TClockService::frameMillis());
+}
 
-uint32_t sessLpHealth() { return tibia::game::localPlayerHealth(); }
-uint32_t sessLpMaxHealth() { return tibia::game::localPlayerMaxHealth(); }
-uint32_t sessLpMana() { return tibia::game::localPlayerMana(); }
-uint32_t sessLpMaxMana() { return tibia::game::localPlayerMaxMana(); }
-uint16_t sessLpLevelPct() { return tibia::game::localPlayerLevelPercent(); }
-uint16_t sessLpStamina() { return tibia::game::localPlayerStamina(); }
-uint8_t sessLpVocation() { return tibia::game::localPlayerVocation(); }
-uint8_t sessLpShield() { return tibia::game::localPlayerShield(); }
-uint64_t sessLpMoney() { return tibia::game::localPlayerTotalMoney(); }
-uint32_t sessLpFreeCap() { return tibia::game::localPlayerFreeCapacity(); }
-uint32_t sessLpInvCount(uint16_t itemId) { return tibia::game::localPlayerInventoryCount(itemId); }
+void sessClearInfoChannel()
+{
+    if (const auto player = localPlayerCreature())
+        player->clearInformationChannel();
+}
+
+void sessSetSoftDead(int v)
+{
+    const bool softDead = v != 0;
+    const auto player = localPlayerCreature();
+    if (!player || player->isSoftDead() == softDead)
+        return;
+    player->setSoftDead(softDead);
+    if (tibia::game::TPlayerData* data = tibia::game::currentPlayerData(); data && softDead)
+        data->updateHealth(0, static_cast<uint32_t>(data->maxHealth()));
+    if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage())
+        storage->publishCreatureUpdated(player);
+}
+
+uint32_t sessLpHealth()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint32_t>(data->health()) : 0;
+}
+uint32_t sessLpMaxHealth()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint32_t>(data->maxHealth()) : 0;
+}
+uint32_t sessLpMana()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint32_t>(data->mana()) : 0;
+}
+uint32_t sessLpMaxMana()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint32_t>(data->maxMana()) : 0;
+}
+uint16_t sessLpLevelPct()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint16_t>(data->levelPercent()) : 0;
+}
+uint16_t sessLpStamina()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint16_t>(data->stamina()) : 0;
+}
+uint8_t sessLpVocation()
+{
+    // The classic vocation id: promoted vocations count from 11.
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint8_t>(data->vocation() + (data->promoted() ? 10 : 0)) : 0;
+}
+uint8_t sessLpShield()
+{
+    const auto player = localPlayerCreature();
+    return player ? player->shield() : 0;
+}
+uint64_t sessLpMoney()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint64_t>(data->totalMoney()) : 0;
+}
+uint32_t sessLpFreeCap()
+{
+    const tibia::game::TPlayerData* data = tibia::game::currentPlayerData();
+    return data ? static_cast<uint32_t>(data->freeCapacity()) : 0;
+}
+uint32_t sessLpInvCount(uint16_t itemId) { return localPlayerInventoryCount(itemId, 0); }
 
 void sessLpOutfit(QtClientCreatureOutfitInfo* out)
 {
     if (!out)
         return;
-    const Outfit& o = tibia::game::localPlayerOutfit();
+    const auto player = localPlayerCreature();
+    const Outfit o = player ? player->outfit() : Outfit();
     const bool isObject = o.getId() == 0 && o.getAuxId() != 0;
     const uint16_t looktype = isObject ? o.getAuxId() : o.getId();
     tibia::game::CreatureOutfitInfo info{};
@@ -934,22 +1240,47 @@ void sessCanTravelPathAsync(QtClientMapPos from, QtClientMapPos to, QtClientTrav
         [cb, user](const bool ok) { tibia::schedule::post([cb, user, ok] { cb(user, ok ? 1 : 0); }); });
 }
 
-void sessSafeLogout() { tibia::game::safeLogout(); }
-void sessRequestBless() { tibia::game::requestBless(); }
-void sessPartyJoin(uint32_t id) { tibia::game::partyJoin(id); }
-void sessSetAttacking(uint32_t id) { tibia::game::setAttackingCreatureId(id); }
-uint32_t sessAttackingId() { return tibia::game::attackingCreatureId(); }
+void sessSafeLogout()
+{
+    if (const tibia::game::TGameSessionBase* session = liveSession(); session && session->isOnline())
+        gameclient::sendLogout();
+}
+void sessRequestBless()
+{
+    if (canPerformGameAction())
+        gameclient::sendRequestBless();
+}
+void sessPartyJoin(uint32_t id)
+{
+    if (canPerformGameAction())
+        gameclient::sendJoinParty(id);
+}
+void sessSetAttacking(uint32_t id)
+{
+    if (tibia::game::TGameSessionBase* session = liveSession())
+        session->setAttackingCreatureId(id);
+}
+uint32_t sessAttackingId()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session ? session->attackingCreatureId() : 0;
+}
 
 int sessCharacterName(char* buf, size_t buf_len)
 {
     if (!buf || buf_len == 0)
         return -1;
-    const std::string name = tibia::game::characterName();
+    const tibia::game::TGameSessionBase* session = liveSession();
+    const std::string name = session ? session->characterName().toStdString() : std::string();
     std::snprintf(buf, buf_len, "%s", name.c_str());
     return static_cast<int>(std::strlen(buf));
 }
 
-int sessIsSwitchingChar() { return tibia::game::isSwitchingCharacter() ? 1 : 0; }
+int sessIsSwitchingChar()
+{
+    const tibia::game::TGameSessionBase* session = liveSession();
+    return session && session->isSwitchingCharacter() ? 1 : 0;
+}
 
 void sessQuickLootBw(uint8_t filter, uint16_t size, const uint16_t* listed_items, int listed_count)
 {
@@ -958,60 +1289,104 @@ void sessQuickLootBw(uint8_t filter, uint16_t size, const uint16_t* listed_items
     std::vector<uint16_t> v(static_cast<size_t>(listed_count));
     for (int i = 0; i < listed_count; ++i)
         v[static_cast<size_t>(i)] = listed_items[static_cast<size_t>(i)];
-    tibia::game::requestQuickLootBlackWhiteList(filter, size, v);
+    (void)size;
+    if (!canPerformGameAction())
+        return;
+    // The vector's length is the count: a size that disagrees with the list
+    // desyncs the protocol (the server reads the wrong byte count).
+    gameclient::requestQuickLootBlackWhiteList(filter, static_cast<uint16_t>(v.size()), v);
 }
 
 void sessOpenQuickLoot(uint8_t action, uint8_t category, QtClientMapPos pos, uint16_t item_id, uint8_t stackpos,
                        int use_main_as_fallback)
 {
-    tibia::game::openContainerQuickLoot(action, category, toTipPosition(pos), item_id, stackpos,
-                                       use_main_as_fallback != 0);
+    if (canPerformGameAction())
+        gameclient::openContainerQuickLoot(action, category, toTipPosition(pos), item_id, stackpos, use_main_as_fallback != 0);
 }
 
 void sessStatusBestiary(uint16_t race_id, int status)
 {
-    tibia::game::sendStatusTrackerBestiary(race_id, status != 0);
+    if (canPerformGameAction())
+        gameclient::sendStatusTrackerBestiary(race_id, status != 0);
 }
 
-void sessBestiarySearch(uint16_t race_id) { tibia::game::requestBestiarySearch(race_id); }
+void sessBestiarySearch(uint16_t race_id)
+{
+    if (!canPerformGameAction())
+        return;
+    if (const tibia::game::TGameSessionBase* session = liveSession(); session && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopediaRace(race_id);
+}
 
 void sessOpenPrivate(const char* receiver_utf8)
 {
-    if (!receiver_utf8)
+    if (!receiver_utf8 || !*receiver_utf8 || !canPerformGameAction())
         return;
-    tibia::game::openPrivateChannel(receiver_utf8);
+    gameclient::sendOpenPrivateChannel(receiver_utf8);
 }
 
-void sessTfList() { tibia::game::requestTeamFinderList(); }
-void sessTfLeader() { tibia::game::requestTeamFinderLeader(); }
-void sessTfJoin(uint32_t id) { tibia::game::joinTeamFinder(id); }
-void sessTfLeave(uint32_t id) { tibia::game::leaveTeamFinder(id); }
+// Team finder (C 0x2C member / 0x2D leader actions).
+void sessTfList()
+{
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderMemberAction(0);
+}
+void sessTfLeader()
+{
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderLeaderAction(0);
+}
+void sessTfJoin(uint32_t id)
+{
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderMemberAction(1, id);
+}
+void sessTfLeave(uint32_t id)
+{
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderMemberAction(2, id);
+}
 
 void sessTfCreate(const QtClientTeamFinderAssemble* a)
 {
-    tibia::game::createTeamFinder(teamFinderFromAbi(a));
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderLeaderAction(3, 0, 0, teamFinderFromAbi(a));
 }
 
-void sessTfResetLeader() { tibia::game::resetTeamFinderLeader(); }
+void sessTfResetLeader()
+{
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderLeaderAction(1);
+}
 
 void sessTfUpdateMember(uint32_t member_id, uint8_t status)
 {
-    tibia::game::updateTeamFinderMember(member_id, status);
+    if (canPerformGameAction())
+        gameclient::sendTeamFinderLeaderAction(2, member_id, status);
 }
 
 void sessUseInvOnCreature(uint16_t item_id, uint32_t creature_id)
 {
-    tibia::game::useInventoryItemOnCreature(item_id, creature_id);
+    if (!canPerformGameAction() || !creature_id)
+        return;
+    const Position pos(0xFFFF, 0, 0);
+    gameclient::sendUseOnCreature(pos, item_id, 0, creature_id);
+    tibia::game::notify("onUseWith", pos, item_id, creature_id, 0);
 }
 
 void sessUseMapObject(QtClientMapPos pos, uint16_t item_id, int stack_pos)
 {
-    tibia::game::useMapObject(toGameMapPos(pos), item_id, stack_pos);
+    useMapObject(toTipPosition(pos), item_id, stack_pos);
 }
 
 void sessUseInvWithMap(uint16_t item_id, QtClientMapPos to_pos, uint16_t to_item_id, int to_stack_pos)
 {
-    tibia::game::useInventoryItemWithMapObject(item_id, toGameMapPos(to_pos), to_item_id, to_stack_pos);
+    const Position to = toTipPosition(to_pos);
+    if (!canPerformGameAction() || !to.isValid() || to_item_id == 0 || to_stack_pos < 0)
+        return;
+    const Position pos(0xFFFF, 0, 0);
+    gameclient::sendUseItemWith(pos, item_id, 0, to, to_item_id, static_cast<uint8_t>(to_stack_pos));
+    tibia::game::notify("onUseWith", pos, item_id, to, 0);
 }
 
 void sessClearEffectVariants() { tibia::game::clearEffectVariants(); }
@@ -1035,23 +1410,32 @@ void sessAttachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia:
 void sessDetachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::detachCreatureEffect(creature_id, effect_id); }
 int sessLpDirection()
 {
-    return tibia::game::hasLocalPlayer() ? static_cast<int>(tibia::game::localPlayerDirection())
-                                         : QTCLIENT_DIRECTION_INVALID;
+    if (!hasLocalPlayer())
+        return QTCLIENT_DIRECTION_INVALID;
+    const auto player = localPlayerCreature();
+    return player ? static_cast<int>(player->patternX()) : static_cast<int>(tibia::client::InvalidDirection);
 }
 
 void sessHoldDirection(const int direction)
 {
-    if (direction >= QTCLIENT_DIRECTION_NORTH && direction < QTCLIENT_DIRECTION_INVALID)
-        tibia::game::localPlayerHoldDirection(static_cast<tibia::client::Direction>(direction));
+    if (direction < QTCLIENT_DIRECTION_NORTH || direction >= QTCLIENT_DIRECTION_INVALID)
+        return;
+    const tibia::game::TGameSessionBase* session = liveSession();
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && session && session->isOnline())
+        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentDirection>(direction));
 }
 
-void sessReleaseDirection() { tibia::game::localPlayerReleaseDirection(); }
+void sessReleaseDirection()
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentStop>());
+}
 
 int sessCreatureTypeIsSummon(uint8_t t) { return tibia::game::creatureTypeIsSummon(t) ? 1 : 0; }
 
 QtClientHandle sessFindPlayerItem(uint32_t item_id, int sub_type)
 {
-    g_sessFindPlayerItemLast = tibia::game::findPlayerItem(item_id, sub_type);
+    g_sessFindPlayerItemLast = findPlayerItem(item_id, sub_type);
     QtClientHandle h{};
     h.ptr = g_sessFindPlayerItemLast ? &*g_sessFindPlayerItemLast : nullptr;
     return h;
@@ -1364,19 +1748,19 @@ int notifySubWorldTime(void (*fn)(void* user, int hour, int minute), void* user)
 {
     if (!fn)
         return 0;
-    return tibia::game::subscribeWorldTime([fn, user](int hour, int minute) { fn(user, hour, minute); });
+    return tibia::world::subscribeWorldTime([fn, user](int hour, int minute) { fn(user, hour, minute); });
 }
 
-void notifyUnsubWorldTime(int id) { tibia::game::unsubscribeWorldTime(id); }
+void notifyUnsubWorldTime(int id) { tibia::world::unsubscribeWorldTime(id); }
 
 int notifySubSessionEnd(void (*fn)(void* user), void* user)
 {
     if (!fn)
         return 0;
-    return tibia::game::subscribeSessionEnd([fn, user]() { fn(user); });
+    return tibia::world::subscribeSessionEnd([fn, user]() { fn(user); });
 }
 
-void notifyUnsubSessionEnd(int id) { tibia::game::unsubscribeSessionEnd(id); }
+void notifyUnsubSessionEnd(int id) { tibia::world::unsubscribeSessionEnd(id); }
 
 int notifySubSessionChanged(void (*fn)(void* user), void* user)
 {

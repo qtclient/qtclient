@@ -1,7 +1,8 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
+#include <QStringList>
 #include "gamewindow/dialogmanager.h"
 #include "proficiency/proficiencystorage.h"
 #include "qtconnectionmanager.h"

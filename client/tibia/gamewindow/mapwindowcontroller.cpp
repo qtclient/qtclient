@@ -32,12 +32,19 @@
 #include <QQuickWindow>
 #include <QTouchEvent>
 #include <cmath>
-#include <tibia/game/gamesession.h>
+#include "protocol/clientmessages.h"
 #include <utility>
 
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The connected session is online (the game started, not yet ended).
+bool sessionIsOnline(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session && session->isOnline();
+}
 
 using Cursor = TMouseCursorController;
 using qmlcomponents::TWorldMapRenderProvider;
@@ -714,7 +721,7 @@ void TMapWindowController::updateLenshelpAtMouseCursor(const input::TGameActionL
 
 void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY, const int mouseButton, const int keyboardModifiers)
 {
-    if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
+    if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap || !sessionIsOnline(m_gameSession))
         return;
     if (input::isSelectingTarget()) {
         input::finishTargetSelection(mouseButton == Qt::LeftButton ? targetAt(QPointF(mouseX, mouseY)) : nullptr);
@@ -740,7 +747,7 @@ m_pGameActionMapper->map(candidates, input::TGameActionMapper::WorldMapContext,
 void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mouseY, QObject* source)
 {
     TDragAndDropController* dnd = TDragAndDropController::instance();
-    if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
+    if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !sessionIsOnline(m_gameSession))
         return;
     for (const input::IGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
         if (action->gameActionType() == input::EGameAction::MOVE_OBJECT) {
@@ -756,7 +763,7 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
     if (!dnd || !m_provider || !m_mapWindow || !m_worldMap)
         return;
     const input::TMoveObjectPtr move = dnd->takeAction();
-    if (!move || !tibia::game::isOnline())
+    if (!move || !sessionIsOnline(m_gameSession))
         return;
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(QPointF(mouseX, mouseY)));
     if (!pick.isValid())
@@ -781,7 +788,7 @@ input::TTargetSelectedPtr TMapWindowController::targetAt(const QPointF& mapWindo
 
 void TMapWindowController::onMapWindowTargetSelected(const int mouseX, const int mouseY)
 {
-    if (!tibia::game::isOnline())
+    if (!sessionIsOnline(m_gameSession))
         return;
     if (const input::TTargetSelectedPtr target = targetAt(QPointF(mouseX, mouseY)))
         Q_EMIT publishGameAction(target);
@@ -848,9 +855,13 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(point));
     if (!pick.isValid() || action.words().isEmpty())
         return;
-    tibia::game::setNextTalkAim(pick.position);
-    tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<uint32_t>(action.talkMode()), 0, action.words().toStdString());
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    session->setNextTalkAim(pick.position);
+    session->setNextTalkAimMode(2);
+    if (session->canPerformGameAction())
+        tibia::protocol::gameclient::sendTalk(static_cast<uint32_t>(action.talkMode()), 0, "", action.words().toStdString());
 }
 
 void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)

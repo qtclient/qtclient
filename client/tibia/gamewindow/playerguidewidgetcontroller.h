@@ -1,12 +1,12 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
 #include <QPointer>
+#include <QString>
 #include <QTimer>
 
 #include <memory>

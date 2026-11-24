@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "config/hotkeyoptions.h"
 #include "config/optionspages.h"
 #include "game/cooldownstorage.h"

@@ -2,7 +2,7 @@
 #include "cyclopedia/staticcontentinformation.h"
 #include <vector>
 #include <protocol.pb.h>
-#include <tibia/game/gamesession.h>
+#include <tibia/game/gamenotify.h>
 #include "chat/chatprotocolmessagehandler.h"
 #include "teamfinder/teamfinder_types.h"
 #include "protocol/protocolciptypes.h"
@@ -269,7 +269,8 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage(
                                      .vocation = static_cast<uint8_t>(member.vocation()),
                                      .status = static_cast<uint8_t>(member.status()) });
     }
-    tibia::game::processTeamFinderLeader(data);
+    // Pack ABI field.
+    tibia::game::notify("onTeamFinderLeader", data);
 }
 
 void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage(
@@ -307,7 +308,8 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage(
         entry.questID = static_cast<uint16_t>(s.type().quest_id());
         entry.status = static_cast<uint8_t>(team.status());
     }
-    tibia::game::processTeamFinderList(m.rate_limited() != 0, entries);
+    // Pack ABI field.
+    tibia::game::notify("onTeamFinderList", m.rate_limited() != 0, entries);
 }
 
 void TTeamFinderProtocolMessageHandler::requestOwnTeam()

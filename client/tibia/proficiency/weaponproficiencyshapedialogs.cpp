@@ -11,7 +11,9 @@
 #include <array>
 #include <tuple>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
+#include "protocol/clientmessages.h"
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::proficiency {
@@ -32,19 +34,46 @@ constexpr std::array<int, 2> DialogResources { DustResource, LunarAscensionOrbsR
 /// CIP : the reshape offer index that keeps the current perk.
 constexpr int KeepCurrentPerk = 3;
 
+/// The current session's player data while the session has a character.
+const tibia::game::TPlayerData* localPlayerData()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+}
+
+bool sessionIsOnline()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->isOnline();
+}
+
+bool sessionCanPerformGameAction()
+{
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->canPerformGameAction();
+}
+
+uint64_t localPlayerResource(const tibia::client::ResourceTypes_t type)
+{
+    const tibia::game::TPlayerData* data = localPlayerData();
+    return data ? data->resourceBalance(type) : 0;
+}
+
+int profession()
+{
+    // The classic vocation id counts promoted vocations from 11; its last digit is the profession.
+    const tibia::game::TPlayerData* data = localPlayerData();
+    return data ? (data->vocation() + (data->promoted() ? 10 : 0)) % 10 : 0;
+}
+
 int dustBalance()
 {
-    return tibia::game::hasLocalPlayer()
-               ? static_cast<int>(tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_FORGE_DUST))
-               : 0;
+    return static_cast<int>(localPlayerResource(tibia::client::RESOURCE_FORGE_DUST));
 }
 
 uint32_t lunarAscensionOrbs()
 {
-    return tibia::game::hasLocalPlayer()
-               ? static_cast<uint32_t>(tibia::game::localPlayerResourceBalance(
-                     static_cast<tibia::client::ResourceTypes_t>(LunarAscensionOrbsResource)))
-               : 0;
+    return static_cast<uint32_t>(localPlayerResource(static_cast<tibia::client::ResourceTypes_t>(LunarAscensionOrbsResource)));
 }
 
 /// CIP .
@@ -63,11 +92,6 @@ QString newValuesText(const TShapedSlot& slot, const int rank)
     return qtTrId("weapon_proficiency_shape_dialog_new_values").arg(rank).arg(perkDescription(shapedPerk(slot.perkType, rank)));
 }
 
-
-int profession()
-{
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
-}
 
 }
 
@@ -320,7 +344,8 @@ void TWeaponProficiencyShapeDialogController::onClearClicked()
 
 void TWeaponProficiencyShapeDialogController::sendSlotAction(const uint8_t type) const
 {
-    tibia::game::sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
+    if (sessionCanPerformGameAction())
+        tibia::protocol::gameclient::sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
 }
 
 void TWeaponProficiencyShapeDialogController::onMessageDialogAccept()
@@ -340,7 +365,7 @@ void TWeaponProficiencyShapeDialogController::onResourceBalanceChanged() { onPro
 
 void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
 {
-    if (!tibia::game::isOnline())
+    if (!sessionIsOnline())
         return;
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog>(profession());
     Q_EMIT publishGameAction(action);
@@ -403,7 +428,8 @@ void TWeaponProficiencyReshapeDialogController::rebuildOffers()
 void TWeaponProficiencyReshapeDialogController::pickOffer(const int index) const
 {
     if (const TReshapeOffers* offers = m_storage->reshapeOffers())
-        tibia::game::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
+        if (sessionCanPerformGameAction())
+            tibia::protocol::gameclient::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
 }
 
 void TWeaponProficiencyReshapeDialogController::requestCancel()

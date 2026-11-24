@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "config/icharacterconfiguration.h"
 
 #include <cip_gen.h>

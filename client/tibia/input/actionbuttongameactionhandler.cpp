@@ -9,7 +9,9 @@
 #include "spells/spellinfostorage.h"
 #include "iclockservice.h"
 
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gameservergamesession.h"
+#include "network/networkqualityprotocolmessagehandler.h"
 
 #include <algorithm>
 #include <utility>
@@ -134,8 +136,10 @@ config::TActionSetting TActionButtonGameActionHandler::actionToExecute(const con
         adapters.emplace_back(m_spellInfoStorage, slot);
         candidates.push_back(&adapters.back());
     }
-    // Host: the ping is a qtclient static.
-    const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
+    // The live game server session's round trip; -1 without one.
+    const auto* liveSession = dynamic_cast<const tibia::game::TGameserverGameSession*>(tibia::game::currentGameSession());
+    const qint64 ping = liveSession ? liveSession->latency().milliseconds : -1;
+    const qint64 latency = std::min<qint64>(ping / 2, 400);
     const TMultiActionPrioritySolver solver(m_cooldownStorage.get(), m_playerData.get(), m_objectInfoStorage.get(),
                                             m_clockService->nowMillis(), latency);
     const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));

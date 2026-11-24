@@ -1,4 +1,6 @@
 #include "imbuingdialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 #include "qmlcomponents/appearanceinstancerenderer.h"
 #include "gamewindow/smoothfiltering.h"
 
@@ -18,12 +20,24 @@
 #include <array>
 #include <utility>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::imbuing {
 
 namespace {
+
+/// The name with each space-separated word capitalised.
+QString capitalizedWords(const std::string& name)
+{
+    QString text = QString::fromStdString(name);
+    bool upNext = true;
+    for (QChar& ch : text) {
+        if (upNext)
+            ch = ch.toUpper();
+        upNext = ch == u' ';
+    }
+    return text;
+}
 
 enum ERole
 {
@@ -293,14 +307,16 @@ std::vector<TImbuementSource> ownedAstralSources(const TImbuingStorage& storage,
 
 bool localPlayerPremium()
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    return session && session->hasLocalPlayer() && premium && premium->isPremium();
 }
 
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
     const TAppearanceTypePtr& type = tibia::appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryItem, typeId);
-    return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
+    return type ? imbuing::capitalizedWords(type->getName()) : QString();
 }
 
 uint32_t imbuementSlotCount(const uint16_t typeId)
@@ -428,7 +444,9 @@ void TImbuingDialogController::closeDialog()
     m_clearConfirm->dialog()->close();
     Q_EMIT imbuingQmlDataChanged();
     dialog()->close();
-    tibia::game::closeImbuingWindow();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendCloseImbuingWindow();
     m_imbuedItemInstance.reset();
     m_picking = false;
     m_selectedImbuementSlotIndex = 0;
@@ -509,7 +527,9 @@ void TImbuingDialogController::handlePickItemToImbue()
             return;
         if (target && target->objectClientId()) {
             const uint8_t stackpos = target->stackPosition() >= 0 ? static_cast<uint8_t>(target->stackPosition()) : 0;
-            tibia::game::selectImbuementItem(target->objectClientId(), target->position(), stackpos);
+            if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+                session && session->canPerformGameAction())
+                tibia::protocol::gameclient::sendImbuementWindowAction(tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM, target->objectClientId(), target->position(), stackpos);
         }
         m_picking = false;
         if (dialog()->item() && !dialog()->isShown())
@@ -517,7 +537,11 @@ void TImbuingDialogController::handlePickItemToImbue()
     });
 }
 
-void TImbuingDialogController::handleImbueScroll() { tibia::game::selectImbuementScroll(); }
+void TImbuingDialogController::handleImbueScroll()
+{
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendImbuementWindowAction(tibia::client::IMBUEMENT_WINDOW_SCROLL);
+}
 
 void TImbuingDialogController::onImbuingStorageDataChanged()
 {
@@ -536,12 +560,16 @@ void TImbuingDialogController::onDisplayResultMessage(const QString& message)
 
 void TImbuingDialogController::onImbueSlotConfirmed()
 {
-    tibia::game::applyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendApplyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
 }
 
 void TImbuingDialogController::onClearSlotConfirmed()
 {
-    tibia::game::clearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendClearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
 }
 
 const TImbuementSlot* TImbuingDialogController::selectedSlot() const

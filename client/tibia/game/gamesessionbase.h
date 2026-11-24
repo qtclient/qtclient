@@ -4,8 +4,16 @@
 #include "game/igamesession.h"
 #include "game/tgamenotify.h"
 #include "network/dualconnectionurlinfo.h"
+#include <tibia/schedule/schedule.h>
 
+#include <client/position.h>
+
+#include <QString>
+
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace tibia {
@@ -14,6 +22,7 @@ class TBattleListGameActionHandler;
 }
 namespace network {
 struct TNetworkLatency;
+class TGameserverSessionNetwork;
 }
 namespace client {
 class TAntiCheatController;
@@ -30,6 +39,7 @@ class TTextStorage;
 class TWhiteBlacklist;
 }
 namespace container {
+struct TInventorySlot;
 class TContainerProtocolMessageHandler;
 class TContainerGameActionHandler;
 class TContainerGameActionProvider;
@@ -42,6 +52,7 @@ class TObjectCountStorage;
 class TStashStorage;
 }
 namespace input {
+class TPlayerMovementIntentHandler;
 class TActionButtonGameActionHandler;
 class TGenericChatGameActionProvider;
 class TGenericObjectGameActionProvider;
@@ -794,6 +805,76 @@ public:
                                     std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
                                     std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage);
 
+    // Host: the character's login and world lifecycle, which qtclient's classic
+    // packet path (protocol/clientmessages, the session network) reads. One
+    // session holds it from its login (or replay start) to its game end.
+
+    /// The world was entered and the game started; false again at the game end.
+    bool isOnline() const { return m_online; }
+    /// The session has a character: from the login until the logout.
+    bool hasLocalPlayer() const { return m_playerPresent; }
+    /// The server reported the character's death (until the next login).
+    bool isDead() const { return m_dead; }
+    /// A same-socket character switch is in progress.
+    bool isSwitchingCharacter() const { return m_switchingCharacter; }
+    /// The death dialog froze the world map's scene.
+    bool isSceneFrozen() const { return m_sceneFrozen; }
+    void setSceneFrozen(bool frozen) { m_sceneFrozen = frozen; }
+    /// Online, with a living character and a connected game connection.
+    bool canPerformGameAction() const;
+    QString characterName() const;
+    QString worldName() const;
+    /// The own creature's position (the world map's when the creature has none
+    /// yet); invalid without a local player.
+    Position localPlayerPosition() const;
+
+    /// The attack and follow targets (creature ids, 0 for none).
+    uint32_t attackingCreatureId() const { return m_attackingCreatureId; }
+    /// Local only (no Attack message): mirrors the server's or a pack's target.
+    void setAttackingCreatureId(uint32_t creatureId);
+    uint32_t followingCreatureId() const { return m_followingCreatureId; }
+    void setFollowingCreatureId(uint32_t creatureId);
+    /// Attacks (or, on the current target, stops attacking) `creatureId`.
+    void attack(uint32_t creatureId);
+    /// Follows (or, on the current target, stops following) `creatureId`.
+    void follow(uint32_t creatureId);
+
+    /// The server's BugReportsAllowed state: 0 allowed, else the refusal
+    /// reason; -1 before the server sent it.
+    int bugReportState() const { return m_bugReportState; }
+    void setBugReportState(int state) { m_bugReportState = state; }
+    bool canExivaOptions() const { return m_canExivaOptions; }
+    void setCanExivaOptions(bool enable) { m_canExivaOptions = enable; }
+    bool expertPvpMode() const { return m_expertPvpMode; }
+    void setExpertPvpMode(bool enable) { m_expertPvpMode = enable; }
+    /// 15.25+ crosshair spells: the aim tile and aim byte of the next say
+    /// (CIP Talk encoder: 1 crosshair, 2 at mouse position, 3 at target or
+    /// self; 0 = 1 when an aim tile is set). The say takes them.
+    void setNextTalkAim(const Position& position) { m_nextTalkAim = position; }
+    void setNextTalkAimMode(uint8_t mode) { m_nextTalkAimMode = mode; }
+    Position takeNextTalkAim();
+    uint8_t takeNextTalkAimMode();
+
+    /// A SetInventory / DeleteInventory message: the inventory container's slot
+    /// (an equipped expiring item starts decaying), then `onInventoryChange`.
+    void processInventoryChange(uint8_t slot, const container::TInventorySlot& item);
+    /// The server's current attack target (UpdateTarget).
+    void processUpdateTarget(uint32_t sequence, uint32_t targetId);
+    /// The world was entered: the enter notify, then the game start once per login.
+    void processWorldEntered();
+    /// A death stops the own walk and freezes the scene.
+    void processDeath();
+    /// The server switched the character on the same socket.
+    void processCharacterSwitch(std::string_view characterName);
+    /// Logs out when online (else cancels the login) and lets go of the connection.
+    void disconnectGame();
+    /// The player movement intent handler (a live game server session's); null in the base.
+    virtual input::TPlayerMovementIntentHandler* movementIntent() const { return nullptr; }
+
+    /// The classic packet path's view of the session's connection; null while
+    /// the session has none.
+    const std::shared_ptr<network::TGameserverSessionNetwork>& gameConnection() const { return m_gameConnection; }
+
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
     virtual void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
@@ -837,8 +918,51 @@ protected:
     /// in its initialize (CIP +0xc60); other sessions have none.
     std::shared_ptr<input::TActionButtonGameActionHandler> m_actionButtonGameActionHandler;
 
+    // Host lifecycle (see isOnline): the live session logs in with `connection`
+    // (the classic packet path's view of its network), a replay starts its own.
+    /// Throws std::runtime_error while the session is already online or logging in.
+    void loginWorld(std::string_view worldName, std::string_view characterName,
+                    std::shared_ptr<network::TGameserverSessionNetwork> connection);
+    void startDecodedReplay();
+    void deliverReplayPacket(const uint8_t* data, size_t size);
+    void finishDecodedReplay();
+    /// The connection was lost: the game ends and the connection goes.
+    void processDisconnect();
+
 private:
     void releaseStorages();
+    void resetGameStates();
+    void beginPlayerSession(std::string_view characterName);
+    void processGameStart();
+    void endSession();
+    void processGameEnd();
+    void cancelLogin();
+    void forceLogout();
+    bool isAttacking() const;
+    bool isConnectionOk() const;
+    /// The game connection's failure (it reports it once).
+    void bindGameConnection(std::shared_ptr<network::TGameserverSessionNetwork> connection);
+
+    bool m_online = false;
+    bool m_playerPresent = false;
+    bool m_dead = false;
+    bool m_switchingCharacter = false;
+    bool m_sceneFrozen = false;
+    bool m_expertPvpMode = false;
+    bool m_canExivaOptions = false;
+    bool m_connectionFailWarned = false;
+    int m_bugReportState = -1;
+    uint32_t m_attackingCreatureId = 0;
+    uint32_t m_followingCreatureId = 0;
+    /// The Attack / Follow message's sequence (the creature id, 0 to stop).
+    uint32_t m_attackSequence = 0;
+    Position m_nextTalkAim{ static_cast<int32_t>(UINT16_MAX), static_cast<int32_t>(UINT16_MAX), UINT8_MAX };
+    uint8_t m_nextTalkAimMode = 0;
+    std::string m_characterName;
+    std::string m_worldName;
+    std::shared_ptr<network::TGameserverSessionNetwork> m_gameConnection;
+    /// The game start's once-a-second connection check (connectionFailing).
+    schedule::TScheduledTaskPtr m_checkConnectionEvent;
 
     bool m_loginRampUpFinished = false;
     /// -1 until the server sent the world type.

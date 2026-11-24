@@ -66,6 +66,11 @@
 #include "teamfinder/teamfinderciptypes.h"
 #include "trade/tradeciptypes.h"
 #include "worldmap/worldmapgameactionhandler.h"
+#include "worldmap/worldmapstorage.h"
+#include "input/movementpathplanner.h"
+#include "mods/registry.h"
+#include "protocol/clientmessages.h"
+#include "qtclient/abi/const.h"
 
 #include "config/clientoptions.h"
 #include "config/specialconditionsoptions.h"
@@ -87,9 +92,7 @@
 #include <QtGlobal>
 #include <format>
 
-#include "game/gamesessionstate.h"
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/runtime/host.h>
 #include <tibia/schedule/schedule.h>
 
@@ -132,34 +135,31 @@ authentication::TGameserverLoginRequestData gameserverLoginRequestData(const TGa
     return data;
 }
 
+/// Host inputs of the player movement intent handler: the aware range and the
+/// pack's unreachable-goal claim.
+input::TPlayerMovementIntentHandler::Environment playerMovementIntentEnvironment(
+    const std::weak_ptr<worldmap::TWorldMapStorage>& worldMapStorage)
+{
+    input::TPlayerMovementIntentHandler::Environment env;
+    env.isInView = [worldMapStorage](const worldmap::TWorldMapCoordinate& coordinate) {
+        const std::shared_ptr<worldmap::TWorldMapStorage> storage = worldMapStorage.lock();
+        return storage && storage->isAwareOfPosition(coordinate.toPosition());
+    };
+    env.claimUnreachable = [](const worldmap::TWorldMapCoordinate& goal, const int result) {
+        int reason = 0;
+        switch (result) {
+        case input::PathNoWay: reason = QTCLIENT_WALK_UNREACHABLE_NO_WAY; break;
+        case input::PathOutOfRange: reason = QTCLIENT_WALK_UNREACHABLE_OUT_OF_RANGE; break;
+        case input::PathGoDownstairs: reason = QTCLIENT_WALK_UNREACHABLE_GO_DOWNSTAIRS; break;
+        case input::PathGoUpstairs: reason = QTCLIENT_WALK_UNREACHABLE_GO_UPSTAIRS; break;
+        default: return false;
+        }
+        return tibia::mods::claimWalkUnreachable(goal.x, goal.y, goal.z, reason);
+    };
+    return env;
+}
+
 } // namespace
-
-void TGameserverGameSession::wireProcessWorldEntered()
-{
-    TGameSessionState& hub = gameSessionState();
-    hub.processEnterGame();
-    if (hub.m_gameConnection && !hub.m_gameConnection->gameInitialized()) {
-        hub.processGameStart();
-        hub.m_gameConnection->setGameInitialized(true);
-    }
-}
-
-void TGameserverGameSession::wireProcessDeath()
-{
-    TGameSessionState& hub = gameSessionState();
-    hub.m_dead = true;
-    if (hub.m_playerPresent)
-        tibia::game::localPlayerStopWalk();
-    setSceneFrozen(true);
-}
-
-void hubDisconnectNow()
-{
-    if (tibia::game::isOnline())
-        gameSessionState().forceLogout();
-    else
-        gameSessionState().cancelLogin();
-}
 
 TGameserverGameSession::TGameserverGameSession(
     std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper,
@@ -332,7 +332,7 @@ void TGameserverGameSession::createNetworkStack()
     // connected signal, before anything the session does on connect can reach the wire.
     connect(dualConnection, &TGameserverDualConnection::connected, this, [this](const QUrl&) { Q_EMIT connected(); },
             Qt::QueuedConnection);
-    // Host: the classic session state ends the game when the server closes the
+    // Host: the session's game state ends the game when the server closes the
     // connection (its game end is the session's disconnected).
     connect(dualConnection, &TGameserverDualConnection::disconnected, this, [this] { onConnectionLost({}, true); });
     connect(dualConnection, &TGameserverDualConnection::connectionsUsedChanged, this,
@@ -353,7 +353,7 @@ void TGameserverGameSession::createSessionControllers()
     m_playerMovementIntentHandler = std::make_shared<TPlayerMovementIntentHandler>(
         metaInfo() ? metaInfo()->playerMovementIntentHandlerConfiguration : nullptr, config::TClientOptions::instance(),
         clockService(), worldMapStorage(), textStorage(), creatureStorage(), creatureMovementSpeedCalculator(), playerData(),
-        TGameSessionState::playerMovementIntentEnvironment());
+        playerMovementIntentEnvironment(worldMapStorage()));
     TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.get();
     if (const std::shared_ptr<creatures::TCreature> player = playerCreature().lock())
         intent->setPlayer(player);
@@ -452,18 +452,18 @@ void TGameserverGameSession::connectProtocolMessageHandlers()
     using creatures::TCreaturesGameActionHandler;
     namespace pb = ::tibia::protobuf::protocol;
     TCreaturesGameActionHandler* creaturesHandler = creaturesGameActionHandler().get();
-    // Host: the session state's attack and follow ids follow the creature
+    // Host: the session's attack and follow ids follow the creature
     // storage's targets (providers, the world map and packs read them), and
     // packs get onAttack for each attack request.
     link(connect(creaturesHandler, &TCreaturesGameActionHandler::sendAttack, queue, [this, queue](const pb::GameclientMessageAttack& message) {
-        gameSessionState().setAttackingCreatureId(message.creature_id());
-        gameSessionState().setFollowingCreatureId(creatureStorage()->followID());
+        setAttackingCreatureId(message.creature_id());
+        setFollowingCreatureId(creatureStorage()->followID());
         queue->sendAttack(message);
         tibia::game::notify("onAttack", static_cast<uint32_t>(message.creature_id()));
     }));
     link(connect(creaturesHandler, &TCreaturesGameActionHandler::sendFollow, queue, [this, queue](const pb::GameclientMessageFollow& message) {
-        gameSessionState().setFollowingCreatureId(message.creature_id());
-        gameSessionState().setAttackingCreatureId(creatureStorage()->attackID());
+        setFollowingCreatureId(message.creature_id());
+        setAttackingCreatureId(creatureStorage()->attackID());
         queue->sendFollow(message);
     }));
     link(connect(creaturesHandler, &TCreaturesGameActionHandler::sendLookAtCreature, queue, &Queue::sendLookAtCreature));
@@ -721,14 +721,13 @@ void TGameserverGameSession::startSession()
 
 void TGameserverGameSession::connectToGameserver()
 {
-    // Host: the classic session state starts the login with a view of this
-    // session's connection (it records the frames and drops them in a replay).
+    // Host: the session logs in with the classic packet path's view of its
+    // connection (it records the frames and drops them in a replay).
     const auto sessionNetwork = network::TGameserverSessionNetwork::create();
     sessionNetwork->setFrameWriter([this](const QByteArray& frame) { sendClientFrame(frame); });
     sessionNetwork->setDisconnector([this] { closeConnection(); });
     try {
-        gameSessionState().loginWorld(m_loginData.worldName.toStdString(), m_loginData.characterName.toStdString(),
-                                      sessionNetwork);
+        loginWorld(m_loginData.worldName.toStdString(), m_loginData.characterName.toStdString(), sessionNetwork);
     } catch (const std::exception& e) {
         sessionNetwork->setFrameWriter({});
         sessionNetwork->setDisconnector({});
@@ -747,13 +746,14 @@ void TGameserverGameSession::connectToGameserver()
 
 void TGameserverGameSession::requestLogout()
 {
-    safeLogout();
+    if (isOnline())
+        protocol::gameclient::sendLogout();
 }
 
 void TGameserverGameSession::disconnectNow()
 {
-    // Host: the classic session state logs out (when online) and lets go of the connection.
-    hubDisconnectNow();
+    // Host: the session logs out (when online) and lets go of its game connection.
+    disconnectGame();
     if (const std::shared_ptr<config::TCharacterConfigurationManager>& manager = characterConfigurationManager())
         manager->saveConfiguration();
     closeConnection();
@@ -817,7 +817,7 @@ void TGameserverGameSession::onPacketReady(network::TGameserverNetworkPacket pac
         return;
     m_rawDataProcessor->decodePacket(packet);
     sessionNetwork->notePacketRead();
-    // Host: the classic session state's view records the packet and counts it.
+    // Host: the classic packet path's view records the packet and counts it.
     if (!sessionNetwork->noteServerData(packet.data()))
         return;
     m_serverPacketProcessor->processPacket(packet);
@@ -884,21 +884,6 @@ void TGameserverGameSession::onConnectionLost(const QString& message, const bool
         sessionNetwork->fail(message, clean);
     else
         closeConnection();
-}
-
-bool TGameserverGameSession::isOnline() const
-{
-    return tibia::game::isOnline();
-}
-
-QString TGameserverGameSession::characterName() const
-{
-    return QString::fromStdString(tibia::game::characterName());
-}
-
-QString TGameserverGameSession::worldName() const
-{
-    return QString::fromStdString(getWorldName());
 }
 
 void TGameserverGameSession::updatePlayerMovementIntentHandler()

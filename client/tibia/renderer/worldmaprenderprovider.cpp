@@ -48,7 +48,10 @@
 #include <iterator>
 #include <map>
 #include <vector>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/mapsession.h"
+#include <QByteArray>
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
 
@@ -58,6 +61,39 @@ namespace tibia::qmlcomponents {
 namespace {
 
 constexpr int FieldSize = TWorldMapRenderProvider::FieldSize;
+
+/// Replay / screenshot harness only: `QTCLIENT_DEBUG_WORLD_LIGHT=<intensity>[:<color>]`
+/// pins the world ambient light (session dumps keep whatever time they were recorded at).
+struct DebugWorldLight
+{
+    bool active = false;
+    uint8_t intensity = 0;
+    bool hasColor = false;
+    uint8_t color = 0;
+};
+
+const DebugWorldLight& debugWorldLight()
+{
+    static const DebugWorldLight pinned = [] {
+        DebugWorldLight out;
+        const QByteArray spec = qgetenv("QTCLIENT_DEBUG_WORLD_LIGHT");
+        if (spec.isEmpty())
+            return out;
+        const QList<QByteArray> parts = spec.split(':');
+        bool ok = false;
+        const int intensity = parts.value(0).trimmed().toInt(&ok);
+        if (!ok)
+            return out;
+        out.active = true;
+        out.intensity = static_cast<uint8_t>(std::clamp(intensity, 0, 255));
+        if (parts.size() > 1) {
+            out.hasColor = true;
+            out.color = static_cast<uint8_t>(std::clamp(parts.at(1).trimmed().toInt(), 0, 255));
+        }
+        return out;
+    }();
+    return pinned;
+}
 
 tibia::mods::LightingMapPos lightingCamera(const Position& camera)
 {
@@ -244,17 +280,17 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(
 
 worldmap::TWorldMapStorage* TWorldMapRenderProvider::worldMapStorage() const
 {
-    return m_worldMapStorage ? m_worldMapStorage.get() : worldmap::TWorldMapStorage::ensureStorage();
+    return m_worldMapStorage ? m_worldMapStorage.get() : game::currentWorldMapStorage();
 }
 
 creatures::TCreatureStorage* TWorldMapRenderProvider::creatureStorage() const
 {
-    return m_creatureStorage ? m_creatureStorage.get() : creatures::TCreatureStorage::instance();
+    return m_creatureStorage ? m_creatureStorage.get() : game::currentCreatureStorage();
 }
 
 worldmap::TAmbientLightStorage* TWorldMapRenderProvider::ambientLightStorage() const
 {
-    return m_ambientLightStorage ? m_ambientLightStorage.get() : worldmap::TAmbientLightStorage::instance();
+    return m_ambientLightStorage ? m_ambientLightStorage.get() : game::currentAmbientLightStorage();
 }
 
 std::shared_ptr<appearances::TAppearanceInstanceTracker> TWorldMapRenderProvider::instanceTracker() const
@@ -446,7 +482,8 @@ int floorDivFieldSize(const int subfield)
 
 bool TWorldMapRenderProvider::drawsLiveWorld() const
 {
-    return worldMapStorage() == worldmap::TWorldMapStorage::ensureStorage();
+    const worldmap::TWorldMapStorage* current = game::currentWorldMapStorage();
+    return current && worldMapStorage() == current;
 }
 
 bool TWorldMapRenderProvider::build()
@@ -474,8 +511,11 @@ bool TWorldMapRenderProvider::build()
     m_objectCounter.reset();
     const std::shared_ptr<worldmap::TWorldMapViewport> volumeViewport =
         m_renderVolumeProvider ? m_renderVolumeProvider->worldMapViewport() : nullptr;
-    if (live ? (!tibia::game::hasLocalPlayer() || !tibia::game::isOnline() || !tibia::game::localPlayerPosition().isValid())
-             : !volumeViewport) {
+    const game::TGameSessionBase* session = game::currentGameSession();
+    worldmap::TWorldMapStorage* const map = worldMapStorage();
+    if (!map
+        || (live ? (!session || !session->hasLocalPlayer() || !session->isOnline() || !session->localPlayerPosition().isValid())
+                 : !volumeViewport)) {
         frame.sprites.clear();
         frame.creatures.clear();
         m_lights.clear();
@@ -483,12 +523,13 @@ bool TWorldMapRenderProvider::build()
     }
 
     // Cover caches invalidate per opaque cell (TWorldMapStorage::invalidateCoverCachesFrom).
-    const uint32_t coverRevision = live ? worldmap::TWorldMapStorage::ensureStorage()->coverRevision() : m_coverRevision;
+    const uint32_t coverRevision = live ? map->coverRevision() : m_coverRevision;
     Position camera;
     QPoint walk;
     if (live) {
-        camera = tibia::game::localPlayerPosition();
-        walk = tibia::creatures::walkOffsetFor(tibia::game::localPlayerId());
+        camera = session->localPlayerPosition();
+        const creatures::TCreatureStorage* creatureRows = creatureStorage();
+        walk = tibia::creatures::walkOffsetFor(creatureRows ? creatureRows->playerID() : 0);
     } else {
         // The field under the viewport's centre, and the centre's offset in it.
         const worldmap::TWorldMapSubfieldCoordinate centre = volumeViewport->center();
@@ -527,14 +568,14 @@ bool TWorldMapRenderProvider::build()
         return frame.valid;
 
     frame.highlightStrength = renderer::highlightStrength();
-    m_attackTarget = tibia::game::attackingCreatureId();
-    m_followTarget = tibia::game::getFollowingCreatureId();
+    m_attackTarget = session ? session->attackingCreatureId() : 0;
+    m_followTarget = session ? session->followingCreatureId() : 0;
 
     QElapsedTimer phase;
     phase.start();
     // CIP every-frame full emit (classic and raycast). Drain map dirty for cover-flood
     // coalescing; positions are unused because the whole FOV is remitted.
-    (void)worldmap::TWorldMapStorage::ensureStorage()->clearStaticDirtyTiles();
+    (void)map->clearStaticDirtyTiles();
 
     m_objectCounter.setCentre(worldmap::TWorldMapCoordinate(m_camera));
 
@@ -554,7 +595,7 @@ bool TWorldMapRenderProvider::build()
         && m_lighting->beginFrame(lightingCamera(m_camera), DrawWidth, DrawHeight, first, last);
 
     // Share opaque/top-ground probes across FOV cover walks (cold-cache cliffs).
-    worldmap::TWorldMapStorage::ensureStorage()->beginCoverProbeBatch();
+    map->beginCoverProbeBatch();
     const std::vector<FieldEntry> fields = fieldsInVolume(first, last);
     // The grid spans the render volume plus a field on every side (at least
     // the draw grid the fields are walked in, so no two cells share an entry).
@@ -563,7 +604,7 @@ bool TWorldMapRenderProvider::build()
         : worldmap::TWorldMapExtent(DrawWidth, DrawHeight);
     TOcclusionGrid grid(std::max(volume.width, DrawWidth), std::max(volume.height, DrawHeight));
     addFields(fields, first, last, grid);
-    worldmap::TWorldMapStorage::ensureStorage()->endCoverProbeBatch();
+    map->endCoverProbeBatch();
     addMissiles(first, last);
     addHighlightBaseplate(m_records);
     markObscuredDrawCommands(grid, m_records);
@@ -636,7 +677,8 @@ void TWorldMapRenderProvider::updateWorldGeometry()
     if (!needGeo) {
         m_frame.geometry = {};
     } else {
-        const uint32_t revision = tibia::game::mapItemRevision();
+        const worldmap::TWorldMapStorage* storage = worldMapStorage();
+        const uint32_t revision = storage ? storage->itemRevision() : 0;
         const int sea = tibia::config::mapSeaFloor();
         const int origin = m_camera.z > sea ? m_camera.z : static_cast<int>(m_lastFloor);
         const bool geoFresh = m_frame.geometry.valid() && m_geometryCamera == m_camera
@@ -720,7 +762,10 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
 
     const int sea = tibia::config::mapSeaFloor();
     const tibia::worldmap::TAmbientLightStorage* ambient = ambientLightStorage();
-    const Light world{ tibia::game::worldLightIntensity(), tibia::game::worldLightColor() };
+    const DebugWorldLight& pinned = debugWorldLight();
+    const worldmap::TWorldMapStorage* worldStorage = worldMapStorage();
+    const Light serverLight = worldStorage ? worldStorage->worldLight() : Light{};
+    const Light world{ pinned.active ? pinned.intensity : serverLight.intensity, pinned.hasColor ? pinned.color : serverLight.color };
     const QColor ambientColor = ambient ? ambient->color() : QColor(light::lightColor(world.color, world.intensity / 255.f));
     // The grid's origin: the visible area's top-left, slid along the floors' shear to the camera's floor.
     const TWorldMapCoordinate origin(m_camera.x - centerX(), m_camera.y - centerY(), m_camera.z);

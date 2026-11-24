@@ -6,7 +6,6 @@
 #include "input/gameaction.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession_forward.h>
 
 #include <protocol.pb.h>
 

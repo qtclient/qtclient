@@ -15,7 +15,7 @@
 #include "qmlcomponents/worldmapqmltypes.h"
 
 #include "client/gameclient.h"
-#include "client/gamecore.h"
+#include <QStringList>
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"

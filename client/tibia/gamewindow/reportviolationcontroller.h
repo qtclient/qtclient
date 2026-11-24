@@ -1,7 +1,7 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
+#include <QStringList>
 #include "gamewindow/dialogmanager.h"
 #include "iclockservice.h"
 #include "input/gameaction.h"

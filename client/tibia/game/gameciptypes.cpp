@@ -20,7 +20,7 @@
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
 #include "input/playermovementintenthandler.h"
-#include "game/gamesessionstate.h"
+#include "game/gamesessionbase.h"
 #include "clockservice.h"
 #include "game/currentgamesession.h"
 #include "game/playerskillstats.h"
@@ -31,12 +31,10 @@
 
 #include <client/const.h>
 #include <client/staticdata.h>
-#include <client/gamecore.h>
 #include "protocol/protocolcodes.h"
 #include "network/gameserverconnection.h"
 #include "protocol/clientmessages.h"
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/worldmap/worldmapstorage.h>
 #include "systemsurvey/systemsurveyvalueretriever.h"
@@ -55,8 +53,8 @@ namespace tibia::game {
 namespace {
 
 using Args = std::vector<std::any>;
-using client::gamecore::argBool;
-using client::gamecore::argInt;
+using tibia::game::argBool;
+using tibia::game::argInt;
 
 using ::tibia::protobuf::protocol::GameserverMessageCloseRewardWall;
 using ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange;
@@ -283,7 +281,9 @@ void TGameProtocolMessageHandler::handleClientCheckMessage(const GameserverMessa
 
 void TGameProtocolMessageHandler::handleWorldEnteredMessage(const GameserverMessageWorldEntered&)
 {
-    processWorldEntered();
+    // Host: the session's game starts (once per login).
+    if (TGameSessionBase* session = currentGameSession())
+        session->processWorldEntered();
 }
 
 TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(
@@ -330,8 +330,12 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
     if (message.vocation() >= 6) {
         return;
     }
+    // The classic vocation id: promoted vocations count from 11.
+    const auto classicVocation = [](const TPlayerData& data) {
+        return static_cast<uint8_t>(data.vocation() + (data.promoted() ? 10 : 0));
+    };
     if (TPlayerData* data = m_playerData.get()) {
-        const uint8_t oldVocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
+        const uint8_t oldVocation = classicVocation(*data);
         data->setVocation(static_cast<uint8_t>(message.vocation()));
         data->setHasReachedMain(message.reached_main());
         data->setPromoted(message.promoted());
@@ -340,23 +344,26 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
         for (const uint32_t spellId : message.spells())
             data->addKnownSpell(static_cast<uint16_t>(spellId));
 
-        const auto vocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
+        const auto vocation = classicVocation(*data);
         if (oldVocation != vocation)
             tibia::game::notify("onVocationChange", vocation, oldVocation);
     }
     tibia::game::notify("onHasReachedMain", message.reached_main());
     // Product chrome gates on mainland and wants the classic promoted vocation id.
-    tibia::game::notify("onPlayerInfo", message.premium(), static_cast<int>(tibia::game::localPlayerVocation()),
-                        tibia::game::localPlayerHasReachedMain());
+    const TPlayerData* data = m_playerData.get();
+    tibia::game::notify("onPlayerInfo", message.premium(), data ? static_cast<int>(classicVocation(*data)) : 0,
+                        data && data->hasReachedMain());
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message)
 {
     // Level, base level, loyalty and percent of each skill, by skill type.
-    const auto setSkill = [](const int skillType, const ::tibia::protobuf::protocol::SkillInfo& skill) {
-        tibia::game::localPlayerSetSkill(skillType, static_cast<double>(skill.level()), static_cast<double>(skill.base()),
-                                         static_cast<double>(skill.loyalty()), static_cast<double>(skill.percent()));
+    TPlayerData* data = m_playerData.get();
+    const auto setSkill = [data](const int skillType, const ::tibia::protobuf::protocol::SkillInfo& skill) {
+        if (data)
+            data->updateSkill(skillType, static_cast<double>(skill.level()), static_cast<double>(skill.base()),
+                              static_cast<double>(skill.loyalty()), static_cast<double>(skill.percent()));
     };
     setSkill(4, message.magic_level());
     setSkill(14, message.axe());
@@ -366,8 +373,10 @@ void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
     setSkill(10, message.shielding());
     setSkill(13, message.sword());
     setSkill(16, message.fishing());
-    tibia::game::localPlayerSetBaseCapacity(message.capacity().base() / 100);
-    tibia::game::localPlayerSetTotalCapacity(message.capacity().level() / 100);
+    if (data) {
+        data->updateBaseCapacity(message.capacity().base() / 100);
+        data->updateTotalCapacity(message.capacity().level() / 100);
+    }
     // The special magic levels: the protocol's damage types 0..11 are the
     // client's; any other throws.
     std::vector<std::pair<int, int>> specialMagicLevels;
@@ -376,7 +385,7 @@ void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
             throw std::runtime_error("unhandled enum value");
         specialMagicLevels.emplace_back(boost.type(), boost.value());
     }
-    if (TPlayerData* data = m_playerData.get())
+    if (data)
         data->setSpecialMagicLevels(specialMagicLevels);
     // CipSoft: TPlayerSkillStats keeps the message (offence / defence / misc stats).
     if (TPlayerSkillStats* stats = m_playerSkillStats.get())
@@ -387,28 +396,31 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message)
 {
     using tibia::client::ExperienceRate_t;
-    tibia::game::localPlayerSetHealth(message.health(), message.max_health());
-    tibia::game::localPlayerSetFreeCapacity(message.free_capacity());
-    tibia::game::localPlayerSetExperience(message.experience());
-    tibia::game::localPlayerSetLevel(static_cast<uint16_t>(message.level()),
+    TPlayerData* data = m_playerData.get();
+    if (!data)
+        return;
+    data->updateHealth(message.health(), message.max_health());
+    data->updateFreeCapacity(message.free_capacity());
+    data->updateExperience(message.experience());
+    data->updateLevel(static_cast<uint16_t>(message.level()),
                                      static_cast<uint16_t>(message.level_percent_hundredths()));
-    tibia::game::localPlayerSetExperienceRate(tibia::client::EXP_BASE, static_cast<uint16_t>(message.base_xp_gain()));
-    tibia::game::localPlayerSetExperienceRate(tibia::client::EXP_LOWLEVEL, static_cast<uint16_t>(message.low_level_xp_bonus()));
-    tibia::game::localPlayerSetExperienceRate(tibia::client::EXP_XPBOOST, static_cast<uint16_t>(message.store_xp_boost()));
-    tibia::game::localPlayerSetExperienceRate(tibia::client::EXP_DAILYREWARD,
+    data->setExperienceRate(tibia::client::EXP_BASE, static_cast<uint16_t>(message.base_xp_gain()));
+    data->setExperienceRate(tibia::client::EXP_LOWLEVEL, static_cast<uint16_t>(message.low_level_xp_bonus()));
+    data->setExperienceRate(tibia::client::EXP_XPBOOST, static_cast<uint16_t>(message.store_xp_boost()));
+    data->setExperienceRate(tibia::client::EXP_DAILYREWARD,
                                               static_cast<uint16_t>(message.daily_reward_xp_boost()));
-    tibia::game::localPlayerSetExperienceRate(tibia::client::EXP_STANINAMULTIPLIER,
+    data->setExperienceRate(tibia::client::EXP_STANINAMULTIPLIER,
                                               static_cast<uint16_t>(message.stamina_xp_factor()));
-    tibia::game::localPlayerSetMana(message.mana(), message.max_mana());
-    tibia::game::localPlayerSetSoul(static_cast<uint8_t>(message.soul()));
-    tibia::game::localPlayerSetBaseSpeed(static_cast<uint16_t>(message.base_speed()));
-    tibia::game::localPlayerSetStamina(static_cast<uint16_t>(message.stamina_minutes()));
-    tibia::game::localPlayerSetRegenerationTime(static_cast<uint16_t>(message.regeneration_seconds()));
-    tibia::game::localPlayerSetOfflineTrainingTime(static_cast<uint16_t>(message.offline_training_minutes()));
-    tibia::game::localPlayerSetStoreExpBoostTime(static_cast<uint16_t>(message.store_xp_boost_seconds()));
-    tibia::game::localPlayerSetStoreExpBoostPurchasable(message.store_xp_boost_purchasable());
-    tibia::game::localPlayerSetDailyRewardExpBoostTime(static_cast<uint16_t>(message.daily_reward_xp_boost_seconds()));
-    tibia::game::localPlayerSetManaShield(message.mana_shield(), message.max_mana_shield());
+    data->updateMana(message.mana(), message.max_mana());
+    data->updateSoul(static_cast<uint8_t>(message.soul()));
+    data->updateBaseSpeed(static_cast<uint16_t>(message.base_speed()));
+    data->updateStamina(static_cast<uint16_t>(message.stamina_minutes()));
+    data->setRegenerationTime(static_cast<uint16_t>(message.regeneration_seconds()));
+    data->setOfflineTrainingTime(static_cast<uint16_t>(message.offline_training_minutes()));
+    data->setStoreExpBoostTime(static_cast<uint16_t>(message.store_xp_boost_seconds()));
+    data->updateStoreExpBoostPurchasable(message.store_xp_boost_purchasable());
+    data->setDailyRewardExpBoostTime(static_cast<uint16_t>(message.daily_reward_xp_boost_seconds()));
+    data->updateManaShield(message.mana_shield(), message.max_mana_shield());
     if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
         storage->syncLocalPlayerStatsFromMap();
 }
@@ -418,7 +430,8 @@ void TPlayerProtocolMessageHandler::handlePlayerStateMessage(
 {
     if (TPlayerData* data = m_playerData.get())
         data->setStates(std::bitset<30>(message.states() & 0x3fffffff), static_cast<int>(message.counter()));
-    tibia::game::localPlayerSetStatesAndRottenBlood(message.states(), static_cast<uint8_t>(message.counter()));
+    if (TPlayerData* data = m_playerData.get())
+        data->setRottenBloodState(static_cast<uint8_t>(message.counter()));
 }
 
 void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
@@ -510,12 +523,14 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
 {
     switch (m.data_type()) {
     case tibia::client::TYPES_MONK_HARMONY:
-        tibia::game::localPlayerSetHarmony(static_cast<uint8_t>(m.harmony()));
+        if (TPlayerData* data = m_playerData.get())
+            data->updateHarmony(static_cast<uint8_t>(m.harmony()));
         if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
             storage->syncLocalPlayerStatsFromMap();
         break;
     case tibia::client::TYPES_MONK_SERENE:
-        tibia::game::localPlayerSetSerene(m.serene());
+        if (TPlayerData* data = m_playerData.get())
+            data->updateSerene(m.serene());
         if (tibia::creatures::TCreatureStorage* storage = m_creatureStorage.get())
             storage->syncLocalPlayerStatsFromMap();
         break;
@@ -546,7 +561,8 @@ void TPlayerProtocolMessageHandler::handleOutfitMessage(const GameserverMessageO
 
 void TPlayerProtocolMessageHandler::handleBlessingsMessage(const GameserverMessageBlessings& m)
 {
-    tibia::game::localPlayerSetBlessings(static_cast<uint16_t>(m.blessings()), static_cast<uint8_t>(m.visual_state()));
+    if (TPlayerData* data = m_playerData.get())
+        data->updateBlessings(static_cast<uint16_t>(m.blessings()), static_cast<uint8_t>(m.visual_state()));
 }
 
 void TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage(const GameserverMessageConfigureCreaturePodium& m)
@@ -588,7 +604,7 @@ void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMe
 void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& m)
 {
     // The player's own speed also goes to the player data.
-    if (m.creature().id() != localPlayerId())
+    if (!m_creatureStorage || m.creature().id() != m_creatureStorage->playerID())
         return;
     if (TPlayerData* data = m_playerData.get())
         data->setSpeed(static_cast<uint16_t>(m.creature().speed()));
@@ -603,7 +619,7 @@ void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessag
         intent->onCancelWalk(static_cast<creatures::ECreatureLookDirection>(direction));
         return;
     }
-    if (const auto player = localPlayerCreature()) {
+    if (const auto player = m_creatureStorage ? m_creatureStorage->player() : nullptr) {
         player->resetMovement();
         player->setDirection(direction);
     }
@@ -617,7 +633,7 @@ void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageSto
         intent->clearPath();
         return;
     }
-    if (const auto player = localPlayerCreature())
+    if (const auto player = m_creatureStorage ? m_creatureStorage->player() : nullptr)
         player->resetMovement();
 }
 
@@ -814,7 +830,7 @@ void TPremiumProtocolMessageHandler::setPremiumTimeStorage(TPremiumTimeStorage* 
 void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message)
 {
-    const bool wasPremium = tibia::game::localPlayerIsPremium();
+    const bool wasPremium = m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
     if (m_premiumTimeStorage)
         m_premiumTimeStorage->setPremium(message.premium(), message.premium_until());
     if (wasPremium != message.premium())

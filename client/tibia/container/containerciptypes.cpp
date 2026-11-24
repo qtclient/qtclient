@@ -5,7 +5,6 @@
 #include "input/gameaction.h"
 
 #include <cmath>
-#include "game/gamesessionstate.h"
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
@@ -14,8 +13,6 @@
 #include "tibia/assets/things.h"
 #include "tibia/client/outfit.h"
 #include "tibia/game/gamenotify.h"
-#include "tibia/game/gamesession.h"
-#include <tibia/game/gamesession.h>
 
 #include "clockservice.h"
 #include <QtGlobal>
@@ -38,8 +35,6 @@ QString capitalizeWords(const QString& name);
 namespace tibia::container {
 
 namespace {
-TContainerStorage* g_containerStorage = nullptr;
-
 using ::tibia::protobuf::protocol::GameserverMessageChangeInContainer;
 using ::tibia::protobuf::protocol::GameserverMessageCloseContainer;
 using ::tibia::protobuf::protocol::GameserverMessageContainer;
@@ -67,7 +62,7 @@ void TContainerProtocolMessageHandler::handleCloseContainerMessage(
     const GameserverMessageCloseContainer& CloseContainerMessage)
 {
     const auto containerId = static_cast<TContainerID>(CloseContainerMessage.container_id());
-    if (TContainerStorage* storage = TContainerStorage::instance())
+    if (TContainerStorage* storage = tibia::game::currentContainerStorage())
         storage->closeContainer(containerId);
 }
 
@@ -77,14 +72,19 @@ void TContainerProtocolMessageHandler::handleContainerMessage(const GameserverMe
     items.reserve(static_cast<size_t>(ContainerMessage.items_size()));
     for (const auto& item : ContainerMessage.items())
         items.push_back(TInventorySlot::fromProtocolInventoryItem(item));
-    tibia::game::processOpenContainer(static_cast<uint8_t>(ContainerMessage.container_id()),
-                                      TInventorySlot::fromProtocolInventoryItem(ContainerMessage.item()),
-                                      ContainerMessage.name(), static_cast<uint8_t>(ContainerMessage.capacity()),
-                                      ContainerMessage.has_parent(), items, ContainerMessage.is_unlocked(),
-                                      ContainerMessage.has_pages(), ContainerMessage.show_search(),
-                                      static_cast<uint16_t>(ContainerMessage.container_size()),
-                                      static_cast<uint16_t>(ContainerMessage.first_index()));
-    if (TContainerStorage* storage = TContainerStorage::instance()) {
+    TContainerStorage* storage = tibia::game::currentContainerStorage();
+    if (!storage)
+        return;
+    // Replace-open: applyOpen announces containerUpdated(id, true); the window resets in place.
+    const std::string& name = ContainerMessage.name();
+    storage->applyOpen(static_cast<TContainerID>(ContainerMessage.container_id()),
+                       static_cast<uint8_t>(ContainerMessage.capacity()),
+                       QString::fromUtf8(name.data(), static_cast<int>(name.size())),
+                       TInventorySlot::fromProtocolInventoryItem(ContainerMessage.item()), ContainerMessage.has_parent(),
+                       ContainerMessage.is_unlocked(), ContainerMessage.has_pages(), ContainerMessage.show_search(),
+                       static_cast<uint16_t>(ContainerMessage.container_size()),
+                       static_cast<uint16_t>(ContainerMessage.first_index()), items);
+    {
         std::map<uint32_t, std::string> categories;
         for (const auto& category : ContainerMessage.categories())
             categories.emplace(category.id(), category.name());
@@ -96,30 +96,33 @@ void TContainerProtocolMessageHandler::handleContainerMessage(const GameserverMe
 void TContainerProtocolMessageHandler::handleCreateInContainerMessage(
     const GameserverMessageCreateInContainer& CreateInContainerMessage)
 {
-    tibia::game::processContainerAddItem(static_cast<uint8_t>(CreateInContainerMessage.container_id()),
-                                         CreateInContainerMessage.has_item()
-                                             ? TInventorySlot::fromProtocolInventoryItem(CreateInContainerMessage.item())
-                                             : TInventorySlot{},
-                                         static_cast<uint16_t>(CreateInContainerMessage.slot()));
+    if (TContainerStorage* storage = tibia::game::currentContainerStorage())
+        storage->applyAddItem(static_cast<TContainerID>(CreateInContainerMessage.container_id()),
+                              CreateInContainerMessage.has_item()
+                                  ? TInventorySlot::fromProtocolInventoryItem(CreateInContainerMessage.item())
+                                  : TInventorySlot{},
+                              static_cast<uint16_t>(CreateInContainerMessage.slot()));
 }
 
 void TContainerProtocolMessageHandler::handleChangeInContainerMessage(
     const GameserverMessageChangeInContainer& ChangeInContainerMessage)
 {
-    tibia::game::processContainerUpdateItem(static_cast<uint8_t>(ChangeInContainerMessage.container_id()),
-                                            static_cast<uint16_t>(ChangeInContainerMessage.slot()),
-                                            TInventorySlot::fromProtocolInventoryItem(ChangeInContainerMessage.item()));
+    if (TContainerStorage* storage = tibia::game::currentContainerStorage())
+        storage->applyUpdateItem(static_cast<TContainerID>(ChangeInContainerMessage.container_id()),
+                                 static_cast<uint16_t>(ChangeInContainerMessage.slot()),
+                                 TInventorySlot::fromProtocolInventoryItem(ChangeInContainerMessage.item()));
 }
 
 void TContainerProtocolMessageHandler::handleDeleteInContainerMessage(
     const GameserverMessageDeleteInContainer& DeleteInContainerMessage)
 {
     // The object that moves up into the last slot of the page, when there is one.
-    tibia::game::processContainerRemoveItem(static_cast<uint8_t>(DeleteInContainerMessage.container_id()),
-                                            static_cast<uint16_t>(DeleteInContainerMessage.slot()),
-                                            DeleteInContainerMessage.has_item()
-                                                ? TInventorySlot::fromProtocolInventoryItem(DeleteInContainerMessage.item())
-                                                : TInventorySlot{});
+    if (TContainerStorage* storage = tibia::game::currentContainerStorage())
+        storage->applyRemoveItem(static_cast<TContainerID>(DeleteInContainerMessage.container_id()),
+                                 static_cast<uint16_t>(DeleteInContainerMessage.slot()),
+                                 DeleteInContainerMessage.has_item()
+                                     ? TInventorySlot::fromProtocolInventoryItem(DeleteInContainerMessage.item())
+                                     : TInventorySlot{});
 }
 
 void TContainerProtocolMessageHandler::handleSetInventoryMessage(
@@ -129,13 +132,15 @@ void TContainerProtocolMessageHandler::handleSetInventoryMessage(
     const TInventorySlot item = SetInventoryMessage.has_item()
         ? TInventorySlot::fromProtocolInventoryItem(SetInventoryMessage.item())
         : TInventorySlot{};
-    tibia::game::processInventoryChange(slot, item);
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
+        session->processInventoryChange(slot, item);
 }
 
 void TContainerProtocolMessageHandler::handleDeleteInventoryMessage(
     const GameserverMessageDeleteInventory& DeleteInventoryMessage)
 {
-    tibia::game::processInventoryChange(static_cast<uint8_t>(DeleteInventoryMessage.slot()), {});
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
+        session->processInventoryChange(static_cast<uint8_t>(DeleteInventoryMessage.slot()), {});
 }
 
 void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
@@ -269,7 +274,7 @@ namespace {
     ::tibia::protobuf::protocol::GameclientMessageSeekInContainer message;
     message.set_container_id(id);
     message.set_index(index);
-    const TContainerStorage* storage = TContainerStorage::instance();
+    const TContainerStorage* storage = tibia::game::currentContainerStorage();
     message.set_primary_type(storage ? storage->filterCategory(id) : 0);
     return message;
 }
@@ -277,21 +282,21 @@ namespace {
 
 void TContainerProtocolMessageHandler::requestNextPageForContainer(const TContainerID ContainerID)
 {
-    const TContainerStorage* storage = TContainerStorage::instance();
+    const TContainerStorage* storage = tibia::game::currentContainerStorage();
     const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
     Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->nextPageFirstIndex() : 0));
 }
 
 void TContainerProtocolMessageHandler::requestPreviousPageForContainer(const TContainerID ContainerID)
 {
-    const TContainerStorage* storage = TContainerStorage::instance();
+    const TContainerStorage* storage = tibia::game::currentContainerStorage();
     const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
     Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->previousPageFirstIndex() : 0));
 }
 
 void TContainerProtocolMessageHandler::requestUpdateContainer(const TContainerID ContainerID)
 {
-    const TContainerStorage* storage = TContainerStorage::instance();
+    const TContainerStorage* storage = tibia::game::currentContainerStorage();
     const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
     Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->firstIndex() : 0));
 }
@@ -360,11 +365,8 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
         auto& entry = counts[{ id, tier }];
         entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
     }
-    if (tibia::game::hasLocalPlayer()) {
-        if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
-            session->objectCountStorage()->setCounts(counts);
-        tibia::game::notify("updateInventoryItems");
-    }
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->hasLocalPlayer())
+        session->objectCountStorage()->setCounts(counts);
 }
 
 uint32_t TInventorySlot::durationRemainingSeconds() const
@@ -538,18 +540,6 @@ TContainerStorage::TContainerStorage(QObject* parent)
 
 TContainerStorage::~TContainerStorage()
 {
-    if (g_containerStorage == this)
-        g_containerStorage = nullptr;
-}
-
-TContainerStorage* TContainerStorage::instance()
-{
-    return g_containerStorage;
-}
-
-void TContainerStorage::setInstance(TContainerStorage* storage)
-{
-    g_containerStorage = storage;
 }
 
 TStoredContainer* TContainerStorage::mutableAt(const TContainerID id)
@@ -758,6 +748,7 @@ void TContainerStorage::applyAddItem(const TContainerID id, const TInventorySlot
     else
         container->insertItem(slot, item);
     emitUpdated(id, false);
+    tibia::game::notify("onAddItem", static_cast<int>(id), static_cast<int>(slot));
 }
 
 void TContainerStorage::applyUpdateItem(const TContainerID id, const uint16_t slot, const TInventorySlot& item)
@@ -767,6 +758,7 @@ void TContainerStorage::applyUpdateItem(const TContainerID id, const uint16_t sl
         return;
     container->setItem(slot, item);
     emitUpdated(id, false);
+    tibia::game::notify("onUpdateItem", static_cast<int>(id), static_cast<int>(slot));
 }
 
 void TContainerStorage::applyRemoveItem(const TContainerID id, const uint16_t slot, const TInventorySlot& lastItem)
@@ -779,6 +771,7 @@ void TContainerStorage::applyRemoveItem(const TContainerID id, const uint16_t sl
     if (!lastItem.empty())
         container->appendItem(lastItem);
     emitUpdated(id, false);
+    tibia::game::notify("onRemoveItem", static_cast<int>(id), static_cast<int>(slot));
 }
 
 const TStoredContainer* TContainerStorage::containerAt(const TContainerID id) const
@@ -869,12 +862,6 @@ TInventoryContainer::TInventoryContainer(QObject* parent)
 }
 
 TInventoryContainer::~TInventoryContainer() = default;
-
-TInventoryContainer* TInventoryContainer::instance()
-{
-    const TContainerStorage* storage = TContainerStorage::instance();
-    return storage ? storage->inventoryContainer().get() : nullptr;
-}
 
 bool TInventoryContainer::isInventorySlot(const int slotId)
 {

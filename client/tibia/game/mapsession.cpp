@@ -4,6 +4,7 @@
 #include <QThreadPool>
 #include <tibia/schedule/schedule.h>
 #include <tibia/worldmap/worldmapstorage.h>
+#include "game/currentgamesession.h"
 #include "minimap/waypointcosts.h"
 #include "worldmap/worldmapfield.h"
 
@@ -31,10 +32,10 @@ MapUseHit fromFieldHit(const TWorldMapField::TFieldItemHit& hit)
     return { true, hit.typeId, hit.stackPos };
 }
 
-/// The current session's map; between sessions the storage's stand-in.
-TWorldMapStorage& storage()
+/// The current session's map (null between sessions).
+TWorldMapStorage* storage()
 {
-    return *TWorldMapStorage::ensureStorage();
+    return currentWorldMapStorage();
 }
 
 /// The stored field at a map position (null off the map).
@@ -341,7 +342,10 @@ bool canTravelPath(const MapPos from, const MapPos to, const int maxComplexity)
         return true;
     if (start.z != goal.z)
         return false;
-    TWorldMapStorage& map = storage();
+    TWorldMapStorage* mapStorage = storage();
+    if (!mapStorage)
+        return false;
+    TWorldMapStorage& map = *mapStorage;
     const auto visibleNodes = buildTravelVisibleNodes(map, start, goal);
     const TWorldMapStorage::WaypointCostFactory& factory = map.waypointCostFactory();
     const std::shared_ptr<tibia::minimap::TWaypointCosts> softCosts = factory ? factory() : nullptr;
@@ -364,7 +368,11 @@ void canTravelPathAsync(const MapPos from, const MapPos to, const std::function<
     }
     const Position start = toPosition(from);
     const Position goal = toPosition(to);
-    TWorldMapStorage* map = &storage();
+    TWorldMapStorage* map = storage();
+    if (!map) {
+        callback(false);
+        return;
+    }
     const auto visibleNodes = buildTravelVisibleNodes(*map, start, goal);
     // CIP costs: snapshot on the GUI thread (tile images), path on a worker.
     const TWorldMapStorage::WaypointCostFactory& factory = map->waypointCostFactory();
@@ -385,7 +393,10 @@ bool isWalkable(const MapPos pos, const bool ignoreCreatures)
 
 MapAwareRange awareRange()
 {
-    const AwareRange range = storage().awareRange();
+    const TWorldMapStorage* map = storage();
+    if (!map)
+        return {};
+    const AwareRange range = map->awareRange();
     return { range.left, range.top, range.right, range.bottom };
 }
 
@@ -418,7 +429,10 @@ bool isSightClear(const MapPos from, const MapPos to)
         return true;
     }
 
-    TWorldMapStorage& map = storage();
+    TWorldMapStorage* mapStorage = storage();
+    if (!mapStorage)
+        return false;
+    TWorldMapStorage& map = *mapStorage;
     Position start(fromPos.z > toPos.z ? toPos : fromPos);
     const Position destination(fromPos.z > toPos.z ? fromPos : toPos);
 
@@ -461,22 +475,26 @@ bool isSightClear(const MapPos from, const MapPos to)
 
 void setPathAvoid(const MapPos pos, const bool avoid)
 {
-    storage().setPathAvoid(toPosition(pos), avoid);
+    if (TWorldMapStorage* map = storage())
+        map->setPathAvoid(toPosition(pos), avoid);
 }
 
 void clearPathAvoids()
 {
-    storage().clearPathAvoids();
+    if (TWorldMapStorage* map = storage())
+        map->clearPathAvoids();
 }
 
 void setWaypointCostFactory(WaypointCostFactory factory)
 {
-    storage().setWaypointCostFactory(std::move(factory));
+    if (TWorldMapStorage* map = storage())
+        map->setWaypointCostFactory(std::move(factory));
 }
 
 void clearWaypointCostFactory()
 {
-    storage().clearWaypointCostFactory();
+    if (TWorldMapStorage* map = storage())
+        map->clearWaypointCostFactory();
 }
 
 } // namespace tibia::game

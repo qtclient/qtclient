@@ -13,8 +13,8 @@
 #include <algorithm>
 #include <limits>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
-#include <tibia/game/gamesession_forward.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include <tibia/game/tgamenotify.h>
 #include <tibia/appearances/appearanceinstance.h>
 
@@ -56,7 +56,8 @@ TItemPriceStorage::TItemPriceStorage(QObject* parent)
             connect(premium, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TItemPriceStorage::onPremiumTimeChanged,
                     Qt::UniqueConnection);
         onPremiumTimeChanged();
-        setWorldName(QString::fromStdString(tibia::game::getWorldName()));
+        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        setWorldName(session ? session->worldName() : QString());
     });
     m_lootValueLevelColors = { { 0, QColor(0xf0, 0xf0, 0xf0) }, { 1, QColor(0xaa, 0xaa, 0xaa) }, { 2, QColor(0x00, 0xf0, 0x00) },
                                { 3, QColor(0x20, 0xa0, 0xff) }, { 4, QColor(0xff, 0x68, 0xff) }, { 5, QColor(0xf0, 0xf0, 0x00) } };
@@ -71,7 +72,9 @@ TItemPriceStorage* TItemPriceStorage::instance()
 
 void TItemPriceStorage::onPremiumTimeChanged()
 {
-    m_isPremium = tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    m_isPremium = session && session->hasLocalPlayer() && premium && premium->isPremium();
 }
 
 QString TItemPriceStorage::configurationName() const { return ConfigurationName; }

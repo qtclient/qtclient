@@ -2,7 +2,7 @@
 
 // CIP-named trade surfaces (promoted from cipwire).
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "input/gameactionptr.h"
 #include "trade/npctradestorage.h"
 #include "trade/playertradestorage.h"

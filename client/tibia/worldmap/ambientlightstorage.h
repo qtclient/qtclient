@@ -44,8 +44,6 @@ public:
     explicit TAmbientLightStorage(QObject* parent = nullptr);
     ~TAmbientLightStorage() override;
 
-    static TAmbientLightStorage* instance();
-
     /// Per frame: moves the shown light toward the target for the time since
     /// the last frame (at most one full change).
     void update(qint64 nowMs);

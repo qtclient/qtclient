@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "game/blessingdialogdata.h"
 #include "qtconnectionmanager.h"

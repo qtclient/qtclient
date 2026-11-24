@@ -16,11 +16,14 @@
 #include "worldmap/worldmapviewport.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "input/playermovementintenthandler.h"
 #include <tibia/game/sessionhooks.h>
 #include <tibia/schedule/schedule.h>
 #include <protocol.pb.h>
 
+#include <cstdlib>
 #include <stdexcept>
 
 namespace tibia::worldmap {
@@ -32,6 +35,30 @@ using namespace ::tibia::protobuf::protocol;
 TWorldMapCoordinate coordinateOf(const ProtocolCoordinate& c)
 {
     return { static_cast<int>(c.x()), static_cast<int>(c.y()), static_cast<int>(c.z()) };
+}
+
+bool handlerSceneFrozen()
+{
+    const game::TGameSessionBase* session = game::currentGameSession();
+    return session && session->isSceneFrozen();
+}
+
+/// Same floor, at most one field away.
+bool isOneFieldStep(const Position& from, const Position& to)
+{
+    return from.z == to.z && std::abs(from.x - to.x) <= 1 && std::abs(from.y - to.y) <= 1;
+}
+
+/// A floor change or a jump: the own creature's motion and the walk goal end.
+void endLocalPlayerMotion(game::TGameSessionBase* session, creatures::TCreatureStorage* creatureStorage)
+{
+    if (!session || !session->hasLocalPlayer())
+        return;
+    if (creatureStorage)
+        if (const std::shared_ptr<creatures::TCreature> player = creatureStorage->player())
+            player->resetMovement();
+    if (input::TPlayerMovementIntentHandler* intent = session->movementIntent())
+        intent->stopWalking();
 }
 
 } // namespace
@@ -110,7 +137,9 @@ void TWorldmapProtocolMessageHandler::updateMinimapField(const Position& positio
 
 TWorldMapStorage& TWorldmapProtocolMessageHandler::map() const
 {
-    return m_worldMapStorage ? *m_worldMapStorage : *TWorldMapStorage::ensureStorage();
+    if (!m_worldMapStorage)
+        throw std::runtime_error("the world map protocol message handler has no world map storage");
+    return *m_worldMapStorage;
 }
 
 TWorldMapCentralPosition TWorldmapProtocolMessageHandler::centralPosition() const
@@ -145,12 +174,13 @@ void TWorldmapProtocolMessageHandler::setCrashReportPosition(const Position& cen
 
 void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessageFullMap& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     m_center = coordinateOf(message.coordinate());
     const Position position = m_center.toPosition();
-    const bool hasPlayer = game::hasLocalPlayer();
-    const Position oldPosition = hasPlayer ? game::localPlayerPosition() : Position();
+    game::TGameSessionBase* session = game::currentGameSession();
+    const bool hasPlayer = session && session->hasLocalPlayer();
+    const Position oldPosition = hasPlayer ? session->localPlayerPosition() : Position();
     // The session's first map also places the local player.
     if (!m_mapKnown && hasPlayer)
         map().setLocalPlayerPosition(position);
@@ -162,29 +192,23 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     if (m_creatureStorage)
         m_creatureStorage->clearPlacedOnFieldFlags();
     // A jump re-places the view: the step in flight ends before the new map arrives.
-    if (hasPlayer && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
-        game::localPlayerHandleTeleport();
+    if (hasPlayer && oldPosition.isValid() && !isOneFieldStep(oldPosition, position))
+        endLocalPlayerMotion(session, m_creatureStorage.get());
     const TWorldMapCentralPosition central = centralPosition();
     applyArea(message.area(), central.visibleArea(), central);
-    game::updateMapLatency();
-    if (!m_mapKnown) {
-        schedule::post([] { game::notify("onMapKnown"); });
-        m_mapKnown = true;
-    }
+    m_mapKnown = true;
     schedule::post([] { game::notify("onMapDescription"); });
-    game::notify("onTeleport", game::localPlayerId(), position, oldPosition);
 }
 
 void TWorldmapProtocolMessageHandler::handleSlice(const MapArea& area, const TShearedWorldMapCuboid& volume)
 {
     moveKnownArea();
     applyArea(area, volume, centralPosition());
-    game::updateMapLatency();
 }
 
 void TWorldmapProtocolMessageHandler::handleTopRowMessage(const GameserverMessageTopRow& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     --m_center.y;
     handleSlice(message.area(), centralPosition().topRow());
@@ -192,7 +216,7 @@ void TWorldmapProtocolMessageHandler::handleTopRowMessage(const GameserverMessag
 
 void TWorldmapProtocolMessageHandler::handleRightColumnMessage(const GameserverMessageRightColumn& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     ++m_center.x;
     handleSlice(message.area(), centralPosition().rightColumn());
@@ -200,7 +224,7 @@ void TWorldmapProtocolMessageHandler::handleRightColumnMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleBottomRowMessage(const GameserverMessageBottomRow& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     ++m_center.y;
     handleSlice(message.area(), centralPosition().bottomRow());
@@ -208,7 +232,7 @@ void TWorldmapProtocolMessageHandler::handleBottomRowMessage(const GameserverMes
 
 void TWorldmapProtocolMessageHandler::handleLeftColumnMessage(const GameserverMessageLeftColumn& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     --m_center.x;
     handleSlice(message.area(), centralPosition().leftColumn());
@@ -217,33 +241,27 @@ void TWorldmapProtocolMessageHandler::handleLeftColumnMessage(const GameserverMe
 void TWorldmapProtocolMessageHandler::handleTopFloorMessage(const GameserverMessageTopFloor& message)
 {
     // The step in flight ends; the new floors land around the moved view.
-    const Position from = m_center.toPosition();
     TWorldMapCentralPosition central = centralPosition();
     central.moveUpFloor();
     m_center = central.center;
-    if (game::hasLocalPlayer())
-        game::localPlayerHandleTeleport();
+    endLocalPlayerMotion(game::currentGameSession(), m_creatureStorage.get());
     moveKnownArea();
     applyArea(message.area(), central.topFloorArea(), central);
-    game::notify("onTeleport", game::localPlayerId(), m_center.toPosition(), from);
 }
 
 void TWorldmapProtocolMessageHandler::handleBottomFloorMessage(const GameserverMessageBottomFloor& message)
 {
-    const Position from = m_center.toPosition();
     TWorldMapCentralPosition central = centralPosition();
     central.moveDownFloor();
     m_center = central.center;
-    if (game::hasLocalPlayer())
-        game::localPlayerHandleTeleport();
+    endLocalPlayerMotion(game::currentGameSession(), m_creatureStorage.get());
     moveKnownArea();
     applyArea(message.area(), central.bottomFloorArea(), central);
-    game::notify("onTeleport", game::localPlayerId(), m_center.toPosition(), from);
 }
 
 void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMessageFieldData& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     // An area of the one field at the coordinate.
     const TWorldMapCoordinate at = coordinateOf(message.coordinate());
@@ -252,7 +270,7 @@ void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMes
 
 void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverMessageCreateOnMap& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     // Stack position 0xff puts the object where its kind sorts on the stack.
     const TWorldMapCoordinate at = coordinateOf(message.coordinate());
@@ -264,7 +282,7 @@ void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverMessageChangeOnMap& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     if (!message.has_coordinate()) {
         // The creature form only updates the creature; its field entry stays.
@@ -283,7 +301,7 @@ void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverM
 
 void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverMessageDeleteOnMap& message)
 {
-    if (game::isSceneFrozen())
+    if (handlerSceneFrozen())
         return;
     // The creature-id form leaves the creature where it is drawn: it only
     // stops counting as placed on a field.

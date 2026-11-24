@@ -21,15 +21,8 @@ void notifyField(const Position& field)
         tile->effectsChanged();
 }
 
-TEffectStorage* g_current = nullptr;
-
 }
 
-TEffectStorage& TEffectStorage::instance()
-{
-    static TEffectStorage fallback;
-    return g_current ? *g_current : fallback;
-}
 
 TEffectStorage::TEffectStorage(const size_t maximumEffects, QObject* parent)
     : cip::tibia::effects::TEffectStorage(parent)
@@ -37,15 +30,8 @@ TEffectStorage::TEffectStorage(const size_t maximumEffects, QObject* parent)
 {
 }
 
-void TEffectStorage::setInstance(TEffectStorage* storage)
-{
-    g_current = storage;
-}
-
 TEffectStorage::~TEffectStorage()
 {
-    if (g_current == this)
-        g_current = nullptr;
 }
 
 size_t TEffectStorage::maximumEffectsSetting()

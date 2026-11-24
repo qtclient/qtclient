@@ -13,7 +13,11 @@
 #include "sprites/appearancetypespritesheetmapping.h"
 #include "sprites/spritesystem.h"
 
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include <functional>
+#include <string_view>
+#include <map>
 #include <tibia/config/runtimegameconfig.h>
 
 #include <QtGlobal>

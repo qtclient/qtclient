@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::cyclopedia {
@@ -191,10 +193,11 @@ void TBestiaryStorage::clearCharms()
 
 quint64 TBestiaryStorage::goldBalance()
 {
-    if (!tibia::game::hasLocalPlayer())
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const tibia::game::TPlayerData* data = session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+    if (!data)
         return 0;
-    return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BANK_BALANCE)
-           + tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
+    return data->resourceBalance(tibia::client::RESOURCE_BANK_BALANCE) + data->resourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
 }
 
 }

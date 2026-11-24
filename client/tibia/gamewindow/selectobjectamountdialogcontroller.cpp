@@ -1,4 +1,5 @@
 #include "selectobjectamountdialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "appearances/appearanceinstance.h"
 #include "container/containerciptypes.h"
@@ -22,7 +23,8 @@ using A = input::EGameAction;
 int storageSlotCount(const Position& position, const int stackPosition)
 {
     if (position.x != UINT16_MAX) {
-        if (worldmap::TWorldMapStorage* storage = worldmap::TWorldMapStorage::instance()) {
+        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        if (worldmap::TWorldMapStorage* storage = session ? session->worldMapStorage().get() : nullptr) {
             if (worldmap::TWorldMapField* field = storage->fieldAt(position)) {
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
@@ -36,7 +38,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
         return 1;
     }
     if (position.y & 0x40) {
-        container::TContainerStorage* storage = container::TContainerStorage::instance();
+        container::TContainerStorage* storage = tibia::game::currentContainerStorage();
         if (!storage)
             return 1;
         const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F);
@@ -46,7 +48,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
             storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + std::max(0, stackPosition));
         return slot.stackable ? std::max<int>(1, slot.count) : 1;
     }
-    container::TInventoryContainer* inventory = container::TInventoryContainer::instance();
+    container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer();
     if (!inventory)
         return 1;
     const container::TInventorySlot& slot = inventory->slotAt(position.y);

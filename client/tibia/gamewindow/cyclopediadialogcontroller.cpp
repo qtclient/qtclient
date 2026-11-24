@@ -22,7 +22,9 @@
 
 #include <limits>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -37,9 +39,10 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 /// The local player's balance of `type`, or nothing outside the game.
 std::optional<qulonglong> balance(const tibia::client::ResourceTypes_t type)
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer())
         return std::nullopt;
-    return tibia::game::localPlayerResourceBalance(type);
+    return session->playerData() ? session->playerData()->resourceBalance(type) : 0;
 }
 
 QString balanceString(const tibia::client::ResourceTypes_t type, const char* fallback)
@@ -189,7 +192,7 @@ qulonglong TCyclopediaDialogController::totalGoldBalance() const
 
 QString TCyclopediaDialogController::totalGoldBalanceString() const
 {
-    if (!tibia::game::hasLocalPlayer())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->hasLocalPlayer())
         return qtTrId("dummy_unknown");
     qmlcomponents::TTextHelperQmlService textHelper;
     return textHelper.formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(static_cast<qlonglong>(totalGoldBalance()),

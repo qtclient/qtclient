@@ -26,7 +26,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

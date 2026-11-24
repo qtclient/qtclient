@@ -1,4 +1,6 @@
 #include "bosstiarydialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
@@ -7,7 +9,6 @@
 
 #include <QKeySequence>
 
-#include <tibia/game/gamesession.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -230,7 +231,9 @@ void TBosstiaryDialogController::setShowMasteryBosses(const bool v) { changeFilt
 /// Asks the server for the bosstiary; its answer rebuilds the page.
 void TBosstiaryDialogController::showDialogTab()
 {
-    tibia::game::requestBosstiaryInfo();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestBosstiaryInfo();
 }
 
 /// Takes the filter and page back without the list change rebuilding first.
@@ -287,7 +290,9 @@ void TBosstiaryDialogController::requestNextPage()
 
 void TBosstiaryDialogController::requestToggleBosstiaryTracking(const int RaceID, const bool ShouldTrack)
 {
-    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), ShouldTrack);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), ShouldTrack);
 }
 
 void TBossSlotInformation::update(const bossbestiary::TBossSlot& slot, const bossbestiary::TBosstiaryStorage& storage)
@@ -362,17 +367,23 @@ void TBossSlotsDialogController::showDialogTab()
 {
     m_firstList->resetFilter();
     m_secondList->resetFilter();
-    tibia::game::requestBossSlootInfo();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestBossSlootInfo();
 }
 
 void TBossSlotsDialogController::onClearClicked(const int SlotNumber)
 {
-    tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
 }
 
 void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int SelectedRaceID)
 {
-    tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
 }
 

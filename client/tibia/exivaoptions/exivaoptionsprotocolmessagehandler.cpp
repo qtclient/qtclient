@@ -2,7 +2,6 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 

@@ -1,4 +1,6 @@
 #include "gamewindowciptypes.h"
+#include "game/currentgamesession.h"
+#include "creatures/creaturestorage.h"
 #include "game/inspectedobject.h"
 #include "qmlcomponents/texthelper.h"
 #include "store/storestorage.h"
@@ -15,7 +17,6 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
-#include <tibia/game/gamesession_forward.h>
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 #include "protocol/gameactioncontexthelper.h"
@@ -41,7 +42,6 @@
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -891,7 +891,9 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
     player->setFromPlayer(data);
     m_hasDualWielding = leftHandDualWield && rightHandEmpty;
     m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
-    m_isOwnPlayer = tibia::game::hasLocalPlayer() && tibia::game::localPlayerId() == data.creatureId;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    m_isOwnPlayer = session && session->hasLocalPlayer() && session->creatureStorage()
+        && session->creatureStorage()->playerID() == data.creatureId;
     Q_EMIT inspectObjectListChanged();
     m_inspectedPlayerId = data.creatureId;
     dialog()->create();
@@ -926,7 +928,8 @@ void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
 
 void TInspectPlayerDialogController::openSkillWheelDialog()
 {
-    if (!tibia::game::hasLocalPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
         return;
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));
 }

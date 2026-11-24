@@ -1,4 +1,6 @@
 #include "questlogcontroller.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 
 #include "game/gamesessionbase.h"
 #include "mods/mission_backend.h"
@@ -15,7 +17,6 @@
 #include <QVariantMap>
 #include <QSaveFile>
 #include <QStandardPaths>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -373,8 +374,8 @@ bool TQuestLogController::showHidden() const
 /// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
 void TQuestLogController::showDialog(const int parameter)
 {
-    if (tibia::game::isOnline())
-        tibia::game::requestQuestLog();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestQuestLog();
     if ((parameter & 0xff0000) == 0) {
         m_lines.setLines({});
         m_parts.setParts({});
@@ -506,8 +507,8 @@ void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
 {
     if (QuestLineID == m_selectedQuestLineId)
         return;
-    if (tibia::game::isOnline())
-        tibia::game::requestQuestLine(QuestLineID);
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendRequestQuestLine(QuestLineID);
     m_selectedQuestLineId = QuestLineID;
     Q_EMIT selectedQuestLineChanged();
     Q_EMIT missionChanged();

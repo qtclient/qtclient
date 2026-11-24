@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "game/playerstatestracker.h"
 #include "game/skillswidgetentrydata.h"
 #include "game/statusbarstorage.h"

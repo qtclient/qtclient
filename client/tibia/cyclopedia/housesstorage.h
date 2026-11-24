@@ -1,6 +1,6 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 
 #include "cyclopedia/staticcontentinformation.h"
 #include "worldmap/coordinates.h"

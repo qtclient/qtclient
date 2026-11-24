@@ -5,7 +5,8 @@
 #include "protocol/protocolciptypes.h"
 #include "protocol/clientmessages.h"
 
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include <protocol.pb.h>
 
@@ -33,9 +34,9 @@ void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
         return;
     if (m_storage)
         m_storage->setBugReportState(static_cast<int>(state));
-    // Host: the bug report dialog still reads the state from the session state.
-    tibia::game::setBugReportState(static_cast<int>(state));
-    tibia::game::setCanReportBugs(state == 0);
+    // Host: the bug report dialog still reads the state from the session.
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
+        session->setBugReportState(static_cast<int>(state));
 }
 
 namespace {

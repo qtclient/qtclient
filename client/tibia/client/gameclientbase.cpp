@@ -9,7 +9,6 @@
 #include "assets/assetfilesystemhelper.h"
 #include "assets/assetmanager.h"
 #include "assets/things.h"
-#include "client/gamecore.h"
 #include "config/clientoptions.h"
 #include "config/clientsettings.h"
 #include "config/tibiaconfig.h"
@@ -148,7 +147,7 @@ void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
 std::shared_ptr<config::TTibiaConfig> TGameClientBase::createResourcesTibiaConfig()
 {
     const std::shared_ptr<shared::TTibiaFileSystemHelper> helper =
-        makeTibiaFileSystemHelper(gamecore::resourcesDirectory().canonicalPath());
+        makeTibiaFileSystemHelper(shared::TTibiaFileSystemHelper::resourcesDirectory().canonicalPath());
     return std::make_shared<config::TTibiaConfig>(*helper);
 }
 
@@ -166,8 +165,8 @@ std::shared_ptr<assets::TAssetFileSystemHelper> TGameClientBase::createAssetFile
 {
     // Host: the assets' and sounds' search roots of qtclient's data tree (CIP:
     // the directories of a file system helper on the Resources directory).
-    const std::string assetsRoot = gamecore::assetsRoot(ClientVersion);
-    gamecore::soundsRoot(ClientVersion);
+    const std::string assetsRoot = tibia::files::data().assetsRoot();
+    tibia::files::data().soundsRoot();
     const QDir assetsDirectory(QString::fromStdString(tibia::files::data().getRealPath(assetsRoot)));
     const std::string soundsPath = tibia::files::data().getRealPath("sounds");
     const QDir soundsDirectory = soundsPath.empty() ? assetsDirectory : QDir(QString::fromStdString(soundsPath));
@@ -208,7 +207,7 @@ void TGameClientBase::initializeMinimap()
     // become "//..." (the WASM file system rejects that).
     std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
     if (defaultMinimapPath.empty())
-        defaultMinimapPath = tibia::files::data().getRealPath(gamecore::assetsRoot(ClientVersion) + "minimap");
+        defaultMinimapPath = tibia::files::data().getRealPath(tibia::files::data().assetsRoot() + "minimap");
     if (!defaultMinimapPath.empty()) {
         const QString defaultTilesDir = QString::fromStdString(defaultMinimapPath);
         m_pMinimapTileDiskIO->importDefaultTiles(defaultTilesDir);
@@ -322,8 +321,7 @@ void TGameClientBase::initializeQmlContext()
 
 void TGameClientBase::initializeAssets()
 {
-    gamecore::setClientVersion(ClientVersion);
-    const std::string assetsRoot = gamecore::assetsRoot(ClientVersion);
+    const std::string assetsRoot = tibia::files::data().assetsRoot();
     m_pAssetAsyncLoader = std::make_shared<assets::TAssetAsyncLoader>(m_pAssetFileSystemHelper);
     m_pAssetManager = std::make_shared<assets::TAssetManager>(m_pAssetFileSystemHelper->assetsDirectory().absolutePath(),
                                                               m_pAssetAsyncLoader, nullptr);

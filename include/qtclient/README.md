@@ -12,7 +12,7 @@ Extending pack access means adding fields to `QtClientHostApiV1` (bump
 `api_version` when breaking). Packs never import tip symbols.
 
 **Transitional C++ façades** (IdleOT `ABSORB_INTO_QTCLIENT` only) still live beside
-this tree (`session.h`, `worldview.h`, `pack_host.h`, …). New packs must not
+this tree (`worldview.h`, `pack_host.h`, …). New packs must not
 depend on them — peel onto `abi/` instead.
 
 ## Game session objects

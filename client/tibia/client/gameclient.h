@@ -26,6 +26,7 @@
 #include <QUrl>
 
 #include <deque>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -281,6 +282,9 @@ public:
     /// Host: starts qtclient's engine (data directories, the frame options)
     /// the client's setup steps run on. False when it cannot start (no work dir).
     bool startEngine(const QString& argv0, const QString& workDir);
+    /// Host: runs on the GUI thread when SIGINT or SIGTERM arrives (the
+    /// quit-game prompt); without one the application quits.
+    static void setForceExitHandler(std::function<void()> handler);
     /// Logs in with the options' account, or plays the recorded session;
     /// reports the assets initialize() could not read instead.
     void start();
@@ -398,8 +402,6 @@ public:
     void setSidebarTriggerCheckBoundsEnabled(bool Enabled);
 
 Q_SIGNALS:
-    /// The login service or the game server wants a newer client.
-    void clientOutOfDate();
     /// No launcher SSO / --account: show the product login dialog.
     void loginCredentialsNeeded();
     /// A login HTTP request was just sent (password or launcher session).

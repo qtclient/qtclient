@@ -8,7 +8,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

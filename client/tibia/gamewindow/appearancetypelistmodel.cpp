@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/assets/things.h>
 #include <tibia/appearances/appearanceinstance.h>
 

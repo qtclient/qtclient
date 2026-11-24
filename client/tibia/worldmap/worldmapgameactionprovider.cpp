@@ -11,7 +11,8 @@
 
 #include "creatures/creaturestorage.h"
 #include <tibia/appearances/appearancetype.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include <QCoreApplication>
 
 namespace tibia::worldmap {
@@ -85,7 +86,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     TFieldObject use = pick.use;
     const uint32_t fieldCreatureId = pick.creature.creatureId;
     if (fieldCreatureId) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
             if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(fieldCreatureId);
                 row && input::isHireling(*row))
                 use = pick.creature;
@@ -93,7 +94,8 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     }
     if (!use)
         use = pick.look;
-    const uint32_t localId = tibia::game::localPlayerId();
+    const tibia::creatures::TCreatureStorage* creatureRows = tibia::game::currentCreatureStorage();
+    const uint32_t localId = creatureRows ? creatureRows->playerID() : 0;
     const bool fieldCreatureIsOwn = fieldCreatureId && localId && fieldCreatureId == localId;
 
     const TGameActionList lookActions =
@@ -146,7 +148,8 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     }
     if (ownLook && smartClick && pixelCreatureId && localId && pixelCreatureId == localId) {
         const auto* walk = input::gameActionAs<input::TGameActionPlayerMovementIntent>(smartClick->innerGameAction());
-        if (walk && walk->target() == tibia::game::localPlayerPosition())
+        const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+        if (walk && session && walk->target() == session->localPlayerPosition())
             smartClick = ownLook;
     }
     if (smartClick)
@@ -196,7 +199,7 @@ TMouseTarget objectAt(const input::TObjectGameActionContext& object)
 /// whose appearance's default action is the highlighting auto walk.
 TMouseTarget lookObjectAt(const Position& coordinate, const bool autowalkOnly)
 {
-    TWorldMapStorage* storage = TWorldMapStorage::instance();
+    TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
     TWorldMapField* field = storage ? storage->fieldAt(coordinate) : nullptr;
     if (!field)
         return {};
@@ -206,8 +209,8 @@ TMouseTarget lookObjectAt(const Position& coordinate, const bool autowalkOnly)
     if (autowalkOnly) {
         appearances::TAppearanceInstancePtr appearance = look.appearance;
         if (!appearance && look.creatureId) {
-            if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
-                if (const std::shared_ptr<creatures::TCreature> row = creatures->creatureAt(look.creatureId))
+            if (creatures::TCreatureStorage* creatureRows = tibia::game::currentCreatureStorage())
+                if (const std::shared_ptr<creatures::TCreature> row = creatureRows->creatureAt(look.creatureId))
                     appearance = row->outfitAppearance();
         }
         const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;

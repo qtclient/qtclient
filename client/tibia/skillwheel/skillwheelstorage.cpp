@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <numeric>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
+#include <client/const.h>
 
 namespace tibia::skillwheel {
 
@@ -341,8 +343,10 @@ int TSkillWheelStorage::spentPoints() const
 
 uint64_t TSkillWheelStorage::gold() const
 {
-    return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BANK_BALANCE)
-           + tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
+    const game::TPlayerData* player = tibia::game::currentPlayerData();
+    return player ? player->resourceBalance(tibia::client::RESOURCE_BANK_BALANCE)
+                        + player->resourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED)
+                  : 0;
 }
 
 }

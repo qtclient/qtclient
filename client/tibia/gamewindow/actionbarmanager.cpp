@@ -1,4 +1,5 @@
 #include "actionbarmanager.h"
+#include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
 #include "input/keyboardshortcuthandler.h"
 
@@ -21,7 +22,6 @@
 
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
@@ -88,7 +88,7 @@ void TActionBarManager::connectToGameSession(const std::shared_ptr<game::IGameSe
 
 void TActionBarManager::onWorldEntered()
 {
-    if (tibia::game::hasLocalPlayer())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->hasLocalPlayer())
         config::THotkeyOptions::instance()->onCharacterLoggedIn();
     // The host's hotkey options load without announcing it.
     for (const auto& [position, group] : m_groups)

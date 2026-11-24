@@ -1,7 +1,6 @@
 #pragma once
 
 #include "appearances/appearanceinstance.h"
-#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "imbuing/imbuingstorage.h"
 #include "qtconnectionmanager.h"

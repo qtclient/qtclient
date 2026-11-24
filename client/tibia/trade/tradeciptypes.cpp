@@ -7,6 +7,7 @@
 
 #include <QPointer>
 #include "game/worldtype.h"
+#include <cctype>
 #include <stdexcept>
 #include <tuple>
 #include <client/outfit.h>
@@ -15,7 +16,6 @@
 #include "container/containerciptypes.h"
 #include "protocol/protocolciptypes.h"
 
-#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 
@@ -29,8 +29,21 @@ namespace tibia::trade {
 namespace {
 
 using Args = std::vector<std::any>;
-using client::gamecore::argInt;
-using client::gamecore::argString;
+using tibia::game::argInt;
+using tibia::game::argString;
+
+/// Host: the trade partner's name as the pack reads it, each word starting upper case.
+std::string formatCreatureName(std::string name)
+{
+    bool upNext = true;
+    for (char& ch : name) {
+        const bool space = ch == ' ';
+        if (upNext)
+            ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+        upNext = space;
+    }
+    return name;
+}
 
 /// The vocation's name; promoted vocations have their own names.
 QString vocationName(const int vocation, const bool promoted)
@@ -273,14 +286,14 @@ void TPlayerTradeProtocolMessageHandler::handleOwnOfferMessage(const ::tibia::pr
     m_storage.setOwnOffer(QString::fromStdString(OwnOfferMessage.name()), offerItems(OwnOfferMessage));
     Q_EMIT requestOpenPlayerTradeWidget();
     // Host: product packs follow trades on the notify bus.
-    tibia::game::processOwnTrade(tibia::game::formatCreatureName(OwnOfferMessage.name()), offerItems(OwnOfferMessage));
+    tibia::game::notify("onOwnTrade", formatCreatureName(OwnOfferMessage.name()), offerItems(OwnOfferMessage));
 }
 
 void TPlayerTradeProtocolMessageHandler::handleCounterOfferMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage)
 {
     m_storage.setCounterOffer(QString::fromStdString(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
-    tibia::game::processCounterTrade(tibia::game::formatCreatureName(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
+    tibia::game::notify("onCounterTrade", formatCreatureName(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
 }
 
 void TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade&)

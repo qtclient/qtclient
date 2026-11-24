@@ -9,7 +9,9 @@
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "qmlcomponents/outfittypes.h"
 
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include <optional>
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>

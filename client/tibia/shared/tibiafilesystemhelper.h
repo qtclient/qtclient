@@ -63,7 +63,7 @@ public:
     QDir getAssetsDirectory() const;
     QDir getSoundsDirectory() const;
     /// Host: qtclient reads the assets and sounds from the CipSoft Resources
-    /// tree it found (see gamecore::assetsRoot); from then on the assets and
+    /// tree it found (see assetsRoot); from then on the assets and
     /// sounds directories are those instead of <data>/assets and <data>/sounds.
     void setAssetsDirectories(const QDir& assetsDirectory, const QDir& soundsDirectory);
     QDir getLogDirectory() const;
@@ -176,6 +176,23 @@ public:
     std::string getRealPath(const std::string& path) const;
     /// `filename` with ".type" appended unless it already ends with it.
     static std::string guessFilePath(const std::string& filename, const std::string& type);
+
+    /// CIP: the package's Resources directory: the application directory's
+    /// parent, its `Resources` when there is one (QDir::cd leaves the directory
+    /// unchanged without one, so the same rule gives `Contents/Resources` on
+    /// macOS and the package root on Linux, Windows and /play). See
+    /// docs/reverse-engineering/cip-package-layout.md.
+    static QDir resourcesDirectory();
+    /// The absolute CipSoft Resources directory: resourcesDirectory() when it
+    /// holds assets/catalog-content.json, else the monorepo's `<work dir>/data`
+    /// (`make extract`); empty when neither does.
+    QString cipResourcesDir() const;
+    /// Registers the Resources directory as a search root and returns the
+    /// assets directory's short name (`assets/`, holding catalog-content.json);
+    /// empty when there is no Resources directory.
+    std::string assetsRoot();
+    /// The same for the sounds directory (`sounds/`).
+    std::string soundsRoot();
 
     std::string getWorkDir() const { return m_workDir; }
     std::string getWriteDir() const { return m_writeDir; }

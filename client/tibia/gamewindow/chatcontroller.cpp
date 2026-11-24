@@ -35,7 +35,8 @@
 
 #include <algorithm>
 #include <cmath>
-#include <tibia/game/gamesession.h>
+#include "game/playerdata.h"
+#include "protocol/clientmessages.h"
 
 namespace tibia::gamewindow {
 
@@ -91,14 +92,41 @@ constexpr A TabMenuOrder[] = {
     A::CHAT_CHANNEL_MUTE, A::CHAT_CHANNEL_UNMUTE, A::CONTEXT_MENU_SEPARATOR, A::SAVE_CHAT_CHANNEL_TO_FILE, A::CLEAR_CHAT_CHANNEL,
 };
 
-int ownLevel()
+int ownLevel(const std::shared_ptr<game::IGameSession>& gameSession)
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerLevel() : 0;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session && session->hasLocalPlayer() && session->playerData() ? static_cast<int>(session->playerData()->level()) : 0;
 }
 
-QString ownName()
+QString ownName(const std::shared_ptr<game::IGameSession>& gameSession)
 {
-    return QString::fromStdString(tibia::game::characterName());
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->characterName() : QString();
+}
+
+/// The connected session takes game actions (online, a live player, connected).
+bool canPerformGameAction(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session && session->canPerformGameAction();
+}
+
+bool isOnline(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session && session->isOnline();
+}
+
+void inviteToOwnChannel(const std::shared_ptr<game::IGameSession>& gameSession, const std::string& name)
+{
+    if (canPerformGameAction(gameSession) && !name.empty())
+        protocol::gameclient::sendInviteToOwnChannel(name);
+}
+
+void excludeFromOwnChannel(const std::shared_ptr<game::IGameSession>& gameSession, const std::string& name)
+{
+    if (canPerformGameAction(gameSession) && !name.empty())
+        protocol::gameclient::sendExcludeFromOwnChannel(name);
 }
 
 /// CIP: the password in the live session's login data (none for other
@@ -1129,7 +1157,10 @@ TChatController::TChatController(const uint MaxChatInputHistoryLength, QQuickIte
     });
     connect(&m_openDialog, &TOpenChatChannelDialogController::channelChosen, this, &TChatController::onRequestOpenChanel);
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
-            [](const QString& name) { tibia::game::openPrivateChannel(name.toStdString()); });
+            [this](const QString& name) {
+                if (canPerformGameAction(m_gameSession) && !name.isEmpty())
+                    protocol::gameclient::sendOpenPrivateChannel(name.toStdString());
+            });
 
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
@@ -1207,7 +1238,7 @@ void TChatController::onOptionChanged(const QString& name)
 void TChatController::onWorldEntered()
 {
     if (m_chatChannelStorage)
-        m_chatChannelStorage->setOwnName(ownName());
+        m_chatChannelStorage->setOwnName(ownName(m_gameSession));
     bindItem();
     Q_EMIT exivaOptionsAvailableChanged();
     if (!m_channelsFromConfigOpened)
@@ -1333,7 +1364,7 @@ void TChatController::saveChannel(chat::TChatChannel* channel)
 
     m_pTibiaFileSystemHelper->appendToLogFile(name, content);
     const QString path = m_pTibiaFileSystemHelper->getLogFilePathForName(name);
-    if (tibia::game::isOnline())
+    if (isOnline(m_gameSession))
         m_chatChannelStorage->addServerLogEntry(chat::consoleColor(30), qtTrId("chat_append_contents").arg(name, QDir::toNativeSeparators(path)));
 }
 
@@ -1341,14 +1372,14 @@ void TChatController::onPlayerNameToInviteToChatChannelReceived(const QString& p
 {
     // The server channel the prompt was opened for; then the prompt's target goes.
     if (m_inviteTarget && m_inviteTarget->identifier().type == TChatChannelIdentifier::ChannelId && m_inviteTarget->isOwnPrivateChannel())
-        tibia::game::inviteToOwnChannel(playerName.trimmed().toStdString());
+        inviteToOwnChannel(m_gameSession, playerName.trimmed().toStdString());
     m_inviteTarget = nullptr;
 }
 
 void TChatController::onPlayerNameToExcludeFromChatChannelReceived(const QString& playerName)
 {
     if (m_inviteTarget && m_inviteTarget->identifier().type == TChatChannelIdentifier::ChannelId && m_inviteTarget->isOwnPrivateChannel())
-        tibia::game::excludeFromOwnChannel(playerName.trimmed().toStdString());
+        excludeFromOwnChannel(m_gameSession, playerName.trimmed().toStdString());
     m_inviteTarget = nullptr;
 }
 
@@ -1389,7 +1420,7 @@ void TChatController::onRequestOpenChanel(const TChatChannelIdentifier& ChannelI
 
 void TChatController::requestChannelListFromServer()
 {
-    if (!tibia::game::isOnline())
+    if (!isOnline(m_gameSession))
         return;
     m_channelListRequested = true;
 }
@@ -1488,15 +1519,15 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
     case EInput::RedPrivate: keep = QStringLiteral("@%1@ ").arg(recipient); break;
     case EInput::Invite:
         if (m_chatChannelStorage->ownChannel() && !text.isEmpty())
-            tibia::game::inviteToOwnChannel(text.toStdString());
+            inviteToOwnChannel(m_gameSession, text.toStdString());
         return keep;
     case EInput::Exclude:
         if (m_chatChannelStorage->ownChannel() && !text.isEmpty())
-            tibia::game::excludeFromOwnChannel(text.toStdString());
+            excludeFromOwnChannel(m_gameSession, text.toStdString());
         return keep;
     default: break;
     }
-    if (text.isEmpty() || !current || !tibia::game::isOnline())
+    if (text.isEmpty() || !current || !isOnline(m_gameSession))
         return keep;
 
     const TChatChannelIdentifier& identifier = current->identifier();
@@ -1550,10 +1581,10 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     case TChatChannelIdentifier::Npc:
         if (m_npcDialog && m_npcDialog->sayToRemoteNpc(text)) {
             if (m_chatChannelStorage)
-                m_chatChannelStorage->addOwnNpcChannelEntry(chat::consoleColor(12), ownName(), text, ownLevel());
+                m_chatChannelStorage->addOwnNpcChannelEntry(chat::consoleColor(12), ownName(m_gameSession), text, ownLevel(m_gameSession));
         } else {
             Q_EMIT publishGameAction(
-                std::make_shared<input::TGameActionSendChatMessageToNpc>(text, ownName(), static_cast<uint16_t>(ownLevel())));
+                std::make_shared<input::TGameActionSendChatMessageToNpc>(text, ownName(m_gameSession), static_cast<uint16_t>(ownLevel(m_gameSession))));
         }
         break;
     case TChatChannelIdentifier::MessageTo:
@@ -1571,7 +1602,7 @@ void TChatController::sendPrivate(const QString& recipient, const QString& text,
 {
     // The handler adds the own line and sends it (1: a gamemaster's red message).
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionSendChatMessageWithRecipient>(
-        text, recipient, ownName(), static_cast<uint16_t>(ownLevel()), gamemaster ? 1 : 0));
+        text, recipient, ownName(m_gameSession), static_cast<uint16_t>(ownLevel(m_gameSession)), gamemaster ? 1 : 0));
 }
 
 void TChatController::sendKeyword(const QString& keyword)
@@ -1869,7 +1900,7 @@ void TChatController::showEntryMenu(TChatChannelController* model, const int row
     if (!m_actionProvider)
         return;
     const input::TGameActionList candidates = m_actionProvider->entryGameActions(
-        model->plainTextAt(row), *entry, model->hasSelection() ? model->selectedText() : QString(), ownName(), model == &m_secondary);
+        model->plainTextAt(row), *entry, model->hasSelection() ? model->selectedText() : QString(), ownName(m_gameSession), model == &m_secondary);
     showMenu(candidates, EntryMenuOrder, ChatEntryContext, button, modifiers, model, nullptr);
 }
 

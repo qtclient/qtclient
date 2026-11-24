@@ -417,9 +417,6 @@ public:
     explicit TCreatureStorage(QObject* parent = nullptr);
     ~TCreatureStorage() override;
 
-    static TCreatureStorage* instance();
-    static void setInstance(TCreatureStorage* storage);
-
     std::shared_ptr<TCreature> getOrCreate(TCreatureID id);
     std::shared_ptr<TCreature> creatureAt(TCreatureID id) const;
     /// A new creature with `id`, replacing any stored one.

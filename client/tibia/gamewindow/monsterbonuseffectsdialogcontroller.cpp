@@ -1,4 +1,6 @@
 #include "monsterbonuseffectsdialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 
 #include "game/gameciptypes.h"
 #include "colorhelper.h"
@@ -21,7 +23,6 @@
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -39,10 +40,10 @@ using ::tibia::shared::outfitColor;
 /// The charm points (major) or minor charm echoes (minor) of the player.
 quint64 charmResource(const bool minor)
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || !session->playerData())
         return 0;
-    return tibia::game::localPlayerResourceBalance(minor ? tibia::client::RESOURCE_MINOR_CHARM
-                                                         : tibia::client::RESOURCE_CHARM);
+    return session->playerData()->resourceBalance(minor ? tibia::client::RESOURCE_MINOR_CHARM : tibia::client::RESOURCE_CHARM);
 }
 
 class TQmlMonsterBonusEffect final : public cip::tibia::gamewindow::TQmlMonsterBonusEffect
@@ -294,7 +295,9 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
     if (!m_bonusEffectStorage)
         return;
     // Crystal answers the bestiary request with the charm data too.
-    tibia::game::requestBestiary();
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->requestMonsterCyclopedia();
 }
 
 void TMonsterBonusEffectsDialogController::hideDialogTab() { m_selectedCharm = -1; }
@@ -556,8 +559,20 @@ bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms
 
 void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()
 {
-    tibia::game::requestSendBuyCharmRune(static_cast<uint8_t>(m_confirmAction), static_cast<uint8_t>(m_confirmCharm),
-                                   static_cast<uint16_t>(m_confirmRace));
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    cyclopedia::TCyclopediaProtocolMessageHandler* handler =
+        session && session->canPerformGameAction() ? session->cyclopediaProtocolMessageHandler().get() : nullptr;
+    if (!handler)
+        return;
+    // m_confirmAction: 0 unlock, 1 assign, 2 remove, 3 reset all.
+    const auto charm = static_cast<uint8_t>(m_confirmCharm);
+    switch (m_confirmAction) {
+    case 0: handler->sendUnlockCharm(charm); break;
+    case 1: handler->sendAssignCharm(charm, static_cast<uint16_t>(m_confirmRace)); break;
+    case 2: handler->sendRemoveCharm(charm); break;
+    case 3: handler->sendResetAllCharms(); break;
+    default: break;
+    }
 }
 
 }

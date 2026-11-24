@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

@@ -16,7 +16,6 @@
 
 #include <chrono>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::analysers {

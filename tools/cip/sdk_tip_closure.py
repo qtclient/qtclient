@@ -25,7 +25,7 @@ INC_RE = re.compile(r'#\s*include\s*[<"]([^>"]+)[>"]')
 
 SEED_PUBLIC = (
     "include/qtclient/mod_api_v1.h",
-    "include/qtclient/session.h",
+    "include/qtclient/abi/host_api_v1.h",
     "include/qtclient/mod_entry.h",
 )
 

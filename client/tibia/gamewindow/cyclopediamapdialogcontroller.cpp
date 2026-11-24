@@ -30,8 +30,7 @@
 #include <cstdlib>
 #include <set>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
-#include <tibia/game/gamesession_forward.h>
+#include "game/currentgamesession.h"
 #include <tibia/game/tgamenotify.h>
 #include <tibia/assets/things.h>
 
@@ -74,7 +73,8 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 qulonglong balance(const tibia::client::ResourceTypes_t type)
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->resourceBalance(type) : 0;
 }
 
 /// Donated over the goal, at most 1; 0 without a goal.
@@ -277,7 +277,8 @@ void TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(const bool v
 
 qlonglong TCyclopediaMapDialogController::totalGoldBalance() const
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer())
         return 0;
     return static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
 }
@@ -415,9 +416,10 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
 
 void TCyclopediaMapDialogController::centerToPlayer()
 {
-    if (!tibia::game::hasLocalPlayer() || !m_renderer)
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || !m_renderer)
         return;
-    const Position position = tibia::game::localPlayerPosition();
+    const Position position = session->localPlayerPosition();
     if (!position.isValid())
         return;
     m_renderer->worldCamera()->centerDelayed(position.x * SubfieldsPerField + SubfieldsPerField / 2, position.y * SubfieldsPerField + SubfieldsPerField / 2, position.z);
@@ -545,10 +547,13 @@ void TCyclopediaMapDialogController::onAreaClicked(const int id, const bool isAr
 
 void TCyclopediaMapDialogController::onConfirmDialogAccepted()
 {
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->canPerformGameAction() || !session->cyclopediaProtocolMessageHandler())
+        return;
     if (m_confirmType == ConfirmResetViewpoints)
-        tibia::game::sendCyclopediaMapResetViewpoints(m_resetSubAreaId);
+        session->cyclopediaProtocolMessageHandler()->sendResetMapAreaViewpoints(m_resetSubAreaId);
     if (m_confirmType == ConfirmDonation)
-        tibia::game::sendCyclopediaMapDonate(m_donationAreaId, static_cast<uint32_t>(m_donationAmount));
+        session->cyclopediaProtocolMessageHandler()->sendMapDonation(m_donationAreaId, static_cast<uint32_t>(m_donationAmount));
 }
 
 void TCyclopediaMapDialogController::onTooltipTimerTimeout() { Q_EMIT showTooltip(); }
@@ -570,8 +575,9 @@ void TCyclopediaMapDialogController::onMouseCursorTimerTimeout()
         // A walk the player cannot make from here shows the reject cursor.
         shape = Cursor::DefaultReject;
         const auto* intent = input::gameActionAs<input::TGameActionPlayerMovementIntent>(action);
-        if (intent && tibia::game::hasLocalPlayer()) {
-            const Position player = tibia::game::localPlayerPosition();
+        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        if (intent && session && session->hasLocalPlayer()) {
+            const Position player = session->localPlayerPosition();
             const int dx = std::abs(static_cast<int>(intent->target().x) - static_cast<int>(player.x));
             const int dy = std::abs(static_cast<int>(intent->target().y) - static_cast<int>(player.y));
             if (intent->target().z == player.z && dx <= MaxWalkDistance && dy <= MaxWalkDistance)
@@ -678,7 +684,9 @@ void TCyclopediaMapDialogController::updateSubAreaData(TCyclopediaMapSelectionIn
     } else if (!m_storage->hasSubAreaViewpointInfo(subArea.id)) {
         // Not known yet: the panel waits for the server's answer.
         subArea.viewpointInfoDelayed = true;
-        tibia::game::sendCyclopediaMapRequestArea(subArea.id);
+        if (const game::TGameSessionBase* session = tibia::game::currentGameSession();
+            session && session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+            session->cyclopediaProtocolMessageHandler()->sendRequestMapArea(subArea.id);
     } else {
         const auto info = m_storage->subAreaViewpointInfo(subArea.id);
         subArea.viewpointsCount = info.poiTarget;
@@ -740,9 +748,10 @@ QString TCyclopediaMapDialogController::donationsTooltip() const
 int TCyclopediaMapDialogController::displayedFloor() const
 {
     const int layer = m_renderer ? m_renderer->worldCamera()->layer() : GroundLayer;
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer())
         return layer;
-    const int playerFloor = tibia::game::localPlayerPosition().z;
+    const int playerFloor = session->localPlayerPosition().z;
     if (playerFloor > GroundLayer || layer > GroundLayer)
         return layer;
     return playerFloor;

@@ -20,12 +20,20 @@
 
 #include <cmath>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include <utility>
 
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The current game session while it has a local player; null otherwise.
+const game::TGameSessionBase* playerSession()
+{
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() ? session : nullptr;
+}
 
 using A = input::EGameAction;
 using Cursor = TMouseCursorController;
@@ -89,8 +97,8 @@ void TMinimapController::setTileStorage(minimap::TMinimapTileStorage* storage)
             if (m_storage)
                 m_storage->reloadTiles(m_area.topLeft(), m_area.bottomRight());
         });
-        if (tibia::game::hasLocalPlayer()) {
-            const Position pos = tibia::game::localPlayerPosition();
+        if (playerSession()) {
+            const Position pos = playerSession()->localPlayerPosition();
             if (pos.isValid())
                 onPlayerPositionChanged(pos);
         }
@@ -226,8 +234,8 @@ void TMinimapController::onCyclopediaMapButtonClicked()
 {
     // The cyclopedia's map tab, at the player's field.
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
-    if (tibia::game::hasLocalPlayer()) {
-        m_playerPosition = tibia::game::localPlayerPosition();
+    if (playerSession()) {
+        m_playerPosition = playerSession()->localPlayerPosition();
         action->setCoordinate(m_playerPosition);
     }
     Q_EMIT publishGameAction(action);
@@ -398,8 +406,8 @@ void TMinimapController::refresh()
         m_storage->setVisibleArea(m_area.topLeft(), m_area.size());
 
     bool crosshairVisible = false;
-    if (tibia::game::hasLocalPlayer() && m_minimap) {
-        m_playerPosition = tibia::game::localPlayerPosition();
+    if (playerSession() && m_minimap) {
+        m_playerPosition = playerSession()->localPlayerPosition();
         if (m_playerPosition.z == m_area.topLeft().z) {
             const QPoint crosshair = m_area.worldToItem(m_playerPosition.x, m_playerPosition.y);
             m_minimap->setProperty("crosshairX", crosshair.x());
@@ -431,9 +439,9 @@ void TMinimapController::onPlayerPositionChanged(const Position& position)
 // CIP .
 void TMinimapController::onCenterButtonClicked()
 {
-    if (!tibia::game::hasLocalPlayer())
+    if (!playerSession())
         return;
-    m_playerPosition = tibia::game::localPlayerPosition();
+    m_playerPosition = playerSession()->localPlayerPosition();
     if (m_area.center() != m_playerPosition)
         m_area.setCenter(m_playerPosition);
     refresh();

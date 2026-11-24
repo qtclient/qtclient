@@ -9,7 +9,7 @@
 #include "protocol/gameactioncontexthelper.h"
 
 #include <creatures/creaturestorage.h>
-#include <tibia/game/gamesession.h>
+#include "container/containerciptypes.h"
 
 #include <QClipboard>
 #include <QDesktopServices>

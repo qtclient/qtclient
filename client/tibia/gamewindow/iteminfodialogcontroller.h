@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include <client/staticdata.h>
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/cyclopediadialogcontext.h"

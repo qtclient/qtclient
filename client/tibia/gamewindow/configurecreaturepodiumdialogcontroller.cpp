@@ -1,4 +1,5 @@
 #include "configurecreaturepodiumdialogcontroller.h"
+#include "appearances/appearanceinstance.h"
 #include "config/clientoptions.h"
 #include "game/configurecreaturepodiumdata.h"
 #include "game/gameciptypes.h"
@@ -10,7 +11,6 @@
 
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

@@ -14,7 +14,8 @@
 #include <tibia/assets/things.h>
 
 #include <stdexcept>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 namespace tibia::input {
 
@@ -67,8 +68,9 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     const bool hireling = isHireling(*stored);
     const QString name = stored->name();
 
-    const uint32_t attackingId = tibia::game::attackingCreatureId();
-    const uint32_t followingId = tibia::game::getFollowingCreatureId();
+    const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const uint32_t attackingId = session ? session->attackingCreatureId() : 0;
+    const uint32_t followingId = session ? session->followingCreatureId() : 0;
 
     if (!own) {
         if (stored->isNpc()) {
@@ -119,7 +121,8 @@ IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32
         if (stored->isNpc())
             inner = A::START_TALKING_TO_NPC;
         else if (!stored->isLocalPlayer() && !isPartyMemberShield(stored->shield())) {
-            const uint32_t attackingId = tibia::game::attackingCreatureId();
+            const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
+            const uint32_t attackingId = session ? session->attackingCreatureId() : 0;
             inner = attackingId == creatureId ? A::STOP_ATTACKING_CREATURE : A::ATTACK_CREATURE;
         }
     }
@@ -166,7 +169,7 @@ TGameActionContextPtr locationOf(const Position& position, const int stackPositi
     if (!slot)
         return location;
     auto flagged = std::make_shared<TLocationContainerWithSlotGameActionContext>(*slot);
-    const container::TContainerStorage* storage = container::TContainerStorage::instance();
+    const container::TContainerStorage* storage = tibia::game::currentContainerStorage();
     if (const container::TStoredContainer* row = storage ? storage->containerAt(slot->containerId()) : nullptr) {
         const container::TInventorySlot& item = row->containerItem();
         const TAppearanceType* type = item.appearance ? item.appearance->thingType()
@@ -312,7 +315,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameA
     if (inner)
         actions.push_back(makeSmartClick(inner));
 
-    const container::TContainerStorage* containers = container::TContainerStorage::instance();
+    const container::TContainerStorage* containers = tibia::game::currentContainerStorage();
     if (containers && containers->isStashAvailable()) {
         if (has(&TAppearanceType::isMarketable) && TGenericObjectGameActionProvider::canStowObject(flags, instance)) {
             push(A::STASH_STOW_TYPE);

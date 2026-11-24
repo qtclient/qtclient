@@ -1,6 +1,6 @@
 #include "dynamicallyloadedimage.h"
 
-#include "client/gamecore.h"
+#include "shared/tibiafilesystemhelper.h"
 #include "sprites/spritesheetdecompressor.h"
 #include "sprites/spritesystem.h"
 
@@ -21,7 +21,7 @@ void attachStoreDiskCache(QNetworkAccessManager* network)
 {
     if (!network)
         return;
-    const QString resources = client::gamecore::cipResourcesDir();
+    const QString resources = tibia::files::data().cipResourcesDir();
     if (resources.isEmpty())
         return;
     const QString cacheDir = QDir(resources).filePath(QStringLiteral("storeimages"));

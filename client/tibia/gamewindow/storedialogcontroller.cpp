@@ -1,4 +1,6 @@
 #include "storedialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
@@ -20,7 +22,6 @@
 #include <QRandomGenerator>
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -628,9 +629,11 @@ void TStoreDialogController::onTransferCoinsReceipientAndAmountSpecified(const Q
 void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
 {
     m_messageDialog->dialog()->close();
-    if (!m_messages || !tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!m_messages || !session || !session->hasLocalPlayer())
         return;
-    if ((tibia::game::localPlayerStates() & tibia::client::IconSwords) == 0) {
+    const uint64_t states = session->playerData() ? session->playerData()->states().flags.to_ullong() : 0;
+    if ((states & tibia::client::IconSwords) == 0) {
         m_successDialog.showDialog(message.trimmed());
         return;
     }

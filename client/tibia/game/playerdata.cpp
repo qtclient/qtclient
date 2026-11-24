@@ -1,7 +1,9 @@
 #include "game/playerdata.h"
 
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "input/playermovementintenthandler.h"
 #include <tibia/game/tgamenotify.h>
 #include "input/gameaction.h"
 
@@ -14,8 +16,6 @@
 
 namespace tibia::game {
 namespace {
-
-TPlayerData* g_livePlayerData = nullptr;
 
 /// The screenshot manager's low-health event.
 constexpr int LowHealthScreenshot = 53;
@@ -68,16 +68,6 @@ TPlayerData::TPlayerData(QObject* parent)
     m_changeTimer.setInterval(0);
     m_changeTimer.setSingleShot(true);
     connect(&m_changeTimer, &QTimer::timeout, this, [this] { onChangeTimerElapsed(); });
-}
-
-TPlayerData* TPlayerData::liveInstance()
-{
-    return g_livePlayerData;
-}
-
-void TPlayerData::setLiveInstance(TPlayerData* data)
-{
-    g_livePlayerData = data;
 }
 
 // ---- CIP TPlayerData ----
@@ -523,8 +513,13 @@ void TPlayerData::updateHealth(const uint32_t health, const uint32_t maxHealth)
     setMaxHealth(static_cast<int>(maxHealth));
     if (oldHealth == health && oldMaxHealth == maxHealth)
         return;
-    if (health == 0)
-        tibia::game::localPlayerStopAutoWalk();
+    // The own walk ends with the character's death.
+    if (health == 0) {
+        if (const TGameSessionBase* session = currentGameSession()) {
+            if (input::TPlayerMovementIntentHandler* intent = session->movementIntent())
+                intent->stopWalking();
+        }
+    }
 }
 
 void TPlayerData::updateMana(const uint32_t mana, const uint32_t maxMana)

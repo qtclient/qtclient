@@ -2,7 +2,7 @@
 #include "bossbestiary/bossbestiaryciptypes.h"
 #include "bossbestiary/bosstrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
-#include <tibia/game/gamesession.h>
+#include "container/containerciptypes.h"
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
 #include "input/gameaction.h"

@@ -11,7 +11,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 
 #include <QKeySequence>
 
@@ -57,7 +58,7 @@ bool TTeamAssemblePageController::isInParty() const
 {
     if (!m_storage)
         return false;
-    auto* creatures = creatures::TCreatureStorage::instance();
+    auto* creatures = tibia::game::currentCreatureStorage();
     const auto player = creatures ? creatures->player() : nullptr;
     return player ? player->isPartyMember() : false;
 }
@@ -159,7 +160,9 @@ void TTeamAssemblePageController::showDialogTab()
                                     &TTeamAssemblePageController::onTeamMembersChanged));
     m_connections.push_back(connect(handler, &TTeamFinderProtocolMessageHandler::ownTeamUpdateAvailable, this,
                                     &TTeamAssemblePageController::onOwnTeamUpdateAvailable));
-    const QString characterName = tibia::game::hasLocalPlayer() ? QString::fromStdString(tibia::game::localPlayerName()) : QString();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const QString characterName =
+        session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->characterNameQString() : QString();
     onTeamParametersChanged();
     onTeamMembersChanged();
     handler->requestOwnTeam();
@@ -253,9 +256,10 @@ void TTeamAssemblePageController::getPremiumClicked()
 
 uint TTeamAssemblePageController::getLeaderlevel()
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || !session->playerData())
         return 2;
-    return static_cast<uint16_t>(tibia::game::localPlayerLevel());
+    return session->playerData()->level();
 }
 
 void TTeamAssemblePageController::onTeamParametersChanged()

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
 #include "minimap/minimapgameactionprovider.h"

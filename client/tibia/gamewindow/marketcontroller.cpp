@@ -1,4 +1,6 @@
 #include "marketcontroller.h"
+#include "game/playerdata.h"
+#include "game/currentgamesession.h"
 
 #include "config/clientoptions.h"
 #include "analysers/itempricestorage.h"
@@ -26,7 +28,6 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
@@ -87,7 +88,8 @@ QString grouped(const uint64_t value)
 
 uint64_t playerGold()
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->totalMoney() : 0;
 }
 
 QString typeName(const uint16_t typeId)
@@ -370,11 +372,11 @@ TMarketController::TMarketController(config::TClientOptions* clientOptions, QQml
             uint8_t slotTier = 0;
             if (action.position().x == UINT16_MAX) {
                 if (action.position().y & 0x40) {
-                    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                    if (container::TContainerStorage* storage = tibia::game::currentContainerStorage()) {
                         if (const container::TStoredContainer* row = storage->containerAt(action.position().y & 0x3F))
                             slotTier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + action.stackPosition()).tier;
                     }
-                } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+                } else if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer()) {
                     slotTier = inventory->slotAt(action.position().y).tier;
                 }
             }
@@ -405,7 +407,7 @@ void TMarketController::connectToGameSession(const std::shared_ptr<game::IGameSe
     using market::TMarketStorage;
     using market::TMarketProtocolMessageHandler;
     m_storage = session->marketStorage().get();
-    m_proxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(), nullptr, nullptr, nullptr);
+    m_proxy.connectToStorages(session->playerData(), session->itemPriceStorage().get(), nullptr, nullptr, nullptr);
     TMarketStorage* storage = m_storage;
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketItemDetailsChanged, this, &Self::onMarketItemDetailsChanged));
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketOffersChanged, this, &Self::onMarketOffersChanged));

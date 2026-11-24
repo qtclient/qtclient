@@ -1,4 +1,6 @@
 #include "creaturetrackerwidgetcontroller.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 
 #include "bossbestiary/bosstrackerstorage.h"
 #include "game/gamesessionbase.h"
@@ -7,7 +9,6 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/game/gamesession.h>
 
 #include <QDateTime>
 #include <QJsonObject>
@@ -358,7 +359,10 @@ void TCreatureTrackerWidgetController::requestContextMenu(const uint RaceID, con
         return;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("bestiary_tracker_stop_tracking").arg(RaceName)), &TContextMenuEntryItem::triggered,
-            this, [RaceID] { tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), false); });
+            this, [RaceID] {
+                if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                    tibia::protocol::gameclient::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), false);
+            });
     menu->showCustomMenu();
 }
 

@@ -326,8 +326,6 @@ void TFriendsProtocolMessageHandler::handleFriendSystemDataMessage(const Gameser
         break;
     }
     }
-    // Product pages (IdleOT social) still listen on the notify bus.
-    tibia::game::notify("onFriendSystemData", static_cast<int>(message.data_type()));
 }
 
 }

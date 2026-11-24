@@ -1,4 +1,7 @@
 #include "characterinfomodels.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "protocol/clientmessages.h"
 #include "cyclopedia/staticcontentinformation.h"
 #include "colorhelper.h"
 
@@ -8,7 +11,6 @@
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 
-#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include <tibia/appearances/appearancetype.h>
@@ -618,17 +620,23 @@ void TCharacterInfoDialogController::updateAchievements()
 }
 
 /// CIP .
-void TCharacterInfoDialogController::resetCharacterTitle() { tibia::game::requestSetCharacterTitle(0); }
+void TCharacterInfoDialogController::resetCharacterTitle()
+{
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendFriendSystemAction(0x0E, 0);
+}
 
 void TCharacterInfoDialogController::setOrToggleCharacterTitle(const uint characterTitleId)
 {
     const auto* titles = static_cast<cip::tibia::gamewindow::TCharacterTitlesInfoQmlData*>(m_titlesInfo);
     if (!titles || characterTitleId == 0)
         return;
-    if (characterTitleId == titles->currentTitleId())
-        tibia::game::requestSetCharacterTitle(0);
-    else
-        tibia::game::requestSetCharacterTitle(static_cast<uint8_t>(characterTitleId));
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->canPerformGameAction())
+        return;
+    // The current title again clears it.
+    tibia::protocol::gameclient::sendFriendSystemAction(
+        0x0E, characterTitleId == titles->currentTitleId() ? 0 : static_cast<uint8_t>(characterTitleId));
 }
 
 /// CIP .
@@ -641,10 +649,16 @@ void TCharacterInfoDialogController::showContextMenuForCharacterTitleID(const ui
     menu->beginCustomMenu();
     if (CharacerTitleId == titles->currentTitleId()) {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_rest_title")), &TContextMenuEntryItem::triggered, this,
-                [] { tibia::game::requestSetCharacterTitle(0); });
+                [] {
+                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                        tibia::protocol::gameclient::sendFriendSystemAction(0x0E, 0);
+                });
     } else {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_set_title")), &TContextMenuEntryItem::triggered, this,
-                [CharacerTitleId] { tibia::game::requestSetCharacterTitle(static_cast<uint8_t>(CharacerTitleId)); });
+                [CharacerTitleId] {
+                    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+                        tibia::protocol::gameclient::sendFriendSystemAction(0x0E, static_cast<uint8_t>(CharacerTitleId));
+                });
     }
     menu->showCustomMenu();
 }

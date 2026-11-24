@@ -1,4 +1,6 @@
 #include "actionbuttoncontroller.h"
+#include "game/currentgamesession.h"
+#include "network/networkqualityprotocolmessagehandler.h"
 
 #include "appearances/appearanceinstance.h"
 #include "gamewindow/actionbarcontroller.h"
@@ -19,7 +21,6 @@
 #include <cmath>
 #include <limits>
 #include <vector>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -540,8 +541,9 @@ TActionButtonController* TActionButtonController::currentMultiAction() const
         adapters.emplace_back(child);
         candidates.push_back(&adapters.back());
     }
-    // Host: the ping is a qtclient static.
-    const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const qint64 ping = session ? session->latency().milliseconds : -1;
+    const qint64 latency = std::min<qint64>(ping / 2, 400);
     const input::TMultiActionPrioritySolver solver(m_cooldownStorage.get(), m_playerData.get(), m_objectInfoStorage.get(),
                                                    m_clock->nowMillis(), latency);
     const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));

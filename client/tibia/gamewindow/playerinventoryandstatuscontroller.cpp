@@ -13,7 +13,6 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include "game/currentgamesession.h"
 #include "game/playerdata.h"
@@ -80,7 +79,7 @@ constexpr auto AutoChaseOption = "autoChaseEnabled";
 
 container::TInventorySlot slotAppearance(const int slotId)
 {
-    if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance())
+    if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer())
         return inventory->slotAt(slotId);
     return {};
 }
@@ -142,7 +141,8 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(
     m_gameActions.on(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
-        if (tibia::game::isOnline() && !tibia::game::localPlayerHasReachedMain())
+        const game::TGameSessionBase* session = tibia::game::currentGameSession();
+        if (session && session->isOnline() && session->playerData() && !session->playerData()->hasReachedMain())
             Q_EMIT showCapacityWarning();
         return true;
     });
@@ -230,8 +230,9 @@ void TPlayerInventoryAndStatusController::applyPlayerTacticsAndInventorySizeFrom
     Q_EMIT inventoryMinimizedChanged();
     Q_EMIT chaseModeChanged();
     // CIP's login carries the tactics; CIP's server keeps its own until told.
-    const game::TPlayerData* player = tibia::game::currentPlayerData();
-    if (tibia::game::isOnline() && player && m_chaseEnabled != player->chaseOpponents())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session ? session->playerData().get() : nullptr;
+    if (session && session->isOnline() && player && m_chaseEnabled != player->chaseOpponents())
         publishTactics();
 }
 
@@ -310,7 +311,9 @@ void TPlayerInventoryAndStatusController::onPlayerDataChanged()
 
 void TPlayerInventoryAndStatusController::refreshSoul()
 {
-    const int soul = tibia::game::isOnline() ? tibia::game::localPlayerSoul() : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
+    const int soul = player ? player->soul() : 0;
     if (soul == m_soulpoints)
         return;
     m_soulpoints = soul;
@@ -319,13 +322,12 @@ void TPlayerInventoryAndStatusController::refreshSoul()
 
 void TPlayerInventoryAndStatusController::refreshCapacity()
 {
-    const bool online = tibia::game::isOnline();
-    const int capacity = online ? static_cast<int>(tibia::game::localPlayerFreeCapacity()) : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
+    const int capacity = player ? player->freeCapacity() : 0;
     // CIP: no capacity at all (the server's hundredths), not below one oz.
-    const bool zero = online && tibia::game::localPlayerFreeCapacityHundredths() == 0;
-    const uint32_t baseCap = tibia::game::localPlayerBaseCapacity();
-    const uint32_t totalCap = tibia::game::localPlayerTotalCapacity();
-    const bool boost = online && baseCap < totalCap;
+    const bool zero = player && player->freeCapacityHundredths() == 0;
+    const bool boost = player && uint32_t(player->baseCapacity()) < player->totalCapacity();
     if (capacity == m_capacity && zero == m_hasZeroCapacity && boost == m_hasCapacityBoost)
         return;
     m_capacity = capacity;
@@ -336,9 +338,10 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
 
 void TPlayerInventoryAndStatusController::refreshBlessings()
 {
-    const bool online = tibia::game::isOnline();
-    const uint blessings = online ? tibia::game::localPlayerBlessings() : 0;
-    const int visualState = online ? tibia::game::localPlayerBlessVisualState() : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPlayerData* player = session && session->isOnline() ? session->playerData().get() : nullptr;
+    const uint blessings = player ? player->blessingMask() : 0;
+    const int visualState = player ? player->blessVisualState() : 0;
 
     QStringList names;
     for (size_t bit = 0; bit < std::size(BlessingNames); ++bit) {
@@ -399,7 +402,8 @@ void TPlayerInventoryAndStatusController::refreshDualWielding()
 
 void TPlayerInventoryAndStatusController::refreshExpertMode()
 {
-    const bool expert = tibia::game::getExpertPvpMode();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const bool expert = session && session->expertPvpMode();
     if (expert == m_exportModeButtonEnable)
         return;
     m_exportModeButtonEnable = expert;

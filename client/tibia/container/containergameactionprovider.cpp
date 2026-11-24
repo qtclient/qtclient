@@ -5,7 +5,9 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
+#include <optional>
 
 #include <algorithm>
 #include <cstdint>

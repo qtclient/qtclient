@@ -1,6 +1,7 @@
 #include "worldmappicker.h"
 
 #include "creatures/creaturestorage.h"
+#include "game/currentgamesession.h"
 #include "renderer/rendervolumeprovider.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/worldmapstorage.h"
@@ -53,7 +54,7 @@ std::vector<Position> TWorldMapPicker::fieldCoordinatesAt(const qmlcomponents::T
 
 TWorldMapPickedField TWorldMapPicker::firstPickableField(const std::vector<Position>& coordinates)
 {
-    TWorldMapStorage* storage = TWorldMapStorage::instance();
+    TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
     if (!storage)
         return {};
     for (const Position& position : coordinates) {
@@ -108,8 +109,8 @@ uint32_t TWorldMapPicker::creatureAt(const qmlcomponents::TWorldMapRenderProvide
     using Provider = qmlcomponents::TWorldMapRenderProvider;
     if (!provider.frame().valid)
         return 0;
-    TWorldMapStorage* storage = TWorldMapStorage::instance();
-    tibia::creatures::TCreatureStorage* creatureStorage = tibia::creatures::TCreatureStorage::instance();
+    TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
+    tibia::creatures::TCreatureStorage* creatureStorage = tibia::game::currentCreatureStorage();
     if (!storage || !creatureStorage)
         return 0;
     // The visible area of the player's floor; the border drawn around it is not searched.

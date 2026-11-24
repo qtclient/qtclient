@@ -1,4 +1,6 @@
 #include "editminimapmarkerdialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include "game/igamesession.h"
 #include "input/gameaction.h"
@@ -6,7 +8,6 @@
 
 #include <QQuickItem>
 
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -46,9 +47,10 @@ void TEditMinimapMarkerDialogController::showForMarkerAt(const Position& positio
 
 void TEditMinimapMarkerDialogController::showForCurrentPosition()
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer())
         return;
-    showForMarkerAt(tibia::game::localPlayerPosition());
+    showForMarkerAt(session->localPlayerPosition());
 }
 
 void TEditMinimapMarkerDialogController::handleGameAction(const input::IGameAction& action)

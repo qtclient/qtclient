@@ -1,7 +1,9 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
+#include <QStringList>
+
+#include <functional>
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"

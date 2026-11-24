@@ -1,4 +1,6 @@
 #include "preydialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 #include "colorhelper.h"
 
 #include <utility>
@@ -18,7 +20,6 @@
 #include <QLocale>
 
 #include <algorithm>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -42,7 +43,8 @@ QString english(const qint64 value) { return QLocale(QLocale::English).toString(
 
 uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() && session->playerData() ? session->playerData()->resourceBalance(type) : 0;
 }
 
 uint64_t totalGold() { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
@@ -685,7 +687,8 @@ void TPreyDialogController::onBalanceChanged()
 void TPreyDialogController::showDialog()
 {
     closeDialog();
-    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerHasReachedMain()) {
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->hasLocalPlayer() || !session->playerData() || !session->playerData()->hasReachedMain()) {
         m_notOnMain->setButtons(okButton());
         m_notOnMain->showMessage(qtTrId("prey_need_to_reach_main_caption"), qtTrId("prey_need_to_reach_main_text"));
         return;

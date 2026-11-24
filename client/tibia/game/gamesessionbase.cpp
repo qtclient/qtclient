@@ -1,10 +1,17 @@
 #include "game/gamesessionbase.h"
+#include "appearances/appearancetype.h"
+#include "assets/things.h"
+#include "input/playermovementintenthandler.h"
+#include "network/gameserverconnection.h"
+#include "protocol/clientmessages.h"
+#include "protocol/extendedopcode.h"
+#include "tibia/runtime/host.h"
+#include "worldmap/worldmapstorage.h"
 #include "appearances/appearanceinstance.h"
 #include "clockservice.h"
 #include "iclockservice.h"
 #include "game/passiveabilityinfostorage.h"
 
-#include "game/gamesession.h"
 #include "game/gamesessionmetainfo.h"
 #include "game/tgamenotify.h"
 #include "protocol/protocolciptypes.h"
@@ -14,7 +21,7 @@
 
 #include <protocol.pb.h>
 #include <stdexcept>
-#include <tibia/game/gamesession.h>
+#include <utility>
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
@@ -56,7 +63,6 @@
 #include "creatures/creaturesgameactionhandler.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
-#include "game/gamesessionstate.h"
 #include "game/playerdata.h"
 #include "shared/tibiaclipboardhelper.h"
 #include "shared/tibiaurltools.h"
@@ -141,7 +147,6 @@
 #include "input/crosshairgameactionhandlers.h"
 #include "input/genericgameactionhandler.h"
 
-#include <tibia/game/gamesession.h>
 #include <tibia/game/gamenotify.h>
 #include "game/gameservergamesession.h"
 
@@ -367,7 +372,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
         connect(game, &TGameProtocolMessageHandler::loginSuccess, this, &IGameSession::gameLoginSuccessful);
         connect(game, &TGameProtocolMessageHandler::deadMessage, this, &IGameSession::deadMessage);
         // Host: a death stops the own walk and freezes the scene (session state).
-        connect(game, &TGameProtocolMessageHandler::deadMessage, this, [] { TGameserverGameSession::wireProcessDeath(); });
+        connect(game, &TGameProtocolMessageHandler::deadMessage, this, [this] { processDeath(); });
         connect(game, &TGameProtocolMessageHandler::sessionEndInformation, this, &IGameSession::sessionEndInformation);
         connect(game, &TGameProtocolMessageHandler::settingHintsFromServer, this,
                 &TGameSessionBase::onSettingHintsFromServerChanged);
@@ -787,6 +792,11 @@ void TGameSessionBase::onWorldTypeReceived(const cip::tibia::qmlcomponents::enum
 
 TGameSessionBase::~TGameSessionBase()
 {
+    if (m_checkConnectionEvent) {
+        m_checkConnectionEvent->cancel();
+        m_checkConnectionEvent = nullptr;
+    }
+    bindGameConnection(nullptr);
     for (const QMetaObject::Connection& connection : m_queueConnections)
         disconnect(connection);
     m_queueConnections.clear();
@@ -917,7 +927,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         const auto forward = [this, player]<typename Message>(void (H::*signal)(const Message&),
                                                               void (Queue::*send)(const Message&)) {
             m_queueConnections.push_back(connect(player, signal, this, [this, send](const Message& message) {
-                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
+                if (m_protocolMessageQueue && canPerformGameAction())
                     (m_protocolMessageQueue.get()->*send)(message);
             }));
         };
@@ -942,16 +952,15 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         // Host: the login's session state (CipSoft's other handlers of the message):
         // the own creature's id, the store, the expert PvP mode and exiva options.
         // Linked first, so it is set when the session reports the login.
-        link(&Queue::receivedLoginSuccessMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message) {
-            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-                storage->setPlayerID(message.player_id());
-            tibia::game::setExpertPvpMode(message.expert_pvp() != 0);
+        link(&Queue::receivedLoginSuccessMessage, this, [this](const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message) {
+            if (m_creatureStorage)
+                m_creatureStorage->setPlayerID(message.player_id());
+            setExpertPvpMode(message.expert_pvp() != 0);
             tibia::game::notify("onStoreInit", message.has_store_url() ? message.store_url() : std::string(),
                                 static_cast<uint16_t>(message.coins_packet_size()));
             // CipSoft's LoginSuccess carries the world type here, not an exiva flag; the
             // server checks the world's exiva restriction itself.
-            tibia::game::setCanExivaOptions(true);
-            tibia::game::setCanReportBugs(false);
+            setCanExivaOptions(true);
         });
         link(&Queue::receivedLoginSuccessMessage, game, &TGameProtocolMessageHandler::handleLoginSuccessMessage);
         link(&Queue::receivedSessionEndInformationMessage, game, &TGameProtocolMessageHandler::handleSessionEndInformationMessage);
@@ -967,7 +976,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     }
 
     // Host: the classic attack target follows the server's target.
-    link(&Queue::receivedUpdateTargetMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message) {
+    link(&Queue::receivedUpdateTargetMessage, this, [this](const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message) {
         processUpdateTarget(message.sequence(), message.target());
     });
 
@@ -1121,12 +1130,13 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedResourceBalanceMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage);
     // Host: the remaining balances (prey, coins, ...) go to the player's
     // resource table the classic widgets read.
-    link(&Queue::receivedResourceBalanceMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message) {
+    link(&Queue::receivedResourceBalanceMessage, this, [this](const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message) {
         if (message.resource_type() >= tibia::client::RESOURCE_CHARM && message.resource_type() <= tibia::client::RESOURCE_MAX_MINOR_CHARM)
             return;
-        tibia::game::localPlayerSetResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
-                                                   message.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(message.small_value()))
-                                                                             : message.value());
+        if (m_playerData)
+            m_playerData->setResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
+                                             message.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(message.small_value()))
+                                                                       : message.value());
     });
     link(&Queue::receivedDeadMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleDeadMessage);
     link(&Queue::receivedCyclopediaStaticHouseDataMessage, cyclopediaHandler,
@@ -1318,6 +1328,384 @@ void TGameSessionBase::releaseStorages()
     m_playerSkillStats.reset();
     m_playerData.reset();
     m_creatureMovementSpeedCalculator.reset();
+}
+
+// Host: the character's login and world lifecycle (qtclient's classic packet
+// path). Moved here, per session, from the former process-wide session state.
+
+namespace {
+
+namespace gameclient = ::tibia::protocol::gameclient;
+
+/// The product extended opcodes go out on the live classic connection.
+void bindExtendedOpcodeSender(const bool bound)
+{
+    if (!bound) {
+        tibia::protocol::ExtendedOpcodeReader::instance().setSender(nullptr);
+        return;
+    }
+    tibia::protocol::ExtendedOpcodeReader::instance().setSender([](const uint8_t opcode, const std::string& buffer) {
+        const auto* connection = tibia::network::TGameserverSessionNetwork::live();
+        if (!connection || !connection->isConnected())
+            return false;
+        gameclient::sendExtendedOpcode(opcode, buffer);
+        return true;
+    });
+}
+
+
+} // namespace
+
+bool TGameSessionBase::canPerformGameAction() const
+{
+    // Online, with a living character and a connected game connection.
+    return m_online && m_playerPresent && !m_dead && m_gameConnection && m_gameConnection->isConnected();
+}
+
+QString TGameSessionBase::characterName() const
+{
+    return QString::fromStdString(m_characterName);
+}
+
+QString TGameSessionBase::worldName() const
+{
+    return QString::fromStdString(m_worldName);
+}
+
+Position TGameSessionBase::localPlayerPosition() const
+{
+    if (!m_playerPresent)
+        return {};
+    if (m_creatureStorage) {
+        if (const std::shared_ptr<creatures::TCreature> player = m_creatureStorage->player(); player && player->position().isValid())
+            return player->position();
+    }
+    return m_worldMapStorage ? m_worldMapStorage->localPlayerPosition() : Position{};
+}
+
+void TGameSessionBase::setAttackingCreatureId(const uint32_t creatureId)
+{
+    if (creatureId == m_attackingCreatureId)
+        return;
+    const uint32_t oldId = std::exchange(m_attackingCreatureId, creatureId);
+    tibia::game::notify("onAttackingCreatureChange", creatureId, oldId);
+}
+
+void TGameSessionBase::setFollowingCreatureId(const uint32_t creatureId)
+{
+    if (creatureId == m_followingCreatureId)
+        return;
+    const uint32_t oldId = std::exchange(m_followingCreatureId, creatureId);
+    tibia::game::notify("onFollowingCreatureChange", creatureId, oldId);
+}
+
+void TGameSessionBase::attack(const uint32_t creatureId)
+{
+    if (!canPerformGameAction())
+        return;
+    if (creatureId && m_creatureStorage && creatureId == m_creatureStorage->playerID())
+        return;
+    // Attacking the target again stops (CIP's providers pick stop then).
+    uint32_t id = creatureId;
+    if (id && id == m_attackingCreatureId)
+        id = 0;
+    // CIP: stopping sends only while there is a target; attacking leaves the
+    // follow target and any walk alone. The sequence is the creature id (0 to stop).
+    if (!id && !m_attackingCreatureId)
+        return;
+    setAttackingCreatureId(id);
+    // The creature storage holds the targets and their frames; a new attack
+    // target drops the follow target.
+    if (m_creatureStorage) {
+        m_creatureStorage->setAttackID(id);
+        setFollowingCreatureId(m_creatureStorage->followID());
+    }
+    m_attackSequence = id;
+    gameclient::sendAttack(id, m_attackSequence);
+    // Attack requests only; setAttackingCreatureId also mirrors server-driven targets.
+    tibia::game::notify("onAttack", id);
+}
+
+void TGameSessionBase::follow(const uint32_t creatureId)
+{
+    if (!canPerformGameAction())
+        return;
+    if (creatureId && m_creatureStorage && creatureId == m_creatureStorage->playerID())
+        return;
+    // Following the target again stops; same rules as attack.
+    uint32_t id = creatureId;
+    if (id && id == m_followingCreatureId)
+        id = 0;
+    if (!id && !m_followingCreatureId)
+        return;
+    setFollowingCreatureId(id);
+    if (m_creatureStorage) {
+        m_creatureStorage->setFollowID(id);
+        setAttackingCreatureId(m_creatureStorage->attackID());
+    }
+    m_attackSequence = id;
+    gameclient::sendFollow(id, m_attackSequence);
+}
+
+bool TGameSessionBase::isAttacking() const
+{
+    return m_attackingCreatureId && m_creatureStorage && m_creatureStorage->creatureAt(m_attackingCreatureId);
+}
+
+bool TGameSessionBase::isConnectionOk() const
+{
+    return m_gameConnection && m_gameConnection->millisSinceRead() < 5000;
+}
+
+Position TGameSessionBase::takeNextTalkAim()
+{
+    return std::exchange(m_nextTalkAim, Position(static_cast<int32_t>(UINT16_MAX), static_cast<int32_t>(UINT16_MAX), UINT8_MAX));
+}
+
+uint8_t TGameSessionBase::takeNextTalkAimMode()
+{
+    return std::exchange(m_nextTalkAimMode, 0);
+}
+
+void TGameSessionBase::processInventoryChange(const uint8_t slot, const container::TInventorySlot& item)
+{
+    container::TInventorySlot row = item;
+    if (!row.empty() && row.durationSeconds > 0) {
+        TAppearanceType* type = row.appearance ? row.appearance->thingType()
+                                               : appearances::TAppearancesManager::instance().findAppearanceType(ThingCategoryItem, row.typeId);
+        // expirestop-only items are paused server-side when equipped in their cloth slot.
+        if (type && type->getClothSlot() == static_cast<int>(slot) && type->hasExpire()) {
+            row.decaying = true;
+            row.durationEndMs = shared::TClockService::frameMillis() + static_cast<int64_t>(row.durationSeconds) * 1000;
+        }
+    }
+    // The inventory container holds the slots.
+    if (const std::shared_ptr<container::TInventoryContainer> inventory = inventoryContainer()) {
+        if (!row.empty())
+            inventory->setSlot(slot, row);
+        else
+            inventory->clearSlot(slot);
+    }
+    tibia::game::notify("onInventoryChange", static_cast<tibia::client::InventorySlot>(slot));
+}
+
+void TGameSessionBase::processUpdateTarget(const uint32_t sequence, const uint32_t targetId)
+{
+    // CIP UpdateTarget: the server's current attack target. It only updates the
+    // local target; answering with an Attack message would echo the server.
+    if (sequence != 0 && sequence != m_attackSequence)
+        return;
+    const bool cancelled = targetId == 0 && isAttacking();
+    setAttackingCreatureId(targetId);
+    if (cancelled)
+        tibia::game::notify("onAttackCancel");
+}
+
+void TGameSessionBase::processWorldEntered()
+{
+    tibia::game::notify("onEnterGame");
+    if (m_gameConnection && !m_gameConnection->gameInitialized()) {
+        processGameStart();
+        m_gameConnection->setGameInitialized(true);
+    }
+}
+
+void TGameSessionBase::processDeath()
+{
+    m_dead = true;
+    if (m_playerPresent && m_creatureStorage) {
+        if (const std::shared_ptr<creatures::TCreature> player = m_creatureStorage->player(); player && player->isWalking())
+            player->stopMovement();
+    }
+    setSceneFrozen(true);
+}
+
+void TGameSessionBase::resetGameStates()
+{
+    m_online = false;
+    m_dead = false;
+    m_sceneFrozen = false;
+    m_attackSequence = 0;
+    m_bugReportState = -1;
+    m_canExivaOptions = false;
+    m_followingCreatureId = 0;
+    m_attackingCreatureId = 0;
+    if (m_creatureStorage) {
+        m_creatureStorage->setAttackID(0);
+        m_creatureStorage->setFollowID(0);
+    }
+    if (input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->reset();
+    m_playerPresent = false;
+    if (m_objectCountStorage)
+        m_objectCountStorage->clear();
+    if (m_checkConnectionEvent) {
+        m_checkConnectionEvent->cancel();
+        m_checkConnectionEvent = nullptr;
+    }
+    if (m_containerStorage) {
+        m_containerStorage->clear();
+        if (const std::shared_ptr<container::TInventoryContainer> inventory = m_containerStorage->inventoryContainer())
+            inventory->clear();
+    }
+    if (m_worldMapStorage)
+        m_worldMapStorage->resetAwareRange();
+}
+
+void TGameSessionBase::beginPlayerSession(const std::string_view characterName)
+{
+    m_playerPresent = true;
+    // The login names the own creature.
+    if (m_creatureStorage)
+        m_creatureStorage->setPlayerID(0);
+    if (m_playerData)
+        m_playerData->setCharacterName(characterName);
+    if (m_worldMapStorage)
+        m_worldMapStorage->resetLocalPlayer();
+    m_characterName = characterName;
+}
+
+void TGameSessionBase::bindGameConnection(std::shared_ptr<network::TGameserverSessionNetwork> connection)
+{
+    if (m_gameConnection)
+        m_gameConnection->setFailureHandler({});
+    bindExtendedOpcodeSender(false);
+    m_gameConnection = std::move(connection);
+    if (!m_gameConnection)
+        return;
+    // The connection's failure ends the game (it reports it once).
+    m_gameConnection->setFailureHandler([this] { processDisconnect(); });
+    bindExtendedOpcodeSender(true);
+}
+
+void TGameSessionBase::loginWorld(const std::string_view worldName, const std::string_view characterName,
+                                  std::shared_ptr<network::TGameserverSessionNetwork> connection)
+{
+    if (m_gameConnection || m_online)
+        throw std::runtime_error("Unable to login into a world while already online or logging.");
+    resetGameStates();
+    beginPlayerSession(characterName);
+    m_worldName = worldName;
+    bindGameConnection(std::move(connection));
+}
+
+void TGameSessionBase::startDecodedReplay()
+{
+    if (m_gameConnection || m_online)
+        throw std::runtime_error("Unable to login into a world while already online or logging.");
+    resetGameStates();
+    beginPlayerSession("Player");
+    m_worldName = "Record";
+    // Retired (not deleted) on release: the release can run inside the
+    // network's own failure callback.
+    bindGameConnection(network::TGameserverSessionNetwork::create());
+    m_gameConnection->beginReplay();
+}
+
+void TGameSessionBase::deliverReplayPacket(const uint8_t* data, const size_t size)
+{
+    if (!m_gameConnection || !data || size == 0 || size > 0xffff)
+        return;
+    m_gameConnection->deliverPacket(data, size);
+}
+
+void TGameSessionBase::finishDecodedReplay()
+{
+    if (m_gameConnection)
+        m_gameConnection->fail({}, true);
+}
+
+void TGameSessionBase::processGameStart()
+{
+    m_online = true;
+    tibia::host::app().resetTargetFps();
+    m_checkConnectionEvent = tibia::schedule::every([this] {
+        if (!isConnectionOk() && !m_connectionFailWarned) {
+            TGameNotify::instance()->emitConnectionFailing(true);
+            m_connectionFailWarned = true;
+        } else if (isConnectionOk() && m_connectionFailWarned) {
+            TGameNotify::instance()->emitConnectionFailing(false);
+            m_connectionFailWarned = false;
+        }
+    }, 1000);
+    tibia::game::notify("onGameStart");
+    TGameNotify::instance()->emitGameStarted();
+    if (m_switchingCharacter) {
+        m_switchingCharacter = false;
+        tibia::game::notify("onCharacterSwitched", m_characterName);
+        TGameNotify::instance()->emitCharacterSwitched(QString::fromStdString(m_characterName));
+    }
+}
+
+void TGameSessionBase::processCharacterSwitch(const std::string_view characterName)
+{
+    // CipSoft session end: modules reset on onGameEnd, but the socket stays open and
+    // logout-only UI (character list, background) checks isSwitchingCharacter.
+    m_switchingCharacter = true;
+    endSession();
+    resetGameStates();
+    if (m_worldMapStorage)
+        m_worldMapStorage->cleanDynamicThings();
+    beginPlayerSession(characterName);
+}
+
+void TGameSessionBase::endSession()
+{
+    m_online = false;
+    tibia::game::notify("onGameEnd");
+    TGameNotify::instance()->emitGameEnded();
+    if (m_connectionFailWarned) {
+        TGameNotify::instance()->emitConnectionFailing(false);
+        m_connectionFailWarned = false;
+    }
+}
+
+void TGameSessionBase::processGameEnd()
+{
+    // FPS fixed at 60 for when UI is rendering alone.
+    tibia::host::app().setTargetFps(60u);
+    endSession();
+    resetGameStates();
+    m_worldName.clear();
+    m_characterName.clear();
+    if (m_worldMapStorage)
+        m_worldMapStorage->cleanDynamicThings();
+}
+
+void TGameSessionBase::processDisconnect()
+{
+    if (m_online || m_switchingCharacter) {
+        m_switchingCharacter = false;
+        processGameEnd();
+    }
+    if (const std::shared_ptr<network::TGameserverSessionNetwork> connection = m_gameConnection) {
+        bindGameConnection(nullptr);
+        connection->disconnect();
+    }
+}
+
+void TGameSessionBase::cancelLogin()
+{
+    // Logs out even before the game started, so the character does not stay logged in.
+    if (m_gameConnection)
+        gameclient::sendLogout();
+    processDisconnect();
+}
+
+void TGameSessionBase::forceLogout()
+{
+    if (!m_online)
+        return;
+    gameclient::sendLogout();
+    processDisconnect();
+}
+
+void TGameSessionBase::disconnectGame()
+{
+    if (m_online)
+        forceLogout();
+    else
+        cancelLogin();
 }
 
 }

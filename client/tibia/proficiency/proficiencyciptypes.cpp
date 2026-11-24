@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 #include <tibia/assets/things.h>
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
 #include <tibia/appearances/appearancetype.h>
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencystorage.h"

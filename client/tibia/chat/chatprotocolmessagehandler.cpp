@@ -17,7 +17,8 @@
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 
-#include <tibia/game/gamesession.h>
+#include "container/containerciptypes.h"
+#include "game/currentgamesession.h"
 
 #include <memory>
 #include <stdexcept>

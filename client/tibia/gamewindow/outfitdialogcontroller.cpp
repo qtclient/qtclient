@@ -24,7 +24,6 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <QStandardPaths>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

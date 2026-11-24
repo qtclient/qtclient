@@ -9,7 +9,6 @@
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/worldmapstorage.h"
 #include <tibia/creatures/movementtweens.h>
-#include <tibia/game/gamesession.h>
 
 #include <utility>
 

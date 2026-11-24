@@ -9,7 +9,9 @@
 
 #include <client/outfit.h>
 #include <QColor>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include <tibia/game/gamenotify.h>
 #include <tibia/assets/things.h>
 
 #include <protocol.pb.h>
@@ -120,7 +122,7 @@ Outfit outfitFromProtocol(const protobuf::protocol::Outfit& look, const protobuf
 
 void syncFieldStackFor(const uint32_t creatureId)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    TCreatureStorage* storage = game::currentCreatureStorage();
     const auto creature = storage ? storage->creatureAt(creatureId) : nullptr;
     if (!creature || !creature->position().isValid())
         return;
@@ -134,8 +136,14 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
     TCreature& target = *creature;
     if (c.has_name())
         target.setName(QString::fromStdString(c.name()));
-    if (c.has_health_percent())
-        target.setHealthPercent(static_cast<uint8_t>(c.health_percent()));
+    if (c.has_health_percent()) {
+        const auto healthPercent = static_cast<uint8_t>(c.health_percent());
+        const bool healthChanged = target.healthPercent() != healthPercent;
+        target.setHealthPercent(healthPercent);
+        // Pack ABI field: (creature id, health percent).
+        if (healthChanged)
+            tibia::game::notify("onHealthPercentChange", static_cast<uint32_t>(target.creatureId()), static_cast<int>(healthPercent));
+    }
     if (c.has_mana_percent())
         target.setManaPercent(static_cast<uint8_t>(c.mana_percent()));
     if (c.has_direction())
@@ -218,14 +226,15 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
 
 uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
 {
-    TCreatureStorage* storage = TCreatureStorage::instance();
+    game::TGameSessionBase* session = game::currentGameSession();
+    TCreatureStorage* storage = session ? session->creatureStorage().get() : nullptr;
     if (!storage)
         return 0;
     const uint32_t id = c.id();
     // Host: before the login named it (a replay), the session takes its own id
     // from the own character's creature.
-    if (game::hasLocalPlayer() && storage->playerID() == 0 && c.has_name()
-        && c.type() == Proto::CreatureTypePlayer && c.name() == game::localPlayerName())
+    if (session->hasLocalPlayer() && storage->playerID() == 0 && c.has_name()
+        && c.type() == Proto::CreatureTypePlayer && session->playerData() && c.name() == session->playerData()->characterName())
         storage->setPlayerID(id);
 
     // A new creature replaces the one the message names; a creature naming
@@ -240,7 +249,8 @@ uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
             return 0;
         }
     } else {
-        worldmap::TWorldMapStorage::ensureStorage()->removeCreatureFromFields(removeId);
+        if (worldmap::TWorldMapStorage* map = session->worldMapStorage().get())
+            map->removeCreatureFromFields(removeId);
         storage->remove(removeId);
         creature = storage->createCreature(id);
     }
@@ -256,7 +266,7 @@ uint32_t applyProtocolCreature(const protobuf::protocol::CreatureData& c)
 
     // Host: the session's character name follows its creature.
     if (created && creature->isLocalPlayer() && c.has_name()) {
-        if (game::TPlayerData* data = game::TPlayerData::liveInstance())
+        if (game::TPlayerData* data = session->playerData().get())
             data->setCharacterName(c.name());
     }
     return id;

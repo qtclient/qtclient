@@ -28,7 +28,6 @@
 #include <tibia/assets/things.h>
 #include <QCoreApplication>
 #include <QKeyEvent>
-#include <tibia/game/gamesession.h>
 
 #include <algorithm>
 #include <map>
@@ -54,11 +53,11 @@ std::shared_ptr<const input::IGameActionContext> objectContextWithTier(const inp
         return object;
     uint8_t tier = 0;
     if (position.y & 0x40) {
-        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+        if (container::TContainerStorage* storage = tibia::game::currentContainerStorage()) {
             if (const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F))
                 tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + Context.stackPosition()).tier;
         }
-    } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+    } else if (container::TInventoryContainer* inventory = tibia::game::currentInventoryContainer()) {
         tier = inventory->slotAt(position.y).tier;
     }
     if (tier == 0)
@@ -410,7 +409,8 @@ void TSpellListDataModelSortFilterProxy::followPlayerData(std::shared_ptr<game::
 
 void TSpellListDataModelSortFilterProxy::onPlayerDataChanged()
 {
-    const game::TPlayerData* player = tibia::game::isOnline() ? m_playerData.get() : nullptr;
+    const game::TGameSessionBase* session = game::currentGameSession();
+    const game::TPlayerData* player = session && session->isOnline() ? m_playerData.get() : nullptr;
     if (!player) {
         m_knownSpells.clear();
         m_playerVocation = 0;

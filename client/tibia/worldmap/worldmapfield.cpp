@@ -21,8 +21,7 @@
 
 #include <algorithm>
 #include <tibia/schedule/schedule.h>
-#include <tibia/schedule/schedule.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
 
 namespace tibia::worldmap {
 
@@ -71,7 +70,7 @@ void TWorldMapField::recalculateThingFlag()
     m_elevation = 0;
     for (const auto& entry : m_stack)
         setStackEntryFlag(entry);
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+    if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
         for (const uint32_t walkingId : m_walkingCreatureIds) {
             if (walkingId == 0)
                 continue;
@@ -105,7 +104,7 @@ void TWorldMapField::syncCreatureStackAppearance(const uint32_t creatureId)
 {
     if (creatureId == 0)
         return;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
     if (!storage)
         return;
     const auto row = storage->creatureAt(creatureId);
@@ -220,7 +219,7 @@ void TWorldMapField::addWalkingCreature(const uint32_t creatureId)
     if (std::ranges::find(m_walkingCreatureIds, creatureId) != m_walkingCreatureIds.end())
         return;
     m_walkingCreatureIds.push_back(creatureId);
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+    if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
         if (const auto row = storage->creatureAt(creatureId)) {
             TAppearanceType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
             applyCreatureStackFlags(*row, outfitType);
@@ -240,12 +239,15 @@ void TWorldMapField::removeWalkingCreature(const uint32_t creatureId)
 
 const std::vector<appearances::TAppearanceInstancePtr>& TWorldMapField::effectAppearances() const
 {
-    return effects::TEffectStorage::instance().effectsAt(getPosition());
+    static const std::vector<appearances::TAppearanceInstancePtr> none;
+    const effects::TEffectStorage* effectStorage = tibia::game::currentEffectStorage();
+    return effectStorage ? effectStorage->effectsAt(getPosition()) : none;
 }
 
 bool TWorldMapField::hasEffect() const
 {
-    return effects::TEffectStorage::instance().hasEffectsAt(getPosition());
+    const effects::TEffectStorage* effectStorage = tibia::game::currentEffectStorage();
+    return effectStorage && effectStorage->hasEffectsAt(getPosition());
 }
 
 void TWorldMapField::effectsChanged()
@@ -530,7 +532,7 @@ bool TWorldMapField::blocksMovement() const
 {
     // An unpassable object blocks, and so does an unpassable creature other
     // than the local player.
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
     for (const auto& entry : m_stack) {
         if (const TAppearanceType* type = entryThingType(entry); type && type->isNotWalkable())
             return true;
@@ -667,7 +669,7 @@ uint16_t TFieldObject::clientId() const
     if (appearance)
         return appearance->id();
     if (creatureId) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
             if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId))
                 if (row->outfitAppearance())
                     return row->outfitAppearance()->id();
@@ -822,7 +824,7 @@ bool TWorldMapField::isWalkable(const bool ignoreCreatures) const
         return false;
 
     if (!ignoreCreatures && hasCreatures()) {
-        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+        tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
         for (const auto& entry : m_stack) {
             if (entry->creatureId() == 0)
                 continue;
@@ -844,7 +846,7 @@ int TWorldMapField::walkState() const
     // unsure when it is a player. Otherwise the field is free once a ground
     // item was seen.
     bool ground = false;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage();
     for (const auto& entry : m_stack) {
         if (entry->creatureId() != 0) {
             const std::shared_ptr<tibia::creatures::TCreature> row = storage ? storage->creatureAt(entry->creatureId()) : nullptr;
@@ -880,7 +882,8 @@ bool TWorldMapField::isCompletelyCovered(const uint8_t firstFloor, const bool re
     if ((m_isCompletelyCovered & idChecked) == 0) {
         m_isCompletelyCovered |= idChecked;
         bool isLoading = false;
-        if (TWorldMapStorage::ensureStorage()->isCompletelyCovered(getPosition(), isLoading, firstFloor)) {
+        TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
+        if (storage && storage->isCompletelyCovered(getPosition(), isLoading, firstFloor)) {
             m_isCompletelyCovered |= idState;
             m_isCovered |= idChecked; // Set covered is Checked
             m_isCovered |= idState;
@@ -908,7 +911,8 @@ bool TWorldMapField::isCovered(const int8_t firstFloor)
     if ((m_isCovered & idChecked) == 0) {
         m_isCovered |= idChecked;
         bool isLoading = false;
-        if (TWorldMapStorage::ensureStorage()->isCovered(getPosition(), isLoading, static_cast<uint8_t>(firstFloor)))
+        TWorldMapStorage* storage = tibia::game::currentWorldMapStorage();
+        if (storage && storage->isCovered(getPosition(), isLoading, static_cast<uint8_t>(firstFloor)))
             m_isCovered |= idState;
 
         if (isLoading) {
@@ -1060,7 +1064,7 @@ void TWorldMapField::applyCreatureStackFlags(const tibia::creatures::TCreature& 
 void TWorldMapField::setStackEntryFlag(const appearances::TAppearanceInstancePtr& entry)
 {
     if (entry->creatureId() != 0) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::game::currentCreatureStorage()) {
             if (const auto row = storage->creatureAt(entry->creatureId())) {
                 // The entry is the creature's placeholder: the flags come from its outfit.
                 TAppearanceType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;

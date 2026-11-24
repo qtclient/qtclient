@@ -1,4 +1,7 @@
 #include "fpslatencyindicatorcontroller.h"
+#include "game/currentgamesession.h"
+#include "network/networkqualityprotocolmessagehandler.h"
+#include "game/gameservergamesession.h"
 
 #include <QQuickItem>
 
@@ -10,7 +13,6 @@
 
 
 #include <QQuickWindow>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -110,7 +112,10 @@ void TFPSLatencyIndicatorController::tick()
     // The game client's frame values; the rate is the ring-derived double.
     (void)m_frames.exchange(0);
     const double fps = effectiveFpsFromRing(m_frameDurations);
-    const int ping = tibia::game::isOnline() ? tibia::game::getPing() : -1;
+    // The live game server session's round trip; -1 without one (a replay
+    // measures nothing).
+    const auto* session = dynamic_cast<const game::TGameserverGameSession*>(tibia::game::currentGameSession());
+    const int ping = session && session->isOnline() ? int(session->latency().milliseconds) : -1;
     const bool optimizedConnectionStability =
         m_pClientOptions && m_pClientOptions->boolOption(config::EClientOption::connectionStabilityOptimizationEnabled);
     update(fps, ping, ping >= 0, optimizedConnectionStability, static_cast<int>(fps + 0.5));

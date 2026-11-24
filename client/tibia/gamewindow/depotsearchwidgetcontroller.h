@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/appearanceinstancelistmodel.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"

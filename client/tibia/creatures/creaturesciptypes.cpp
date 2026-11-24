@@ -5,7 +5,8 @@
 #include "game/gameciptypes.h"
 #include "input/gameactionhandlers.h"
 #include "protocol/clientmessages.h"
-#include <tibia/game/gamesession_forward.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 #include <client/staticdata.h>
 
 #include "appearances/appearanceinstance.h"
@@ -18,7 +19,6 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/assets/things.h>
 
-#include <tibia/game/gamesession.h>
 #include <tibia/worldmap/worldmapfield.h>
 #include <tibia/worldmap/worldmapprotocolmessagehandler.h>
 #include <tibia/worldmap/worldmapstorage.h>
@@ -135,7 +135,7 @@ void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creature
         if (!m_showAttackAnimation)
             break;
         // The swing points from the player towards the attacked creature.
-        const auto player = storage->creatureAt(tibia::game::localPlayerId());
+        const auto player = storage->player();
         const uint16_t effectId = attackAnimationEffect(value);
         if (!player || !effectId || !tibia::appearances::TAppearancesManager::instance().isValidDatId(effectId, ThingCategoryEffect))
             break;
@@ -144,7 +144,8 @@ void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creature
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
         const auto effect = appearances::TAppearanceInstanceFactory::installed()->createDirectionalFieldEffect(
             effectId, at, direction, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
-        tibia::worldmap::TWorldMapStorage::ensureStorage()->addEffectAppearance(effect, at);
+        if (m_worldMapStorage)
+            m_worldMapStorage->addEffectAppearance(effect, at);
         break;
     }
     default:
@@ -167,7 +168,7 @@ void TCreatureProtocolMessageHandler::applyUpdateTarget(const uint32_t sequence,
 
 void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const GameserverMessageMoveCreature& message)
 {
-    if (tibia::game::isSceneFrozen())
+    if (const tibia::game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->isSceneFrozen())
         return;
     // A creature moves by its id, or by the stack position it held on the old field.
     const bool byId = message.has_creature_id();
@@ -195,8 +196,9 @@ void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const Gameserver
     if (!creatureId || !message.has_to_pos())
         return;
     const Position newPos = positionFromPb(message.to_pos());
-    tibia::worldmap::TWorldMapStorage* const mapStorage =
-        m_worldMapStorage ? m_worldMapStorage.get() : tibia::worldmap::TWorldMapStorage::ensureStorage();
+    tibia::worldmap::TWorldMapStorage* const mapStorage = m_worldMapStorage.get();
+    if (!mapStorage)
+        return;
     (void)mapStorage->applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
 }
 
@@ -231,7 +233,12 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
     // Product server party extensions.
     case 16:
         updateCreature(m_creatureStorage.get(), id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
+            const auto healthPercent = static_cast<uint8_t>(message.health_percent());
+            if (creature->healthPercent() == healthPercent)
+                return;
+            creature->setHealthPercent(healthPercent);
+            // Pack ABI field: (creature id, health percent).
+            tibia::game::notify("onHealthPercentChange", static_cast<uint32_t>(id), static_cast<int>(healthPercent));
         });
         break;
     case 17:

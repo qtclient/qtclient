@@ -6,7 +6,6 @@ namespace {
 
 struct RuntimeGameConfigState {
     uint8_t spriteSize{ 32 };
-    uint16_t lastSupportedVersion{ 740 };
     std::string typingIcon{ "/images/game/console/typing" };
 
     int mapViewPortWidth{ 8 };
@@ -65,8 +64,6 @@ void initRuntimeGameConfig()
 void terminateRuntimeGameConfig() {}
 
 uint8_t spriteSize() { return state().spriteSize; }
-uint16_t lastSupportedVersion() { return state().lastSupportedVersion; }
-void setLastSupportedVersion(const uint16_t version) { state().lastSupportedVersion = version; }
 std::string typingIcon() { return state().typingIcon; }
 
 int mapViewPortWidth() { return state().mapViewPortWidth; }

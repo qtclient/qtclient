@@ -5,7 +5,6 @@
 
 // CIP-named gamewindow surfaces (promoted from cipwire).
 
-#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"

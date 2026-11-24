@@ -13,8 +13,6 @@ constexpr float DayLengthMs = 3600000.0f;
 constexpr int InterpolationIntervalMs = 10000;
 constexpr qint64 DefaultChangeDurationMs = 10200;
 
-TAmbientLightStorage* g_instance = nullptr;
-
 /// One step of `light` toward `target`: brightness, red, green, blue each
 /// move by one.
 void stepToward(TAmbientLight& light, const TAmbientLight& target)
@@ -45,22 +43,12 @@ TAmbientLightStorage::TAmbientLightStorage(QObject* parent)
     , m_changeDurationMs(config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("millisecondsForAmbientLightChange"),
                                                DefaultChangeDurationMs))
 {
-    g_instance = this;
     m_interpolationTimer.setInterval(InterpolationIntervalMs);
     connect(&m_interpolationTimer, &QTimer::timeout, this, &TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged);
     m_interpolationTimer.start();
 }
 
-TAmbientLightStorage::~TAmbientLightStorage()
-{
-    if (g_instance == this)
-        g_instance = nullptr;
-}
-
-TAmbientLightStorage* TAmbientLightStorage::instance()
-{
-    return g_instance;
-}
+TAmbientLightStorage::~TAmbientLightStorage() = default;
 
 void TAmbientLightStorage::update(const qint64 nowMs)
 {

@@ -2,7 +2,7 @@
 
 // CIP-named cyclopedia surfaces (promoted from cipwire).
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 
 #include <cip_gen.h>
 

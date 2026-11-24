@@ -119,7 +119,13 @@
 #include "qmlcomponents/speechbubbleoverlay.h"
 #include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
-#include "client/gamecore.h"
+#include <tibia/game/gamenotify.h>
+#include "config/runtimegameconfig.h"
+#include "assets/things.h"
+#include "renderer/texturedeletionqueue.h"
+#include "input/playermovementintenthandler.h"
+#include "input/playermovementintent.h"
+#include "protocol/clientmessages.h"
 #include "client/magiceffectopacity.h"
 #include "config/clientsettings.h"
 #include "config/sidebaroptions.h"
@@ -193,7 +199,11 @@
 #include <QThread>
 
 #include <utility>
-#include <tibia/game/gamesession.h>
+#include "game/mapsession.h"
+#include <client/position.h>
+#include <QDir>
+
+#include <csignal>
 
 namespace tibia::client {
 
@@ -221,20 +231,144 @@ void unlinkGameActionRouters(game::TGameActionRouter& client, game::TGameSession
                         &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
 }
 
+/// The current session (null between sessions).
+game::TGameSessionBase* liveSession()
+{
+    return game::currentGameSession();
+}
+
+/// The current session is in the game.
+bool sessionOnline()
+{
+    const game::TGameSessionBase* session = liveSession();
+    return session && session->isOnline();
+}
+
+/// Host: qtclient's engine (its data directories, the runtime game config and
+/// the appearances) runs on the GUI thread; the client polls it each frame.
+bool g_engineRunning = false;
+volatile std::sig_atomic_t g_exitSignaled = 0;
+std::function<void()> g_forceExitHandler;
+
+void onExitSignal(int)
+{
+    g_exitSignaled = 1;
+}
+
+/// Runs on the GUI thread, after the event that noticed the signal has returned.
+/// The handler shows Exit / Logout / Cancel. Quitting here would close the
+/// window from the signal and skip that prompt. Doing this from afterAnimating
+/// is inside QPlatformWindow::deliverUpdateRequest; closing the window there
+/// frees it and the timer's hasPendingUpdateRequest then segfaults.
+void finishExit()
+{
+    if (g_forceExitHandler)
+        g_forceExitHandler();
+    else
+        QCoreApplication::quit();
+}
+
+/// Mounts `workDir` (monorepo: the directory holding data/assets/; package:
+/// CipSoft's Resources next to the binary) and starts the engine.
+bool startEngineHost(const QString& argv0, const QString& workDir)
+{
+    if (g_engineRunning)
+        return true;
+    const QByteArray argv0Bytes = argv0.toLocal8Bit();
+    tibia::files::data().init(argv0Bytes.constData());
+    // Work dir marker is CIP catalog-content.json. Prefer the monorepo extract
+    // tree, then walk from the binary for CipSoft Resources (macOS .app cwd is often "/").
+    const QString previousDir = QDir::currentPath();
+    QDir::setCurrent(workDir);
+    bool found = tibia::files::data().discoverWorkDir("data/assets/catalog-content.json");
+    QDir::setCurrent(previousDir);
+    if (!found) {
+        static const char* const kCatalogRels[] = {
+            "assets/catalog-content.json",
+            "Resources/assets/catalog-content.json",
+            "Contents/Resources/assets/catalog-content.json",
+        };
+        QDir directory(QCoreApplication::applicationDirPath());
+        for (int i = 0; i < 6 && !found; ++i) {
+            for (const char* rel : kCatalogRels) {
+                const QString catalog = directory.filePath(QString::fromUtf8(rel));
+                if (!QFileInfo::exists(catalog))
+                    continue;
+                // Search root = parent of assets/ (Resources or package root).
+                QDir resources(QFileInfo(catalog).absolutePath());
+                resources.cdUp();
+                found = tibia::files::data().addSearchPath(resources.absolutePath().toStdString(), true);
+                break;
+            }
+            if (!directory.cdUp())
+                break;
+        }
+    }
+    if (!found)
+        return false;
+    // Virtual paths resolve under workDir. CIP assets use one Resources tree
+    // (see TTibiaFileSystemHelper::assetsRoot). workDir "/" must become "/data",
+    // not "//data" (wasm MEMFS will not open the latter).
+    std::string dataRoot = tibia::files::data().getWorkDir();
+    while (!dataRoot.empty() && (dataRoot.back() == '/' || dataRoot.back() == '\\'))
+        dataRoot.pop_back();
+    tibia::files::data().addSearchPath(dataRoot, true);
+    tibia::files::data().addSearchPath(dataRoot + "/data", true);
+
+    std::signal(SIGTERM, onExitSignal);
+    std::signal(SIGINT, onExitSignal);
+    tibia::config::initRuntimeGameConfig();
+    tibia::appearances::TAppearancesManager::instance().init();
+
+    tibia::files::data().setupUserWriteDir("tibia/");
+    tibia::network::installGameServerConnection();
+    g_engineRunning = true;
+    return true;
+}
+
+void stopEngineHost()
+{
+    if (!g_engineRunning)
+        return;
+    g_engineRunning = false;
+    if (game::TGameSessionBase* session = liveSession(); session && session->isOnline())
+        session->disconnectGame();
+    tibia::appearances::TAppearancesManager::instance().terminate();
+    tibia::config::terminateRuntimeGameConfig();
+}
+
+/// The engine's GUI thread work: deferred texture deletes and a signalled exit.
+void pollEngineHost()
+{
+    if (!g_engineRunning)
+        return;
+    tibia::renderer::flushTextureDeletions();
+    if (g_exitSignaled) {
+        g_exitSignaled = 0;
+        // Queued: this poll often runs from afterAnimating, still inside the
+        // window update timer (see finishExit). Cancel leaves the process up,
+        // so a later signal can ask again.
+        if (QCoreApplication* app = QCoreApplication::instance())
+            QMetaObject::invokeMethod(app, finishExit, Qt::QueuedConnection);
+        else
+            finishExit();
+    }
+}
+
+qint64 nowMicros()
+{
+    return shared::TClockService::process()->nowMicros();
+}
+
 /// The session setSessionInstances installed: from before its controllers
 /// connect until it is released.
 game::TGameSessionBase* g_sessionInstances = nullptr;
 
-/// Host shim: the classes whose instance() host and pack code still read
-/// resolve to `session`'s members (null: none).
+/// Host: the session the client's own lookups (activeSession) resolve to
+/// (null: none).
 void setSessionInstances(game::TGameSessionBase* session)
 {
     g_sessionInstances = session;
-    worldmap::TWorldMapStorage::setInstance(session ? session->worldMapStorage().get() : nullptr);
-    creatures::TCreatureStorage::setInstance(session ? session->creatureStorage().get() : nullptr);
-    container::TContainerStorage::setInstance(session ? session->containerStorage().get() : nullptr);
-    effects::TEffectStorage::setInstance(session ? session->effectStorage().get() : nullptr);
-    game::TPlayerData::setLiveInstance(session ? session->playerData().get() : nullptr);
 }
 
 /// Set while the client shuts down: a released session is deleted at once.
@@ -491,7 +625,7 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
     connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToInvalidServerResponse, this,
             exitCliRunOnLoginFailure);
     connect(m_authentication.get(), &authentication::TAuthenticationProcessController::abort, this, [this] {
-        if (!tibia::game::isOnline())
+        if (!sessionOnline())
             ensureLoginSurface();
     });
 
@@ -506,7 +640,7 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
-        if (tibia::game::isOnline())
+        if (sessionOnline())
             return;
         Q_EMIT returnToLoginRequested();
     });
@@ -603,9 +737,14 @@ TGameClient::~TGameClient()
     qmlcomponents::TSoundHelperService::setInstance(nullptr);
 }
 
+void TGameClient::setForceExitHandler(std::function<void()> handler)
+{
+    g_forceExitHandler = std::move(handler);
+}
+
 bool TGameClient::startEngine(const QString& argv0, const QString& workDir)
 {
-    if (!gamecore::init(argv0, workDir)) {
+    if (!startEngineHost(argv0, workDir)) {
         fail(tr("Could not start the game engine (no assets/catalog-content.json under %1).").arg(workDir));
         return false;
     }
@@ -762,8 +901,7 @@ void TGameClient::shutdown()
     // QObjects. Map tileBlocks hold raw pointers into that tree; destroying
     // storage first leaves terminate → removeUnawareThings dangling (SIGSEGV
     // on quit Exit).
-    gamecore::terminate();
-    tibia::worldmap::TWorldMapStorage::ensureStorage()->clean();
+    stopEngineHost();
     m_opcodes.reset();
     // The session goes now, not on the next event loop pass: the engine is down.
     g_releaseGameSessionsNow = true;
@@ -790,7 +928,7 @@ void TGameClient::onRequestLoginWithCredentials(const QString& EMailAddress, con
 
 void TGameClient::abortPendingEnter()
 {
-    if (!tibia::game::isOnline()) {
+    if (!sessionOnline()) {
         if (game::TGameserverGameSession* live = session())
             live->disconnectNow();
         else if (game::TSessiondumpGameSession* dump = sessiondump())
@@ -858,7 +996,7 @@ void TGameClient::closeCharacterSelection()
 
 void TGameClient::toggleCharacterSelectionForSwitch()
 {
-    if (!tibia::game::isOnline())
+    if (!sessionOnline())
         return;
     if (m_characterSelectionOpen) {
         closeCharacterSelection();
@@ -869,7 +1007,7 @@ void TGameClient::toggleCharacterSelectionForSwitch()
 
 void TGameClient::ensureLoginSurface()
 {
-    if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter() || !m_options.autoCharacter.isEmpty())
+    if (sessionOnline() || (liveSession() && liveSession()->isSwitchingCharacter()) || !m_options.autoCharacter.isEmpty())
         return;
     // A character change (or a login again) connects the next session itself.
     if (const gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController();
@@ -887,7 +1025,7 @@ void TGameClient::ensureLoginSurface()
 
 bool TGameClient::requestCharacterSwitch(const QString& characterName)
 {
-    if (characterName.isEmpty() || !tibia::game::isOnline())
+    if (characterName.isEmpty() || !sessionOnline())
         return false;
     const auto known = std::find_if(m_account.characters.begin(), m_account.characters.end(),
                                     [&](const authentication::TCharacter& c) { return c.name == characterName; });
@@ -1195,14 +1333,6 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    const auto outOfDate = [this] {
-        Q_EMIT clientOutOfDate();
-        fail(tr("The game server needs a newer client."));
-    };
-    if (auto* live = dynamic_cast<game::TGameserverGameSession*>(current))
-        connect(live, &game::TGameserverGameSession::clientOutOfDate, this, outOfDate);
-    else if (auto* dump = dynamic_cast<game::TSessiondumpGameSession*>(current))
-        connect(dump, &game::TSessiondumpGameSession::clientOutOfDate, this, outOfDate);
     // Command line runs (smoke tests, replays) end with an error when the session fails.
     if (!m_options.autoCharacter.isEmpty() || !m_options.replay.isEmpty() || m_options.playForSeconds > 0) {
         connect(current, &game::IGameSession::connectionError, this, [] { QCoreApplication::exit(2); });
@@ -1232,16 +1362,17 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
         // The session's minimap feed.
         setMinimapWorldmapProtocolHandler(nullptr);
-        // Host shim: the classes' instance() stop resolving to this session.
+        // Host: the client's lookups stop resolving to this session.
         setSessionInstances(nullptr);
         // Pack-facing accessors stop resolving to the retired session.
         game::setCurrentGameSession(nullptr);
         m_currentGameSession.reset();
     }
-    // Host shim: host and pack code still read these classes' instance(); they
-    // are the new session's members before its controllers connect.
+    // Host: code no session is handed to (game::current*) resolves to the new
+    // session before its controllers connect.
     if (auto* next = dynamic_cast<game::TGameSessionBase*>(GameSession.get())) {
         setSessionInstances(next);
+        game::setCurrentGameSession(GameSession);
         next->initializeWorldMapSessionState();
     }
     connectGameWindowControllersToGameSession(GameSession);
@@ -1308,8 +1439,9 @@ void TGameClient::onWorldEntered()
 
     for (qsizetype i = 0; i < m_options.say.size(); ++i) {
         QTimer::singleShot(1000 * (i + 1), this, [text = m_options.say[i].toStdString()] {
-            if (tibia::game::isOnline())
-                tibia::game::talk(text);
+            // A say (CIP chat message mode Say).
+            if (const game::TGameSessionBase* session = liveSession(); session && session->canPerformGameAction() && !text.empty())
+                protocol::gameclient::sendTalk(1, 0, "", text);
         });
     }
 
@@ -1327,28 +1459,38 @@ void TGameClient::onWorldEntered()
                 walker->stop();
                 return;
             }
-            if (!tibia::game::isOnline() || tibia::game::localPlayerIsAutoWalking() || tibia::game::localPlayerIsPreWalking()
-                || tibia::game::localPlayerIsWalking())
+            game::TGameSessionBase* session = liveSession();
+            input::TPlayerMovementIntentHandler* intent = session ? session->movementIntent() : nullptr;
+            const std::shared_ptr<creatures::TCreature> player =
+                session && session->creatureStorage() ? session->creatureStorage()->player() : nullptr;
+            if (!session || !session->isOnline() || !intent || intent->hasGoal() || intent->isPredicting()
+                || (player && player->isMoving()))
                 return;
             const QString token = m_options.walk[*next].trimmed().toLower();
             ++*next;
             if (token.contains(QLatin1Char(':'))) {
                 // dx:dy walks to a field relative to the character.
                 const QStringList offset = token.split(QLatin1Char(':'));
-                const Position at = tibia::game::localPlayerPosition();
-                tibia::game::localPlayerAutoWalk(Position(at.x + offset.value(0).toInt(), at.y + offset.value(1).toInt(), at.z));
+                const Position at = session->localPlayerPosition();
+                const Position goal(at.x + offset.value(0).toInt(), at.y + offset.value(1).toInt(), at.z);
+                if (goal.isValid())
+                    intent->handleMovementIntent(
+                        std::make_shared<input::TMovementIntentTargetCoordinate>(goal.x, goal.y, goal.z, true));
                 return;
             }
             const auto direction = directions.value(token, tibia::client::InvalidDirection);
-            if (direction != tibia::client::InvalidDirection)
-                tibia::game::walk(direction);
+            // A step (pack notify onWalk, as a key step).
+            if (direction != tibia::client::InvalidDirection && session->canPerformGameAction()) {
+                tibia::game::notify("onWalk", direction);
+                intent->step(input::toMovementDirection(direction));
+            }
         });
         QTimer::singleShot(2000, walker, [walker] { walker->start(5); });
     }
 
     if (m_options.playForSeconds > 0) {
         QTimer::singleShot(m_options.playForSeconds * 1000, this, [this] {
-            const bool online = tibia::game::isOnline();
+            const bool online = sessionOnline();
             if (game::TGameserverGameSession* live = session())
                 live->disconnectNow();
             else if (game::TSessiondumpGameSession* dump = sessiondump())
@@ -1699,7 +1841,7 @@ void TGameClient::initializeSound()
     sound::TSoundController::setInstance(m_pSoundController.get());
     // Out of the game the title music plays once the sound bank is known.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
-        if (!tibia::game::isOnline())
+        if (!sessionOnline())
             m_pSoundController->handleSoundTrigger(true);
     });
 }
@@ -1719,13 +1861,13 @@ void TGameClient::onBeforeRenderFrameMainThread()
     m_inTick = true;
 
     // Host: the engine's network and dispatcher work.
-    gamecore::poll();
-    m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
-    if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
+    pollEngineHost();
+    m_idleTick.start(sessionOnline() ? 500 : 100);
+    if (m_frameRateLimitEnabled && !frameSlotReached(nowMicros())) {
         m_inTick = false;
         return;
     }
-    qint64 start = gamecore::nowMicros();
+    qint64 start = nowMicros();
 
     // The next frame shows one render time from now (the mean of the last
     // frames' render times).
@@ -1741,11 +1883,11 @@ void TGameClient::onBeforeRenderFrameMainThread()
     auto* session = m_started ? dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()) : nullptr;
     if (session) {
         session->onPrepareNextFrameToRender(nextFrameTimestamp);
-        m_sessionFrameUpdateDurations.add(gamecore::nowMicros() - start);
+        m_sessionFrameUpdateDurations.add(nowMicros() - start);
         session->updatePlayerMovementIntentHandler();
-        start = gamecore::nowMicros();
+        start = nowMicros();
         beforeRenderFrameGameWindow();
-        m_gameWindowFrameUpdateDurations.add(gamecore::nowMicros() - start);
+        m_gameWindowFrameUpdateDurations.add(nowMicros() - start);
         session->updatePlayerMovementIntentHandler();
     }
     m_inTick = false;
@@ -1773,7 +1915,7 @@ bool TGameClient::frameSlotReached(qint64 now)
         }
         QThread::usleep(static_cast<unsigned long>(remaining));
     }
-    now = gamecore::nowMicros();
+    now = nowMicros();
     m_frameSlot = now - (now - m_frameGridBase) % m_frameInterval;
     return true;
 }
@@ -1785,7 +1927,7 @@ void TGameClient::fail(const QString& message)
         QCoreApplication::exit(2);
     // A refused reconnect closes the character list before the socket fails, and
     // the login mask stays hidden while the account is still authenticated.
-    if (!tibia::game::isOnline())
+    if (!sessionOnline())
         ensureLoginSurface();
 }
 

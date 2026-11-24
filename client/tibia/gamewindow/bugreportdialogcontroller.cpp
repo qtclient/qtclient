@@ -1,11 +1,14 @@
 #include "bugreportdialogcontroller.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "protocol/clientmessages.h"
+#include "reporting/reportingstorage.h"
 
 #include "input/gameactionhandlers.h"
 
 #include <QQuickItem>
 
 #include <iterator>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -140,9 +143,10 @@ QStringList TBugReportDialogController::classifications() const
 
 QString TBugReportDialogController::notAllowedReason() const
 {
-    if (!tibia::game::isOnline())
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (!session || !session->isOnline() || !session->reportingStorage())
         return qtTrId("bugreport_not_allowed_reason_not_yet_set");
-    switch (tibia::game::getBugReportState()) {
+    switch (session->reportingStorage()->bugReportState()) {
     case 0: return {};
     case 1: return qtTrId("bugreport_not_allowed_reason_blacklisted");
     case 2: return qtTrId("bugreport_not_allowed_reason_not_enough_loyalty");
@@ -154,26 +158,25 @@ QString TBugReportDialogController::notAllowedReason() const
 /// A row outside the table reports "other"; the dialog closes either way.
 void TBugReportDialogController::requestSendBugReport(const int ClassificationIndex, const QString& Comment)
 {
-    if (tibia::game::isOnline()) {
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    if (session && session->isOnline()) {
         const ECategory category = ClassificationIndex >= 0 && ClassificationIndex < static_cast<int>(std::size(Classifications))
             ? Classifications[ClassificationIndex]
             : Other;
         const std::string comment = Comment.toStdString();
-        switch (category) {
-        case Map: {
-            // A map report without a field reports where the player stands.
-            const Position position = m_position.isValid() ? m_position
-                : tibia::game::hasLocalPlayer()            ? tibia::game::localPlayerPosition()
-                                                           : Position();
-            tibia::game::reportBugCip(Map, comment, {}, {}, position);
-            break;
-        }
-        case Typo:
-            tibia::game::reportBugCip(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
-            break;
-        default:
-            tibia::game::reportBugCip(category, comment, {}, {}, {});
-            break;
+        if (session->canPerformGameAction()) {
+            switch (category) {
+            case Map: {
+                // A map report without a field reports where the player stands.
+                const Position position = m_position.isValid() ? m_position : session->localPlayerPosition();
+                tibia::protocol::gameclient::sendBugReport(Map, comment, {}, {}, position);
+                break;
+            }
+            case Typo:
+                tibia::protocol::gameclient::sendBugReport(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
+                break;
+            default: tibia::protocol::gameclient::sendBugReport(category, comment, {}, {}, {}); break;
+            }
         }
     }
     closeDialog();

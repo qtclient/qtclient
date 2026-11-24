@@ -1,8 +1,8 @@
 #pragma once
 
 // The game client's current game session, for code no session is handed to:
-// the pack ABI peels (mods/host_api_v1.cpp), the pack-facing session façade
-// (game/gamesession.h, creaturesession.h, mapsession.h, thingsession.h) and the
+// the pack ABI peels (mods/host_api_v1.cpp), the pack-facing map, creature and
+// thing peels (game/creaturesession.h, mapsession.h, thingsession.h) and the
 // pack's own controllers. CipSoft reaches a session only through TGameClient and
 // the connectors it calls; qtclient's packs have no connector, so they resolve
 // the session's objects through these accessors at call time and rebind on
@@ -29,6 +29,13 @@ class TQuickLootBlackWhitelistStorage;
 namespace teamfinder {
 class TTeamFinderStorage;
 }
+namespace worldmap {
+class TAmbientLightStorage;
+class TWorldMapStorage;
+}
+namespace effects {
+class TEffectStorage;
+}
 namespace game {
 
 class IGameSession;
@@ -53,6 +60,9 @@ creatures::TCreatureStorage* currentCreatureStorage();
 container::TContainerStorage* currentContainerStorage();
 container::TInventoryContainer* currentInventoryContainer();
 teamfinder::TTeamFinderStorage* currentTeamFinderStorage();
+worldmap::TWorldMapStorage* currentWorldMapStorage();
+effects::TEffectStorage* currentEffectStorage();
+worldmap::TAmbientLightStorage* currentAmbientLightStorage();
 
 /// CipSoft session members qtclient does not make per session yet: each body
 /// reads the class's client-wide object until its domain slice moves it into

@@ -1,4 +1,5 @@
 #include "blessingsdialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "game/blessingsprotocolmessagehandler.h"
 #include "game/gameciptypes.h"
@@ -6,7 +7,6 @@
 #include "game/qmlblessingdialogdata.h"
 #include "input/gameactionhandlers.h"
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -33,7 +33,9 @@ int blessingStoreOffer(const int id)
 
 bool localPlayerPremium()
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    return session && session->hasLocalPlayer() && premium && premium->isPremium();
 }
 
 }

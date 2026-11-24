@@ -1,4 +1,5 @@
 #include "highscoresdialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "gamewindow/waitdialogcontroller.h"
 #include "game/gamesessionbase.h"
@@ -6,7 +7,6 @@
 
 #include "protocol/protocolciptypes.h"
 
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 #include <protocol.pb.h>
@@ -307,7 +307,7 @@ void THighscoresDialogController::sendHighscoresRequest(const int action, const 
                                                         const int vocation, const std::vector<int>& worldTypes, const int battlEye)
 {
     // Host: the session refuses game actions while it cannot perform them.
-    if (!tibia::game::canPerformGameAction())
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->canPerformGameAction())
         return;
     using namespace ::tibia::protobuf::protocol;
     auto message = tibia::protocol::newGameclientMessage(177);

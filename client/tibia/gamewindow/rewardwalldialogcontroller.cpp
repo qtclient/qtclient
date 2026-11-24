@@ -1,4 +1,5 @@
 #include "rewardwalldialogcontroller.h"
+#include "game/currentgamesession.h"
 
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
@@ -13,7 +14,6 @@
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -81,7 +81,9 @@ const TDailyRewardFixedItems* fixedItems(const std::shared_ptr<TDailyReward>& re
 
 bool localPlayerPremium()
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    return session && session->hasLocalPlayer() && premium && premium->isPremium();
 }
 
 TMessageDialogButton* okButton(const TMessageDialogController::Button identifier)

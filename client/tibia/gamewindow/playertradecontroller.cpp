@@ -1,4 +1,6 @@
 #include "playertradecontroller.h"
+#include "game/currentgamesession.h"
+#include "protocol/clientmessages.h"
 #include "game/gamesessionbase.h"
 
 #include "gamewindow/contextmenucontroller.h"
@@ -6,7 +8,6 @@
 #include "input/gameactionhandlers.h"
 
 #include <creatures/creaturestorage.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 #include <algorithm>
@@ -236,8 +237,9 @@ void TPlayerTradeController::inspectTradeSide(const int slotIndex, const int sid
     auto* object = qobject_cast<TPlayerTradeObject*>(offer[slotIndex]);
     if (!object || object->appearanceID() == 0)
         return;
-    tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, static_cast<uint16_t>(object->appearanceID()),
-                            static_cast<uint8_t>(std::clamp<int>(static_cast<int>(object->objectCount()), 1, 255)));
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); session && session->canPerformGameAction())
+        tibia::protocol::gameclient::sendInspectionObject(tibia::client::INSPECT_NPCTRADE, static_cast<uint16_t>(object->appearanceID()),
+                                                          static_cast<uint8_t>(std::clamp<int>(static_cast<int>(object->objectCount()), 1, 255)));
 }
 
 /// Look and Inspect for one slot of an offer.

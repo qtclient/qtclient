@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <iterator>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
@@ -109,7 +108,7 @@ bool TPremiumPanelController::advertisePremium() const
 
 void TPremiumPanelController::applySessionVisibility()
 {
-    if (!tibia::game::isOnline()) {
+    if (const game::TGameSessionBase* session = tibia::game::currentGameSession(); !session || !session->isOnline()) {
         hidePanel();
         return;
     }

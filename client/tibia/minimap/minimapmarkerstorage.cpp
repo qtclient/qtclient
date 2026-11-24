@@ -7,7 +7,8 @@
 #include <any>
 #include <vector>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "container/containerciptypes.h"
+#include <functional>
 
 namespace tibia::minimap {
 

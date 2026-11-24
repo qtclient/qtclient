@@ -33,7 +33,8 @@
 #include <string>
 #include <tuple>
 #include <protocol.pb.h>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 #include <client/const.h>
 
 #include <any>
@@ -140,7 +141,7 @@ void TMonsterRaceStorage::setRaceDetails(TMonsterRace race)
         if (!r.combat->locations.isEmpty())
             data.location = r.combat->locations.front().toStdString();
     }
-    tibia::game::processUpdateBestiaryMonsterData(data);
+    tibia::game::notify("onUpdateBestiaryMonsterData", data);
 }
 
 void TMonsterRaceStorage::setRacesUnlockedForCharms(std::vector<TMonsterRace> races, std::vector<TMonsterRace> minorRaces)
@@ -746,8 +747,9 @@ void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
     case tibia::client::RESOURCE_MINOR_CHARM:
     case tibia::client::RESOURCE_MAX_CHARM:
     case tibia::client::RESOURCE_MAX_MINOR_CHARM:
-        tibia::game::localPlayerSetResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
-                                                   static_cast<uint64_t>(static_cast<uint32_t>(message.small_value())));
+        if (tibia::game::TPlayerData* data = tibia::game::currentPlayerData())
+            data->setResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
+                                     static_cast<uint64_t>(static_cast<uint32_t>(message.small_value())));
         break;
     default:
         break;
@@ -841,7 +843,7 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessa
     }
     for (const auto& f : m.finished_races())
         data.finishedMonsters.push_back(static_cast<uint16_t>(f.race_id()));
-    tibia::game::processUpdateBestiaryCharmsData(data);
+    tibia::game::notify("onUpdateBestiaryCharmsData", data);
 }
 
 TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler(TStorages Storages, QObject* parent)
@@ -956,6 +958,16 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
         for (const auto& point : m.points())
             viewpoints.try_emplace(coordinate(point.position()), static_cast<int>(point.state()));
         storage->setDiscoveryArea(static_cast<quint16>(m.area_id()), m.flag(), static_cast<quint8>(m.target()), viewpoints);
+        {
+            // Pack ABI field: (subarea id, active, target, viewpoints as {x, y, z, state}).
+            std::vector<std::vector<int>> points;
+            points.reserve(static_cast<size_t>(m.points_size()));
+            for (const auto& point : m.points())
+                points.push_back({ static_cast<int>(point.position().x()), static_cast<int>(point.position().y()),
+                                   static_cast<int>(point.position().z()), static_cast<int>(point.state()) });
+            tibia::game::notify("onCyclopediaMapDiscoveryArea", static_cast<int>(m.area_id()), static_cast<int>(m.flag() ? 1 : 0),
+                                static_cast<int>(m.target()), points);
+        }
         break;
     }
     case 6: { // a passage and the races beyond it
@@ -994,6 +1006,8 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
     }
     case 10: // the area the player is in
         storage->setPlayerArea(static_cast<quint16>(m.area_id()));
+        // Pack ABI field: (subarea id the player explores, 0 for none).
+        tibia::game::notify("onCyclopediaMapExploringArea", static_cast<int>(m.area_id()));
         break;
     case 11: // the Go Strength exploring a subarea rewards
         storage->setExplorationRewardAmountGoStrength(static_cast<int>(m.area_id()));

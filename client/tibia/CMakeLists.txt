@@ -441,7 +441,6 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/bugreportdialogcontroller.cpp gamewindow/bugreportdialogcontroller.h
     client/gameclient.cpp client/gameclient.h
     client/gameclientgamewindow.cpp
-    client/gamecore.cpp client/gamecore.h
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     client/gameclientbase.cpp client/gameclientbase.h
     client/gameapplication.cpp client/gameapplication.h
@@ -478,9 +477,6 @@ if(TIBIA_WITH_GAMECORE)
     game/playerdata.cpp game/playerdata.h
     game/playerskillstats.cpp game/playerskillstats.h
     game/tgamenotify.cpp game/tgamenotify.h
-    game/gamesession.cpp game/gamesession.h
-    game/gamesession_localplayer_vitals.cpp
-    game/gamesession_forward.cpp game/gamesession_forward.h
     game/sessionhooks.cpp game/sessionhooks.h
     game/thingsession.cpp game/thingsession.h
     game/creaturesession.cpp game/creaturesession.h

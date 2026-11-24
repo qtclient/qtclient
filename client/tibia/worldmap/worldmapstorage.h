@@ -3,6 +3,7 @@
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "worldmap/cacheforworldmapstoragelookupmembers.h"
 #include "worldmap/coordinates.h"
+#include "game/currentgamesession.h"
 
 #include <cip_gen.h>
 
@@ -59,12 +60,6 @@ public:
     TWorldMapStorage(std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> speedCalculator,
                      std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
     ~TWorldMapStorage() override;
-
-    /// CIP session hub (null before/after gameclient install).
-    static TWorldMapStorage* instance();
-    static void setInstance(TWorldMapStorage* storage);
-    /// Process fallback when no GameClient storage is installed (editor/tests).
-    static TWorldMapStorage* ensureStorage();
 
     /// Drops the field at `position` (no notification).
     void removeField(const Position& position);
@@ -344,13 +339,15 @@ private:
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).
 inline TWorldMapField* fieldAt(const Position& position)
 {
-    return TWorldMapStorage::ensureStorage()->fieldAt(position);
+    TWorldMapStorage* storage = game::currentWorldMapStorage();
+    return storage ? storage->fieldAt(position) : nullptr;
 }
 
 /// Creates the field in storage when missing.
 inline TWorldMapField* getOrCreateField(const Position& position)
 {
-    return TWorldMapStorage::ensureStorage()->getOrCreateField(position);
+    TWorldMapStorage* storage = game::currentWorldMapStorage();
+    return storage ? storage->getOrCreateField(position) : nullptr;
 }
 
 /// Floor field list for minimap / feed.

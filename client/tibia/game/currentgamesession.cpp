@@ -9,6 +9,9 @@
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include "teamfinder/teamfinderciptypes.h"
+#include "effects/effectstorage.h"
+#include "worldmap/ambientlightstorage.h"
+#include "worldmap/worldmapstorage.h"
 
 #include <algorithm>
 #include <utility>
@@ -104,6 +107,24 @@ teamfinder::TTeamFinderStorage* currentTeamFinderStorage()
 {
     TGameSessionBase* session = currentGameSession();
     return session ? session->teamFinderStorage().get() : nullptr;
+}
+
+worldmap::TWorldMapStorage* currentWorldMapStorage()
+{
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->worldMapStorage().get() : nullptr;
+}
+
+effects::TEffectStorage* currentEffectStorage()
+{
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->effectStorage().get() : nullptr;
+}
+
+worldmap::TAmbientLightStorage* currentAmbientLightStorage()
+{
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->ambientLightStorage().get() : nullptr;
 }
 
 TCooldownStorage* currentCooldownStorage()

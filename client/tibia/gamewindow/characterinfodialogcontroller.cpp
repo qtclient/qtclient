@@ -37,11 +37,28 @@
 #include <stdexcept>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/gamesession.h>
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "creatures/creaturestorage.h"
+#include "game/playerdata.h"
 
 namespace tibia::gamewindow {
 
 namespace {
+
+/// Asks the session's cyclopedia handler for a character info page; the
+/// recent deaths and PvP kills are paged.
+void requestCharacterInfo(const std::shared_ptr<game::IGameSession>& gameSession, const uint32_t playerId,
+                          const tibia::client::CyclopediaCharacterInfoType_t type, const uint16_t entriesPerPage = 0,
+                          const uint16_t page = 0)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    if (!session || !session->canPerformGameAction() || !session->cyclopediaProtocolMessageHandler())
+        return;
+    if (type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS || type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS)
+        session->cyclopediaProtocolMessageHandler()->sendOpenCharacterInfo(playerId, type, entriesPerPage, page);
+    else
+        session->cyclopediaProtocolMessageHandler()->sendOpenCharacterInfo(playerId, type);
+}
 
 using A = input::EGameAction;
 using Category = cip::tibia::gamewindow::TCharacterInfoDialogController::EDialogCategory;
@@ -444,7 +461,7 @@ void TCharacterInfoDialogController::showDialogTab(const int dataType)
     m_shown = true;
     if (cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
         storage->clearAll();
-    tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
+    requestCharacterInfo(m_gameSession, m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
     request(dataType, true);
 }
 
@@ -478,7 +495,7 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
         sendRequest(dataType, 1);
         // The general stats show the account infos of the badges answer.
         if (dataType == GeneralStats)
-            tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES);
+            requestCharacterInfo(m_gameSession, m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES);
     }
     Q_EMIT dialogCategoryChanged();
     Q_EMIT dataIsLoadingChanged();
@@ -499,7 +516,7 @@ void TCharacterInfoDialogController::restoreContext(const TCyclopediaDialogConte
 void TCharacterInfoDialogController::sendRequest(const int dataType, const int page)
 {
     // 23 entries per page.
-    tibia::game::requestSendCharacterInfo(m_characterId, protocolType(dataType), 23, static_cast<uint16_t>(page));
+    requestCharacterInfo(m_gameSession, m_characterId, protocolType(dataType), 23, static_cast<uint16_t>(page));
 }
 
 void TCharacterInfoDialogController::onCharacterInfoUpdated(const int dataType)
@@ -656,7 +673,9 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
     // The shown character's wheel; the own one when no character is named.
     uint32_t characterId = m_characterId;
     if (characterId == 0)
-        characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
+        if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+            session && session->hasLocalPlayer() && session->creatureStorage())
+            characterId = session->creatureStorage()->playerID();
     if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
         session->skillWheelProtocolMessageHandler()->requestCharacterSkillWheel(characterId);
 }
@@ -726,7 +745,9 @@ void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const 
 
 void TCharacterInfoDialogController::rebuildStatsBlocks()
 {
-    const bool xpBoostPurchasable = tibia::game::isOnline() && tibia::game::localPlayerIsStoreExpBoostPurchasable();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const bool xpBoostPurchasable = session && session->isOnline() && session->playerData()
+        && session->playerData()->storeExpBoostPurchasable();
     QList<QObject*> first;
     for (const SkillType type : FirstBlock) {
         auto* data = new game::TSkillsWidgetEntryData(this);

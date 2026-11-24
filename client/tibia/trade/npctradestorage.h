@@ -1,6 +1,6 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "container/containerciptypes.h"
 
 #include <cip_gen.h>

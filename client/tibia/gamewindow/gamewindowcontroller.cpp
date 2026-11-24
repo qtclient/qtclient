@@ -1,4 +1,5 @@
 #include "gamewindowcontroller.h"
+#include "appearances/appearanceinstance.h"
 
 #include "platform/platform.h"
 
@@ -44,7 +45,6 @@
 #include <QQuickWindow>
 #include <QTime>
 #include <QTimeZone>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 

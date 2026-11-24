@@ -11,7 +11,8 @@
 #include <algorithm>
 #include <optional>
 #include <unordered_map>
-#include <tibia/game/gamesession.h>
+#include <client/staticdata.h>
+#include "container/containerciptypes.h"
 #include <tibia/game/gamenotify.h>
 
 namespace tibia::input {

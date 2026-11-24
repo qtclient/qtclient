@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "gamewindow/dialogmanager.h"
 #include "iclockservice.h"

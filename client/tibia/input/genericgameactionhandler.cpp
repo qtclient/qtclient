@@ -8,7 +8,8 @@
 #include "gameactionhandlers.h"
 #include "protocol/clientmessages.h"
 
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include <QDir>
 #include <QFile>
@@ -160,7 +161,7 @@ void TGenericGameActionHandler::handleUseAction(const TObjectGameAction& action)
     if (action.gameActionType() == A::OPEN) {
         containerIndex = isContainerPosition(action.position()) ? containerIdOf(action.position()) : 0;
     } else if (action.gameActionType() == A::OPEN_IN_NEW_WINDOW) {
-        container::TContainerStorage* storage = container::TContainerStorage::instance();
+        container::TContainerStorage* storage = game::currentContainerStorage();
         containerIndex = storage ? static_cast<uint8_t>(storage->findEmptyId()) : 0;
     }
     ::tibia::protobuf::protocol::GameclientMessageUseObject message;

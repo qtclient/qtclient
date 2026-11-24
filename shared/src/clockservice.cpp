@@ -2,6 +2,8 @@
 
 #include <QDateTime>
 
+#include <algorithm>
+
 #include <atomic>
 #include <utility>
 
@@ -88,6 +90,11 @@ void TClockService::setFrameMicros(const qint64 micros)
 void TClockService::updateFrame()
 {
     setFrameMicros(frameSourceMicros());
+}
+
+void TClockService::advanceFrameTo(const qint64 micros)
+{
+    setFrameMicros(std::max<qint64>({ micros, frameSourceMicros(), frameMicros() }));
 }
 
 void TClockService::setFrameSource(std::shared_ptr<IClockService> source)

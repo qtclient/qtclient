@@ -1,6 +1,11 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
+
+#include <QDir>
+#include <QStringList>
+
+#include <functional>
 
 #include <cip_gen.h>
 

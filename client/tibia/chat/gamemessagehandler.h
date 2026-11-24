@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 
 #include <client/declarations.h>
 #include <client/position.h>

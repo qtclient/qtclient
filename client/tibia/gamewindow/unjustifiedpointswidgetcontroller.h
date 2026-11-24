@@ -1,11 +1,11 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QString>
 
 #include <memory>
 #include <vector>

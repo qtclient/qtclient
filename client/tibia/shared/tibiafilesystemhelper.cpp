@@ -712,4 +712,61 @@ shared::TTibiaFileSystemHelper& data()
 }
 
 }
+
+namespace shared {
+
+namespace {
+
+bool catalogAt(const QString& assetsDir)
+{
+    return QFileInfo::exists(QDir(assetsDir).filePath(QStringLiteral("catalog-content.json")));
+}
+
+} // namespace
+
+QDir TTibiaFileSystemHelper::resourcesDirectory()
+{
+    QDir directory(QCoreApplication::applicationDirPath());
+    directory.cdUp();
+    directory.cd(QStringLiteral("./Resources"));
+    return directory;
+}
+
+QString TTibiaFileSystemHelper::cipResourcesDir() const
+{
+    const QString resources = resourcesDirectory().absolutePath();
+    if (catalogAt(QDir(resources).filePath(QStringLiteral("assets"))))
+        return resources;
+    // Host: a monorepo build runs outside any package; apps/qtclient/data is the
+    // CipSoft Resources tree there (`make extract`: assets/ + sounds/).
+    QString work = QString::fromStdString(m_workDir);
+    while (work.endsWith(QLatin1Char('/')) || work.endsWith(QLatin1Char('\\')))
+        work.chop(1);
+    if (!work.isEmpty()) {
+        const QString dataResources = QDir(work).filePath(QStringLiteral("data"));
+        if (catalogAt(QDir(dataResources).filePath(QStringLiteral("assets"))))
+            return QDir(dataResources).absolutePath();
+    }
+    return {};
+}
+
+std::string TTibiaFileSystemHelper::assetsRoot()
+{
+    const QString resources = cipResourcesDir();
+    if (resources.isEmpty())
+        return {};
+    // Search root = Resources so CIP short names `assets/…` and `sounds/…` resolve.
+    addSearchPath(resources.toStdString(), true);
+    return "assets/";
+}
+
+std::string TTibiaFileSystemHelper::soundsRoot()
+{
+    const QString resources = cipResourcesDir();
+    if (!resources.isEmpty())
+        addSearchPath(resources.toStdString(), true);
+    return "sounds/";
+}
+
+}
 }

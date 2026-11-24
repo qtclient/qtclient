@@ -1,7 +1,7 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
+#include "game/tgamenotify.h"
 #include "gamewindow/editminimapmarkerdialogcontroller.h"
 #include "minimap/minimapmarker.h"
 #include "worldmap/coordinates.h"

@@ -32,7 +32,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 namespace tibia::input {
 
@@ -56,7 +57,7 @@ std::function<void(bool)>& targetSelectionListener()
 int storageSlotCount(const Position& position, const int stackPosition)
 {
     if (position.x != UINT16_MAX) {
-        if (worldmap::TWorldMapStorage* storage = worldmap::TWorldMapStorage::instance()) {
+        if (worldmap::TWorldMapStorage* storage = game::currentWorldMapStorage()) {
             if (worldmap::TWorldMapField* field = storage->fieldAt(position)) {
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
@@ -70,7 +71,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
         return 1;
     }
     if (position.y & 0x40) {
-        container::TContainerStorage* storage = container::TContainerStorage::instance();
+        container::TContainerStorage* storage = game::currentContainerStorage();
         if (!storage)
             return 1;
         const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F);
@@ -80,7 +81,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
             storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + std::max(0, stackPosition));
         return slot.stackable ? std::max<int>(1, slot.count) : 1;
     }
-    container::TInventoryContainer* inventory = container::TInventoryContainer::instance();
+    container::TInventoryContainer* inventory = game::currentInventoryContainer();
     if (!inventory)
         return 1;
     const container::TInventorySlot& slot = inventory->slotAt(position.y);
@@ -145,7 +146,8 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
     };
     const bool offlineOk = std::find(std::begin(OfflineActions), std::end(OfflineActions), type)
         != std::end(OfflineActions);
-    if (!tibia::game::isOnline() && !offlineOk)
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (!(session && session->isOnline()) && !offlineOk)
         return;
     switch (type) {
     case A::ALLOW_ALL_TO_INSPECT_PLAYER:

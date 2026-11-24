@@ -27,7 +27,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 
 namespace tibia::analysers {
 
@@ -90,7 +92,8 @@ namespace {
 
 bool isPremiumPlayer()
 {
-    return tibia::game::localPlayerIsPremium();
+    const game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance();
+    return premium && premium->isPremium();
 }
 
 /// CIP : ADD_SYSTEM_CHAT_MESSAGE in console colour 30.
@@ -754,12 +757,19 @@ qint64 experienceToNextLevel(const qint64 experience, const int level)
     return needed > experience ? needed - experience : 0;
 }
 
+/// The current session's player data while it has a local player; null otherwise.
+const game::TPlayerData* localPlayerData()
+{
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() ? session->playerData().get() : nullptr;
+}
+
 qint64 localPlayerExperienceToNextLevel()
 {
-    if (!tibia::game::hasLocalPlayer())
+    const game::TPlayerData* player = localPlayerData();
+    if (!player)
         return 0;
-    return experienceToNextLevel(static_cast<qint64>(tibia::game::localPlayerExperience()),
-                                 static_cast<uint16_t>(tibia::game::localPlayerLevel() + 1));
+    return experienceToNextLevel(player->experience(), static_cast<uint16_t>(player->level() + 1));
 }
 
 }
@@ -768,7 +778,8 @@ QString TProgressWidgetController::experiencePointsNeededForNextLevel() const { 
 
 double TProgressWidgetController::playerLevelProgress() const
 {
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerLevelPercent() / 100.0 : 0.0;
+    const game::TPlayerData* player = localPlayerData();
+    return player ? static_cast<uint16_t>(player->levelPercent()) / 100.0 : 0.0;
 }
 
 /// CIP: the XP needed over the XP per minute, below 6000 minutes.

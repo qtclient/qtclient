@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/cyclopediadialogcontext.h"

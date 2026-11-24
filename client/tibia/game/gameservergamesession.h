@@ -1,11 +1,16 @@
 #pragma once
 
 #include "game/gamesessionbase.h"
+#include "game/tgamenotify.h"
+
+#include <QDir>
+#include <QStringList>
+
+#include <functional>
 #include "game/gameservergamesessionmetainfo.h"
 
 #include "authentication/gameserverloginprocesscontroller.h"
 
-#include "client/gamecore.h"
 #include "network/dualconnectionurlinfo.h"
 
 #include "qtconnectionmanager.h"
@@ -63,11 +68,6 @@ class TUnencryptedRawMessageStream;
 namespace tibia {
 namespace game {
 
-/// Hub login teardown (`forceLogout` / `cancelLogin`). Only
-/// `TGameserverGameSession`, `TSessiondumpGameSession`, and `gamecore::terminate`
-/// may call this — the only path that touches `g_game` for disconnect.
-void hubDisconnectNow();
-
 /// Live gameserver session (CIP: TGameserverGameSession), one per login. It owns
 /// its network, as CipSoft's does: the dual game server connection, the packet
 /// processors, the authentication and encryption info and the login protocol
@@ -116,10 +116,6 @@ public:
     /// The connection's round trip time (the network quality handler's).
     network::TNetworkLatency latency() const override;
 
-    bool isOnline() const;
-    QString characterName() const;
-    QString worldName() const;
-
     /// The controller that connects the session to its world's game server.
     const std::shared_ptr<authentication::TGameserverLoginProcessController>& gameserverLoginProcessController() const
     {
@@ -137,6 +133,7 @@ public:
     {
         return m_playerMovementIntentHandler;
     }
+    input::TPlayerMovementIntentHandler* movementIntent() const override { return m_playerMovementIntentHandler.get(); }
     /// Once per frame: the player movement intent handler repeats a held
     /// direction and sends the next step of its path when it is due.
     void updatePlayerMovementIntentHandler() override;
@@ -145,16 +142,6 @@ public:
     void setMinimapStorages(std::shared_ptr<minimap::TMinimapTileStorage> tileStorage,
                             std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
                             std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage) override;
-
-    /// The world was entered: the enter notify, then the game start once per login
-    /// (`tibia::game::processWorldEntered`).
-    static void wireProcessWorldEntered();
-    /// Host: a death stops the own walk and freezes the scene.
-    static void wireProcessDeath();
-
-Q_SIGNALS:
-    /// The server wants a newer client (UpdateNeeded).
-    void clientOutOfDate();
 
 protected:
     /// The base's handlers, then the login protocol message handler, whose
@@ -230,7 +217,7 @@ private:
     std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
     /// The player movement intent handler's timed callbacks (createPlayerMovementTimer).
     QTimer m_playerMovementTimer;
-    /// Host: the classic session state's view of this session's connection.
+    /// Host: the classic packet path's view of this session's connection (its gameConnection()).
     std::weak_ptr<network::TGameserverSessionNetwork> m_sessionNetwork;
     /// Host: the client message links, made again when the game window relinks
     /// the protocol queue.

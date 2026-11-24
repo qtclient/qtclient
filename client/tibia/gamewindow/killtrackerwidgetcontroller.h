@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "qtconnectionmanager.h"
 
@@ -9,6 +8,7 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QString>
 
 #include <map>
 #include <memory>

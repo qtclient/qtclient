@@ -80,9 +80,6 @@ class TPlayerData final : public cip::tibia::game::TPlayerData
 public:
     explicit TPlayerData(QObject* parent = nullptr);
 
-    static TPlayerData* liveInstance();
-    static void setLiveInstance(TPlayerData* data);
-
     // ---- CIP TPlayerData ----
 
     int health() const { return m_health; }

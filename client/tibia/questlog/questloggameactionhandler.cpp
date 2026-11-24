@@ -1,6 +1,6 @@
 #include "questlog/questloggameactionhandler.h"
 
-#include <tibia/game/gamesession.h>
+#include "container/containerciptypes.h"
 
 #include <utility>
 #include <vector>

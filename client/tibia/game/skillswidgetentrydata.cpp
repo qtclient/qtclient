@@ -1,13 +1,15 @@
 #include "skillswidgetentrydata.h"
 
-#include "client/gamecore.h"
+#include "creatures/creaturestorage.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "game/playerskillstats.h"
 
 #include <QLocale>
 
 #include <algorithm>
 #include <optional>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::game {
 
@@ -21,14 +23,24 @@ const QLocale& english()
 
 QString number(const qint64 value) { return english().toString(value); }
 
-double levelPercentForDisplay()
+/// The current session's player data; the entries read it only after
+/// hasLocalPlayerSession().
+const TPlayerData& player()
 {
-    return tibia::game::localPlayerLevelPercentHundredths() / 100.0;
+    return *currentPlayerData();
 }
 
+double levelPercentForDisplay()
+{
+    return player().levelPercentRaw() / 100.0;
+}
+
+/// The session has a character the server described.
 bool hasLocalPlayerSession()
 {
-    return tibia::game::localPlayerId() != 0;
+    const TGameSessionBase* session = currentGameSession();
+    return session && session->hasLocalPlayer() && session->playerData() && session->creatureStorage()
+        && session->creatureStorage()->playerID() != 0;
 }
 
 /// CIP : "<value> = <base> +<equipment> (+<n> Loyalty)" when the
@@ -313,8 +325,8 @@ SkillsWidgetEntry buildSkillEntry(const SkillType type, const bool precisePercen
 
     if (type == SkillType::Experience) {
         const double percent = levelPercentForDisplay();
-        const qint64 experience = static_cast<qint64>(tibia::game::localPlayerExperience());
-        const int level = tibia::game::localPlayerLevel();
+        const qint64 experience = static_cast<qint64>(player().experience());
+        const int level = player().level();
         const qint64 remaining = std::max<qint64>(0, experienceForLevel(level + 1) - experience);
         entry.valueString = number(experience);
         entry.additionalValueString = number(level);
@@ -331,15 +343,15 @@ SkillsWidgetEntry buildSkillEntry(const SkillType type, const bool precisePercen
     qint64 loyaltyBase = 0;
     double percent = 0;
     if (type == SkillType::MagicLevel) {
-        value = tibia::game::localPlayerMagicLevel();
-        base = tibia::game::localPlayerBaseMagicLevel();
-        loyaltyBase = tibia::game::localPlayerMagicLevelLoyalty();
-        percent = tibia::game::localPlayerMagicLevelPercentHundredths() / 100.0;
+        value = player().magicLevel();
+        base = player().baseMagicLevel();
+        loyaltyBase = player().magicLevelLoyalty();
+        percent = player().magicLevelPercentHundredths() / 100.0;
     } else if (const auto skill = otcSkill(type)) {
-        value = tibia::game::localPlayerSkillLevel(*skill);
-        base = tibia::game::localPlayerSkillBaseLevel(*skill);
-        loyaltyBase = tibia::game::localPlayerSkillLoyaltyLevel(*skill);
-        percent = tibia::game::localPlayerSkillPercentHundredths(*skill) / 100.0;
+        value = player().skillLevel(*skill);
+        base = player().skillBaseLevel(*skill);
+        loyaltyBase = player().skillLoyaltyLevel(*skill);
+        percent = player().skillPercentHundredths(*skill) / 100.0;
     }
     // Servers that send no loyalty level report the base level there.
     if (loyaltyBase == 0)
@@ -397,13 +409,13 @@ Color compareColor(const qint64 value, const qint64 reference, const bool zero)
 void fillExperienceGain(SkillsWidgetEntry& entry)
 {
     const auto rate = [&](const tibia::client::ExperienceRate_t type) {
-        return tibia::game::localPlayerExperienceRate(type) / 100.0;
+        return player().experienceRate(type) / 100.0;
     };
-    const double base = tibia::game::localPlayerExperienceRate(tibia::client::EXP_BASE) ? rate(tibia::client::EXP_BASE) : 1.0;
+    const double base = player().experienceRate(tibia::client::EXP_BASE) ? rate(tibia::client::EXP_BASE) : 1.0;
     const double lowLevel = rate(tibia::client::EXP_LOWLEVEL);
     const double storeBoost = rate(tibia::client::EXP_XPBOOST);
     const double dailyRewardBoost = rate(tibia::client::EXP_DAILYREWARD);
-    const double stamina = tibia::game::localPlayerExperienceRate(tibia::client::EXP_STANINAMULTIPLIER)
+    const double stamina = player().experienceRate(tibia::client::EXP_STANINAMULTIPLIER)
                                ? rate(tibia::client::EXP_STANINAMULTIPLIER)
                                : 1.0;
     const double gain = (base + lowLevel + storeBoost + dailyRewardBoost) * stamina * 100.0;
@@ -420,7 +432,7 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
     QString tooltip = qtTrId("xp_gain_default_tooltip").arg(gain, 0, 'g', -1).arg(static_cast<int>(base * 100.0 + 0.5));
     if (lowLevel > 0.0)
         tooltip += qtTrId("xp_gain_lowlevel_tooltip").arg(static_cast<int>(lowLevel * 100.0 + 0.5));
-    if (const qint64 boostSeconds = tibia::game::localPlayerStoreExpBoostTime(); boostSeconds > 0) {
+    if (const qint64 boostSeconds = player().storeExpBoostTime(); boostSeconds > 0) {
         if (storeBoost != 0.0)
             tooltip += qtTrId("xp_gain_storeboost_running_tooltip")
                            .arg(static_cast<int>(storeBoost * 100.0 + 0.5))
@@ -428,7 +440,7 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
         else
             tooltip += qtTrId("xp_gain_storeboost_paused_tooltip").arg(static_cast<int>(storeBoost * 100.0 + 0.5));
     }
-    if (const qint64 boostSeconds = tibia::game::localPlayerDailyRewardExpBoostTime(); boostSeconds > 0) {
+    if (const qint64 boostSeconds = player().dailyRewardExpBoostTime(); boostSeconds > 0) {
         if (dailyRewardBoost != 0.0)
             tooltip += qtTrId("xp_gain_dailyrewardboost_running_tooltip")
                            .arg(static_cast<int>(dailyRewardBoost * 100.0 + 0.5))
@@ -440,7 +452,7 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
     if (stamina > 1.0)
         tooltip += qtTrId("xp_gain_hunting_bonus_tooltip")
                        .arg(stamina, 0, 'g', 2)
-                       .arg(clockMinutes(tibia::game::localPlayerStamina() - 2340));
+                       .arg(clockMinutes(player().stamina() - 2340));
     else if (stamina < 1.0)
         tooltip += qtTrId("xp_gain_hunting_malus_tooltip").arg(stamina, 0, 'g', 2);
     entry.tooltip = tooltip;
@@ -487,7 +499,7 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precis
     switch (type) {
         case SkillType::Level: {
             const double percent = levelPercentForDisplay();
-            entry.valueString = number(tibia::game::localPlayerLevel());
+            entry.valueString = number(player().level());
             entry.progressBarValue = percent / 100.0;
             entry.progressBarColor = QColor(0xc0, 0x00, 0x00);
             entry.tooltip = qtTrId("skill_progress_tooltip").arg(100.0 - percent, 0, 'f', 2);
@@ -497,31 +509,31 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precis
             fillExperienceGain(entry);
             break;
         case SkillType::HitPoints:
-            entry.valueString = number(static_cast<qint64>(tibia::game::localPlayerHealth()));
+            entry.valueString = number(static_cast<qint64>(player().health()));
             entry.tooltip = qtTrId("x_of_y_foos_left_tooltips")
-                                .arg(number(static_cast<qint64>(tibia::game::localPlayerHealth())))
-                                .arg(number(static_cast<qint64>(tibia::game::localPlayerMaxHealth())))
+                                .arg(number(static_cast<qint64>(player().health())))
+                                .arg(number(static_cast<qint64>(player().maxHealth())))
                                 .arg(qtTrId("hit_points"));
             break;
         case SkillType::Mana:
-            entry.valueString = number(static_cast<qint64>(tibia::game::localPlayerMana()));
+            entry.valueString = number(static_cast<qint64>(player().mana()));
             entry.tooltip = qtTrId("x_of_y_foos_left_tooltips")
-                                .arg(number(static_cast<qint64>(tibia::game::localPlayerMana())))
-                                .arg(number(static_cast<qint64>(tibia::game::localPlayerMaxMana())))
+                                .arg(number(static_cast<qint64>(player().mana())))
+                                .arg(number(static_cast<qint64>(player().maxMana())))
                                 .arg(qtTrId("mana"));
             break;
         case SkillType::Speed: {
-            const qint64 speed = tibia::game::localPlayerSpeed();
-            const qint64 base = tibia::game::localPlayerBaseSpeed();
+            const qint64 speed = player().speed();
+            const qint64 base = player().baseSpeed();
             entry.valueString = number(speed);
             entry.valueStringColor = compareColor(speed, base, speed < base && speed == 0);
             entry.tooltip = skillDetail(speed, base, base);
             break;
         }
         case SkillType::Capacity: {
-            const qint64 free = tibia::game::localPlayerFreeCapacity();
-            const qint64 total = std::max<qint64>(tibia::game::localPlayerTotalCapacity(), free);
-            const qint64 baseCap = tibia::game::localPlayerBaseCapacity();
+            const qint64 free = player().freeCapacity();
+            const qint64 total = std::max<qint64>(player().totalCapacity(), free);
+            const qint64 baseCap = player().baseCapacity();
             const qint64 base = baseCap ? baseCap : total;
             entry.valueString = number(free);
             entry.valueStringColor = compareColor(total, base, free == 0);
@@ -532,7 +544,7 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precis
             break;
         }
         case SkillType::Food: {
-            const qint64 seconds = tibia::game::localPlayerRegenerationTime();
+            const qint64 seconds = player().regenerationTime();
             entry.valueString = QStringLiteral("%1:%2")
                                     .arg(seconds / 3600, 2, 10, QLatin1Char('0'))
                                     .arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'));
@@ -541,9 +553,9 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precis
                 : qtTrId("food_hungry_tooltip");
             break;
         }
-        case SkillType::SoulPoints: entry.valueString = number(tibia::game::localPlayerSoul()); break;
+        case SkillType::SoulPoints: entry.valueString = number(player().soul()); break;
         case SkillType::Stamina: {
-            const qint64 minutes = tibia::game::localPlayerStamina();
+            const qint64 minutes = player().stamina();
             entry.valueString = clockMinutes(minutes);
             entry.progressBarValue = minutes / 2520.0;
             const QString left = hoursAndMinutes(minutes);
@@ -564,7 +576,7 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type, const bool precis
             break;
         }
         case SkillType::OfflineTraining: {
-            const qint64 minutes = tibia::game::localPlayerOfflineTrainingTime();
+            const qint64 minutes = player().offlineTrainingTime();
             entry.valueString = clockMinutes(minutes);
             entry.progressBarValue = minutes / 720.0;
             entry.progressBarColor = QColor(0xc0, 0x00, 0x00);

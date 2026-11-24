@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
-#include "client/gamecore.h"
 #include "creatures/battlelistrenderprovider.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
@@ -263,8 +262,6 @@ public:
 
     TBattleListControllerStorage(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TBattleListControllerStorage() override;
-
-    static TBattleListControllerStorage* instance();
 
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme);

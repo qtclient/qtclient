@@ -1,5 +1,6 @@
 #include "iteminfodialogcontroller.h"
 #include "game/currentgamesession.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/appearancetypefilterselection.h"
 
@@ -30,7 +31,6 @@
 #include <set>
 #include <tuple>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/appearances/appearanceinstance.h>
 
@@ -308,7 +308,7 @@ void TItemInfoDialogController::showDialogTab()
 {
     hideDialogTab();
     if (const game::TGameSessionBase* session = game::currentGameSession())
-        m_proxy.connectToStorages(session->playerData(), prices(), session->itemTrackingStorage(), nullptr, nullptr);
+        m_proxy.connectToStorages(session->playerData(), session->itemPriceStorage().get(), session->itemTrackingStorage(), nullptr, nullptr);
     else
         m_proxy.disconnectFromStorages();
     if (!m_entriesBuilt)
@@ -485,7 +485,7 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
 {
     resetInspect();
     setSelectedTypeId(static_cast<uint16_t>(AppearanceId));
-    if (tibia::game::isOnline()) {
+    if (const game::TGameSessionBase* session = game::currentGameSession(); session && session->isOnline()) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         m_inspectTimer.start(static_cast<int>(std::max(InspectMinimumDelay, m_lastInspect + InspectInterval - now)));
         setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
@@ -496,10 +496,12 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
 
 void TItemInfoDialogController::onInspectRequestTimeoutReached()
 {
-    if (m_typeId == 0 || !tibia::game::isOnline())
+    const game::TGameSessionBase* session = game::currentGameSession();
+    if (m_typeId == 0 || !session || !session->isOnline())
         return;
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
-    tibia::game::inspectionObject(tibia::client::INSPECT_CYCLOPEDIA, m_typeId, 1);
+    if (session->canPerformGameAction() && session->cyclopediaProtocolMessageHandler())
+        session->cyclopediaProtocolMessageHandler()->sendInspectCyclopediaObject(m_typeId);
 }
 
 void TItemInfoDialogController::updateNpcData()

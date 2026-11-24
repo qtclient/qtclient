@@ -3,7 +3,7 @@
 #include "tibia/protocol/extendedopcode.h"
 #include "tibia/protocol/extendedopcode_json.h"
 
-#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 #include <QJsonArray>
 #include <QJsonDocument>

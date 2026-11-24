@@ -20,12 +20,25 @@
 #include <array>
 #include <functional>
 #include <set>
-#include <tibia/game/gamesession.h>
+#include "game/currentgamesession.h"
 #include <tibia/appearances/appearanceinstance.h>
 
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The name with each space-separated word capitalised.
+QString capitalizedWords(const std::string& name)
+{
+    QString text = QString::fromStdString(name);
+    bool upNext = true;
+    for (QChar& ch : text) {
+        if (upNext)
+            ch = ch.toUpper();
+        upNext = ch == u' ';
+    }
+    return text;
+}
 
 using trade::ENPCTradeDirection;
 using trade::TNPCTradeGood;
@@ -313,12 +326,14 @@ TNPCTradeController::~TNPCTradeController()
 
 QString TNPCTradeController::bankBalance() const
 {
-    return tibia::game::hasLocalPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::inventoryBalance() const
 {
-    return tibia::game::hasLocalPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
+    const game::TGameSessionBase* session = tibia::game::currentGameSession();
+    return session && session->hasLocalPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::totalBalance() const
@@ -360,7 +375,7 @@ QString TNPCTradeController::currencyName() const
         return {};
     // Gold is shown with every word capitalised.
     if (!m_storage->hasCurrency())
-        return QString::fromStdString(tibia::game::formatCreatureName(type->getName()));
+        return capitalizedWords(type->getName());
     return QString::fromStdString(type->getName());
 }
 

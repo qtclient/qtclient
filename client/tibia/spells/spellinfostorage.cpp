@@ -1,6 +1,7 @@
 #include "spellinfostorage.h"
 
-#include "tibia/client/gamecore.h"
+#include "shared/tibiafilesystemhelper.h"
+#include <QStringList>
 
 #include <QCoreApplication>
 
@@ -143,7 +144,7 @@ QString spellsAssetPath(const QString& fileName)
         QDir::current().filePath(QStringLiteral("Resources/assets")),
     };
     // Tip AppData Resources (resolveCipResourcesDir) — same tree loadAssets uses.
-    const QString resources = tibia::client::gamecore::cipResourcesDir();
+    const QString resources = tibia::files::data().cipResourcesDir();
     if (!resources.isEmpty())
         dirs.prepend(QDir(resources).filePath(QStringLiteral("assets")));
     for (const QString& dir : dirs) {

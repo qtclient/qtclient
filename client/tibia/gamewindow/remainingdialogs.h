@@ -6,7 +6,7 @@
 #include "game/skillswidgetentrydata.h"
 
 #include "authentication/authenticationjsondocumenthelper.h"
-#include "client/gamecore.h"
+#include <QStringList>
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/messagedialogcontroller.h"

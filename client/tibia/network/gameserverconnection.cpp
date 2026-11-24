@@ -5,9 +5,6 @@
 #include "clockservice.h"
 #include "rsahelper.h"
 
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
-
 #include <QTimer>
 
 #include <filesystem>
@@ -56,6 +53,11 @@ void TGameserverSessionNetwork::setDisconnector(std::function<void()> disconnect
     m_disconnector = std::move(disconnector);
 }
 
+void TGameserverSessionNetwork::setFailureHandler(std::function<void()> handler)
+{
+    m_failureHandler = std::move(handler);
+}
+
 void TGameserverSessionNetwork::setConnected(const bool connected)
 {
     m_connected = connected;
@@ -84,7 +86,6 @@ void TGameserverSessionNetwork::beginReplay()
 {
     m_replay = true;
     m_disconnected = false;
-    tibia::game::notify("onConnect");
 }
 
 void TGameserverSessionNetwork::disconnect()
@@ -111,9 +112,13 @@ void TGameserverSessionNetwork::fail(const QString& message, const bool clean)
 {
     if (m_disconnected)
         return;
+    // The session reports the error itself (IGameSession::connectionError);
+    // its game ends here.
+    (void)message;
+    (void)clean;
     disconnect();
-    tibia::game::processConnectionError(message.isEmpty() && !clean ? std::string("connection lost") : message.toStdString(),
-                                        clean);
+    if (const auto handler = std::exchange(m_failureHandler, {}))
+        handler();
 }
 
 bool TGameserverSessionNetwork::isConnected() const

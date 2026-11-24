@@ -1,6 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"
