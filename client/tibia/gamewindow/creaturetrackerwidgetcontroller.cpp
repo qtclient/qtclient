@@ -394,50 +394,5 @@ void TCreatureTrackerWidgetController::requestWidgetConfigurationMenu()
     menu->showCustomMenu();
 }
 
-TCreatureTrackerWidgetManager::TCreatureTrackerWidgetManager(const TCreatureTrackerWidgetController::EWidgetMode mode,
-                                                             QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
-    : QObject(parent)
-    , m_mode(mode)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
-{}
-
-TCreatureTrackerWidgetManager::TCreatureTrackerWidgetManager(const TCreatureTrackerWidgetController::EWidgetMode mode,
-                                                             cyclopedia::TCreatureTrackerStorage*, bossbestiary::TBossTrackerStorage*,
-                                                             QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
-    : TCreatureTrackerWidgetManager(mode, gameWindowItem, engine, parent)
-{}
-
-TCreatureTrackerWidgetManager::~TCreatureTrackerWidgetManager() { delete m_controller; }
-
-void TCreatureTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    m_gameSession = GameSession;
-    if (m_controller)
-        m_controller->connectToGameSession(m_gameSession);
-}
-
-TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions*)
-{
-    if (!m_controller) {
-        m_controller = new TCreatureTrackerWidgetController(m_mode, m_gameWindowItem, m_engine);
-        connect(m_controller, &TCreatureTrackerWidgetController::publishGameAction, this, &TCreatureTrackerWidgetManager::publishGameAction);
-        // The controller takes its storages and options from the session.
-        m_controller->connectToGameSession(m_gameSession);
-    }
-    return m_controller->widget();
-}
-
-void TCreatureTrackerWidgetManager::close(const bool saveWidgetOptions)
-{
-    if (!m_controller)
-        return;
-    if (saveWidgetOptions)
-        m_controller->saveWidgetOptions();
-    m_controller->deleteLater();
-    m_controller = nullptr;
-}
-
-TSidebarWidget* TCreatureTrackerWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
 
 } // namespace tibia::gamewindow

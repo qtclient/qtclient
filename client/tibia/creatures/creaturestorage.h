@@ -142,7 +142,7 @@ public:
               EMovementDirection direction, int elevationFrom, int elevationTo);
     /// Drop any motion (teleport, floor change).
     void resetMovement();
-    /// Per-frame: advance the motion and the walking animation.
+    /// Per-frame: advance the motion and the outfit's and mount's sequences.
     void update(qint64 nowMs);
     /// The step's time has not run out yet.
     bool isMoving() const { return !m_movementTween.isTweenFinished(); }
@@ -227,6 +227,15 @@ public:
     /// Which frames show, for every creature.
     static const TCreatureMarkOptions& markOptions();
     static void setMarkOptions(const TCreatureMarkOptions& options);
+    /// The game client's option switches, one frame each: the mark the server
+    /// keeps on a creature (combatShowPvpFrames), the one it shows for a
+    /// moment (combatShowFrames), the attack / follow / selection frame
+    /// (gameWindowShowTragetFrame), and the white selection frame, shown
+    /// unless the creature under the mouse is highlighted instead.
+    static void setShowStaticSquare(bool show) { markOptionsForWrite().staticSquare = show; }
+    static void setShowTimedSquare(bool show) { markOptionsForWrite().timedSquare = show; }
+    static void setShowTargetFrame(bool show) { markOptionsForWrite().targetFrame = show; }
+    static void setShowSelectionFrame(bool show) { markOptionsForWrite().mouseHighlightTarget = !show; }
     /// CIP: how long a timed square shows (the game client sets it from the client settings).
     static void setTimedSquareDuration(qint64 Milliseconds);
     /// The step's elevation while moving, the field's otherwise.
@@ -249,12 +258,6 @@ public:
     bool isMounted() const { return m_mounted; }
     /// The outfit shows its mounted sprites; the mount keeps its own.
     void setMounted(bool mounted);
-    /// The outfit's / the mount's phase to draw: the walking cycle while the
-    /// moving sprites show, the standing sequence's phase otherwise.
-    uint16_t animationPhase() const;
-    uint16_t mountAnimationPhase() const;
-    /// The standing sequence's phase (an outfit shown as an object, too).
-    int idleAnimationPhase() const { return m_outfitIdleAnimator ? m_outfitIdleAnimator->phase() : 0; }
     QPoint displacement() const { return m_displacement; }
 
     uint8_t creatureType() const { return m_creatureType; }
@@ -346,20 +349,10 @@ private:
     /// the mount draws the looks without a mount of its own.
     void updateOutfitPatterns(bool force);
     static QColor informationColorForHealthPercent(uint8_t healthPercent);
-    void restartWalkAnimators();
-    void refreshWalkAnimators();
     void updateCoveredField();
-    uint16_t animationPhaseFor(const TAppearanceType* type, const std::optional<animation::TMovingOutfitAnimator>& walk,
-                               const std::optional<animation::TAnimator>& idle) const;
-    TAppearanceType* outfitThingType() const;
-    TAppearanceType* mountThingType() const;
+    static TCreatureMarkOptions& markOptionsForWrite();
 
     TCreatureMovementTween m_movementTween;
-    std::optional<animation::TMovingOutfitAnimator> m_outfitWalkAnimator;
-    std::optional<animation::TMovingOutfitAnimator> m_mountWalkAnimator;
-    /// The standing sprite sequences' animators, started at time 0.
-    std::optional<animation::TAnimator> m_outfitIdleAnimator;
-    std::optional<animation::TAnimator> m_mountIdleAnimator;
 
     TCreatureID m_creatureId{ 0 };
     QString m_name;

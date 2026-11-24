@@ -92,6 +92,17 @@ public:
     bool entryVisible() const override { return m_entryVisible; }
     /// Shows or hides the row; announces changed every time.
     void setEntryVisible(bool EntryVisible);
+    // One setter per field. Value, colours, bar value and button announce a
+    // change only when the value differs; the icon source and the additional
+    // value always announce; the icon tooltip never does.
+    void setValueString(const QString& ValueString);
+    void setValueStringColor(EValueColorType ValueStringColor);
+    void setProgressBarColor(const QColor& ProgressBarColor);
+    void setProgressBarValue(double ProgressBarValue);
+    void setShowButton(bool ShowButton);
+    void setIconSource(const QString& IconSource);
+    void setIconTooltip(const QString& IconTooltip);
+    void setAdditionalValueString(const QString& AdditionalValueString);
 
 private:
     SkillType m_type = SkillType::Experience;

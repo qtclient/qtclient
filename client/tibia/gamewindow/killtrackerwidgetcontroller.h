@@ -30,6 +30,8 @@ class TPreyStorage;
 }
 namespace taskboard {
 struct TBountyTask;
+class TTaskboardBountyTasksStorage;
+class TTaskboardWeeklyTasksStorage;
 }
 }
 
@@ -77,20 +79,19 @@ private:
 };
 
 /// The kill tracker widget, prey/KillTrackerWidget.qml (CIP:
-/// TKillTrackerWidgetController, ctor , init): one
-/// render info per prey slot, built once from the storage, plus bounty/weekly
-/// task lists from onBountyTaskData / onWeeklyTaskData.
+/// TKillTrackerWidgetController): one render info per prey slot of the
+/// session's prey storage, plus the bounty and weekly task lists of the
+/// session's task board storages. The sidebar widgets manager makes it and
+/// connects it to the game session.
 class TKillTrackerWidgetController final : public TSidebarWidgetController<cip::tibia::gamewindow::TKillTrackerWidgetController>
 {
     Q_OBJECT
 
 public:
-    TKillTrackerWidgetController(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CipSoft's constructor: the two task models and the widget item.
+    TKillTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     /// CIP: clears the prey list first (clearPreyList).
     ~TKillTrackerWidgetController() override;
-
-    /// preyWidgetOptions: contentHeight, contentMaximized.
-    void setSidebarOptions(config::TSidebarOptions* options);
 
     /// CIP : the storage's bonusRerollPossible.
     bool bonusRerollpossible() const override;
@@ -119,8 +120,10 @@ public Q_SLOTS:
     void onLevelUpClicked() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
-    /// Host: the bounty and weekly rows follow the session's task board
-    /// storages (until TSidebarWidgetsManager's session connector is ported).
+    /// CIP: the prey list is rebuilt from the session's prey storage (its
+    /// reroll and choose prices announced), the bounty and weekly task lists
+    /// follow the session's task board storages (filled now) and the widget
+    /// options follow the session's sidebar options (applied now).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 Q_SIGNALS:
@@ -136,7 +139,7 @@ Q_SIGNALS:
     /// CIP preyList NOTIFY — qtclient emits after slot render-info list is built.
 
 private Q_SLOTS:
-    /// CIP weeklyTaskDataChanged — qtclient fills from onWeeklyTaskData notify.
+    /// CIP: the weekly task list from the weekly tasks storage.
     void weeklyTaskDataChanged();
     /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
     void onWidgetOptionsChanged();
@@ -148,47 +151,15 @@ private:
     void applyBountyMonsters(const std::vector<taskboard::TBountyTask>& tasks);
     void applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
 
-    prey::TPreyStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<config::TSidebarOptions> m_options;
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<std::map<std::string, uint32_t>> m_pendingWeekly;
+    std::shared_ptr<prey::TPreyStorage> m_storage;
+    std::shared_ptr<taskboard::TTaskboardBountyTasksStorage> m_bountyTasksStorage;
+    std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage> m_weeklyTasksStorage;
     bool m_weeklyActive = true;
     shared::TQtConnectionManager m_gameSessionConnections;
 };
 
-/// Owns the kill tracker widget while it is open. The sidebar widgets manager
-/// opens and closes it (EWidgetType 5) through open / close / current.
-class TKillTrackerWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TKillTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
-    ~TKillTrackerWidgetManager() override;
-
-    /// Host: the game session's prey storage (CIP hands it over in the sidebar
-    /// widgets' session connector).
-    void setPreyStorage(prey::TPreyStorage* storage);
-
-    /// Makes the widget (if needed) with the session's sidebar options and returns it.
-    TSidebarWidget* open(config::TSidebarOptions* options);
-    /// Saves its options and deletes it.
-    void close(bool saveWidgetOptions = true);
-    TSidebarWidget* current() const;
-    /// Host: the open widget and the next one follow the session's task board.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-
-Q_SIGNALS:
-    /// The controller's publishGameAction, forwarded.
-    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    prey::TPreyStorage* m_storage = nullptr;
-    QQuickItem* m_gameWindowItem;
-    QQmlEngine* m_engine;
-    QPointer<TKillTrackerWidgetController> m_controller;
-    std::shared_ptr<game::IGameSession> m_gameSession;
-};
 
 }
 }

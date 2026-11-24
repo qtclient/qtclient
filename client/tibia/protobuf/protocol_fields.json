@@ -8416,7 +8416,7 @@
       },
       {
         "name": "object",
-        "type": "ProtocolInventoryItem",
+        "type": "AppearanceInstance",
         "number": 4,
         "label": "optional"
       },

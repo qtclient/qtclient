@@ -412,7 +412,7 @@ public:
     const std::shared_ptr<TAppearanceInstanceSpriteSequence>& idleSequence() const { return m_idleSequence; }
     const std::shared_ptr<TAppearanceInstanceSpriteSequence>& movingSequence() const { return m_movingSequence; }
     /// The sprite of `phase` counted over the idle phases, then the moving
-    /// ones (host: the creature's animators pick it); null without sprites.
+    /// ones (host: the pack lighting's stamp phases); null without sprites.
     TAppearanceInstanceSpriteInfoPtr spriteInfoAtPhase(int phase) const;
 
     /// The type's reverse addon flags (CIP packs +0x134..0x137 for v3).

@@ -181,7 +181,7 @@ void advanceTo(const qint64 micros)
     // predicted stamp. Allowing that rewind made DurationTween / foot clocks jump
     // and compressed auto-walk steps while key-hold (real-time v9) stayed smooth.
     shared::TClockService::setFrameMicros(
-        std::max<qint64>({ micros, shared::TClockService::process()->nowMicros(), shared::TClockService::frameMicros() }));
+        std::max<qint64>({ micros, shared::TClockService::frameSourceMicros(), shared::TClockService::frameMicros() }));
 }
 
 void resumeRealTime()

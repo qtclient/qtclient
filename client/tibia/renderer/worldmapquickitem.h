@@ -20,6 +20,7 @@ class TChildrenScenegraphNode;
 class TScenegraphNodeProvider;
 class THighlightedSpriteScenegraphNode;
 class TSpriteTextureProvider;
+class TWorldMapCameraViewport;
 }
 }
 
@@ -39,6 +40,10 @@ public:
     /// What the map shows; null shows nothing. The provider must outlive the item
     /// or be unset first.
     void setRenderProvider(TWorldMapRenderProvider* provider);
+    /// What the map shows and the camera it is seen through, both kept alive
+    /// by the item; the item draws only while it has both.
+    void setRenderSources(std::shared_ptr<TWorldMapRenderProvider> provider,
+                          std::shared_ptr<renderer::TWorldMapCameraViewport> cameraViewport);
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
@@ -47,6 +52,11 @@ protected:
 
 private:
     TWorldMapRenderProvider* m_provider = nullptr;
+    /// The sources setRenderSources keeps (host: setRenderProvider takes a
+    /// provider owned elsewhere).
+    std::shared_ptr<TWorldMapRenderProvider> m_renderProvider;
+    std::shared_ptr<renderer::TWorldMapCameraViewport> m_cameraViewport;
+    bool m_hasRenderSources = false;
     std::unique_ptr<renderer::TSpriteTextureProvider> m_textures;
     QMetaObject::Connection m_frameConnection;
     QMetaObject::Connection m_highlightConnection;

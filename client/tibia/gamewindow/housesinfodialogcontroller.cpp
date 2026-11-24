@@ -718,9 +718,8 @@ void THousesInfoDialogController::setPreviewRenderSources()
     auto* worldMap = qobject_cast<qmlcomponents::TWorldMapQuickItem*>(m_houseWorldMap.data());
     if (!worldMap)
         return;
-    // Host: qtclient's world map item takes the render provider only; the
-    // provider draws the volume's own viewport.
-    worldMap->setRenderProvider(m_houseVolume ? m_houseVolume->worldMapRenderProvider().get() : nullptr);
+    worldMap->setRenderSources(m_houseVolume ? m_houseVolume->worldMapRenderProvider() : nullptr,
+                               m_houseVolume ? m_houseVolume->worldMapCameraViewport() : nullptr);
 }
 
 void THousesInfoDialogController::setHouseCameraViewport(cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType* pCameraViewport)

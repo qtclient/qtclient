@@ -754,11 +754,20 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler(
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory, std::shared_ptr<shared::IClockService> clockService)
+    : m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
+    , m_clockService(std::move(clockService))
+{
+}
+
 void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMessageEditText& m)
 {
-    const auto item = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.object());
-    Q_EMIT requestEditTextDialog(m.edit_id(), item.typeId, static_cast<uint16_t>(m.max_length()), QString::fromStdString(m.text()),
-                                 QString::fromStdString(m.author()), QString::fromStdString(m.date()), m.recently_traded());
+    const QString text = QString::fromStdString(m.text());
+    const auto object = std::dynamic_pointer_cast<appearances::TObjectAppearanceInstance>(
+        m_appearanceInstanceFactory->createFromProtobuf(m.object(), m_clockService->nowMillis()));
+    Q_EMIT requestEditTextDialog(m.edit_id(), text, static_cast<int>(m.max_length()), object, QString::fromStdString(m.author()),
+                                 m.recently_traded(), QString::fromStdString(m.date()));
 }
 
 void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMessageEditList& m)

@@ -323,11 +323,6 @@ private:
     void loadLightOptions();
     /// gameWindowShowLootHighlighting: containers draw their field effect.
     void loadLootHighlightOption();
-    /// The options that decide which frames creatures show.
-    void loadMarkOptions();
-    /// The colours of the frames around a creature, outer to inner; all 0
-    /// when it shows none.
-    std::array<uint32_t, 3> creatureMarks(const tibia::creatures::TCreature& creature) const;
     /// Recomputes the render volume for the camera's field; first and last
     /// drawn floor from it.
     void updateVisibleFloors(uint8_t& first, uint8_t& last);
@@ -342,7 +337,7 @@ private:
     /// One field's draw commands.
     void addField(const FieldEntry& field, TOcclusionGrid& grid);
     void addTileBelow(const FieldEntry& field, const QPoint& dest, uint8_t& elevation, TOcclusionGrid& grid);
-    void addTileCreatures(const FieldEntry& field, const QPoint& dest, uint8_t elevation);
+    void addTileCreatures(const FieldEntry& field, const QPoint& dest, uint8_t elevation, TOcclusionGrid& grid);
     void addTileEffects(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
     void addTileTop(const FieldEntry& field, const QPoint& dest, TOcclusionGrid& grid);
     void addLootHighlight(const FieldEntry& field, const QPoint& dest);
@@ -350,8 +345,6 @@ private:
     /// the fields it hides, its count near the player and its type.
     void addObject(const FieldEntry& field, int stackIndex, const QPoint& dest, uint8_t& elevation, bool castHeight,
                    TOcclusionGrid& grid);
-    /// Counts a drawn creature near the player and keeps its types.
-    void noteCreature(const worldmap::TWorldMapCoordinate& field, const tibia::creatures::TCreature& creature);
     /// The missiles of the drawn floors (after every field).
     void addMissiles(uint8_t first, uint8_t last);
     /// The pack lighting's stamps and lights of floor `z`'s missiles.
@@ -378,12 +371,16 @@ private:
     /// Key for a creature or top object of `field` at draw-grid (x, y): moved
     /// into the slot of a lying object down or right of it.
     DrawKey slotKey(const worldmap::TWorldMapCoordinate& field, int x, int y, uint8_t layer, uint8_t index) const;
-    /// What one instance on `coordinate` draws, render info by render info:
+    /// What one instance on `coordinate` draws, render info by render info
+    /// (an object's, a creature placeholder's, else the instance's own sprite):
     /// each info with a sprite counts its type near the player, draws with the
-    /// current key at `dest` (the field's corner lifted by `lift`), tinted by
-    /// `highlight` unless it is a creature mark or the baseplate, lights the
-    /// map when its type shines, hides the lower floors under the fields an
-    /// opaque sprite at its field's corner covers, and keeps its type.
+    /// current key at `dest` (the field's corner lifted by `lift`) moved to the
+    /// field the info lands on, tinted by `highlight` unless it is a creature
+    /// mark or the baseplate (a creature's infos otherwise by its attack /
+    /// follow state), lights the map when its type shines, a creature's also
+    /// with its own, its outfit's and its mount's light, hides the lower floors
+    /// under the fields an opaque sprite at its field's corner covers, and
+    /// keeps its type (a creature's outfit and mount types).
     void addRenderInfos(const appearances::TAppearanceInstance& instance, const worldmap::TWorldMapCoordinate& coordinate,
                         const QPoint& dest, SpriteRecord::Highlight highlight, uint8_t lift,
                         tibia::worldmap::TWorldMapField* tile, bool castHeight, TOcclusionGrid& grid);
@@ -391,13 +388,13 @@ private:
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
     void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                  uint8_t& elevation);
-    /// Draw the show-off socket (podium) creature/outfit on top of the socket item.
-    /// World-map creature sprites from field/storage outfit appearance + `TCreature` draw snapshot.
-    void addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                         const tibia::creatures::TCreature& creature, const QPoint& dest,
-                                         bool castHeight = true);
+    /// A creature standing on `coordinate` (its corner at `dest`, lifted by
+    /// `lift`): its placeholder's render infos, with the host's HUD entry,
+    /// jump, attached effects and pack lighting context.
+    void addCreature(const tibia::creatures::TCreature& creature, const worldmap::TWorldMapCoordinate& coordinate,
+                     const QPoint& dest, uint8_t lift, bool castHeight, TOcclusionGrid& grid);
     void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t elevation,
-                               bool castHeight);
+                               bool castHeight, TOcclusionGrid& grid);
     void addMissile(const appearances::TAppearanceInstancePtr& appearance);
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).

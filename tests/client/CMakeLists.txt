@@ -432,12 +432,15 @@ qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp
 # CIP cyclopedia::TCyclopediaMapStaticDataStorage: map.dat areas, files and masks.
 qtclient_add_port_test(client_cyclopediamapstaticdatastorage_tests
     cyclopediamapstaticdatastorage_test.cpp
+    cyclopediamapstaticdatastoragehost_stub.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.h
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
 )
 target_link_libraries(client_cyclopediamapstaticdatastorage_tests PRIVATE protobuf Qt6::Gui)
 set_target_properties(client_cyclopediamapstaticdatastorage_tests PROPERTIES AUTOMOC ON)
+# cyclopediaciptypes.h (IStaticHouseDataObserver) brings protocol.pb.h: its slots() accessors.
+target_compile_definitions(client_cyclopediamapstaticdatastorage_tests PRIVATE QT_NO_KEYWORDS)
 
 # CIP skill wheel grid path solver (TSkillWheelPageController): which grids are valid.
 find_package(ZLIB QUIET)
@@ -518,6 +521,7 @@ target_link_libraries(client_resourcespriteidentifier_tests PRIVATE Qt6::Gui)
 qtclient_add_port_test(client_worldmapcuboidcontains_tests worldmapcuboidcontains_test.cpp)
 qtclient_add_port_test(client_assetfilesystemhelper_tests
     assetfilesystemhelper_test.cpp
+    tibiafilesystemhelper_stub.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetfilesystemhelper.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
 )
@@ -609,6 +613,7 @@ set_target_properties(client_resourcespritesmanager_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_resourcespritesmanager_tests PRIVATE Qt6::Gui)
 qtclient_add_port_test(client_assetmanager_tests
     assetmanager_test.cpp
+    tibiafilesystemhelper_stub.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetmanager.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetasyncloader.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetasyncloaderworker.cpp

@@ -69,6 +69,9 @@ struct LauncherEnv
     /// CIP `[URLS] fpsHistoryRecipient`: the qtc-aac hardware receiver
     /// (/clientservices/hardwarereceiver.php, QTCLIENT_FPS_HISTORY_PATH overrides).
     QUrl fpsHistoryRecipientUrl() const;
+    /// CIP `[URLS] tutorialProgressWebService`: the qtc-aac tutorial progress
+    /// receiver (/clientservices/tutorialprogress.php, QTCLIENT_TUTORIAL_PROGRESS_PATH overrides).
+    QUrl tutorialProgressWebServiceUrl() const;
 
     /// Override string for an OPEN_URL_* action env key, or empty.
     QString urlOverride(const char* envKey) const;

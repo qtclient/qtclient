@@ -136,75 +136,32 @@ bool TCreature::isHidden() const
     return m_creatureType == Proto::CreatureTypeHidden;
 }
 
-TAppearanceType* TCreature::outfitThingType() const
-{
-    if (!m_outfit.isCreature())
-        return nullptr;
-    return tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
-}
-
-TAppearanceType* TCreature::mountThingType() const
-{
-    return m_outfit.hasMount() ? tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature) : nullptr;
-}
-
 namespace {
 
-std::optional<animation::TMovingOutfitAnimator> walkAnimatorFor(const TAppearanceType* type)
+uint8_t patternXFromDirection(const uint8_t direction)
 {
-    const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
-    if (!moving || moving->phaseCount() == 0)
-        return std::nullopt;
-    return animation::TMovingOutfitAnimator(moving->phaseCount(),
-                                            moving->loopType == animation::TAnimationInfo::ELoopType::PingPong);
+    // Match Creature::setDirection: diagonals collapse to East/West sprite patterns.
+    if (direction == tibia::client::NorthEast || direction == tibia::client::SouthEast)
+        return tibia::client::East;
+    if (direction == tibia::client::NorthWest || direction == tibia::client::SouthWest)
+        return tibia::client::West;
+    if (direction <= tibia::client::West)
+        return direction;
+    return tibia::client::South;
 }
 
-// A rebuilt sprite sequence keeps its walk animator, so the leg cycle runs on;
-// the divisor becomes the plain phase count even for a ping-pong animation.
-void refreshWalkAnimator(std::optional<animation::TMovingOutfitAnimator>& walk, const TAppearanceType* type)
-{
-    const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
-    if (walk && moving && moving->phaseCount() > 0)
-        walk->setDivisor(moving->phaseCount());
-    else
-        walk = walkAnimatorFor(type);
-}
-
-}
-
-static std::optional<animation::TAnimator> idleAnimatorFor(const TAppearanceType* type)
-{
-    if (const animation::TAnimationInfo* info = type ? type->idleAnimation() : nullptr)
-        return animation::TAnimator(*info, 0);
-    return std::nullopt;
-}
-
-void TCreature::restartWalkAnimators()
-{
-    m_outfitWalkAnimator = walkAnimatorFor(outfitThingType());
-    m_mountWalkAnimator = walkAnimatorFor(mountThingType());
-    m_outfitIdleAnimator = idleAnimatorFor(tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory()));
-    m_mountIdleAnimator = idleAnimatorFor(mountThingType());
-}
-
-void TCreature::refreshWalkAnimators()
-{
-    refreshWalkAnimator(m_outfitWalkAnimator, outfitThingType());
-    refreshWalkAnimator(m_mountWalkAnimator, mountThingType());
-    // A rebuilt standing sequence gets a new animator.
-    m_outfitIdleAnimator = idleAnimatorFor(tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory()));
-    m_mountIdleAnimator = idleAnimatorFor(mountThingType());
-}
+} // namespace
 
 void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::TWorldMapCoordinate& origin,
                      const EMovementDirection direction, const int elevationFrom, const int elevationTo)
 {
+    // The step turns the creature and its moving sprites to the step's look;
+    // the outfit takes the new patterns when the step starts.
     const auto look = lookDirectionAfter(static_cast<ECreatureLookDirection>(m_movementLook), direction);
-    const bool lookChanged = static_cast<uint8_t>(look) != m_patternX;
-    m_movementLook = static_cast<uint8_t>(look);
     const qint64 restartAfter = m_movementTween.endTime() + 1000;
-    setDirection(static_cast<uint8_t>(look));
-    updateOutfitPatterns(false);
+    m_movementLook = static_cast<uint8_t>(look);
+    m_direction = static_cast<uint8_t>(look);
+    m_patternX = patternXFromDirection(m_direction);
 
     const bool atOrigin = worldmap::TWorldMapCoordinate(m_position) == origin;
     const bool ended = m_movementTween.isFinished();
@@ -225,12 +182,15 @@ void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::T
         m_movementTween.start(startMs, endMs, origin, direction, elevationFrom, elevationTo, 0);
         started = true;
     }
-    if (started && (lookChanged || restartAfter < startMs))
-        refreshWalkAnimators();
-    if (m_outfitWalkAnimator)
-        m_outfitWalkAnimator->setKey(endMs - startMs, startMs);
-    if (m_mountWalkAnimator)
-        m_mountWalkAnimator->setKey(endMs - startMs, startMs);
+    // A new step draws the new look; a step started more than a second after
+    // the last one ended restarts the outfit's animations.
+    if (started)
+        updateOutfitPatterns(restartAfter < startMs);
+    // The walking animation takes the step's duration.
+    if (const auto outfit = std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
+        outfit->setMovingAnimatorKey(endMs - startMs, startMs);
+    if (m_mountAppearance)
+        m_mountAppearance->setMovingAnimatorKey(endMs - startMs, startMs);
     updateCoveredField();
 }
 
@@ -239,49 +199,24 @@ void TCreature::resetMovement()
     m_movementTween = TCreatureMovementTween();
     if (m_placeholderAppearance)
         m_placeholderAppearance->setMovingSpriteSuppressed(true);
-    refreshWalkAnimators();
+    updateOutfitPatterns(true);
     updateCoveredField();
 }
 
 void TCreature::update(const qint64 nowMs)
 {
     m_movementTween.advance(nowMs);
-    if (m_outfitWalkAnimator)
-        m_outfitWalkAnimator->update(nowMs);
-    if (m_mountWalkAnimator)
-        m_mountWalkAnimator->update(nowMs);
-    if (m_outfitIdleAnimator)
-        m_outfitIdleAnimator->update(nowMs);
-    if (m_mountIdleAnimator)
-        m_mountIdleAnimator->update(nowMs);
+    if (m_outfitAppearance)
+        m_outfitAppearance->updateAnimation(nowMs);
+    if (m_mountAppearance)
+        m_mountAppearance->updateAnimation(nowMs);
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
-}
-
-uint16_t TCreature::animationPhaseFor(const TAppearanceType* type,
-                                      const std::optional<animation::TMovingOutfitAnimator>& walk,
-                                      const std::optional<animation::TAnimator>& idle) const
-{
-    if (!type)
-        return 0;
-    if (showsMovingSprite() && walk)
-        return static_cast<uint16_t>(type->getIdleAnimationPhases() + static_cast<int>(walk->phase()));
-    return idle ? static_cast<uint16_t>(idle->phase()) : 0;
 }
 
 bool TCreature::showsMovingSprite() const
 {
     return m_placeholderAppearance && m_placeholderAppearance->showsMovingSprite();
-}
-
-uint16_t TCreature::animationPhase() const
-{
-    return animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
-}
-
-uint16_t TCreature::mountAnimationPhase() const
-{
-    return animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
 }
 
 int TCreature::drawElevation() const
@@ -472,7 +407,6 @@ void TCreature::setOutfit(const Outfit& outfit)
         return;
     m_outfit = outfit;
     rebuildOutfitAppearance();
-    restartWalkAnimators();
 }
 
 void TCreature::setSpeed(const uint16_t speed)
@@ -504,21 +438,6 @@ void TCreature::setEmblem(const uint8_t emblem)
     Q_EMIT playerGuildFlagChanged();
 }
 
-namespace {
-
-uint8_t patternXFromDirection(const uint8_t direction)
-{
-    // Match Creature::setDirection: diagonals collapse to East/West sprite patterns.
-    if (direction == tibia::client::NorthEast || direction == tibia::client::SouthEast)
-        return tibia::client::East;
-    if (direction == tibia::client::NorthWest || direction == tibia::client::SouthWest)
-        return tibia::client::West;
-    if (direction <= tibia::client::West)
-        return direction;
-    return tibia::client::South;
-}
-
-} // namespace
 
 void TCreature::setDirection(const uint8_t direction)
 {
@@ -647,6 +566,11 @@ const TCreatureMarkOptions& TCreature::markOptions()
 void TCreature::setMarkOptions(const TCreatureMarkOptions& options)
 {
     g_markOptions = options;
+}
+
+TCreatureMarkOptions& TCreature::markOptionsForWrite()
+{
+    return g_markOptions;
 }
 
 TCreatureStorage::TCreatureStorage(QObject* parent)

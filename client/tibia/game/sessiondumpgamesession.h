@@ -18,6 +18,9 @@
 #include <vector>
 
 namespace tibia {
+namespace gamewindow {
+class TDialogStackController;
+}
 namespace sessiondump {
 class TSessiondumpAsyncLoader;
 class TSessiondumpPlayer;
@@ -59,7 +62,9 @@ public:
                             std::shared_ptr<sound::TSoundController> soundController,
                             std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
                             spells::TSpellInfoStorage* spellInfoStorage, TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
-                            proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent = nullptr);
+                            proficiency::TProficiencyStorage* proficiencyStorage,
+                            std::shared_ptr<gamewindow::TDialogStackController> dialogStackController = nullptr,
+                            QObject* parent = nullptr);
     ~TSessiondumpGameSession() override;
 
     /// Builds the session from a TSessiondumpGameSessionMetaInfo: storages,
@@ -78,6 +83,10 @@ public:
     /// The game client's network tick: the process timer starts again when it
     /// is not running.
     void processNetwork() override;
+    /// Once the dump's player has started, the frame is prepared at the
+    /// session clock's now (the dump's time, not the predicted one) and the
+    /// process timer starts again when it is not running. Before that nothing.
+    void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp) override;
     /// True for the tutorial dump a new character watches before its live session.
     bool isTutorial() const;
 
@@ -115,7 +124,8 @@ protected Q_SLOTS:
     void onRequestResetOfStorages();
     /// The process timer's tick: the player processes the dump up to its clock.
     virtual void onSessiondumpTimerElapsed();
-    /// The player played the dump to its end; nothing for the base session.
+    /// The player played the dump to its end; nothing for the base session
+    /// (a finished replay stays open until it is left).
     virtual void onSessiondumpFinished();
 
 protected:
@@ -133,6 +143,12 @@ private:
     /// A server message of the dump's player into the session's protocol queue.
     void enqueueGameserverMessage(const std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage>& message);
     void stopDmpd();
+    /// Host: the session announced its end; the classic session state lets go
+    /// of the replay (once).
+    void endDecodedReplay();
+    /// Host: the frame clock follows the process clock again when it followed
+    /// this session's.
+    void releaseFrameSource();
     void replayHexDump(const QString& file);
     void startReplay();
     void pumpReplay();
@@ -150,9 +166,14 @@ private:
     std::shared_ptr<sessiondump::TSessiondumpAsyncLoader> m_sessiondumpLoader;
     std::shared_ptr<sessiondump::TSessiondumpProgressClockService> m_sessiondumpProgressClock;
     std::shared_ptr<sessiondump::TSessiondumpPlayer> m_sessiondumpPlayer;
+    /// What the game client hands the session: its dialog stack and its options.
+    std::shared_ptr<gamewindow::TDialogStackController> m_dialogStackController;
+    std::shared_ptr<config::TClientOptions> m_sessiondumpClientOptions;
     shared::TQtConnectionManager m_connectionManager;
     QTimer m_sessiondumpTimer;
     bool m_sawPendingStateEntered = false;
+    /// Host: disconnected was announced (by the session or the classic state).
+    bool m_decodedReplayEnded = false;
 
     std::vector<tibia::game::SoftHook> m_hooks;
 };

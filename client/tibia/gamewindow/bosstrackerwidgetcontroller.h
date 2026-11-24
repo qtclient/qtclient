@@ -92,12 +92,11 @@ class TBossTrackerWidgetController final : public TSidebarWidgetController<cip::
     Q_OBJECT
 
 public:
-    TBossTrackerWidgetController(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                 QObject* parent = nullptr);
+    /// CipSoft's constructor: the boss model and the widget item (with the
+    /// focus handling of its click area); the storage comes with the session.
+    TBossTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// The session's boss tracker storage.
-    void setStorage(bossbestiary::TBossTrackerStorage* storage);
     /// Follows the session: its boss tracker storage's entries (rebuilt now)
     /// and its sidebar options' boss tracker options (applied now).
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -160,40 +159,12 @@ private:
     /// CIP TSidebarWidgetControllerWithFocusHandling +0xa0.
     TUiFocusManager m_focus;
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;
-    QMetaObject::Connection m_storageConnection;
     TBossTrackerListModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;
     std::shared_ptr<game::IGameSession> m_gameSession;
     shared::TQtConnectionManager m_gameSessionConnections;
 };
 
-class TBossTrackerWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TBossTrackerWidgetManager(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                              QObject* parent = nullptr);
-    ~TBossTrackerWidgetManager() override;
-
-    /// CIP connector: the session's boss tracker storage.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    TSidebarWidget* open(config::TSidebarOptions* options);
-    void close(bool saveWidgetOptions = true);
-    TSidebarWidget* current() const;
-    /// The open widget's controller, or null.
-    TBossTrackerWidgetController* controller() const { return m_controller; }
-
-Q_SIGNALS:
-    /// The controller's publishGameAction, forwarded.
-    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    QPointer<bossbestiary::TBossTrackerStorage> m_storage;
-    std::shared_ptr<game::IGameSession> m_gameSession;
-    QQuickItem* m_gameWindowItem = nullptr;
-    QQmlEngine* m_engine = nullptr;
-    TBossTrackerWidgetController* m_controller = nullptr;
-};
 
 }
 }

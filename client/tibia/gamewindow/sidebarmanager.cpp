@@ -140,15 +140,15 @@ TSidebarController* TSidebarManager::sidebar(const uint sidebarId) const
 
 void TSidebarManager::setSidebarCount(const Side side, const int count)
 {
-    int& current = side == Right ? m_rightCount : m_leftCount;
-    const int target = std::max(side == Right ? 1 : 0, count);
-    if (target == current)
+    const int& current = side == Right ? m_rightCount : m_leftCount;
+    if (count == current)
         return;
-    while (current < target)
-        addSidebar(side);
-    while (current > target)
+    while (current > count)
         removeSidebar(side);
+    while (current < count)
+        addSidebar(side);
     Q_EMIT numberOfSidebarsChanged(m_sidebars.size());
+    Q_EMIT sidebarMangerOptionsChanged();
 }
 
 void TSidebarManager::addSidebar(const Side side)

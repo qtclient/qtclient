@@ -9,8 +9,13 @@
 #include <QString>
 #include <QVariantMap>
 
+#include <memory>
 #include <typeinfo>
 #include <vector>
+
+namespace tibia::input {
+class TEventFilterManager;
+}
 
 class QQmlEngine;
 class QQuickItem;
@@ -27,10 +32,16 @@ class TDialogStackController final : public cip::tibia::gamewindow::TDialogStack
 {
     Q_OBJECT
 public:
-    TDialogStackController(QQmlEngine* engine, QQuickItem* dialogPlaceholder, QObject* parent = nullptr);
+    /// CIP: the dialog stack over the client's event filters.
+    explicit TDialogStackController(std::shared_ptr<input::TEventFilterManager> EventFilterManager, QObject* parent = nullptr);
     ~TDialogStackController() override;
 
+    /// CIP: the stack every dialog controller uses (the game client sets it once).
+    static void setInstance(std::shared_ptr<TDialogStackController> DialogStackController);
     static TDialogStackController* instance();
+    /// Host: where the dialogs are made (the game window's dialog placeholder,
+    /// set when the game window is built).
+    void setDialogPlaceholder(QQmlEngine* engine, QQuickItem* dialogPlaceholder);
 
     QQmlEngine* engine() const { return m_engine; }
     QQuickItem* dialogPlaceholder() const { return m_placeholder; }
@@ -78,9 +89,10 @@ private:
     /// CIP : only the top dialog shows; emits dialogVisible.
     void update();
 
-    QQmlEngine* m_engine;
-    QPointer<QQuickItem> m_placeholder;
     std::vector<TDialog*> m_dialogs;
+    std::shared_ptr<input::TEventFilterManager> m_pEventFilterManager;
+    QQmlEngine* m_engine = nullptr;
+    QPointer<QQuickItem> m_placeholder;
 };
 
 /// The parts of CIP's TDialogControllerBase a dialog controller overrides

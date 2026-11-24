@@ -90,6 +90,15 @@ void TOutfitQmlModel::setColors(cip::tibia::qmlcomponents::TOutfitColorQmlType* 
     Q_EMIT outfitChanged();
 }
 
+void TOutfitQmlModel::copyFrom(const TOutfitQmlModel& Other)
+{
+    setOutfitID(Other.m_outfitID);
+    setColors(Other.m_colors);
+    setFirstAddOn(Other.m_firstAddOn);
+    setSecondAddOn(Other.m_secondAddOn);
+    setIsObjectOutfit(Other.m_isObjectOutfit);
+}
+
 QColor TColorHelperQmlService::createColorFromEightBitHSV(const int ColorValue)
 {
     return tibia::shared::outfitColor(static_cast<uint8_t>(ColorValue));

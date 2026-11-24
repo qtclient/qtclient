@@ -108,7 +108,18 @@
 #include "game/gamesessionbase.h"
 #include "game/playerdata.h"
 #include "input/genericgameactionhandler.h"
+#include "input/domainhandlers.h"
+#include "input/eventfiltermanager.h"
+#include "input/keyboardinputtogameactionconverter.h"
+#include "input/keyboardshortcuthandler.h"
 #include "input/keyboardstatusstorage.h"
+#include "input/keyeventhandler.h"
+#include "input/playermovementinputinterpreter.h"
+#include "input/recordkeyboardshortcuthandler.h"
+#include "chat/chatmodemanager.h"
+#include "gamewindow/dialogmanager.h"
+#include "qmlcomponents/appearanceinstancerendererbase.h"
+#include "qmlcomponents/speechbubbleoverlay.h"
 #include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
@@ -174,7 +185,10 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QHash>
+#include <QQmlContext>
+#include <QQmlEngine>
 #include <QJsonObject>
 #include <QPointer>
 #include <QQuickItem>
@@ -241,18 +255,16 @@ std::shared_ptr<T> notOwned(T* object)
 /// CIP: every session gets the client's file system helper, appearances,
 /// instance factory, options, clipboard writer, URL tools, clock, item
 /// prices, sound controller, keyboard shortcut handler and the spell,
-/// passive ability and proficiency storages. Host: the clock is the process
-/// clock and the item prices are the process-wide storage. Released inside
-/// one of its own signals (it disconnected), the session is deleted once
-/// control is back in the event loop.
-template<typename Session>
-std::shared_ptr<Session> TGameClient::createGameSession() const
+/// passive ability and proficiency storages (the plain sessiondump also the
+/// dialog stack). Released inside one of its own signals (it disconnected),
+/// the session is deleted once control is back in the event loop.
+template<typename Session, typename... Extra>
+std::shared_ptr<Session> TGameClient::createGameSession(Extra&&... extra) const
 {
     auto* session = new Session(tibiaFileSystemHelper(), appearancesManager(), appearanceInstanceFactory(),
-                                sharedClientOptions(), m_pTibiaClipboardHelper, m_pTibiaUrlTools,
-                                shared::TClockService::process(), notOwned(analysers::TItemPriceStorage::instance()),
-                                soundController(), keyboardShortcutHandler(), spellInfoStorage(),
-                                passiveAbilityInfoStorage(), proficiencyStorage());
+                                sharedClientOptions(), m_pTibiaClipboardHelper, m_pTibiaUrlTools, m_pClockService,
+                                m_pItemPriceStorage, soundController(), keyboardShortcutHandler(), spellInfoStorage(),
+                                passiveAbilityInfoStorage(), proficiencyStorage(), std::forward<Extra>(extra)...);
     return std::shared_ptr<Session>(session, [](Session* gameSession) {
         if (g_releaseGameSessionsNow)
             delete gameSession;
@@ -606,6 +618,9 @@ TGameClient::~TGameClient()
     m_pReportViolationController.reset();
     m_pMarketController.reset();
     m_gameWindow.reset();
+    // Host: the static dialog stack (and the event filters it holds) goes with
+    // the client instead of at static destruction, after the application.
+    gamewindow::TDialogStackController::setInstance(nullptr);
     // The store balance helper follows the session and the engine's hooks.
     m_pStoreAndResourceBalanceHelperController.reset();
     shutdown();
@@ -977,8 +992,10 @@ void TGameClient::onAbortConnectClientToGameserver()
 
 void TGameClient::onShowCharacterSelectionDialogRequested()
 {
-    // CIP first updates the login uploader's characters from the game
-    // session; qtclient's uploader follows the session (setCurrentGameSession).
+    // CIP: the authentication process controller's login uploader (when it
+    // has one) first takes the characters' looks from the game session.
+    if (authentication::TLoginRequestUploader* uploader = m_authentication->loginRequestUploader())
+        uploader->updateCharactersFromGameSession();
     m_authentication->showCharacterSelection();
 }
 
@@ -1132,6 +1149,9 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
             setGameSessionSettings(*tutorial);
             tutorial->characterName = credentials.characterName;
             tutorial->isMale = CharacterLoginData.isMale;
+            // CIP: [URLS] tutorialProgressWebService. Host: the launcher
+            // environment's receiver, as for the other client services.
+            tutorial->tutorialProgressWebService = app::LauncherEnv::load(QDir::currentPath()).tutorialProgressWebServiceUrl();
             tutorial->clientSessionId = credentials.sessionKey;
             metaInfos.push_back(std::move(tutorial));
         }
@@ -1159,12 +1179,13 @@ void TGameClient::autoconnectNextGameSessionInQueue()
         // CIP: a replay or the tutorial never reconnects.
         if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
             reaction->disableReconnectionAttempts();
-        // CIP: the tutorial's dump runs in its own session class.
+        // CIP: the tutorial's dump runs in its own session class; a plain dump
+        // also gets the client's dialog stack.
         std::shared_ptr<game::TSessiondumpGameSession> dump;
         if (type == EType::TutorialSessiondump)
             dump = createGameSession<game::TTutorialSessiondumpGameSession>();
         else
-            dump = createGameSession<game::TSessiondumpGameSession>();
+            dump = createGameSession<game::TSessiondumpGameSession>(m_pDialogStackController);
         dump->setCharacterConfigurationStorages(m_characterConfigurationStorages);
         dump->initialize(metaInfo);
         setCurrentGameSession(dump);
@@ -1178,7 +1199,7 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     // the item prices are the world's.
     if (const auto* gameserver = dynamic_cast<const game::TGameserverGameSessionMetaInfo*>(metaInfo.get())) {
         setCharacterCrashReportAnnotations(gameserver->loginData.characterName, gameserver->loginData.worldName);
-        analysers::TItemPriceStorage::instance()->setWorldName(gameserver->loginData.worldName);
+        m_pItemPriceStorage->setWorldName(gameserver->loginData.worldName);
     }
     const auto live = createGameSession<game::TGameserverGameSession>();
     live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
@@ -1191,8 +1212,8 @@ void TGameClient::autoconnectNextGameSessionInQueue()
             &TGameClient::onShowCharacterSelectionDialogRequested);
     connect(live.get(), &game::IGameSession::gameLoginAdviceMessage, this, &TGameClient::onGameSessionLoginAdvice);
     connect(live.get(), &game::IGameSession::gameLoginErrorMessage, this, &TGameClient::onGameSessionLoginError);
-    if (input::TKeyboardStatusStorage* keyboardStatus = keyboardStatusStorage())
-        connect(keyboardStatus, &input::TKeyboardStatusStorage::changed, this, &TGameClient::onKeyboardStatusStorageChanged);
+    connect(m_pKeyboardStatusStorage.get(), &input::TKeyboardStatusStorage::changed, this,
+            &TGameClient::onKeyboardStatusStorageChanged);
     live->connectToGameserver();
     live->startSession();
 }
@@ -1498,7 +1519,6 @@ void TGameClient::initialize()
     connect(m_pNewsDiskIO.get(), &news::TNewsDiskIO::loadingNewsDataSucceeded, m_pNewsStorage.get(),
             &news::TNewsStorage::loadFromDisk);
     m_pNewsDiskIO->loadNewsDataFromDiskIfPossible();
-    initializeClientObjects();
     // CIP: the frame rate limit's timer and the timer of a window that shows
     // no frames both prepare the next frame.
     m_frameLimitTimer.setTimerType(Qt::PreciseTimer);
@@ -1520,6 +1540,12 @@ void TGameClient::initialize()
             &TGameClient::onGameSessionLoginSuccessful);
 }
 
+void TGameClient::initializeQmlContext()
+{
+    ::tibia::client::TGameClientBase::initializeQmlContext();
+    initializeClientObjects();
+}
+
 void TGameClient::initializeClientObjects()
 {
     // CIP: the clipboard, the URL tools and the game's clipboard writer over both.
@@ -1535,11 +1561,58 @@ void TGameClient::initializeClientObjects()
     connect(clientOptions(), &config::TClientOptions::controlOrLootSchemeOptionsChanged, this,
             &TGameClient::onControlOrLootSchemeOptionsChanged);
     onControlOrLootSchemeOptionsChanged();
+    initializeCreatureMarkOptions();
+    // CIP: the chat mode manager; a disconnected session ends a temporary chat on.
+    m_pChatModeManager = std::make_shared<chat::TChatModeManager>();
+    connect(this, &TGameClient::currentGamesessionDisconnected, m_pChatModeManager.get(),
+            &chat::TChatModeManager::onCurrentGamesessionDisconnected);
+    // CIP: the client's clock (the frame counters, the premium time storage,
+    // the keyboard shortcuts and every session read it). Host: the process
+    // clock, which the frame counters made in the constructor already read.
+    m_pClockService = shared::TClockService::process();
+    // CIP: the keyboard state follows the application's state; the key event
+    // handler, the shortcuts (over the client options, the chat mode and the
+    // clock) and the shortcut recorder go into the application event filters.
+    m_pKeyboardStatusStorage = std::make_shared<input::TKeyboardStatusStorage>();
+    m_pKeyEventHandler = std::make_shared<input::TKeyEventHandler>(m_pKeyboardStatusStorage);
+    if (auto* guiApplication = qobject_cast<QGuiApplication*>(QCoreApplication::instance()))
+        connect(guiApplication, &QGuiApplication::applicationStateChanged, m_pKeyboardStatusStorage.get(),
+                &input::TKeyboardStatusStorage::onApplicationStateChanged);
+    const std::weak_ptr<chat::TChatModeManager> chatModeManager = m_pChatModeManager;
+    m_pKeyboardShortcutHandler = std::make_shared<input::TKeyboardShortcutHandler>(
+        [chatModeManager] {
+            const std::shared_ptr<chat::TChatModeManager> manager = chatModeManager.lock();
+            return manager ? manager->chatMode() : 0;
+        },
+        m_pClockService);
+    // Host: qtclient's handler takes the chat mode as a function, so the
+    // client tells it when the mode changed.
+    connect(m_pChatModeManager.get(), &chat::TChatModeManager::chatModeChanged, m_pKeyboardShortcutHandler.get(),
+            &input::TKeyboardShortcutHandler::onHotkeyOptionsChanged);
+    m_pRecordKeyboardShortcutHandler = std::make_shared<input::TRecordKeyboardShortcutHandler>();
+    m_pEventFilterManager = std::make_shared<input::TEventFilterManager>(m_pKeyboardShortcutHandler, m_pKeyEventHandler,
+                                                                         m_pRecordKeyboardShortcutHandler);
+    // CIP: the walk keys over the keyboard state, the options and the chat
+    // mode, and their movement intent.
+    m_pPlayerMovementInputInterpreter = std::make_shared<input::TPlayerMovementInputInterpreter>(
+        m_pKeyboardStatusStorage, clientOptions(), m_pChatModeManager.get());
+    m_pKeyboardInputToGameActionConverter =
+        std::make_shared<input::TKeyboardInputToGameActionConverter>(m_pPlayerMovementInputInterpreter);
+    connect(m_pKeyboardStatusStorage.get(), &input::TKeyboardStatusStorage::checkForChangeAfterDelay, this,
+            &TGameClient::checkKeyboardStatusStorageAfterDelay);
     // CIP: the client's premium time storage; each current session gets it.
     m_pPremiumTimeStorage = std::make_shared<game::TPremiumTimeStorage>();
+    // CIP: the website and clipboard game actions. Host: the websites are the
+    // launcher environment's URLs.
+    m_pOpenWebsiteGameActionHandler = std::make_shared<input::TOpenWebsiteGameActionHandler>(m_gameWindowSetup.env);
+    m_pClipboardGameActionHandler = std::make_shared<input::TClipboardGameActionHandler>(
+        m_pTibiaClipboardHelper, sharedClientOptions(), m_pTibiaUrlTools);
+    // CIP: the item prices. Host: the process-wide storage.
+    m_pItemPriceStorage = notOwned(analysers::TItemPriceStorage::instance());
     // CIP: the [GRAPHICS] timings are taken from the client settings once: a
     // missile's flight per field, how long numerical effects show and merge,
-    // and how long a creature's temporary mark shows.
+    // and how long a creature's temporary mark shows; [DEBUG] whether speech
+    // bubbles show their bounding rectangle.
     const std::shared_ptr<config::TTibiaConfig> settings = tibiaConfig();
     const QString graphics = QStringLiteral("GRAPHICS");
     appearances::TMissileEffectInstance::setMillisecondsPerField(
@@ -1548,6 +1621,40 @@ void TGameClient::initializeClientObjects()
     effects::TNumericalEffect::setMergeDuration(settings->clientSetting(graphics, QStringLiteral("numericalEffectMergeDurationMsec"), 100));
     creatures::TCreature::setTimedSquareDuration(
         settings->clientSetting(graphics, QStringLiteral("temporaryMarkDisplayDurationMsec"), 1000));
+    qmlcomponents::TSpeechBubbleController::setShowBoundingRect(
+        settings->clientSettingBool(QStringLiteral("DEBUG"), QStringLiteral("showSpeechBubbleBoundingRect"), false));
+    // CIP: the dialog stack over the event filters is the dialogs' stack from
+    // now on, and the client's clock the appearance renderers'.
+    m_pDialogStackController = std::make_shared<gamewindow::TDialogStackController>(m_pEventFilterManager);
+    gamewindow::TDialogStackController::setInstance(m_pDialogStackController);
+    qmlcomponents::setAppearanceInstanceRendererClockService(m_pClockService);
+}
+
+void TGameClient::initializeCreatureMarkOptions()
+{
+    using config::EClientOption;
+    config::TClientOptions* const options = clientOptions();
+    const auto updateFrames = [this] {
+        const config::TClientOptions* const current = clientOptions();
+        creatures::TCreature::setShowStaticSquare(current->boolOption(EClientOption::combatShowPvpFrames));
+        creatures::TCreature::setShowTimedSquare(current->boolOption(EClientOption::combatShowFrames));
+        creatures::TCreature::setShowTargetFrame(current->boolOption(EClientOption::gameWindowShowTragetFrame));
+    };
+    updateFrames();
+    connect(options, &config::TClientOptions::creatureMarksOptionsChanged, options, updateFrames);
+    creatures::TCreature::setShowSelectionFrame(!options->boolOption(EClientOption::mouseHighlightTarget));
+    m_pEngine->rootContext()->setContextProperty(QStringLiteral("UICachingEnabled"), false);
+    connect(options, &config::TClientOptions::optionChanged, options, [this](const config::EClientOption OptionID) {
+        if (OptionID == EClientOption::mouseHighlightTarget)
+            creatures::TCreature::setShowSelectionFrame(!clientOptions()->boolOption(EClientOption::mouseHighlightTarget));
+    });
+}
+
+void TGameClient::setClientWindowTitle(QObject* ClientWindow)
+{
+    // Host: the release title, the product's application name (CipSoft's
+    // pinned test-server build shows its test-server client title here).
+    ClientWindow->setProperty("windowTitle", QCoreApplication::applicationName());
 }
 
 void TGameClient::onControlOrLootSchemeOptionsChanged()
@@ -1560,6 +1667,9 @@ bool TGameClient::initializeWithStartMode(const int StartMode, const TGameWindow
 {
     m_startMode = StartMode;
     m_gameWindowSetup = Setup;
+    // CIP (constructor): the client window's title.
+    if (Setup.placeholder)
+        setClientWindowTitle(Setup.placeholder);
     // Host: the preview runs no engine and has no assets to wait for.
     if (Setup.preview)
         return createGameWindow(Setup);

@@ -3,6 +3,7 @@
 #include "game/configurecreaturepodiumdata.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
+#include "gamewindow/outfitdialogcontroller.h"
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -281,8 +282,7 @@ void TConfigureCreaturePodiumDialogController::setPreset(const Outfit& outfit)
     const bool objectOutfit = outfit.getCategory() == ThingCategoryItem || (outfit.getId() == 0 && outfit.getAuxId() != 0);
     m_preset->setName({});
     m_preset->setOutfitID(lookOf(outfit));
-    qmlcomponents::TOutfitColorQmlType colors(outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet());
-    m_preset->outfitColor()->copyFrom(&colors);
+    m_preset->outfitColor()->copyFrom(createJavaScriptOwnedOutfitColor(outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet()));
     m_preset->setOutfitFirstAddOn((outfit.getAddons() & 1) != 0);
     m_preset->setOutfitSecondAddOn((outfit.getAddons() & 2) != 0);
     m_preset->setIsObjectOutfit(objectOutfit);

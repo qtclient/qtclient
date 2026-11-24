@@ -123,6 +123,7 @@ using TCreatureID = uint32_t;
 
 namespace tibia::appearances {
 class TAppearanceInstanceFactory;
+class TObjectAppearanceInstance;
 }
 
 namespace tibia::spells {
@@ -202,8 +203,12 @@ class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditText
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler;
-    /// A text to read or edit (books, letters, signs).
+    /// The session's appearance instance factory and clock make the object
+    /// a text belongs to.
+    TEditTextProtocolMessageHandler(std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                                    std::shared_ptr<shared::IClockService> clockService);
+    /// A text to read or edit (books, letters, signs): the object it belongs to
+    /// is made at the clock's now and handed to the dialog with the text.
     void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
     /// A list to edit (house access lists).
     void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
@@ -217,13 +222,17 @@ Q_SIGNALS:
     void sendEditText(const ::tibia::protobuf::protocol::GameclientMessageEditText& EditTextMessage);
     void sendEditList(const ::tibia::protobuf::protocol::GameclientMessageEditList& EditListMessage);
     void sendEditGuildMessage(const ::tibia::protobuf::protocol::GameclientMessageEditGuildMessage& EditGuildMessageMessage);
-    /// CIP requestEditTextDialog: the text with its edit id, the item's type,
-    /// the longest text allowed, its author and date and whether it was traded
-    /// recently.
-    void requestEditTextDialog(uint32_t EditIdentifier, uint ItemTypeId, int MaximumTextLength, const QString& Text,
-                               const QString& TextAuthor, const QString& TextDate, bool RecentlyTraded);
+    /// The text with its edit id, the longest text allowed, the object it
+    /// belongs to, its author, whether it was traded recently and its date.
+    void requestEditTextDialog(uint32_t EditIdentifier, const QString& Text, int MaximumTextLength,
+                               std::shared_ptr<tibia::appearances::TObjectAppearanceInstance> pAppearanceInstance,
+                               const QString& TextAuthor, bool RecentlyTraded, const QString& TextDate);
     /// CIP requestEditListDialog: the list with its edit id and list type.
     void requestEditListDialog(uint32_t EditIdentifier, uint8_t EditListType, const QString& Text);
+
+private:
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<shared::IClockService> m_clockService;
 };
 
 /// CIP `game::TGameProtocolMessageHandler`: the login, session end, death and

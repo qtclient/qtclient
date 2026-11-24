@@ -60,23 +60,33 @@ TSessiondumpGameSession::TSessiondumpGameSession(
     std::shared_ptr<analysers::TItemPriceStorage> itemPriceStorage, std::shared_ptr<sound::TSoundController> soundController,
     std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler, spells::TSpellInfoStorage* spellInfoStorage,
     TPassiveAbilityInfoStorage* passiveAbilityInfoStorage, proficiency::TProficiencyStorage* proficiencyStorage,
-    QObject* parent)
+    std::shared_ptr<gamewindow::TDialogStackController> dialogStackController, QObject* parent)
     : TGameSessionBase(std::move(tibiaFileSystemHelper), std::move(appearancesManager), std::move(appearanceInstanceFactory),
-                       std::move(clientOptions), std::move(clipboardHelper), std::move(urlTools),
+                       clientOptions, std::move(clipboardHelper), std::move(urlTools),
                        std::move(clientClockService), std::move(itemPriceStorage), std::move(soundController),
                        std::move(keyboardShortcutHandler), spellInfoStorage, passiveAbilityInfoStorage, proficiencyStorage,
                        parent)
     , m_sessiondumpProgressClock(std::make_shared<sessiondump::TSessiondumpProgressClockService>(TGameSessionBase::clientClockService()))
+    , m_dialogStackController(std::move(dialogStackController))
+    , m_sessiondumpClientOptions(std::move(clientOptions))
 {
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);
     connect(&m_replayTimer, &QTimer::timeout, this, &TSessiondumpGameSession::pumpReplay);
     m_sessiondumpTimer.setParent(this);
-    // The base announces worldEntered for every WorldEntered message.
+    // Host: the classic session state ends the replay when the user leaves it
+    // (disconnectNow) or a qtclient text dump reaches its end: the session
+    // announces disconnected, once.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
-        onSessiondumpFinished();
+        if (m_decodedReplayEnded)
+            return;
+        m_decodedReplayEnded = true;
         Q_EMIT disconnected();
     });
+    // Host: when the session announces its end itself (the tutorial's end),
+    // the classic session state lets go of the replay before the game client
+    // connects the next session.
+    connect(this, &IGameSession::disconnected, this, &TSessiondumpGameSession::endDecodedReplay);
     connect(TGameNotify::instance(), &TGameNotify::connectionFailing, this, [this](bool failing) {
         if (failing)
             Q_EMIT pingTimeout();
@@ -97,6 +107,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(
 
 TSessiondumpGameSession::~TSessiondumpGameSession()
 {
+    releaseFrameSource();
     stopReplay();
 }
 
@@ -122,10 +133,10 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     connectGameActionHandlers();
     // The dump is loaded now and played when the session starts.
     startSessiondump(m_sessiondumpMetaInfo->sessiondump);
-    // Host: a periodic timer stands in for CipSoft's zero-interval single-shot
-    // timer, which processNetwork and every prepared frame restart (qtclient's
-    // frame preparation does not restart it).
-    m_sessiondumpTimer.setInterval(16);
+    // The process timer fires once as soon as the event loop is free;
+    // processNetwork and every prepared frame start it again.
+    m_sessiondumpTimer.setInterval(0);
+    m_sessiondumpTimer.setSingleShot(true);
     m_connectionManager.add(
         connect(&m_sessiondumpTimer, &QTimer::timeout, this, &TSessiondumpGameSession::onSessiondumpTimerElapsed));
 }
@@ -141,6 +152,10 @@ void TSessiondumpGameSession::startSession()
     if (m_sessiondumpPlayer) {
         // Host: the classic session state starts the replay.
         tibia::game::startDecodedReplay();
+        // Host: the frame clock (qtclient's frame timestamp, which the effects,
+        // texts and animations are made and advanced with) follows the dump's
+        // clock while this session plays it.
+        shared::TClockService::setFrameSource(m_sessiondumpProgressClock);
         m_sessiondumpPlayer->start();
         m_sessiondumpPlayer->setDuration(m_sessiondumpMetaInfo->sessiondump.durationMilliseconds);
         m_sessiondumpTimer.start();
@@ -189,12 +204,6 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
     using sessiondump::TSessiondumpPlayer;
     TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
     connect(player, &TSessiondumpPlayer::finished, this, &TSessiondumpGameSession::onSessiondumpFinished);
-    // Host: the replay timer stops and the classic session state ends the replay
-    // (after the session's own slot: stopDmpd drops the player's links to it).
-    connect(player, &TSessiondumpPlayer::finished, this, [this] {
-        stopDmpd();
-        tibia::game::finishDecodedReplay();
-    });
     // The player's server messages go into the session's protocol queue.
     // Host: the classic session state enters the game on PendingStateEntered;
     // a dump that starts at WorldEntered gets one first.
@@ -243,6 +252,26 @@ void TSessiondumpGameSession::stopDmpd()
     m_sessiondumpTimer.stop();
     if (m_sessiondumpPlayer)
         m_sessiondumpPlayer->disconnect(this);
+}
+
+void TSessiondumpGameSession::endDecodedReplay()
+{
+    if (m_decodedReplayEnded)
+        return;
+    m_decodedReplayEnded = true;
+    releaseFrameSource();
+    // The player may be the sender of this end (its finished signal): it is
+    // only unlinked here; disconnectNow and the destructor release it.
+    stopDmpd();
+    m_replaying = false;
+    m_replayTimer.stop();
+    hubDisconnectNow();
+}
+
+void TSessiondumpGameSession::releaseFrameSource()
+{
+    if (shared::TClockService::frameSource() == m_sessiondumpProgressClock)
+        shared::TClockService::setFrameSource(nullptr);
 }
 
 void TSessiondumpGameSession::replayHexDump(const QString& file)
@@ -353,7 +382,9 @@ void TSessiondumpGameSession::disconnectNow()
 {
     // The dump's clock stands still.
     m_sessiondumpProgressClock->pause();
-    // Host: the replay stops and the classic session state lets go of it.
+    // Host: the replay stops and the classic session state lets go of it
+    // (its end announces disconnected).
+    releaseFrameSource();
     stopReplay();
     hubDisconnectNow();
 }
@@ -392,6 +423,21 @@ void TSessiondumpGameSession::processNetwork()
     // Host: qtclient's text dumps have no player for the timer to drive.
     if (!m_sessiondumpPlayer)
         return;
+    if (!m_sessiondumpTimer.isActive())
+        m_sessiondumpTimer.start();
+}
+
+void TSessiondumpGameSession::onPrepareNextFrameToRender(const qint64 NextFramePredictedTimestamp)
+{
+    // Host: a qtclient text dump has no player; its frames run on the
+    // predicted time like a live session's.
+    if (!m_sessiondumpPlayer) {
+        TGameSessionBase::onPrepareNextFrameToRender(NextFramePredictedTimestamp);
+        return;
+    }
+    if (!m_sessiondumpPlayer->isStarted())
+        return;
+    TGameSessionBase::onPrepareNextFrameToRender(clockService()->nowMillis());
     if (!m_sessiondumpTimer.isActive())
         m_sessiondumpTimer.start();
 }

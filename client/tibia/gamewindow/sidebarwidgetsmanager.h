@@ -44,12 +44,12 @@ class TGameActionMapper;
 namespace gamewindow {
 
 class TBattleListControllerStorage;
-class TBossTrackerWidgetManager;
+class TBossTrackerWidgetController;
 class TContainerStorageController;
-class TCreatureTrackerWidgetManager;
+class TCreatureTrackerWidgetController;
 class TDepotSearchWidgetController;
-class TImbuementTrackerWidgetManager;
-class TKillTrackerWidgetManager;
+class TImbuementTrackerWidgetController;
+class TKillTrackerWidgetController;
 class TLootTrackingWidgetManager;
 class TPlayerGuideWidgetManager;
 class TPlayerTradeController;
@@ -65,9 +65,10 @@ class TVipWidgetManager;
 /// ): opens, closes and toggles them (TOGGLE_WIDGET,
 /// OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR) and saves and restores which widgets
 /// each sidebar holds, in order (sidebars.json's sidebarWidgetsMangerOptions).
-/// CIP: it owns every sidebar widget it opens: the skills widget, the battle
-/// lists, the player trade and depot search widgets (opened and closed by the
-/// session's protocol handlers) and the other widget types (held here through
+/// CIP: it owns every sidebar widget it opens: the skills widget, the kill,
+/// bestiary, bosstiary, boss and imbuement trackers, the battle lists, the
+/// player trade and depot search widgets (opened and closed by the session's
+/// protocol handlers) and the other widget types (held here through
 /// qtclient's per-widget managers). The analysers and pack widgets join
 /// through registerWidget.
 class TSidebarWidgetsManager final : public cip::tibia::gamewindow::TSidebarWidgetsManager
@@ -272,6 +273,13 @@ private:
     /// options, and one right sidebar remains.
     void closeAll();
     void closeSkills(bool saveWidgetOptions);
+    /// CIP's toggle of a widget the manager owns: the controller is made with
+    /// the engine over the dialog parent when it opens, its game actions are
+    /// published, it connects to the game session and is maximized once the
+    /// login ramp-up is over; closing saves its options (unless discarded) and
+    /// deletes it.
+    template <class Controller, class Make>
+    void registerOwnedWidget(int widgetType, QPointer<Controller>& controller, Make make);
     QJsonArray serializeSidebar(uint sidebarId) const;
     /// CIP: the open widgets per sidebar; empty while restoring.
     config::SidebarWidgetsManagerOptions currentWidgetsManagerOptions() const;
@@ -294,15 +302,15 @@ private:
     /// The widgets kept by type (CIP: the widget map and members; qtclient's
     /// per-widget managers make and delete the controllers).
     std::unique_ptr<TVipWidgetManager> m_vip;
-    std::unique_ptr<TKillTrackerWidgetManager> m_killTracker;
+    QPointer<TKillTrackerWidgetController> m_killTracker;
     std::unique_ptr<TQuestTrackerWidgetManager> m_questTracker;
     std::unique_ptr<TLootTrackingWidgetManager> m_lootTracking;
     std::unique_ptr<TSpellListWidgetManager> m_spellList;
     std::unique_ptr<TUnjustifiedPointsWidgetManager> m_unjustifiedPoints;
-    std::unique_ptr<TImbuementTrackerWidgetManager> m_imbuementTracker;
-    std::unique_ptr<TCreatureTrackerWidgetManager> m_bestiaryTracker;
-    std::unique_ptr<TCreatureTrackerWidgetManager> m_bosstiaryTracker;
-    std::unique_ptr<TBossTrackerWidgetManager> m_bossTracker;
+    QPointer<TImbuementTrackerWidgetController> m_imbuementTracker;
+    QPointer<TCreatureTrackerWidgetController> m_bestiaryTracker;
+    QPointer<TCreatureTrackerWidgetController> m_bosstiaryTracker;
+    QPointer<TBossTrackerWidgetController> m_bossTracker;
     std::unique_ptr<TPlayerGuideWidgetManager> m_playerGuide;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;

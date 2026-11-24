@@ -2029,7 +2029,7 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
         uint32_t id = 0;
         uint16_t maxLength = 0;
         bool traded = false;
-        if (!r.u32(id) || !readInventoryItem(r, m->mutable_object()) || !r.u16(maxLength) || !r.string(*m->mutable_text())
+        if (!r.u32(id) || !readMapObject(r, m->mutable_object()) || !r.u16(maxLength) || !r.string(*m->mutable_text())
             || !r.string(*m->mutable_author()) || !readBool(r, traded) || !r.string(*m->mutable_date()))
             return 0;
         m->set_edit_id(id);

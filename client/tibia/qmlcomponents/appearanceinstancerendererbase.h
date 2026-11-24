@@ -11,9 +11,15 @@
 namespace tibia::appearances {
 class TAppearanceInstanceGenericStorage;
 }
+namespace tibia::shared {
+class IClockService;
+}
 
 namespace tibia {
 namespace qmlcomponents {
+
+/// CIP: the clock every appearance instance renderer reads (the game client's).
+void setAppearanceInstanceRendererClockService(std::shared_ptr<shared::IClockService> ClockService);
 
 /// CIP qmlcomponents::TAppearanceInstanceRendererBase: the part every
 /// appearance instance renderer shares. On completion it takes a generic

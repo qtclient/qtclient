@@ -65,6 +65,17 @@ TWorldMapQuickItem::TWorldMapQuickItem(QQuickItem* parent)
 
 TWorldMapQuickItem::~TWorldMapQuickItem() = default;
 
+void TWorldMapQuickItem::setRenderSources(std::shared_ptr<TWorldMapRenderProvider> provider,
+                                          std::shared_ptr<renderer::TWorldMapCameraViewport> cameraViewport)
+{
+    m_cameraViewport = std::move(cameraViewport);
+    m_renderProvider = std::move(provider);
+    m_hasRenderSources = m_cameraViewport && m_renderProvider;
+    // Host: the provider draws through the item's frame connection.
+    setRenderProvider(m_renderProvider.get());
+    update();
+}
+
 void TWorldMapQuickItem::setRenderProvider(TWorldMapRenderProvider* provider)
 {
     disconnect(m_frameConnection);

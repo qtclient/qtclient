@@ -9,6 +9,7 @@
 #include <client/position.h>
 
 #include <QByteArray>
+#include <memory>
 #include <QPointer>
 
 namespace tibia {
@@ -34,11 +35,22 @@ class MapArea;
 }
 
 namespace tibia {
+namespace creatures {
+class TCreatureProtocolMessageHandler;
+class TCreatureStorage;
+}
+namespace effects {
+class TEffectStorage;
+}
 namespace minimap {
 class TMinimapTileStorage;
 }
+namespace shared {
+class IClockService;
+}
 namespace worldmap {
 
+class TAmbientLightStorage;
 class TWorldMapStorage;
 class TWorldMapViewport;
 
@@ -48,15 +60,24 @@ class TWorldmapProtocolMessageHandler final : public cip::tibia::worldmap::TWorl
 {
     Q_OBJECT
 public:
-    explicit TWorldmapProtocolMessageHandler(TWorldMapStorage* storage, QObject* parent = nullptr);
+    /// The session's map, ambient light, creatures and effects, the instance
+    /// factory objects are made with, the session's clock, the view a full map
+    /// centres and the creature handler.
+    TWorldmapProtocolMessageHandler(std::shared_ptr<TWorldMapStorage> worldMapStorage,
+                                    std::shared_ptr<TAmbientLightStorage> ambientLightStorage,
+                                    std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+                                    std::shared_ptr<effects::TEffectStorage> effectStorage,
+                                    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+                                    std::shared_ptr<shared::IClockService> clockService,
+                                    std::shared_ptr<TWorldMapViewport> viewport,
+                                    std::shared_ptr<creatures::TCreatureProtocolMessageHandler> creatureProtocolMessageHandler,
+                                    QObject* parent = nullptr);
 
-    TWorldMapStorage* storage() const { return m_storage; }
+    TWorldMapStorage* storage() const { return m_worldMapStorage.get(); }
     /// The minimap the handler keeps current: its floor and unseen fields
     /// follow the view, and every field the server describes, creates,
     /// changes or deletes is recorded. Null while there is no minimap.
     void setMinimapTileStorage(minimap::TMinimapTileStorage* minimap);
-    /// The session's view: a full map centres it on the map's coordinate.
-    void setViewport(TWorldMapViewport* viewport) { m_viewport = viewport; }
 
     void handleFullMapMessage(const ::tibia::protobuf::protocol::GameserverMessageFullMap& message);
     void handleTopRowMessage(const ::tibia::protobuf::protocol::GameserverMessageTopRow& message);
@@ -108,8 +129,14 @@ private:
     /// deleted from) is recorded on the minimap.
     void updateMinimapField(const Position& position);
 
-    TWorldMapStorage* m_storage = nullptr;
-    TWorldMapViewport* m_viewport = nullptr;
+    std::shared_ptr<TWorldMapStorage> m_worldMapStorage;
+    std::shared_ptr<TAmbientLightStorage> m_ambientLightStorage;
+    std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
+    std::shared_ptr<effects::TEffectStorage> m_effectStorage;
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> m_appearanceInstanceFactory;
+    std::shared_ptr<shared::IClockService> m_clockService;
+    std::shared_ptr<TWorldMapViewport> m_viewport;
+    std::shared_ptr<creatures::TCreatureProtocolMessageHandler> m_creatureProtocolMessageHandler;
     QPointer<minimap::TMinimapTileStorage> m_minimap;
     bool m_mapKnown = false;
     /// The centre of the map messages (CIP: the handler's central position).

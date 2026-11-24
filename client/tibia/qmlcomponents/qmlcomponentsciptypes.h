@@ -105,6 +105,10 @@ public:
     /// The model keeps its own colours: different indices are copied in, then
     /// outfitChanged. Null or equal colours change nothing.
     void setColors(cip::tibia::qmlcomponents::TOutfitColorQmlType* v) override;
+
+    /// Takes the other model's id, colours, addons and object flag; every
+    /// field that differs emits outfitChanged.
+    void copyFrom(const TOutfitQmlModel& Other);
 };
 
 class TQSGScenegraphDrawCommandsNode final : public ::tibia::CipTyped

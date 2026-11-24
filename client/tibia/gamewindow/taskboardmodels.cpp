@@ -192,6 +192,8 @@ void TDeliveryTasksListModel::setRows(QVector<DeliveryTaskRow> rows)
 TBountyTasksPreferredMonsterListModel::TBountyTasksPreferredMonsterListModel(QObject* parent)
     : cip::tibia::taskboard::TBountyTasksPreferredMonsterListModel(parent)
 {
+    m_assignableMonsterRaceId = 0;
+    m_clearCost = 10;
 }
 
 int TBountyTasksPreferredMonsterListModel::rowCount(const QModelIndex& parent) const

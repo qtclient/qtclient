@@ -9,6 +9,7 @@
 #include "clockservice.h"
 #include "creatures/creatureprotocolapply.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/creaturesciptypes.h"
 #include "effects/effectstorage.h"
 #include "minimap/minimaptilestorage.h"
 #include "worldmap/worldmapfield.h"
@@ -44,16 +45,19 @@ appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject
         // the field and its placeholder is what the field holds.
         const CreatureData& data = object.GetExtension(CreatureData::creature_data);
         (void)creatures::applyProtocolCreature(data);
-        creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-        const std::shared_ptr<creatures::TCreature> creature = storage ? storage->creatureAt(data.id()) : nullptr;
+        const std::shared_ptr<creatures::TCreature> creature =
+            m_creatureStorage ? m_creatureStorage->creatureAt(data.id()) : nullptr;
         if (!creature)
             return nullptr;
         creature->setPosition(coordinate.toPosition());
         return creature->placeholderAppearance();
     }
     // Any other object is made by the instance factory at the current time.
-    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::installed()->createFromProtobuf(
-        object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+    // Host: animations start on the frame clock the renderer advances them by.
+    appearances::TAppearanceInstanceFactory* factory =
+        m_appearanceInstanceFactory ? m_appearanceInstanceFactory.get() : appearances::TAppearanceInstanceFactory::installed().get();
+    appearances::TAppearanceInstancePtr appearance =
+        factory->createFromProtobuf(object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     // Host: qtclient's factory takes no coordinate; an object drawn by its
     // field's pattern takes it from the coordinate here.
     if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
@@ -107,7 +111,7 @@ void TWorldmapProtocolMessageHandler::updateMinimapField(const Position& positio
 
 TWorldMapStorage& TWorldmapProtocolMessageHandler::map() const
 {
-    return m_storage ? *m_storage : *TWorldMapStorage::ensureStorage();
+    return m_worldMapStorage ? *m_worldMapStorage : *TWorldMapStorage::ensureStorage();
 }
 
 TWorldMapCentralPosition TWorldmapProtocolMessageHandler::centralPosition() const
@@ -121,8 +125,9 @@ void TWorldmapProtocolMessageHandler::moveKnownArea()
 {
     const Position center = m_center.toPosition();
     map().setStoredVolume(center);
-    effects::TEffectStorage::instance().removeOutside(
-        [](const Position& field) { return game::isAwareOf({ field.x, field.y, field.z }); });
+    if (m_effectStorage)
+        m_effectStorage->removeOutside(
+            [](const Position& field) { return game::isAwareOf({ field.x, field.y, field.z }); });
     // The minimap follows the view's floor and marks the fields of the area
     // the server left out as unseen, on every move (also onto the same spot).
     if (m_minimap) {
@@ -155,8 +160,8 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
         m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(m_center, 0, 0));
     moveKnownArea();
     // Every creature counts as off the map until the new area places it on a field.
-    if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
-        creatures->clearPlacedOnFieldFlags();
+    if (m_creatureStorage)
+        m_creatureStorage->clearPlacedOnFieldFlags();
     // A jump re-places the view: the step in flight ends before the new map arrives.
     if (hasPlayer && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
         game::localPlayerHandleTeleport();
@@ -284,8 +289,8 @@ void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverM
     // The creature-id form leaves the creature where it is drawn: it only
     // stops counting as placed on a field.
     if (message.has_creature_id()) {
-        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
-            storage->removeFromField(message.creature_id());
+        if (m_creatureStorage)
+            m_creatureStorage->removeFromField(message.creature_id());
         return;
     }
     // The field drops the object at the stack position, then the minimap
@@ -300,24 +305,36 @@ void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const Gameserver
     const auto intensity = static_cast<uint8_t>(AmbientLightMessage.intensity());
     const auto color = static_cast<uint8_t>(AmbientLightMessage.color());
     tibia::game::applyWorldLight(intensity, color);
-    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance())
-        ambient->setLight(TAmbientLight(intensity, color));
+    if (m_ambientLightStorage)
+        m_ambientLightStorage->setLight(TAmbientLight(intensity, color));
 }
 
 void TWorldmapProtocolMessageHandler::handleTibiaTimeMessage(const GameserverMessageTibiaTime& TibiaTimeMessage)
 {
     const auto hour = static_cast<uint8_t>(TibiaTimeMessage.hour());
     const auto minute = static_cast<uint8_t>(TibiaTimeMessage.minute());
-    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance())
-        ambient->setNormalizedTibiaTimeOfDay(static_cast<float>(TibiaTimeMessage.hour()) / 24.0f
+    if (m_ambientLightStorage)
+        m_ambientLightStorage->setNormalizedTibiaTimeOfDay(static_cast<float>(TibiaTimeMessage.hour()) / 24.0f
                                              + static_cast<float>(TibiaTimeMessage.minute()) / 1440.0f);
     tibia::world::setWorldTime(hour, minute);
     tibia::game::notify("onChangeWorldTime", hour, minute);
 }
 
-TWorldmapProtocolMessageHandler::TWorldmapProtocolMessageHandler(TWorldMapStorage* storage, QObject* parent)
+TWorldmapProtocolMessageHandler::TWorldmapProtocolMessageHandler(
+    std::shared_ptr<TWorldMapStorage> worldMapStorage, std::shared_ptr<TAmbientLightStorage> ambientLightStorage,
+    std::shared_ptr<creatures::TCreatureStorage> creatureStorage, std::shared_ptr<effects::TEffectStorage> effectStorage,
+    std::shared_ptr<appearances::TAppearanceInstanceFactory> appearanceInstanceFactory,
+    std::shared_ptr<shared::IClockService> clockService, std::shared_ptr<TWorldMapViewport> viewport,
+    std::shared_ptr<creatures::TCreatureProtocolMessageHandler> creatureProtocolMessageHandler, QObject* parent)
     : cip::tibia::worldmap::TWorldmapProtocolMessageHandler(parent)
-    , m_storage(storage)
+    , m_worldMapStorage(std::move(worldMapStorage))
+    , m_ambientLightStorage(std::move(ambientLightStorage))
+    , m_creatureStorage(std::move(creatureStorage))
+    , m_effectStorage(std::move(effectStorage))
+    , m_appearanceInstanceFactory(std::move(appearanceInstanceFactory))
+    , m_clockService(std::move(clockService))
+    , m_viewport(std::move(viewport))
+    , m_creatureProtocolMessageHandler(std::move(creatureProtocolMessageHandler))
 {
 }
 

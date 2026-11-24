@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assets/asset.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "input/gameactionptr.h"
 #include "worldmap/coordinates.h"
 #include "worldmap/worldmapareadata.h"
@@ -29,7 +30,7 @@ class THousesStorage;
 /// finds by field (CIP: TCyclopediaMapStaticDataStorage). The image files are
 /// requested as map image assets (newAssetDataToLoad) and handed out by the sprite
 /// system under their file names.
-class TCyclopediaMapStaticDataStorage final : public QObject
+class TCyclopediaMapStaticDataStorage final : public QObject, public IStaticHouseDataObserver
 {
     Q_OBJECT
 public:
@@ -140,6 +141,8 @@ public:
     /// static map data, the entrance drawn on that floor (CIP v13). Without a
     /// houses storage there are none.
     void setHousesStorage(const THousesStorage* houses);
+    /// The houses' static data arrived: their entrance pieces follow it.
+    void onStaticHouseDataChanged(const THousesStorage& HousesStorage) override { setHousesStorage(&HousesStorage); }
     /// The entrance pieces of one house: for every floor of `houseArea`, the
     /// entrance as drawn on that floor.
     void addHouseMarkers(quint32 houseId, int listing, const worldmap::TWorldMapCoordinate& entrance,

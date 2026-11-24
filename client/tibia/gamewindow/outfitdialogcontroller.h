@@ -25,12 +25,19 @@ class IGameSession;
 class TOutfitDialogStorage;
 class TSelectOutfitDialogData;
 }
+namespace qmlcomponents {
+class TOutfitColorQmlType;
+}
 }
 
 namespace tibia {
 namespace gamewindow {
 
 class TGenericEnterTextDialogController;
+
+/// CIP: a new outfit colour of the four palette indices, owned by the QML
+/// engine's JavaScript side (the outfit and podium dialogs copy from it).
+qmlcomponents::TOutfitColorQmlType* createJavaScriptOwnedOutfitColor(int head, int torso, int legs, int detail);
 
 /// Outfits, mounts or summons offered by the outfit window (CIP:
 /// TCustomiseCharacterModel).

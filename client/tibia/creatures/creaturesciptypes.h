@@ -23,6 +23,9 @@ class TExivaOptionsStorage;
 namespace game {
 class TPremiumTimeStorage;
 }
+namespace minimap {
+class TMinimapTileStorage;
+}
 namespace worldmap {
 class TWorldMapStorage;
 }
@@ -61,6 +64,11 @@ public:
     void handleUpdateTargetMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message);
     /// Product server: a creature's type and master.
     void handleCreatureTypeMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureType& message);
+    /// The game client's minimap tile storage while the session is the current one (null otherwise).
+    void setMinimapTileStorage(std::shared_ptr<minimap::TMinimapTileStorage> minimapTileStorage)
+    {
+        m_minimapTileStorage = std::move(minimapTileStorage);
+    }
 
 private:
     /// A creature mark: timed or static square, or the attack animation.
@@ -70,6 +78,7 @@ private:
 
     /// The session's world map.
     worldmap::TWorldMapStorage* m_worldMapStorage = nullptr;
+    std::shared_ptr<minimap::TMinimapTileStorage> m_minimapTileStorage;
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };
 };

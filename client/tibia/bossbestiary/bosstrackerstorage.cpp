@@ -25,6 +25,33 @@ TBossTrackerEntry::TBossTrackerEntry(const int raceId, QString name, const Outfi
     this->outfit.reset(model);
 }
 
+TBossTrackerEntry::TBossTrackerEntry(const TBossTrackerEntry& other)
+    : raceId(other.raceId)
+    , name(other.name)
+    , cooldownUntil(other.cooldownUntil)
+{
+    auto* model = new qmlcomponents::TOutfitQmlModel(nullptr);
+    QQmlEngine::setObjectOwnership(model, QQmlEngine::CppOwnership);
+    outfit.reset(model);
+    if (other.outfit)
+        model->copyFrom(*other.outfit);
+}
+
+TBossTrackerEntry& TBossTrackerEntry::operator=(const TBossTrackerEntry& other)
+{
+    raceId = other.raceId;
+    name = other.name;
+    if (!outfit) {
+        auto* model = new qmlcomponents::TOutfitQmlModel(nullptr);
+        QQmlEngine::setObjectOwnership(model, QQmlEngine::CppOwnership);
+        outfit.reset(model);
+    }
+    if (other.outfit && other.outfit != outfit)
+        outfit->copyFrom(*other.outfit);
+    cooldownUntil = other.cooldownUntil;
+    return *this;
+}
+
 bool TBossTrackerEntry::hasCooldown() const { return cooldownUntil > 0; }
 
 bool TBossTrackerEntry::cooldownExpired() const

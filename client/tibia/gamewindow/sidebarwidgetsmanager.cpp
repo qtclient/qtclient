@@ -133,9 +133,7 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TConta
     m_vip = std::make_unique<TVipWidgetManager>(gameWindowItem, engine);
     publish(m_vip.get());
     registerWidget(Vip, hooksFor(*m_vip, [vip = m_vip.get()] { return vip->open(); }));
-    m_killTracker = std::make_unique<TKillTrackerWidgetManager>(gameWindowItem, engine);
-    publish(m_killTracker.get());
-    registerWidget(KillTracker, hooksFor(*m_killTracker, [this, w = m_killTracker.get()] { return w->open(m_options); }));
+    registerOwnedWidget(KillTracker, m_killTracker, [gameWindowItem, engine] { return new TKillTrackerWidgetController(gameWindowItem, engine); });
     m_questTracker = std::make_unique<TQuestTrackerWidgetManager>(gameWindowItem, engine);
     publish(m_questTracker.get());
     registerWidget(QuestTracker, hooksFor(*m_questTracker, [this, w = m_questTracker.get()] { return w->open(m_gameSession); }));
@@ -147,19 +145,17 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TConta
     registerWidget(SpellList, hooksFor(*m_spellList, [this, w = m_spellList.get()] { return w->open(m_gameSession); }));
     m_unjustifiedPoints = std::make_unique<TUnjustifiedPointsWidgetManager>(gameWindowItem, engine);
     registerWidget(UnjustifiedPoints, hooksFor(*m_unjustifiedPoints, [this, w = m_unjustifiedPoints.get()] { return w->open(m_options); }));
-    m_imbuementTracker = std::make_unique<TImbuementTrackerWidgetManager>(gameWindowItem, engine);
-    registerWidget(ImbuementTracker, hooksFor(*m_imbuementTracker, [this, w = m_imbuementTracker.get()] { return w->open(m_options); }));
+    registerOwnedWidget(ImbuementTracker, m_imbuementTracker,
+                        [gameWindowItem, engine] { return new TImbuementTrackerWidgetController(gameWindowItem, engine); });
     // The trackers take the session's tracker storages when they connect.
     using CreatureMode = TCreatureTrackerWidgetController::EWidgetMode;
-    m_bestiaryTracker = std::make_unique<TCreatureTrackerWidgetManager>(CreatureMode::Bestiary, nullptr, nullptr, gameWindowItem, engine);
-    publish(m_bestiaryTracker.get());
-    registerWidget(BestiaryTracker, hooksFor(*m_bestiaryTracker, [this, w = m_bestiaryTracker.get()] { return w->open(m_options); }));
-    m_bosstiaryTracker = std::make_unique<TCreatureTrackerWidgetManager>(CreatureMode::Bosstiary, nullptr, nullptr, gameWindowItem, engine);
-    publish(m_bosstiaryTracker.get());
-    registerWidget(BosstiaryTracker, hooksFor(*m_bosstiaryTracker, [this, w = m_bosstiaryTracker.get()] { return w->open(m_options); }));
-    m_bossTracker = std::make_unique<TBossTrackerWidgetManager>(nullptr, gameWindowItem, engine);
-    publish(m_bossTracker.get());
-    registerWidget(BossCooldowns, hooksFor(*m_bossTracker, [this, w = m_bossTracker.get()] { return w->open(m_options); }));
+    registerOwnedWidget(BestiaryTracker, m_bestiaryTracker, [gameWindowItem, engine] {
+        return new TCreatureTrackerWidgetController(CreatureMode::Bestiary, gameWindowItem, engine);
+    });
+    registerOwnedWidget(BosstiaryTracker, m_bosstiaryTracker, [gameWindowItem, engine] {
+        return new TCreatureTrackerWidgetController(CreatureMode::Bosstiary, gameWindowItem, engine);
+    });
+    registerOwnedWidget(BossCooldowns, m_bossTracker, [gameWindowItem, engine] { return new TBossTrackerWidgetController(gameWindowItem, engine); });
     m_playerGuide = std::make_unique<TPlayerGuideWidgetManager>(gameWindowItem, engine);
     publish(m_playerGuide.get());
     registerWidget(PlayerGuide, hooksFor(*m_playerGuide, [this, w = m_playerGuide.get()] { return w->open(m_options); }));
@@ -179,14 +175,14 @@ TSidebarWidgetsManager::~TSidebarWidgetsManager()
     delete m_depotSearch.data();
     delete m_playerTrade.data();
     m_playerGuide.reset();
-    m_imbuementTracker.reset();
-    m_bossTracker.reset();
-    m_bosstiaryTracker.reset();
-    m_bestiaryTracker.reset();
+    delete m_imbuementTracker.data();
+    delete m_bossTracker.data();
+    delete m_bosstiaryTracker.data();
+    delete m_bestiaryTracker.data();
     m_questTracker.reset();
     m_lootTracking.reset();
     m_spellList.reset();
-    m_killTracker.reset();
+    delete m_killTracker.data();
     m_unjustifiedPoints.reset();
     m_vip.reset();
 }
@@ -225,14 +221,14 @@ void TSidebarWidgetsManager::updateWithTimestamp(const qint64 TimestampMilliseco
     m_battleLists->triggerUpdate();
     if (m_depotSearch)
         m_depotSearch->updateHoverCursor();
-    if (TBossTrackerWidgetController* const bossTracker = m_bossTracker->controller())
-        bossTracker->updateWithTimestamp();
-    if (TCreatureTrackerWidgetController* const bosstiaryTracker = m_bosstiaryTracker->controller())
-        bosstiaryTracker->updateCooldownExpiry();
+    if (m_bossTracker)
+        m_bossTracker->updateWithTimestamp();
+    if (m_bosstiaryTracker)
+        m_bosstiaryTracker->updateCooldownExpiry();
     if (m_containers)
         m_containers->updateWithTimestamp(TimestampMilliseconds);
-    if (TImbuementTrackerWidgetController* const imbuementTracker = m_imbuementTracker->controller())
-        imbuementTracker->updateWithTimestamp(TimestampMilliseconds);
+    if (m_imbuementTracker)
+        m_imbuementTracker->updateWithTimestamp(TimestampMilliseconds);
 }
 
 void TSidebarWidgetsManager::registerWidget(const int widgetType, WidgetHooks hooks) { m_widgets[widgetType] = std::move(hooks); }
@@ -272,9 +268,8 @@ void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IG
                                                        this, &Self::onDepotSearchWidgetCloseRequest));
         }
     }
-    // Host: the battle lists and the VIP widget keep the options themselves.
-    m_battleLists->setSidebarOptions(m_options);
-    m_battleLists->setGameSession(GameSession);
+    m_battleLists->connectToGameSession(GameSession);
+    // Host: the VIP widget keeps the options itself.
     m_vip->setSidebarOptions(m_options);
     if (m_playerTrade)
         m_playerTrade->setGameSession(session ? session->playerTradeStorage().get() : nullptr,
@@ -550,7 +545,7 @@ QQuickItem* TSidebarWidgetsManager::widgetQuickItem(const int widgetType) const
 
 void TSidebarWidgetsManager::closeAll()
 {
-    m_battleLists->closeAll();
+    m_battleLists->closeAll(false);
     for (const int type : { Skills, UnjustifiedPoints, KillTracker, SpellList, LootTracker, LootAnalyser, WasteAnalyser, BossCooldowns,
                             QuestTracker, ImpactAnalyser, DamageInputAnalyser, XpAnalyser, HuntingSessionAnalyser, AnalyticsSelector,
                             PartyHuntAnalyser })
@@ -564,6 +559,34 @@ void TSidebarWidgetsManager::closeAll()
         m_sidebars->setSidebarCount(TSidebarManager::Right, 1);
         m_sidebars->setSidebarCount(TSidebarManager::Left, 0);
     }
+}
+
+template <class Controller, class Make>
+void TSidebarWidgetsManager::registerOwnedWidget(const int widgetType, QPointer<Controller>& controller, Make make)
+{
+    const auto close = [&controller](const bool saveWidgetOptions) {
+        Controller* const current = controller;
+        controller = nullptr;
+        if (!current)
+            return;
+        if (saveWidgetOptions)
+            current->saveWidgetOptions();
+        current->deleteLater();
+    };
+    registerWidget(widgetType, { [this, &controller, make]() -> TSidebarWidget* {
+                                    if (!controller) {
+                                        controller = make();
+                                        connect(controller.data(), &Controller::publishGameAction, this, &TSidebarWidgetsManager::publishGameAction);
+                                        controller->connectToGameSession(m_gameSession);
+                                        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+                                        if (session && session->isLoginRampUpFinished())
+                                            controller->widget()->maximize();
+                                    }
+                                    return controller->widget();
+                                },
+                                 [close] { close(true); },
+                                 [&controller]() -> TSidebarWidget* { return controller ? controller->widget() : nullptr; },
+                                 [close] { close(false); } });
 }
 
 void TSidebarWidgetsManager::closeSkills(const bool saveWidgetOptions)

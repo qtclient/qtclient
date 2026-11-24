@@ -40,7 +40,9 @@ public:
                                     std::shared_ptr<sound::TSoundController> soundController,
                                     std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler,
                                     spells::TSpellInfoStorage* spellInfoStorage, TPassiveAbilityInfoStorage* passiveAbilityInfoStorage,
-                                    proficiency::TProficiencyStorage* proficiencyStorage, QObject* parent = nullptr);
+                                    proficiency::TProficiencyStorage* proficiencyStorage,
+                                    std::shared_ptr<gamewindow::TDialogStackController> dialogStackController = nullptr,
+                                    QObject* parent = nullptr);
     ~TTutorialSessiondumpGameSession() override;
 
     /// The sessiondump session's setup (which loads the dump and its hints),
@@ -65,6 +67,9 @@ public Q_SLOTS:
     virtual void onDisconnected();
 
 protected Q_SLOTS:
+    /// The tutorial ends with its dump: the session announces disconnected
+    /// (the game client then connects the character's live session).
+    void onSessiondumpFinished() override;
     /// The dump pauses at the next hint; the hints due at the dump's progress
     /// announce the player paused and are processed; with none due the player
     /// resumes. Then the sessiondump session's tick.

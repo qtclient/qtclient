@@ -61,6 +61,9 @@ public:
     /// CipSoft's constructor: the dialog is made in `engine` under `dialogParentItem`.
     TMessageDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
+    /// Sets the text format and always notifies, also when it is unchanged.
+    void setMessageDialogTextFormat(EMessageDialogTextFormat format) override;
+
     /// CIP : "Yes" (Return) and "No" (Escape).
     void setYesNoButtons();
     /// The buttons CIP passes to (e.g. 's OK and Cancel).

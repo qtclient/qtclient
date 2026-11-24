@@ -2751,7 +2751,7 @@ message GameserverMessageEditText {
   optional string text = 1;
   optional string author = 2;
   optional string date = 3;
-  optional ProtocolInventoryItem object = 4;
+  optional AppearanceInstance object = 4;
   optional uint32 edit_id = 5;
   optional uint32 max_length = 6;
   optional bool recently_traded = 7;

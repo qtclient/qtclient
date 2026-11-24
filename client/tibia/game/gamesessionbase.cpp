@@ -332,8 +332,9 @@ void TGameSessionBase::createStorages()
 void TGameSessionBase::createProtocolMessageHandlers()
 {
     m_creatureProtocolMessageHandler = std::make_shared<creatures::TCreatureProtocolMessageHandler>(m_worldMapStorage.get());
-    m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
-    m_worldmapProtocolMessageHandler->setViewport(m_worldMapViewport.get());
+    m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(
+        m_worldMapStorage, m_ambientLightStorage, m_creatureStorage, m_effectStorage, m_appearanceInstanceFactory,
+        clockService(), m_worldMapViewport, m_creatureProtocolMessageHandler);
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>(m_effectStorage, m_worldMapStorage,
                                                                                             m_soundStorage, clockService());
     m_chatProtocolMessageHandler =
@@ -381,7 +382,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_ruleViolationProtocolMessageHandler = std::make_shared<reporting::TRuleViolationProtocolMessageHandler>(m_gameActionContextHelper);
     m_reportingStorage = std::make_shared<reporting::TReportingStorage>();
     m_bugReportProtocolMessageHandler = std::make_shared<reporting::TBugReportProtocolMessageHandler>(m_reportingStorage);
-    m_editTextProtocolMessageHandler = std::make_shared<TEditTextProtocolMessageHandler>();
+    m_editTextProtocolMessageHandler = std::make_shared<TEditTextProtocolMessageHandler>(m_appearanceInstanceFactory, clockService());
     m_unjustifiedPointsProtocolMessageHandler =
         std::make_shared<creatures::TUnjustifiedPointsProtocolMessageHandler>(m_unjustifiedPointsStorage);
     m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage, m_marketStorage);
@@ -702,11 +703,18 @@ void TGameSessionBase::setMinimapStorages(std::shared_ptr<minimap::TMinimapTileS
                                           std::shared_ptr<minimap::TMinimapMarkerStorage> markerStorage,
                                           std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> cyclopediaMapStaticDataStorage)
 {
-    // CIP v14 (game::TSessiondumpGameSession::v14): the tile storage and the
-    // cyclopedia map data go to the cyclopedia map storage and the world map
-    // GA provider there; qtclient's game client wires those itself today.
-    Q_UNUSED(tileStorage);
-    Q_UNUSED(cyclopediaMapStaticDataStorage);
+    // The creature and world map protocol message handlers get the tile
+    // storage; the Cyclopedia map storage the static map data, which also
+    // hears from the Cyclopedia protocol message handler when the houses'
+    // static data changes; the world map GA provider the marker storage.
+    if (m_creatureProtocolMessageHandler)
+        m_creatureProtocolMessageHandler->setMinimapTileStorage(tileStorage);
+    if (m_worldmapProtocolMessageHandler)
+        m_worldmapProtocolMessageHandler->setMinimapTileStorage(tileStorage.get());
+    if (m_cyclopediaMapStorage)
+        m_cyclopediaMapStorage->setStaticDataStorage(cyclopediaMapStaticDataStorage);
+    if (m_cyclopediaProtocolMessageHandler)
+        m_cyclopediaProtocolMessageHandler->setStaticHouseDataObserver(cyclopediaMapStaticDataStorage);
     // Without a marker storage the minimap protocol message handler goes; with
     // one the session makes it over the session clock, linked from the queue's
     // Cyclopedia map data.

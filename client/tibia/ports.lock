@@ -165,7 +165,7 @@ appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStora
 appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceGenericStoragesManager::~TAppearanceInstanceGenericStoragesManager	cfb55e262c4b601a	skip	generated: compiler-generated destructor (member teardown only: connection manager, std::list of weak_ptrs, shared_ptr; read)
 appearances::TAppearanceInstanceGenericStoragesManager::~TAppearanceInstanceGenericStoragesManager_deleting	d949e1bc50a3adeb	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
-appearances::TAppearanceInstanceSpriteSequence::v0	40b101578bc086f9	ported	creatures/creaturestorage.cpp:TCreature::refreshWalkAnimators
+appearances::TAppearanceInstanceSpriteSequence::v0	40b101578bc086f9	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::restartAnimation
 appearances::TAppearanceInstanceSpriteSequence::v1	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceSpriteSequence::v2	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceSpriteSequence::v3	bc9de26ba47c4535	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::setPattern
@@ -364,8 +364,8 @@ assets::TAssetFileSystemHelper::v11	489373aefc2eed8d	tested	assets/assetfilesyst
 assets::TAssetFileSystemHelper::v2	530464b0ff218275	skip	generated: destructor variants
 assets::TAssetFileSystemHelper::v3	29fe5b60d28a4eb1	skip	generated: destructor variants
 assets::TAssetFileSystemHelper::v4	23e0c8b99b2e61d7	ported	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::getFilePath
-assets::TAssetFileSystemHelper::v5	eb2c8e930d1e4451	tested	assets/assetfilesystemhelper.h:TAssetFileSystemHelper::assetsDirectory	test=tests/client/assetfilesystemhelper_test.cpp
-assets::TAssetFileSystemHelper::v6	4ad931aea3ab5051	tested	assets/assetfilesystemhelper.h:TAssetFileSystemHelper::soundsDirectory	test=tests/client/assetfilesystemhelper_test.cpp
+assets::TAssetFileSystemHelper::v5	eb2c8e930d1e4451	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::assetsDirectory	test=tests/client/assetfilesystemhelper_test.cpp
+assets::TAssetFileSystemHelper::v6	4ad931aea3ab5051	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::soundsDirectory	test=tests/client/assetfilesystemhelper_test.cpp
 assets::TAssetFileSystemHelper::v7	0a004466636bfe9f	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::forEachLocalFileDecideWhetherItShouldBeRetained	test=tests/client/assetfilesystemhelper_test.cpp
 assets::TAssetFileSystemHelper::v8	06f5abc305b0ab2b	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::removeAsset	test=tests/client/assetfilesystemhelper_test.cpp
 assets::TAssetFileSystemHelper::v9	c857804383234c5f	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::readAsset	test=tests/client/assetfilesystemhelper_test.cpp
@@ -764,7 +764,7 @@ client::TGameApplication::~TGameApplication	097457dc45e86dd8	skip	generated: com
 client::TGameApplication::~TGameApplication_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 client::TGameApplicationBase::~TGameApplicationBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 client::TGameApplicationBase::~TGameApplicationBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
-client::TGameClient::autoconnectNextGameSessionInQueue	9d24defe178f0dc2	todo	read; qtclient matches (queue pop, reconnection off for dumps, sessions made by TGameClient::createGameSession with the 13 shared objects, crash annotations + item price world, live-only startTargetSelection/showCharacterSelectionDialog/loginAdvice/loginError and keyboard status connections, connectToGameserver, startSession; the anti-cheat start is policy battleye). Blocked by: the plain-sessiondump factory also passes the client's TDialogStackController (+0x338, made in v13 over the event filter manager); qtclient's dialog stack is made in the builder (engine, placeholder) and TSessiondumpGameSession takes none (rserver). Do with the v13 dialog stack move
+client::TGameClient::autoconnectNextGameSessionInQueue	9d24defe178f0dc2	ported	client/gameclient.cpp:TGameClient::autoconnectNextGameSessionInQueue
 client::TGameClient::checkKeyboardStatusStorageAfterDelay	51f028fff8a06727	ported	client/gameclientgamewindow.cpp:TGameClient::checkKeyboardStatusStorageAfterDelay
 client::TGameClient::connectClientToGameserverWithExistingCredentials	867bc5e83c8b9cae	ported	client/gameclient.cpp:TGameClient::connectClientToGameserverWithExistingCredentials
 client::TGameClient::handleGameAction	f12bacbf8d1adf92	ported	client/gameclient.cpp:TGameClient::handleGameAction
@@ -799,7 +799,7 @@ client::TGameClient::onStartTargetSelection	e7b436b666223b2e	ported	client/gamec
 client::TGameClient::onTryToPatchClient	cd8add906b03c8b1	ported	client/gameclient.cpp:TGameClient::onTryToPatchClient
 client::TGameClient::onWindowSizeChanged	bf07cfc916a5f34f	ported	client/gameclient.cpp:TGameClient::onWindowSizeChanged
 client::TGameClient::v12	2b0f1a5350290ebf	ported	client/gameclient.cpp:TGameClient::initialize
-client::TGameClient::v13	654c77b331b1be99	todo	TGameClient setup before the game window (read). Ported in TGameClient::initializeClientObjects: clipboard/URL tools/tibia clipboard, white/blacklist, mouse mapper + scheme slot + initial call, premium time storage, the [GRAPHICS] setters (missile, numerical duration/merge, timed square). Left: keyboard status/shortcut/record/event filter manager/movement interpreter/key converter and the open website/clipboard handlers live in the builder's TGameWindow (move them here); chat mode manager +0x2e8 and the client clock +0x668 (qtclient: the chat controller's mode manager, TClockService::process); item price storage +0x2f8 is cyclopedia::TItemPriceStorage(…, premium) vs qtclient analysers::TItemPriceStorage::instance(); TPlayerMovementIntentHandlerConfiguration from [MOVEMENT]; the DEBUG showSpeechBubbleBoundingRect flag (sub_10ece75982c4, reader sub_60fac3821430 unported); sub_ed559f4efce0 (TCreature option flags); dialog stack controller over the event filter manager (+0x338) with the static setters sub_e1ec89e27320#2 (dialog stack) and #3 (client clock), vs qtclient's TDialogStackController(engine, placeholder) made in the builder
+client::TGameClient::v13	654c77b331b1be99	ported	client/gameclient.cpp:TGameClient::initializeQmlContext
 client::TGameClient::v24	4e57ce1d720805fb	ported	client/gameclient.cpp:TGameClient::onSpritesheetUncompressFailed
 client::TGameClient::v25	a6e76e0c8e2b5966	ported	client/gameclient.cpp:TGameClient::onAssetsComplete
 client::TGameClient::v26	8794bde97b7a86db	ported	client/gameclient.cpp:TGameClient::onAssetsError
@@ -2718,9 +2718,9 @@ game::TServerModalDialogProtocolMessageHandler::~TServerModalDialogProtocolMessa
 game::TServerModalDialogProtocolMessageHandler::~TServerModalDialogProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TSessiondumpGameSession::v105	3f1cf0e8ba67565b	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::clockService
 game::TSessiondumpGameSession::v13	924d246d2d3b5e31	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::initialize
-game::TSessiondumpGameSession::v14	33d467ac006f13f5	todo	this is TGameSessionBase's minimap setter (setMinimapStorages; TGameserverGameSession::v14 calls it non-virtually): tile storage -> +0x598 (+0x20) and +0x5d8 (+0xd8); cyclopedia map storage (+0x4c8) gets all three (sub_04f689d08b20); cyclopedia PMH (+0x738) slot 12 (static data); world map GA provider (+0x940) sub_a4802afeaf3b(marker storage); marker storage null -> minimap PMH (+0x648) dropped, else TMinimapProtocolMessageHandler(marker storage, session clock) linked from CyclopediaMapData. Declared in the base by rserver R4 (wave 15) with an empty body; rsession ports the body there
+game::TSessiondumpGameSession::v14	33d467ac006f13f5	ported	game/gamesessionbase.cpp:TGameSessionBase::setMinimapStorages
 game::TSessiondumpGameSession::v141	872d4faac408f6d5	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::updatePlayerMovementIntentHandler
-game::TSessiondumpGameSession::v142	b61616f430804cfe	todo	prepareNextFrameToRender override: when the player (+0x9e0) exists and has started (sub_bae7e771cd7d#2, TSessiondumpPlayer +0xc0), base v142 with the session clock's now (v105 nowMillis) instead of the predicted timestamp, then the process timer (+0xa40) starts if inactive. Host gap: TGameSessionBase::onPrepareNextFrameToRender is not virtual (rsession) and qtclient's TWorldMapStorage starts creature walks on the process frame clock (TClockService::frameMillis), so preparing frames on the dump clock breaks walk tweens (world). Until then the dump's process timer is a 16 ms periodic timer (v51 processNetwork is ported and restarts it)
+game::TSessiondumpGameSession::v142	b61616f430804cfe	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::onPrepareNextFrameToRender
 game::TSessiondumpGameSession::v156	3f1cf0e8ba67565b	ported	game/sessiondumpgamesession.h:TSessiondumpGameSession::sessiondumpProgressClock
 game::TSessiondumpGameSession::v157	64ccb92b8009209d	ported	game/sessiondumpgamesession.h:TSessiondumpGameSession::sessiondumpPlayer
 game::TSessiondumpGameSession::v158	9e18344a3262e1bf	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::replayDmpd
@@ -2753,7 +2753,7 @@ game::TTutorialSessiondumpGameSession::v13	28deba743a5e4b8a	ported	game/tutorial
 game::TTutorialSessiondumpGameSession::v153	27ee79f55286246a	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::createGameActionProvidersAndHandlers
 game::TTutorialSessiondumpGameSession::v158	5406a1be6f45045d	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::startSessiondump
 game::TTutorialSessiondumpGameSession::v159	66fc819c319e31ed	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::onSessiondumpTimerElapsed
-game::TTutorialSessiondumpGameSession::v161	097457dc45e86dd8	todo	onSessiondumpFinished override: emits IGameSession::disconnected (the plain dump's v161 is empty: CipSoft keeps a finished replay open). Blocked on the host end path: qtclient ends every dump through the classic session state (finishDecodedReplay -> TGameNotify::gameEnded), whose lambda in TSessiondumpGameSession's ctor calls onSessiondumpFinished and emits disconnected for every dump; a v161 emit would run twice and a plain dump would still disconnect. Needs: the dump's end stops calling finishDecodedReplay, disconnectNow (the user's exit) emits disconnected itself, then this override; verify with plain + tutorial replay smokes (TGameClient's disconnect path)
+game::TTutorialSessiondumpGameSession::v161	097457dc45e86dd8	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::onSessiondumpFinished
 game::TTutorialSessiondumpGameSession::v162	5b522a2b33f391bd	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::onDisconnected
 game::TTutorialSessiondumpGameSession::v18	feebb15c09061ce9	ported	game/tutorialsessiondumpgamesession.cpp:TTutorialSessiondumpGameSession::startSession
 game::TTutorialSessiondumpGameSession::~TTutorialSessiondumpGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
@@ -3837,9 +3837,9 @@ gamewindow::THuntingSessionWidgetController::~THuntingSessionWidgetController_de
 gamewindow::TImbuementTrackerWidgetController::onImbuedObjectsChanged	a5698084e7e168de	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::onImbuedObjectsChanged
 gamewindow::TImbuementTrackerWidgetController::onObjectClicked	3e08b0c5ed09b10d	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::onObjectClicked
 gamewindow::TImbuementTrackerWidgetController::optionsContextMenu	4e2fcd115d72fb01	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::optionsContextMenu
-gamewindow::TImbuementTrackerWidgetController::v12	141e1d534c01ec65	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::TImbuementTrackerWidgetController
+gamewindow::TImbuementTrackerWidgetController::v12	141e1d534c01ec65	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::connectToGameSession
 gamewindow::TImbuementTrackerWidgetController::v37	b8428e65a25bfa19	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::saveWidgetOptions
-gamewindow::TImbuementTrackerWidgetController::v38	265554573adc7324	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::setSidebarOptions
+gamewindow::TImbuementTrackerWidgetController::v38	265554573adc7324	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::onWidgetOptionsChanged
 gamewindow::TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TImbuingDialogController::handleGameAction	19f5b9fcb0a1a2e4	inlined	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handlePickItemToImbue
@@ -3948,7 +3948,7 @@ gamewindow::TKillTrackerWidgetController::bountyTaskDataChanged	4dd16c457b1f6aa1
 gamewindow::TKillTrackerWidgetController::requestOpenBountyTasksDialog	b6e8b6631e67788d	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::requestOpenBountyTasksDialog
 gamewindow::TKillTrackerWidgetController::requestOpenPreyDialog	99be056ebdb6789e	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::requestOpenPreyDialog
 gamewindow::TKillTrackerWidgetController::requestOpenWeeklyTasksDialog	368b3c13de877242	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::requestOpenWeeklyTasksDialog
-gamewindow::TKillTrackerWidgetController::v12	74d6d21a826d343a	inlined	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::TKillTrackerWidgetController
+gamewindow::TKillTrackerWidgetController::v12	74d6d21a826d343a	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::connectToGameSession
 gamewindow::TKillTrackerWidgetController::v37	326db633255fea4e	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::saveWidgetOptions
 gamewindow::TKillTrackerWidgetController::v38	6e04cc2d5faf5732	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::onWidgetOptionsChanged
 gamewindow::TKillTrackerWidgetController::weeklyTaskDataChanged	74d7e395c5946246	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::weeklyTaskDataChanged
@@ -8586,12 +8586,12 @@ spells::TSpellsProtocolMessageHandler::~TSpellsProtocolMessageHandler	4a00f6b18d
 spells::TSpellsProtocolMessageHandler::~TSpellsProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
 sprites::IResourceSpriteIdentifier::v0	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::IResourceSpriteIdentifier::v1	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
-sprites::IResourceSpriteIdentifier::v10	872d4faac408f6d5	todo	four empty virtual bodies (push/mov/pop/ret at 0x100feeb10..40), linker-folded: the same addresses fill slots 7-10 and 22-25 of IResourceSpriteIdentifier's contiguous 27-slot table (0x102762248, no RTTI header between slot 6 and 26 in index/fixups.txt) and slots of RTTI-less tables next to TChildrenScenegraphNode / TQSGScenegraphDrawCommandsNode (0x10276c778, 0x10276d048, 0x10276d428, 0x10276d450). Blocked: no caller of these slots on a resource sprite identifier is identified, so their names and signatures are unknown (an empty override cannot be placed without them)
+sprites::IResourceSpriteIdentifier::v10	872d4faac408f6d5	skip	library: libc++ std::variant __dispatcher entries: empty destroy handlers of the trivially destructible alternatives of renderer::TScenegraphDrawCommandData's variant; the words after IResourceSpriteIdentifier's 7-slot vtable are four 5-entry dispatch arrays (neighbours v13/v15/v18 carry __dispatcher<...>::__generic_construct/__generic_assign symbols), not virtuals (read)
 sprites::IResourceSpriteIdentifier::v11	effdaac214d4e219	skip	library: std::unique_ptr<ISpriteIdentifier> reset: release and virtual deleting destructor (template instantiation)
 sprites::IResourceSpriteIdentifier::v2	dd4802861a7b5baa	tested	sprites/resourcespriteidentifier.h:IResourceSpriteIdentifier::identifierKind	test=tests/client/resourcespriteidentifier_test.cpp
-sprites::IResourceSpriteIdentifier::v7	872d4faac408f6d5	todo	four empty virtual bodies (push/mov/pop/ret at 0x100feeb10..40), linker-folded: the same addresses fill slots 7-10 and 22-25 of IResourceSpriteIdentifier's contiguous 27-slot table (0x102762248, no RTTI header between slot 6 and 26 in index/fixups.txt) and slots of RTTI-less tables next to TChildrenScenegraphNode / TQSGScenegraphDrawCommandsNode (0x10276c778, 0x10276d048, 0x10276d428, 0x10276d450). Blocked: no caller of these slots on a resource sprite identifier is identified, so their names and signatures are unknown (an empty override cannot be placed without them)
-sprites::IResourceSpriteIdentifier::v8	872d4faac408f6d5	todo	four empty virtual bodies (push/mov/pop/ret at 0x100feeb10..40), linker-folded: the same addresses fill slots 7-10 and 22-25 of IResourceSpriteIdentifier's contiguous 27-slot table (0x102762248, no RTTI header between slot 6 and 26 in index/fixups.txt) and slots of RTTI-less tables next to TChildrenScenegraphNode / TQSGScenegraphDrawCommandsNode (0x10276c778, 0x10276d048, 0x10276d428, 0x10276d450). Blocked: no caller of these slots on a resource sprite identifier is identified, so their names and signatures are unknown (an empty override cannot be placed without them)
-sprites::IResourceSpriteIdentifier::v9	872d4faac408f6d5	todo	four empty virtual bodies (push/mov/pop/ret at 0x100feeb10..40), linker-folded: the same addresses fill slots 7-10 and 22-25 of IResourceSpriteIdentifier's contiguous 27-slot table (0x102762248, no RTTI header between slot 6 and 26 in index/fixups.txt) and slots of RTTI-less tables next to TChildrenScenegraphNode / TQSGScenegraphDrawCommandsNode (0x10276c778, 0x10276d048, 0x10276d428, 0x10276d450). Blocked: no caller of these slots on a resource sprite identifier is identified, so their names and signatures are unknown (an empty override cannot be placed without them)
+sprites::IResourceSpriteIdentifier::v7	872d4faac408f6d5	skip	library: libc++ std::variant __dispatcher entries: empty destroy handlers of the trivially destructible alternatives of renderer::TScenegraphDrawCommandData's variant; the words after IResourceSpriteIdentifier's 7-slot vtable are four 5-entry dispatch arrays (neighbours v13/v15/v18 carry __dispatcher<...>::__generic_construct/__generic_assign symbols), not virtuals (read)
+sprites::IResourceSpriteIdentifier::v8	872d4faac408f6d5	skip	library: libc++ std::variant __dispatcher entries: empty destroy handlers of the trivially destructible alternatives of renderer::TScenegraphDrawCommandData's variant; the words after IResourceSpriteIdentifier's 7-slot vtable are four 5-entry dispatch arrays (neighbours v13/v15/v18 carry __dispatcher<...>::__generic_construct/__generic_assign symbols), not virtuals (read)
+sprites::IResourceSpriteIdentifier::v9	872d4faac408f6d5	skip	library: libc++ std::variant __dispatcher entries: empty destroy handlers of the trivially destructible alternatives of renderer::TScenegraphDrawCommandData's variant; the words after IResourceSpriteIdentifier's 7-slot vtable are four 5-entry dispatch arrays (neighbours v13/v15/v18 carry __dispatcher<...>::__generic_construct/__generic_assign symbols), not virtuals (read)
 sprites::TAppearanceTypeSpritesheetMapping::v0	00de01561e54f000	skip	generated: compiler-generated destructor pair (map member destroy)
 sprites::TAppearanceTypeSpritesheetMapping::v1	dc278269e3a3469a	skip	generated: compiler-generated destructor pair (map member destroy)
 sprites::TAppearanceTypeSpritesheetMapping::v2	ccdc8a2216dc75b6	tested	sprites/appearancetypespritesheetmapping.cpp:TAppearanceTypeSpritesheetMapping::addAppearanceType	test=tests/client/appearanceinstancetracker_test.cpp
@@ -9035,7 +9035,7 @@ sub_0415f39cc74f	0415f39cc74fd7db	skip	generated: compiler-generated destructor
 sub_0419695c817a	0419695c817a48c5	skip	library: std container template instance
 sub_04255520045c	04255520045c8012	ported	protocol/protobufclientmessagetranslator.cpp:TProtobufClientMessageTranslator::TProtobufClientMessageTranslator
 sub_04277f0752dd	04277f0752dd95ba	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setUnspentPerk
-sub_043fabd8aebb	043fabd8aebbe04b	todo	TActionButtonController counter record (+0x128, two ints cur/max): remaining = max-cur, fraction = (max-cur)/max (0 when max 0), equality, set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_043fabd8aebb	043fabd8aebbe04b	ported	game/cooldownstorage.h:TPassiveAbilityCounter::remaining
 sub_044413eab2ad	044413eab2ad3308	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_0449c1495637	0449c1495637ba04	inlined	systemsurvey/fpshistorytojsonconverter.cpp:sampleToJson
 sub_044c0ed7ccbf	044c0ed7ccbffd0a	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::refreshTactics
@@ -9078,7 +9078,7 @@ sub_04ef487b1f70	04ef487b1f70d198	skip	dead: never runs: no call, jump, lea or p
 sub_04f133b09b33	04f133b09b33616f	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::connectToGameSession
 sub_04f22864285e	04f22864285e72c7	skip	library: libc++/absl/protobuf template or runtime internals (btree node ops, std::map<QString> find, __tree range assign, std::string from range, protobuf serialization/arena)
 sub_04f42d66fea3	04f42d66fea3e438	skip	library: libc++ std::map<QString, {timestamp, QImage}> tree destroy (recursive node teardown; read)
-sub_04f689d08b20	04f689d08b20af69	todo	misattributed: shared_ptr member setter (+0x10) of the cyclopedia map storage (base +0x4c8), called by base v14
+sub_04f689d08b20	04f689d08b20af69	ported	cyclopedia/cyclopediamapdata.h:TCyclopediaMapStorage::setStaticDataStorage
 sub_04ff31581b17	04ff31581b1760d0	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_05020a9b8e63	05020a9b8e63f03b	skip	library: protobuf runtime (InternalMetadata unknown fields, RepeatedField growth, MessageLite serialise size check, ExtensionSet lookup, shutdown registry)
 sub_05037000299b	05037000299be123	inlined	proficiency/proficiencyperks.cpp:perkImageSource
@@ -9118,7 +9118,7 @@ sub_05b6eec146b4#2	05b6eec146b4b8e0	inlined	sound/soundconfiguration.h:TSoundCon
 sub_05c02b481b86	05c02b481b86d30e	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node inter
 sub_05c301cfd5d2	05c301cfd5d27570	skip	generated: implicit member-wise constructors/destructor of static-data record structs (default member initialisers)
 sub_05c301cfd5d2#2	05c301cfd5d27570	skip	generated: compiler-generated constructor/copy/assignment of a CipSoft struct, protobuf message ctor, or QVariant::fromValue metatype registration
-sub_05cd72b72684	05cd72b726840bb1	todo	misattributed: shared_ptr member setter (+0x20) of the object at base +0x598, called by base v14 with the minimap argument
+sub_05cd72b72684	05cd72b726840bb1	ported	creatures/creaturesciptypes.h:TCreatureProtocolMessageHandler::setMinimapTileStorage
 sub_05cd72b72684#2	05cd72b726840bb1	inlined	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage
 sub_05cd72b72684#3	05cd72b726840bb1	ported	teamfinder/teamfinderciptypes.h:TTeamFinderProtocolMessageHandler::setIgnoreList
 sub_05ce442d056c	05ce442d056c44ac	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::showMessage
@@ -10234,7 +10234,7 @@ sub_0f2316044dbf#2	0f2316044dbf5c87	ported	dailyreward/dailyrewardciptypes.cpp:T
 sub_0f254fc2a31f	0f254fc2a31f410e	skip	generated: std::make_shared argument forwarding for chat::TChatProtocolMessageHandler (copies the shared_ptr arguments into the constructor call, read)
 sub_0f2e951c4f0d	0f2e951c4f0d41f3	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_0f2e9f26d9d0	0f2e9f26d9d093a3	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::syncFallback
-sub_0f2f445c4fad	0f2f445c4fad88cf	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_0f2f445c4fad	0f2f445c4fad88cf	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_0f31633df7c1	0f31633df7c17113	ported	taskboard/taskboardshopstorage.cpp:TTaskboardShopStorage::TTaskboardShopStorage
 sub_0f31633df7c1#2	0f31633df7c17113	ported	taskboard/taskboardshopstorage.cpp:TTaskboardShopStorage::TTaskboardShopStorage
 sub_0f33901f6efa	0f33901f6efac3e0	inlined	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
@@ -10388,7 +10388,7 @@ sub_10e6efdf47b6	10e6efdf47b65409	inlined	gamewindow/characterinfomodels.cpp:TCh
 sub_10e8217d0c30	10e8217d0c30fa66	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_10e8217d0c30#2	10e8217d0c30fa66	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_10ea68844483	10ea688444837d68	ported	controllers/characterselectioncontroller.cpp:TCharacterSelectionController::~TCharacterSelectionController
-sub_10ece75982c4	10ece75982c485b1	todo	TTibiaConfig client-setting readers (static section/key; defaults 150, 1000 and a static default) used only by TGameClient::v13 to set the missile, timed-square and DAT_1079028a8 globals; port with v13 via TTibiaConfig::clientSetting
+sub_10ece75982c4	10ece75982c485b1	inlined	client/gameclient.cpp:TGameClient::initializeClientObjects
 sub_10ece75982c4#2	10ece75982c485b1	inlined	client/gameclient.cpp:TGameClient::createGameSessionMetaInfos
 sub_10efbe732e2b	10efbe732e2b59bb	inlined	gamewindow/chatcontroller.cpp:TChatController::storeOpenChannels
 sub_10f549c9ae54	10f549c9ae54c6b7	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
@@ -10842,7 +10842,7 @@ sub_13d08a5407ce#20	13d08a5407ce57fa	inlined	input/genericgameactionhandler.cpp:
 sub_13d08a5407ce#21	13d08a5407ce57fa	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client and index/fixups.txt checked for 0x100f4abb0; entry follows a noreturn call or embedded data); a protocol enum converter (static map lookup or range check that throws on an unknown value)
 sub_13d08a5407ce#22	13d08a5407ce57fa	inlined	authentication/loginprotocolmessagehandler.cpp:TLoginProtocolMessageHandler::handleLoginChallenge
 sub_13d08a5407ce#23	13d08a5407ce57fa	ported	friends/friendsciptypes.cpp:friendGroupFromProtocol
-sub_13d08a5407ce#24	13d08a5407ce57fa	todo	friends enum converter: static std::map<int,int> lookup that throws runtime_error 'unhandled enum value'; called by TFriendsProtocolMessageHandler::acceptInvite (sub_2e21503ab3fc), TFriendsFriendListPageController and TFriendsConfigurationPageController setters; qtclient casts the value directly. Port as one checked converter in friends/ (shared)
+sub_13d08a5407ce#24	13d08a5407ce57fa	ported	friends/friendsciptypes.cpp:friendGroupToProtocol
 sub_13d08a5407ce#25	13d08a5407ce57fa	inlined	game/selectoutfitdialogdata.cpp:TSelectOutfitDialogData::TSelectOutfitDialogData
 sub_13d08a5407ce#26	13d08a5407ce57fa	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client and index/fixups.txt checked for 0x100f4aed0; entry follows a noreturn call or embedded data); a protocol enum converter (static map lookup or range check that throws on an unknown value)
 sub_13d08a5407ce#27	13d08a5407ce57fa	inlined	game/selectoutfitdialogdata.cpp:TSelectOutfitDialogData::TSelectOutfitDialogData
@@ -11660,7 +11660,7 @@ sub_18e017374fc2	18e017374fc2a246	ported	gamewindow/housesinfodialogcontroller.c
 sub_18e37cecbac8	18e37cecbac83703	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::applyButtonClicked
 sub_18e39c427fdb	18e39c427fdbe884	ported	gamewindow/chatchanneltabrenderinfo.cpp:TChatChannelTabRenderInfo::resetTabHighlight
 sub_18e697b6e1c2	18e697b6e1c28da6	skip	dead: gem configuration check ('TVessels: invalid Gem config'); never runs: only referenced from the unreferenced thunk sub_097457dc45e8#737 and sub_a276f961995e (dead), which nothing live reaches (full objdump -d of the pinned client and index/fixups.txt checked)
-sub_18ec66600b33	18ec66600b3318d8	todo	TActionButtonController timestamp cooldown (+0x100 duration?, +0xf0 end): set-if-different pair; isRunning = end > 0. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_18ec66600b33	18ec66600b3318d8	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setCooldown
 sub_18ecb93e6da4	18ecb93e6da4bfad	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::setShowFewKillsBosses
 sub_18f2001bb0ab	18f2001bb0ab9dd5	skip	data: static initializer of unrelated globals (misattributed)
 sub_18f6be9c248d	18f6be9c248d8958	skip	library: libc++ std::sort instantiation (introsort/insertion/sort3-5 with an inlined QString comparator)
@@ -12199,7 +12199,7 @@ sub_1d60306da272	1d60306da272d5fe	ported	cyclopedia/cyclopediamapcharacterconfig
 sub_1d628a61d649	1d628a61d649eea6	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::makeDummyAppearanceTypes
 sub_1d64865ab3fc	1d64865ab3fcb99d	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setTraders
 sub_1d669d3c3c81	1d669d3c3c819b6d	ported	gamewindow/remainingdialogs.cpp:TCrashReportDialogController::logMessages
-sub_1d696b64ae21	1d696b64ae218406	todo	misattributed: boost::variant get of a TWorldMapCoordinate at +0x48 of its caller's object (sub_e3f9ee08747f)
+sub_1d696b64ae21	1d696b64ae218406	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::showDialogTab
 sub_1d6ea13c5e51	1d6ea13c5e51f5d3	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_1d6fcf3fff03	1d6fcf3fff036008	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::post
 sub_1d78d4a40d22#2	1d78d4a40d22541c	skip	generated: moc signal emitter
@@ -12826,14 +12826,14 @@ sub_226b7346d3e4	226b7346d3e4e3be	skip	generated: std::make_shared argument forw
 sub_22768a81705a	22768a81705aad12	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onMonsterRaceClicked
 sub_22770d3c2d65	22770d3c2d65eafc	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
 sub_22770d3c2d65#2	22770d3c2d65eafc	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
-sub_227b91dc0eb0	227b91dc0eb0c1e5	todo	TAuthenticationProcessController: when the login request uploader (+0x70) exists, its virtual slot 16 = TLoginRequestUploader::v16 updateCharactersFromGameSession (not abort). Callers TGameClient::onShowCharacterSelectionDialogRequested / onAbortConnectClientToGameserver (then showCharacterSelection); qtclient's character switch (openCharacterSelectionForSwitch) shows m_account instead of the controller's state
+sub_227b91dc0eb0	227b91dc0eb0c1e5	inlined	client/gameclient.cpp:TGameClient::onShowCharacterSelectionDialogRequested
 sub_227c1cd071da	227c1cd071dadef6	skip	generated: QMetaType default-construct hook of TMinimapTile (from qRegisterMetaType in the constructor), read
 sub_22919aa75edf	22919aa75edf2b1f	skip	library: libc++ vector reserve/emplace slow paths and stringstream construction
 sub_2293bd9d7525	2293bd9d75254d76	ported	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::clearRecentLootDrops
 sub_22a22331e053	22a22331e05399b8	tested	animation/animationinfo.h:TAnimationInfo::maximumPhaseDuration	test=tests/client/animationinfo_test.cpp
 sub_22a8f508ad51	22a8f508ad516f91	inlined	input/crosshairgameactionhandlers.cpp:TCrossHairSpellGameActionHandler::handleCrossHairSpell
 sub_22a8f508ad51#2	22a8f508ad516f91	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
-sub_22addc3fc2de	22addc3fc2de200e	todo	misattributed: shared_ptr member setter (+0xd8) of the object at base +0x5d8, called by base v14 with the minimap argument
+sub_22addc3fc2de	22addc3fc2de200e	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::setMinimapTileStorage
 sub_22adeda3155a	22adeda3155afea8	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_22b0c888b4fb	22b0c888b4fbc647	ported	chat/textstorage.h:TCreatureSpeechBubble::color
 sub_22b13d33dfad	22b13d33dfad1b29	ported	protocol/clientmessages.cpp:sendFriendSystemSearch
@@ -13538,7 +13538,7 @@ sub_26d205c0900e	26d205c0900e0268	ported	gamewindow/gamewindowcontroller.cpp:TGa
 sub_26d205c0900e#2	26d205c0900e0268	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::boostedBossName
 sub_26d7097a0e6d	26d7097a0e6db85a	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_26e3b8f4b44a	26e3b8f4b44a839f	inlined	protocol::TProtobufServerMessageTranslator::v124
-sub_26e6bb5c6bec	26e6bb5c6bec773b	todo	misattributed: drop finaliser of map/inventory/container onSlotDragDropped (input owner, input/ + container/). Blocked on: qtclient models TGameActionMoveObject +0x28 as moveAll and builds new actions; needs input's TGameActionMoveObject amount setter first
+sub_26e6bb5c6bec	26e6bb5c6bec773b	todo	input drop finaliser (owner misc: input/gameaction.cpp finalizeDrop). Read: move action's +0x28 byte is its amount (sub_11cbc82f1ebc#7 getter; the amount dialog writes the count there via setAmount): amount already 1 -> the action as is; source == destination (sub_56cfcbb3ce90) -> as is; Shift (0x2000000) -> setAmount(1) (move ONE item), as is; else Ctrl bit (0x4000000) == defaultFlag -> make_shared<TGameActionShowSplitStackDialog>(action), else as is. qtclient's finalizeDrop treats Shift as moveAll=true and rebuilds actions; port needs misc to drop m_moveAll (CipSoft has no such flag at +0x28) and check the move sender's amount encoding
 sub_26e6dc23fe16	26e6dc23fe16daa9	skip	library: libc++ std::sort small-range sort (sort5) over TPlayerStateDisplayInfo by sortOrder
 sub_26ef56afdd3d	26ef56afdd3db5f5	inlined	sound/soundplayermanager.cpp:TSoundPlayerManager::~TSoundPlayerManager
 sub_26f2ff1e72d2	26f2ff1e72d2123a	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
@@ -13985,8 +13985,8 @@ sub_2cbc9e42b727#2	2cbc9e42b7275614	ported	gamewindow/containercontroller.cpp:TC
 sub_2cbc9e42b727#3	2cbc9e42b7275614	inlined	gamewindow/buttonbarcontroller.cpp:TButtonBarController::onShowContextMenu
 sub_2cbc9e42b727#4	2cbc9e42b7275614	inlined	gamewindow/buttonbarcontroller.cpp:TButtonBarController::connectToGameSession
 sub_2cbc9e42b727#5	2cbc9e42b7275614	inlined	gamewindow/buttonbarcontroller.cpp:TButtonBarController::connectToGameSession
-sub_2cbc9e42b727#6	2cbc9e42b7275614	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
-sub_2cbc9e42b727#7	2cbc9e42b7275614	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_2cbc9e42b727#6	2cbc9e42b7275614	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
+sub_2cbc9e42b727#7	2cbc9e42b7275614	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_2cbc9e42b727#8	2cbc9e42b7275614	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::THuntingSessionWidgetController
 sub_2ccae74291ca	2ccae74291ca91b9	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_2cccb905892b	2cccb905892b1ef5	skip	library: std::unordered_map<QString,TAsset> find/emplace/rehash, std::deque grow/push/pop, std::optional assign, node holder
@@ -14016,7 +14016,7 @@ sub_2d235264e367	2d235264e367a192	inlined	gamewindow/bosstiarydialogcontroller.c
 sub_2d2423396324	2d24233963248ad9	inlined	news/newsdiskio.cpp:TNewsDiskIOAsync::loadNewsDataFromDiskIfPossible
 sub_2d28df3b4c0c	2d28df3b4c0c42d2	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_2d2d0a114d04	2d2d0a114d049ca3	skip	library: std::set/vector<pair<string,set>>/ostringstream instantiations used by the exclusivity check
-sub_2d3a29adcecd	2d3a29adcecd0558	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_2d3a29adcecd	2d3a29adcecd0558	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onShowContextMenu
 sub_2d3b859f22b6	2d3b859f22b63a66	skip	generated: moc property getter, provided by the generated cip base
 sub_2d3f5cb231c3	2d3f5cb231c35110	skip	library: libc++ std::vector<TQuestLinePart> assign / copy construction (element-wise QString copies, read)
 sub_2d4b61bfe5c7	2d4b61bfe5c74495	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::slotKey
@@ -14116,15 +14116,15 @@ sub_2e9650be5ab1	2e9650be5ab1679f	skip	library: libc++/Qt/absl template instanti
 sub_2e9a5c460495	2e9a5c46049559e3	inlined	analysers/analyserwidgets.cpp:TLootAndWasteWidgetController::requestConfigurationContextMenu
 sub_2e9a5c460495#2	2e9a5c46049559e3	inlined	analysers/analyserwidgets.cpp:TLootAndWasteWidgetController::requestConfigurationContextMenu
 sub_2e9ad809e777	2e9ad809e7777e76	inlined	client/gameclient.cpp:TGameClient::onFpsTrackingActiveChanged
-sub_2e9ad809e777#10	2e9ad809e7777e76	todo	TTibiaConfig URL reader of [URLS] crashReportUrl used by onSendCrashReportRequested. Host: qtclient posts to the mod configuration's crash report URL (the vendored config.ini names CipSoft's test server), so sendCrashReport keeps app::LauncherEnv
-sub_2e9ad809e777#11	2e9ad809e7777e76	todo	TTibiaConfig::readUrl of a static [URLS] key, called only by the meta info builder sub_e81bfcb4e426. Blocked by: sub_e81bfcb4e426 is todo (its whole-struct copy); port with it
+sub_2e9ad809e777#10	2e9ad809e7777e76	inlined	client/gameclient.cpp:TGameClient::sendCrashReport
+sub_2e9ad809e777#11	2e9ad809e7777e76	inlined	client/gameclient.cpp:TGameClient::createGameSessionMetaInfos
 sub_2e9ad809e777#2	2e9ad809e7777e76	inlined	client/gameclient.cpp:TGameClient::onOptionsTrackingActiveChanged
 sub_2e9ad809e777#3	2e9ad809e7777e76	tested	config/tibiaconfig.cpp:TTibiaConfig::loginWebServiceUrl	test=tests/client/tibiaconfig_test.cpp
-sub_2e9ad809e777#4	2e9ad809e7777e76	todo	TTibiaConfig::readUrl([URLS] clientWebService, QUrl()) for showGameWindow (game window controller, client services consumers). Host gap: qtclient's createGameWindow takes the client services URL from LauncherEnv::clientServicesUrl (launcher/portal environment), not config.ini; port = read the key there (rclient), then inline into TGameClient::createGameWindow
-sub_2e9ad809e777#5	2e9ad809e7777e76	todo	TTibiaConfig::readUrl([URLS] accountCreationClientServices, QUrl()) for the create account / create character dialogs in showGameWindow. Host gap: qtclient's createGameWindow passes LauncherEnv::createAccountUrl instead; port = read the key there (rclient), then inline into TGameClient::createGameWindow
+sub_2e9ad809e777#4	2e9ad809e7777e76	ported	config/tibiaconfig.cpp:TTibiaConfig::clientWebServiceUrl
+sub_2e9ad809e777#5	2e9ad809e7777e76	ported	config/tibiaconfig.cpp:TTibiaConfig::accountCreationClientServicesUrl
 sub_2e9ad809e777#6	2e9ad809e7777e76	inlined	client/gameclientgamewindow.cpp:TGameClient::createGameWindow
 sub_2e9ad809e777#7	2e9ad809e7777e76	inlined	client/gameclientgamewindow.cpp:TGameClient::createGameWindow
-sub_2e9ad809e777#8	2e9ad809e7777e76	todo	TTibiaConfig::readUrl([URLS] hintsUrl, QUrl()) for the game window controller in showGameWindow. Host gap: qtclient's createGameWindow builds the hints URL from LauncherEnv::assetBase + /hints.json; port = read the key there (rclient), then inline into TGameClient::createGameWindow
+sub_2e9ad809e777#8	2e9ad809e7777e76	ported	config/tibiaconfig.cpp:TTibiaConfig::hintsUrl
 sub_2e9ad809e777#9	2e9ad809e7777e76	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::configuredUrl
 sub_2e9ae9d03b26	2e9ae9d03b261deb	ported	worldmap/creaturehudqmlrenderinfo.cpp:TCreatureHUDQmlRenderInfo::updateOtherIcons
 sub_2e9fcdbf6986	2e9fcdbf69860465	inlined	tutorial/sessiondumphints.cpp:TSessiondumpHints::sortHints
@@ -14267,7 +14267,7 @@ sub_30f98ed2b8d1	30f98ed2b8d1c834	skip	generated: compiler-generated destructor 
 sub_30fe7b586c7b	30fe7b586c7bd60e	ported	cyclopedia/combatstatsqmldata.cpp:damageTypeIcon
 sub_3115ab08c413	3115ab08c413305e	skip	library: libc++/Qt container template instantiation (vector assign/copy, map/set tree insert/assign/erase, QHash data copy/emplace, QList<QHostAddress>)
 sub_31176b71da58	31176b71da58d2a6	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
-sub_311f6ab8b572	311f6ab8b572508b	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_311f6ab8b572	311f6ab8b572508b	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setIconSource
 sub_312873064532	31287306453245de	skip	generated: compiler-generated destructor pair
 sub_312d241e4a34	312d241e4a340799	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::clearEventModels
 sub_31348ab7f427	31348ab7f4274155	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -14290,7 +14290,7 @@ sub_318091cd1e8b	318091cd1e8ba145	ported	input/gameaction.h:TGameActionDeleteMin
 sub_318091cd1e8b#2	318091cd1e8ba145	ported	input/gameaction.h:TGameActionDeleteMinimapMarker::TGameActionDeleteMinimapMarker
 sub_3182ffe95d7d	3182ffe95d7d377a	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_31831d1978ee	31831d1978ee45ef	skip	library: libc++ std::vector push_back/emplace_back slow path, reserve or range assign (read: size/capacity arithmetic, length_error, relocate)
-sub_318436214ff5	318436214ff55286	todo	misattributed: TAppearanceTypeListModelSortFilterProxy has-type check (gw1, gamewindow/appearancetypelistmodel*). Blocked on: the weapon proficiency dialog's stand-in proxy (TWeaponObjectsModel::contains) being replaced by gw1's proxy class
+sub_318436214ff5	318436214ff55286	ported	proficiency/weaponproficiencydialogcontroller.h:TWeaponObjectsModel::contains
 sub_318eb652e4f5	318eb652e4f522a6	skip	generated: compiler-generated operator== of store records
 sub_31a020b46c4b	31a020b46c4be1d1	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
 sub_31a020b46c4b#2	31a020b46c4be1d1	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
@@ -14506,7 +14506,7 @@ sub_346e83bd1435#3	346e83bd1435e5d4	inlined	quickloot/managedcontainerstorage.h:
 sub_346e83bd1435#4	346e83bd1435e5d4	inlined	quickloot/managedcontainerstorage.h:TManagedContainerStorage::managedContainers
 sub_34717422820c	34717422820c9cc0	ported	gamewindow/characterinfomodels.cpp:TItemSummaryModel::TItemSummaryModel
 sub_34717422820c#2	34717422820c9cc0	ported	gamewindow/characterinfomodels.cpp:TItemSummaryModel::TItemSummaryModel
-sub_347de424a451	347de424a4517971	todo	CipSoft TMessageDialogController::setMessageDialogTextFormat: writes +0x60 and always emits the changed signal (qtclient uses the cip base setter, which compares); TSoulSealsDialogController::fightselectedMonster calls it with RICH_TEXT
+sub_347de424a451	347de424a4517971	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::setMessageDialogTextFormat
 sub_347de424a451#2	347de424a4517971	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
 sub_347fafb20e09#13	347fafb20e09cef9	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_347fafb20e09 (ported packageinstallation.cpp:TPackageInstallation::startDownload)
 sub_347fafb20e09#14	347fafb20e09cef9	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_347fafb20e09 (ported packageinstallation.cpp:TPackageInstallation::startDownload)
@@ -14549,7 +14549,7 @@ sub_34f80b688cc9	34f80b688cc9b982	ported	cyclopedia/cyclopediaciptypes.cpp:TMons
 sub_34f90e0ef5d0	34f90e0ef5d06b09	skip	library: libc++ std::async / std::future / std::thread internals for the monitor query
 sub_3505ef0f3787	3505ef0f378739ea	inlined	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::TNpcDialogController
 sub_3505ef0f3787#2	3505ef0f378739ea	inlined	questlog/questlogciptypes.cpp:TQuestLogStorage::setTrackedQuestFlags
-sub_350856b0fadc	350856b0fadcd20e	todo	TActionButtonController counter record (+0x128, two ints cur/max): remaining = max-cur, fraction = (max-cur)/max (0 when max 0), equality, set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_350856b0fadc	350856b0fadcd20e	ported	game/cooldownstorage.h:TPassiveAbilityCounter::fraction
 sub_351030668c7c	351030668c7c928c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::fromJson	test=tests/client/hotkeyoptions_test.cpp
 sub_351b94d930e8#2	351b94d930e805d0	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_351b94d930e8#3	351b94d930e805d0	skip	generated: compiler-generated destructor of the three-string stat source
@@ -14591,7 +14591,7 @@ sub_35a01bab3e2a	35a01bab3e2a0d94	ported	gamewindow/sidebarmanager.h:TSidebarMan
 sub_35a61c36245a	35a61c36245a88e4	ported	appearances/appearanceinstance.cpp:THangableObjectAppearanceInstance::updateHookPattern
 sub_35adefa15c28	35adefa15c28a319	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPresetManagmentDialogController::createEmptyPreset
 sub_35af34703334	35af347033344483	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillLargePerk
-sub_35b56c4ac419	35b56c4ac419980f	todo	misattributed: sprite draw-command helpers of qmlcomponents::TAppearanceInstanceRenderer::v54 / TWorldMapQuickItem::v46 (screen rect of a sprite = anchor + sprite-info rect, opacity 1.0; record built from a provider record's packed key)
+sub_35b56c4ac419	35b56c4ac419980f	inlined	renderer/worldmapquickitem.cpp:TWorldMapQuickItem::updatePaintNode
 sub_35bab7d75838	35bab7d75838d0f9	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_35bb1c30f3d5#6	8cd4421e78b6bf2f	skip	generated: protobuf-generated message constructor
 sub_35bb1c30f3d5#8	35bb1c30f3d54f91	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -15579,7 +15579,7 @@ sub_42188ede457f#86	42188ede457ffefa	skip	generated: protobuf-generated message 
 sub_42188ede457f#88	42188ede457ffefa	skip	generated: protobuf-generated message constructor
 sub_42188ede457f#92	42188ede457ffefa	skip	generated: protobuf message code (constructors, MergeFrom/CopyFrom, InternalSwap, oneof clear, arena string set)
 sub_421e0156b657	421e0156b6573012	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onPresetNameEntered
-sub_42236f19781d	42236f19781d4395	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_42236f19781d	42236f19781d4395	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setValueStringColor
 sub_42239925d4d1	42239925d4d13834	inlined	proficiency/proficiencystorage.cpp:TProficiencyStorage::setProficiencyData
 sub_422524728139	422524728139bdc9	skip	data: translation-unit static initializer (misattributed)
 sub_422c82d728d1	422c82d728d136f5	ported	gamewindow/containercontroller.cpp:TContainerController::moveContentToManagedContainers
@@ -15635,7 +15635,7 @@ sub_42a38d6664b3#7	42a38d6664b36c93	skip	library: miniaudio (statically linked v
 sub_42a38d6664b3#8	42a38d6664b36c93	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_42a38d6664b3#9	42a38d6664b36c93	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_42a6d12580ec	42a6d12580ec1eb2	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::isOnline
-sub_42a6f31fc64c	42a6f31fc64c4e0c	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_42a6f31fc64c	42a6f31fc64c4e0c	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setProgressBarColor
 sub_42a88191cd06	42a88191cd06897a	ported	worldmap/creaturehudqmlrenderinfo.h:TCreatureHUDQmlRenderInfo::scaleFactor
 sub_42adc7b9c696	42adc7b9c6963a36	skip	generated: compiler-generated constructor/copy/assignment of a CipSoft struct, protobuf message ctor, or QVariant::fromValue metatype registration
 sub_42adc7b9c696#2	42adc7b9c6963a36	skip	generated: compiler-generated constructor/copy/assignment of a CipSoft struct, protobuf message ctor, or QVariant::fromValue metatype registration; same code (fingerprint) as sub_42adc7b9c696
@@ -15691,7 +15691,7 @@ sub_435397c283b5	435397c283b522c7	skip	library: std container template instance
 sub_43582e461665	43582e4616653784	skip	library: libc++abi Itanium demangler (__cxa_demangle) internals
 sub_43611f354d7d	43611f354d7d728a	ported	client/gameclientbase.cpp:TGameClientBase::appearanceInstanceFactory
 sub_436cfba0635b	436cfba0635bbe78	skip	data: translation-unit static initializer (misattributed)
-sub_4376e4329e16	4376e4329e165c55	todo	TActionButtonController timestamp cooldown (+0x100 duration?, +0xf0 end): set-if-different pair; isRunning = end > 0. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_4376e4329e16	4376e4329e165c55	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::isCooldownRunning
 sub_4378a73f2a1d#3	4378a73f2a1df3b4	skip	library: SFML audio / miniaudio internals (statically linked library range)
 sub_4378a73f2a1d#4	4378a73f2a1df3b4	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_4378a73f2a1d#5	4378a73f2a1df3b4	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
@@ -15781,7 +15781,7 @@ sub_44b3f50cdacc#2	44b3f50cdacc1491	skip	dead: never runs: no call, jump, lea or
 sub_44c1c7e7f904	44c1c7e7f9040a0f	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_44c1c7e7f904#2 (ported gamewindow/genericentertextdialogcontroller.cpp:TGenericEnterTextDialogControlle)
 sub_44c1c7e7f904#2	44c1c7e7f9040a0f	ported	gamewindow/genericentertextdialogcontroller.cpp:TGenericEnterTextDialogController::setIntOnly
 sub_44c3056f43cd	44c3056f43cdf003	ported	effects/effectgameactionhandler.cpp:TEffectGameActionHandler::TEffectGameActionHandler
-sub_44c3056f43cd#10	44c3056f43cdf003	todo	TEditTextProtocolMessageHandler ctor: QObject + two shared_ptrs (+0x10 appearance instance factory, +0x20 ...), called through make_shared from the session. Blocked: qtclient's handler (game/gameciptypes.h, rsession) inherits the cip_gen base constructor and keeps no dependencies; needs the session to hand the two shared objects (wave-16 session construction decision)
+sub_44c3056f43cd#10	44c3056f43cdf003	ported	game/gameciptypes.cpp:TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler
 sub_44c3056f43cd#11	44c3056f43cdf003	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_44c3056f43cd (ported effects/effectgameactionhandler.cpp:TEffectGameActionHandler::TEffectGameActionH)
 sub_44c3056f43cd#12	44c3056f43cdf003	ported	minimap/minimapprotocolmessagehandler.cpp:TMinimapProtocolMessageHandler::TMinimapProtocolMessageHandler
 sub_44c3056f43cd#13	44c3056f43cdf003	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_44c3056f43cd (ported effects/effectgameactionhandler.cpp:TEffectGameActionHandler::TEffectGameActionH)
@@ -16189,7 +16189,7 @@ sub_4a360b9d6088#5	4a360b9d608826b4	skip	library: miniaudio (statically linked v
 sub_4a360b9d6088#6	4a360b9d608826b4	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_4a3c01181d88	4a3c01181d88a137	ported	assets/assetcatalog.cpp:TAssetCatalog::read
 sub_4a506ea54402	4a506ea54402ad12	ported	gamewindow/housesinfodialogcontroller.cpp:dateMulti
-sub_4a53b721a8aa	4a53b721a8aa4739	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_4a53b721a8aa	4a53b721a8aa4739	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_4a571fcc091d	4a571fcc091d9097	skip	generated: compiler-generated defaulted comparison (operator==/!=/<=> of option structs)
 sub_4a5d42a166a1	4a5d42a166a12e35	skip	generated: unique_ptr deleter of a path planner container (delete[] of its buffer, then delete)
 sub_4a5d42a166a1#2	4a5d42a166a12e35	skip	dead: unique_ptr-style deleter of a node with an owned array at +0x28; no call, jump or address reference in the whole disassembly and no data fixup pointing at it (checked xref index + rebase fixups)
@@ -16224,7 +16224,7 @@ sub_4ac4d4e78bbd	4ac4d4e78bbd79a1	inlined	appearances/appearanceinstance.cpp:TAp
 sub_4ac82f11bae8	4ac82f11bae881ea	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::cumulativeCount
 sub_4ad3c2efb735	4ad3c2efb7354f9a	inlined	input/eventfiltermanager.cpp:TEventFilterManager::installKeyboardShortcutHandler
 sub_4adb4fd1ba95	4adb4fd1ba95228e	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_4adf7ef73410	4adf7ef73410ba33	todo	factory of a JavaScript-owned TOutfitColorQmlType (operator new 0x18, ctor sub_b13ec2525887 with the four colour indices, QJSEngine::setObjectOwnership JavaScriptOwnership); callers TSelectOutfitDialogController selectedOutfitPreset/createFromClipboard and TConfigureCreaturePodiumDialogController (gw4). Owner qmlcomponents::TOutfitColorQmlType
+sub_4adf7ef73410	4adf7ef73410ba33	ported	gamewindow/outfitdialogcontroller.cpp:createJavaScriptOwnedOutfitColor
 sub_4ae68ff77d29	4ae68ff77d29ddd5	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setFilterText
 sub_4aeca25bf20d	4aeca25bf20d3c02	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_4aeca25bf20d#2	4aeca25bf20d3c02	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -16261,12 +16261,12 @@ sub_4b064cc17cec	4b064cc17cec70b3	ported	input/gameaction.h:TGameActionSetShared
 sub_4b064cc17cec#2	4b064cc17cec70b3	ported	input/gameaction.h:TGameActionSetSharedExperience::TGameActionWithValue
 sub_4b0893ab9a78	4b0893ab9a78b09f	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::areaDonationThreshold
 sub_4b0d1382e2e2	4b0d1382e2e20b04	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::~TItemInfoDialogController
-sub_4b102dbd4ebe	4b102dbd4ebe1bad	todo	TAssetFileSystemHelper ctor: keeps the TTibiaFileSystemHelper (+0x08/+0x10) and two QDirs filled from its getAssetsDirectory / getSoundsDirectory (slots 8/9); empty dirs with a null helper. v5/v6 ask the helper again, v0 removes through the helper's file system helper (slot 56). Blocked (host data tree): qtclient reads the assets from CipSoft's Resources directory (gamecore::assetsRoot -> files::data() search path), while shared::TTibiaFileSystemHelper (final, non-virtual, shared's) answers <data dir>/assets and <data dir>/sounds. Port when the client's TTibiaFileSystemHelper answers the roots the client reads (shared + rclient), then TGameClientBase::createAssetFileSystemHelper passes tibiaFileSystemHelper()
+sub_4b102dbd4ebe	4b102dbd4ebe1bad	tested	assets/assetfilesystemhelper.cpp:TAssetFileSystemHelper::TAssetFileSystemHelper	test=tests/client/assetfilesystemhelper_test.cpp
 sub_4b180d24f889	4b180d24f889e62a	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_4b18596a6964	4b18596a6964556c	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_4b18596a6964#2	4b18596a6964556c	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_4b1994e5b2df	4b1994e5b2dfa147	ported	chat/textoverlayrenderprovider.cpp:TTextOverlayRenderProvider::TTextOverlayRenderProvider
-sub_4b1ebff20c87	4b1ebff20c87db29	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_4b1ebff20c87	4b1ebff20c87db29	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setValueString
 sub_4b29fc64f720	4b29fc64f720eb9a	skip	generated: std::make_shared forwarding thunk
 sub_4b2fcc164c8e	4b2fcc164c8e7b94	skip	library: spdlog: logger set_pattern / pattern_formatter / set_formatter
 sub_4b324ab9f568	4b324ab9f5682e86	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it and no corpus caller (full objdump -d of the pinned client and index/fixups.txt checked for 0x100968af0; entry follows a ret, jmp, noreturn call or padding)
@@ -16443,7 +16443,7 @@ sub_4d6570b3a657	4d6570b3a65730b3	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_4d75a2e28340	4d75a2e28340cab2	skip	library: libc++ std::vector<TileRenderInfo> destructor (read)
 sub_4d791e503453	4d791e503453df36	inlined	proficiency/proficiencycatalogue.cpp:perkAtRank
 sub_4d7d6392618d	4d7d6392618d487b	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it and no corpus caller (full objdump -d of the pinned client and index/fixups.txt checked for 0x100f774c0; entry follows a ret, jmp, noreturn call or padding)
-sub_4d7d6392618d#2	4d7d6392618d487b	todo	TSpriteTextureProviderManager ctor (from TGameClientBase::v17): QObject(parent), one shared_ptr dependency (+0x10) and an empty unordered_map of providers (+0x20, load factor 1.0). Blocked (redesign): qtclient keeps the providers in a static per-window registry (sharedProvider(window), called from the UI renderers) with no manager instance; needs a client-owned manager handed to every renderer, and the +0x10 dependency identified from TGameClientBase::v17
+sub_4d7d6392618d#2	4d7d6392618d487b	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProviderManager::TSpriteTextureProviderManager
 sub_4d7e3db39675#10	4d7e3db39675f970	skip	library: std container / struct destructor
 sub_4d7e3db39675#11	4d7e3db39675f970	skip	generated: compiler-generated destructor
 sub_4d7e3db39675#2	4d7e3db39675f970	skip	generated: compiler-generated destructor (same code as sub_4d7e3db39675#11)
@@ -16462,7 +16462,7 @@ sub_4da25f5da2a7	4da25f5da2a799cf	ported	gamewindow/premiumpanelcontroller.cpp:T
 sub_4da2cbd01a4a	4da2cbd01a4a322f	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_4da6a13a1a13	4da6a13a1a13100b	ported	gamewindow/statusbarcontroller.cpp:TStatusBarController::connectToGameSession
 sub_4dac7b014b8b	4dac7b014b8bc31c	inlined	gamewindow/statusbarcontroller.cpp:TStatusBarController::requestContextMenu
-sub_4db2b74a580f	4db2b74a580faf56	todo	TActionButtonController cooldown record (+0x108 {remaining, duration, end, running}): remaining(now) = running ? max(0, end-now+remaining) : remaining; fraction clamp 0..1 over duration; equality; set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_4db2b74a580f	4db2b74a580faf56	ported	game/cooldownstorage.h:TPassiveAbilityCooldown::operator==
 sub_4db55b8b9c7d	4db55b8b9c7db344	skip	data: translation-unit static initialiser: constant strings/tables, typeid maps, QTimeZone/QTime constants
 sub_4db7e5bbcc52	4db7e5bbcc528817	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_4db9d4144e79	4db9d4144e7987a5	ported	gamewindow/assignactiondialogs.cpp:TAssignObjectActionDialogController::setClientSettingSmoothFiltering
@@ -16804,7 +16804,7 @@ sub_52cc4c6ee0c0	52cc4c6ee0c0fda1	inlined	gamewindow/chatcontroller.cpp:TChatCon
 sub_52d01c3e2474	52d01c3e2474b2bc	skip	data: translation-unit static initializer (store inbox filter name strings)
 sub_52d2c18685c6	52d2c18685c60ef1	tested	game/sessiondumpgamesessionmetainfo.cpp:TSessiondumpGameSessionMetaInfo::TSessiondumpGameSessionMetaInfo	test=tests/client/gamesessionmetainfo_test.cpp
 sub_52d62a9c523d	52d62a9c523d6d56	tested	sound/activesoundplayer.cpp:TActiveSoundPlayer::update	test=tests/client/soundplayer_test.cpp
-sub_52e2c5a5ec33	52e2c5a5ec3332ce	todo	misattributed: constructor of cyclopedia::TStatSourcesListModel
+sub_52e2c5a5ec33	52e2c5a5ec3332ce	ported	cyclopedia/combatstatsqmldata.cpp:TStatSourcesListModel::TStatSourcesListModel
 sub_52e2c5a5ec33#10	52e2c5a5ec3332ce	skip	generated: QMetaType glue (static metaobject accessor, default construct, destruct) for TGainWasteModel; same code (fingerprint) as sub_52e2c5a5ec33#19
 sub_52e2c5a5ec33#11	52e2c5a5ec3332ce	skip	generated: QMetaType glue (static metaobject accessor, default construct, destruct) for TGainWasteModel; same code (fingerprint) as sub_52e2c5a5ec33#19
 sub_52e2c5a5ec33#12	52e2c5a5ec3332ce	inlined	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::TCharacterTradeDuePaymentDialogController
@@ -17270,7 +17270,7 @@ sub_56531ff34d0a	56531ff34d0add20	skip	generated: qRegisterMetaType of a QObject
 sub_56608c99d405	56608c99d4052444	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_566328859dfb	566328859dfb349b	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
 sub_566c4935aa5d	566c4935aa5d19d2	ported	gamewindow/remainingdialogs.h:TCharacterAuctionConfiguration::selectedHighlightCount
-sub_567ac984591d	567ac984591dbbf2	todo	TActionButtonController cooldown record (+0x108 {remaining, duration, end, running}): remaining(now) = running ? max(0, end-now+remaining) : remaining; fraction clamp 0..1 over duration; equality; set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_567ac984591d	567ac984591dbbf2	ported	game/cooldownstorage.h:TPassiveAbilityCooldown::fractionAt
 sub_567e6034cbb5	567e6034cbb51a60	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::layerShape
 sub_5682880cd287	5682880cd2875e3c	inlined	config/hotkeyoptions.cpp:TActionSetting::toJson
 sub_5683fbc193a2	5683fbc193a22a3a	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
@@ -17308,7 +17308,7 @@ sub_56e899962220	56e8999622200481	skip	data: translation-unit static initializer
 sub_56ea0438e408	56ea0438e4088886	inlined	controllers/characterselectioncontroller.cpp:setCharacters
 sub_56ea97d2292c	56ea97d2292cae21	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
 sub_56f1a2a370b4	56f1a2a370b4e883	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
-sub_5705bdd85efe	5705bdd85efe95d6	todo	TActionButtonController::setRemainingCooldown(ms) (gwA: actionbuttoncontroller.*): percent of +0x100 floored to 5 -> +0x130 + signal, cooldown text +0x138 + signal; qtclient merges it into refreshCooldown (gwB requests R5)
+sub_5705bdd85efe	5705bdd85efe95d6	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setRemainingCooldown
 sub_5706b5b45724	5706b5b457242951	skip	library: std::make_shared instantiations (control block allocation forwarding to the constructor): TWhiteBlacklist, TRingBufferStopWatch, TNextFrameTimestampPredictor, TSlidingFPSCounter, TKeyboardShortcutHandler, TPremiumTimeStorage, TNewsStorage, TNewsDiskIOAsync (read)
 sub_5706b5b45724#2	5706b5b457242951	skip	generated: std::make_shared<TSessiondumpProgressClockService>(clock) control block (forwards to the constructor)
 sub_5716eecdeca3	5716eecdeca3f988	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -17733,7 +17733,7 @@ sub_5bd69dcd87b1	5bd69dcd87b19fe2	skip	library: Abseil (protobuf dependency): Mu
 sub_5bd86fbbcaa5	5bd86fbbcaa54467	skip	generated: compiler-generated destructor pair
 sub_5bda8620bf7c	5bda8620bf7c285e	ported	store/qmlstoreobjects.cpp:TQmlStoreVisualisation::torsoColor
 sub_5be1a6916c60	5be1a6916c604b3d	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::battleListModel
-sub_5be84b024559	5be84b024559aedb	todo	operator!= of a one-byte value type, reached only from QtPrivate::QEqualityOperatorForType instantiations (sub_2248eee81dba at 0x1010a8b70 and siblings in the 0x1010a.. QMetaType block next to gamewindow types). Blocked: the value type is not identified (the instantiations carry no type name in the stripped binary)
+sub_5be84b024559	5be84b024559aedb	inlined	qmlcomponents/outfittypes.cpp:TOutfitColorQmlType::setIndex
 sub_5be84b024559#2	5be84b024559aedb	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_5be967fa76e3#7	5be967fa76e3be7c	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_5bf34629dd2d	5bf34629dd2d8d27	skip	library: boost::bimap / std::map template instantiation
@@ -17899,7 +17899,7 @@ sub_5e72dfea4d22	5e72dfea4d221a7b	ported	cyclopedia/cyclopediaciptypes.cpp:TMons
 sub_5e7303c9dd6f	5e7303c9dd6fd07f	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_5e7303c9dd6f#2	5e7303c9dd6fd07f	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_5e77ef298dcf	5e77ef298dcfa830	ported	gamewindow/genericentertextdialogcontroller.h:TGenericEnterTextDialogController::setAllowEmptyText
-sub_5e7bf4681a06	5e7bf4681a06329a	todo	misattributed (catalog GUESS by address): helpers of appearances::TAppearanceInstanceGenericStorage / qmlcomponents::TAppearanceInstanceRendererBase's storage list (bool +0x68 getter/setter, member address getters +0x10/+0x20, make_shared<TAppearanceInstanceGenericStorage> appended at +0x20 from componentComplete, the v48/v49/v53 helper). Blocked on ownership: the code lives in appearances/genericstorage.* (rapp) and qmlcomponents/appearanceinstancerendererbase.* (ui), not in map's files
+sub_5e7bf4681a06	5e7bf4681a06329a	ported	appearances/genericstorage.h:TAppearanceInstanceGenericStorage::setEnabled
 sub_5e7cf0285772	5e7cf0285772bba3	inlined	minimap/minimaprenderprovider.cpp:TMinimapRenderProvider::renderInfos
 sub_5e858b92d238	5e858b92d2383f32	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::onSwitchToItemInfoDialogRequested
 sub_5e89898734aa	5e89898734aadadd	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -17954,7 +17954,7 @@ sub_5f386a732801	5f386a732801a7c9	skip	library: libc++ std::vector instantiation
 sub_5f3a4fc1f05e	5f3a4fc1f05ec4d3	tested	protocol/objectpositionbuilder.h:TObjectPositionBuilder::setContainerSlot	test=tests/client/gameactioncontexthelper_test.cpp
 sub_5f3fa02d670e	5f3fa02d670ef1cd	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
 sub_5f4061fb6b49	5f4061fb6b492b98	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
-sub_5f46bc026910	5f46bc0269101313	todo	TBattleListControllerStorage connectToGameSession / close-all (map at +0xd0) (gwA: gamewindow/battlelistcontroller.*); qtclient's storage takes setGameSession/setSidebarOptions from TSidebarWidgetsManager::connectToGameSession
+sub_5f46bc026910	5f46bc0269101313	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::connectToGameSession
 sub_5f4eab44ba26	5f4eab44ba26e516	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_5f517397b5cc	5f517397b5cc45bb	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::cancel
 sub_5f5591acad10	5f5591acad10e465	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::isMounted
@@ -17966,7 +17966,7 @@ sub_5f5a14fb6d1b	5f5a14fb6d1ba65c	skip	generated: compiler-generated destructor
 sub_5f63487b03fb	5f63487b03fbc393	tested	input/myexception.cpp:TMyException::TMyException	test=tests/client/myexception_test.cpp
 sub_5f642b92a3a6	5f642b92a3a6daa4	ported	skillwheel/skillwheeldata.cpp:stageValues
 sub_5f66ae6a090a	5f66ae6a090a191e	skip	library: std::vector reserve / std::sort instantiation
-sub_5f6af9d09ae5	5f6af9d09ae5d911	todo	QML createInto of (anonymous namespace)::TExaltationForgeHistoryPageController with its default constructor inlined (members zeroed, history model, connection manager); belongs to that controller, not the list model template
+sub_5f6af9d09ae5	5f6af9d09ae5d911	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeHistoryPageController::TExaltationForgeHistoryPageController
 sub_5f6b2f6e4e5c	5f6b2f6e4e5c3784	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::ensureDefaultPreset
 sub_5f6efca6c8e1	5f6efca6c8e1a6f8	ported	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::connectToGameSession
 sub_5f70a7c778ee	5f70a7c778eec412	ported	gamewindow/weeklytaskscontroller.cpp:TWeeklyTasksController::remainingTimeString
@@ -18152,7 +18152,7 @@ sub_622c8dd02b74	622c8dd02b742c6b	ported	analysers/gainwastestorage.cpp:TGainWas
 sub_622e1f9647b3	622e1f9647b361e4	skip	library: protobuf runtime: ExtensionSet merge/flat storage, arena allocation and absl check logging reached from message copies
 sub_6232c48722d2	6232c48722d20915	skip	library: std container template instance
 sub_6233be8db103	6233be8db103b9b1	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
-sub_6234b5825c62	6234b5825c626c2b	todo	misattributed: setter of a weak player creature at +0x98 of another class; owner unknown
+sub_6234b5825c62	6234b5825c626c2b	ported	chat/chatprotocolmessagehandler.h:TChatProtocolMessageHandler::setWhiteBlacklist
 sub_62384853984a	62384853984a86d2	skip	library: std container template code
 sub_62384853984a#2	62384853984a86d2	skip	library: libc++ std::vector<TCharacterTradePayment> destructor (0x20-byte elements, one QString each)
 sub_62384853984a#3	62384853984a86d2	skip	library: std container template code
@@ -18160,8 +18160,8 @@ sub_62384853984a#4	62384853984a86d2	skip	library: libc++ std::vector<TCharacterT
 sub_62384853984a#5	62384853984a86d2	skip	library: libc++ std::vector<TCharacterTradePayment> destructor (0x20-byte elements, one QString each); same code (fingerprint) as sub_62384853984a#2
 sub_62384853984a#6	62384853984a86d2	skip	library: libc++ std::vector<other-icon row {QString, int, bool}> destructor instantiation
 sub_623ffc7c8473	623ffc7c84733162	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
-sub_6252aa6f8e99	6252aa6f8e997063	todo	TCreatureTrackerWidgetController ctor (gwA: gamewindow/creaturetrackerwidgetcontroller.*), made by TSidebarWidgetsManager's toggle with CipSoft's args then connected to the session (vslot 0x60), as gwB did for TDamageInputWidgetController in wave 17; host TCreatureTrackerWidgetManager must go
-sub_62565c172a17	62565c172a17e670	todo	misattributed: sprite draw-command helpers of qmlcomponents::TAppearanceInstanceRenderer::v54 / TWorldMapQuickItem::v46 (screen rect of a sprite = anchor + sprite-info rect, opacity 1.0; record built from a provider record's packed key)
+sub_6252aa6f8e99	6252aa6f8e997063	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerWidgetController::TCreatureTrackerWidgetController
+sub_62565c172a17	62565c172a17e670	inlined	renderer/worldmapquickitem.cpp:TWorldMapQuickItem::updatePaintNode
 sub_625691520a79	625691520a79aad9	skip	generated: compiler-generated destructor
 sub_625b0785c125	625b0785c12500c5	skip	data: translation-unit static initializer (string constants, vocation names, typeid name maps registered with atexit)
 sub_625b0785c125#10	625b0785c12500c5	skip	data: TU static initialiser: type-name registry
@@ -18388,7 +18388,7 @@ sub_63c2a8e59a1d	63c2a8e59a1d176d	inlined	analysers/itempricestorage.cpp:TItemPr
 sub_63ca5700e556	63ca5700e556d085	ported	creatures/battlelistrenderprovider.cpp:TBattleListDrawCommand::updateStatusIcons
 sub_63cc0bdf526a	63cc0bdf526aabdd	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_63cef4c60677	63cef4c60677ae1d	skip	library: std::unordered_map instantiation
-sub_63d34de2e4df	63d34de2e4dfc151	todo	TGameClient ctor step (read): client window (+0x210) property windowTitle = qtTrId of the start screen's test-server client title (the pinned build is CipSoft's test-server client, config.ini names test.tibia.com). qtclient's TGameClient is not made with the client window; main.cpp sets the product title. Port with the ctor sub_3c82a73940f0 if the client takes the window
+sub_63d34de2e4df	63d34de2e4dfc151	ported	client/gameclient.cpp:TGameClient::setClientWindowTitle
 sub_63d37fb57c72	63d37fb57c720748	inlined	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onBoostedCreatureReceived
 sub_63d37fb57c72#2	63d37fb57c720748	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::boostedBossRace
 sub_63e222f42025	63e222f42025abee	inlined	config/sidebaroptions.cpp:parseNpcTrade
@@ -18861,7 +18861,7 @@ sub_6a6db6eeb366	6a6db6eeb366758d	skip	dead: grid points equality (memcmp of the
 sub_6a77d1a8eca6	6a77d1a8eca6df64	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::rebuildListItems
 sub_6a7cf1a16f28	6a7cf1a16f28765b	inlined	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
 sub_6a7db8ac7183	6a7db8ac7183b344	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
-sub_6a7fc2ac3b0c	6a7fc2ac3b0c9912	todo	createSessionControllers: login process controller and the player movement intent handler (ctor args, setPlayer from the base's player creature, playerCreatureAddedToCreatureStorage -> setPlayer) ported in game/gameservergamesession.cpp:TGameserverGameSession::createSessionControllers; left: the movement timer (sub_e3318bb2ea8a, needs the intent handler's timer slot/signal, input's) and the client check timer (+0xca0 -> onClientCheckTimerElapsed, BattlEye tick: policy)
+sub_6a7fc2ac3b0c	6a7fc2ac3b0c9912	ported	game/gameservergamesession.cpp:TGameserverGameSession::createSessionControllers
 sub_6a81b810e60d	6a81b810e60d4733	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::TOptionsMenuDialogController
 sub_6a81ce34b0e4	6a81ce34b0e4a1d9	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
 sub_6a936b127cb3	6a936b127cb3706d	skip	generated: compiler-generated destructor pair
@@ -19445,7 +19445,7 @@ sub_737ee93e3286	737ee93e328644b8	skip	dead: never runs: no call, jump, lea or p
 sub_7383b7e10223	7383b7e1022352b4	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_738c7562ab82	738c7562ab8256eb	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
 sub_739b8cdb626c	739b8cdb626c1039	skip	generated: compiler-generated destructor
-sub_739c0bd3adcf	739c0bd3adcf6f5d	todo	TActionButtonController cooldown record (+0x108 {remaining, duration, end, running}): remaining(now) = running ? max(0, end-now+remaining) : remaining; fraction clamp 0..1 over duration; equality; set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_739c0bd3adcf	739c0bd3adcf6f5d	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setAnchoredCooldown
 sub_73a505708dd7	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibInflateWrapper::TZlibInflateWrapper
 sub_73a505708dd7#2	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibInflateWrapper::TZlibInflateWrapper
 sub_73a56b71f324	73a56b71f32431d6	skip	policy: battleye BattlEye client controller: runs the BattlEye library tick
@@ -19453,7 +19453,7 @@ sub_73ad8fbd6f02#10	af210a3e5078721c	inlined	protocol::TProtobufServerMessageTra
 sub_73ad8fbd6f02#8	af210a3e5078721c	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_73b398deb3b2	73b398deb3b29acb	ported	chat/chatchannel.cpp:chatMessageMode
 sub_73ccc4e0dc03	73ccc4e0dc03655d	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPresetManagmentDialogController::importPreset
-sub_73cd6711502d	73cd6711502d3885	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_73cd6711502d	73cd6711502d3885	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onShowContextMenu
 sub_73d955cc286f	73d955cc286fe12f	inlined	creatures/creaturesciptypes.cpp:TVipGameActionHandler::handleRemoveVipGameAction
 sub_73d997a4dba8	73d997a4dba82a9f	ported	input/gameaction.h:TGameActionAddMouseTrailHintAtTutorialMarker::TGameActionAddMouseTrailHintAtTutorialMarker
 sub_73d997a4dba8#2	73d997a4dba82a9f	ported	input/gameaction.h:TGameActionAddMouseTrailHintAtTutorialMarker::TGameActionAddMouseTrailHintAtTutorialMarker
@@ -19584,7 +19584,7 @@ sub_76035eae1c8f	76035eae1c8f4747	ported	client/gameapplication.cpp:TGameApplica
 sub_760859ba253e	760859ba253eeb87	skip	library: libc++ std::vector template instantiation (growth/insert; throws length_error "vector")
 sub_760945896923	760945896923d1b7	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
 sub_761dc6d9330d	761dc6d9330dc895	ported	skillwheel/skillwheeldata.cpp:revelationMasteryPerk
-sub_7621eccccdcb	7621eccccdcb7b6b	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
+sub_7621eccccdcb	7621eccccdcb7b6b	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
 sub_76262b1e3b00	76262b1e3b00e571	ported	proficiency/proficiencyperks.cpp:TQMLProficiencyPerk::TQMLProficiencyPerk
 sub_76262b1e3b00#2	76262b1e3b00e571	ported	proficiency/proficiencyperks.cpp:TQMLProficiencyPerk::TQMLProficiencyPerk
 sub_7627528ea98e	7627528ea98e2fc9	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::minimumPhaseDuration	test=tests/client/creaturemovement_test.cpp
@@ -19658,7 +19658,7 @@ sub_77318b4884a4	77318b4884a46bc3	skip	library: miniaudio (statically linked via
 sub_773357edad37	773357edad3725bb	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::selectPassage
 sub_773b3222fea2	773b3222fea2ba01	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_773ef322de8a	773ef322de8aa7da	skip	library: libc++ std::vector/std::map instantiations (reserve, push_back realloc, copy, destroy, vector ==/!=) for exaltation data
-sub_77445353a3d2#2	77445353a3d21858	todo	slot-object impl of a lambda that re-runs a QSortFilterProxyModel filter (beginFilterChange/endFilterChange) in the weapon proficiency dialog; belongs to that proxy/controller
+sub_77445353a3d2#2	77445353a3d21858	inlined	proficiency/weaponproficiencyshapedialogs.cpp:TShapedPerkOptionsSortFilterProxyModel::TShapedPerkOptionsSortFilterProxyModel
 sub_774e09e5e7f0	774e09e5e7f03b80	tested	cyclopedia/cyclopediamapstaticdatastorage.cpp:TCyclopediaMapStaticDataStorage::mapTilesIn	test=tests/client/cyclopediamapstaticdatastorage_test.cpp
 sub_775873ee6f6d	775873ee6f6d55b2	skip	generated: std::make_shared<TEffectGameActionHandler>(effect storage, appearances) control block (forwards to the constructor)
 sub_775a600e63d4	775a600e63d411ee	ported	sound/activesoundplayer.cpp:TActiveSoundPlayer::fadeOut
@@ -19742,9 +19742,9 @@ sub_7861bc864012#8	7861bc864012740d	skip	library: statically linked SFML audio /
 sub_7861bc864012#9	7861bc864012740d	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_7866e4d57834	7866e4d578345ca1	ported	chat/textstorage.cpp:TCreatureSpeechBubble::TCreatureSpeechBubble
 sub_786ca7197e6d	786ca7197e6d29ae	skip	generated: implicit destructor of gamewindow::TInspectObjectData (imbuement slot vector, count text, appearance shared_ptr, detail pair vector, name; member teardown only, read)
-sub_7870465489b9	7870465489b9ec9f	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
-sub_7870465489b9#2	7870465489b9ec9f	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
-sub_7870465489b9#3	7870465489b9ec9f	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
+sub_7870465489b9	7870465489b9ec9f	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
+sub_7870465489b9#2	7870465489b9ec9f	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
+sub_7870465489b9#3	7870465489b9ec9f	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
 sub_7874c91379b0#2	7874c91379b07fe2	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_7874c91379b0#3	7874c91379b07fe2	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_7874c91379b0#4	7874c91379b07fe2	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -20223,7 +20223,7 @@ sub_7bef5f7b7d04#3	7bef5f7b7d0401ec	skip	generated: moc property getter, provide
 sub_7bf575a5cbdd	7bf575a5cbdd7583	skip	generated: compiler-generated destructor
 sub_7bf93f61003d#2	7bf93f61003d88c0	inlined	appearances/appearanceinstance.cpp:TAppearanceInstance::TAppearanceInstance
 sub_7bfb90522ca0	7bfb90522ca03cbf	tested	worldmap/coordinates.h:TWorldMapCoordinate::shiftedTowardsFloor	test=tests/client/worldmapcuboid_test.cpp
-sub_7c02c89a5503	7c02c89a5503704f	todo	TBattleListControllerStorage connectToGameSession / close-all (map at +0xd0) (gwA: gamewindow/battlelistcontroller.*); qtclient's storage takes setGameSession/setSidebarOptions from TSidebarWidgetsManager::connectToGameSession
+sub_7c02c89a5503	7c02c89a5503704f	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::closeAll
 sub_7c0c85b3db95	7c0c85b3db95f71c	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_7c0c85b3db95#2	7c0c85b3db95f71c	ported	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::TPagination::TPagination
 sub_7c198b342ab1	7c198b342ab10729	skip	library: libc++ std::map<EFixedFrameGroup, TAppearanceTypeSpriteInfo> node construction (piecewise emplace with a default sprite info), read
@@ -20383,7 +20383,7 @@ sub_7db9916e4ed8	7db9916e4ed80d43	ported	network/gameservernetworkpacket.h:TGame
 sub_7dbeca9ec14d	7dbeca9ec14d3347	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::buildSelectionInfo
 sub_7dc094ecd7e7	7dc094ecd7e7670c	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_7dc094ecd7e7#2	7dc094ecd7e7670c	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_7dc0b811d1b2	7dc0b811d1b2644c	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_7dc0b811d1b2	7dc0b811d1b2644c	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onShowContextMenu
 sub_7dc1e358b844	7dc1e358b84499ed	skip	library: std::sort instantiation
 sub_7dc3c0d8521d	7dc3c0d8521de365	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_7dc69173ace6	7dc69173ace6e205	ported	gamewindow/draganddropcontroller.cpp:TDragAndDropController::clearIcon
@@ -20687,7 +20687,7 @@ sub_81f3032b511a	81f3032b511a49e0	inlined	sessiondump/sessiondumpasyncloader.cpp
 sub_820857f3081b	820857f3081b1609	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::start	test=tests/client/sharednet_test.cpp
 sub_820a3981bdf2	820a3981bdf27704	skip	library: libc++ std::vector template instantiation (growth/insert; throws length_error "vector")
 sub_820b06e04062	820b06e040620fa5	skip	data: translation-unit static initializer: vocation names, hotkey/inbox string constants, static vectors and maps (misattributed)
-sub_820bf77c3f2b	820bf77c3f2b3353	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_820bf77c3f2b	820bf77c3f2b3353	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGraphEntry
 sub_820ef192f1d2	820ef192f1d23d69	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_820ef192f1d2#2	820ef192f1d23d69	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_820ef192f1d2#4	820ef192f1d23d69	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -20872,7 +20872,7 @@ sub_842be1cde65d	842be1cde65d79df	inlined	gamewindow/playerinventoryandstatuscon
 sub_8433f65c422a	8433f65c422afacf	skip	data: translation-unit static initializer (string constants, vocation names, typeid name maps registered with atexit)
 sub_843721659572#2	8437216595720075	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_843ee3b79930	843ee3b799302509	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
-sub_8442b18639cf	8442b18639cf170b	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_8442b18639cf	8442b18639cf170b	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setAdditionalValueString
 sub_8444f8a5afae	8444f8a5afae8937	ported	game/blessingdialogdata.cpp:TBlessingDialogData::setHasSkull
 sub_844e3ac11fd2	844e3ac11fd2bfc0	skip	generated: compiler-generated destructor pair
 sub_844e6c4200be	844e6c4200be9a48	skip	generated: moc property getter, provided by the generated cip base
@@ -20887,7 +20887,7 @@ sub_8465ef8bacc5#4	8465ef8bacc583df	ported	taskboard/taskboardciptypes.cpp:TTask
 sub_8469c36c3c53	8469c36c3c5378fc	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_846f6e7837e4	846f6e7837e47ef4	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::onKillStagesChanged
 sub_847b63da93d8	847b63da93d8457b	skip	generated: copy constructor of the decoded sound buffer (two vectors and two ints)
-sub_8488b58f6e34	8488b58f6e34281e	todo	TWorldmapProtocolMessageHandler ctor (read): QObject(nullptr); +0x10 world map storage (session +0x2f8), +0x20 ambient light storage (+0x308; handleAmbientLightMessage calls its slot 13), +0x30 creature storage (+0x318), +0x40 effect storage (+0x328; moveKnownArea slot 29), +0x50 session +0x68 (unidentified; also the effect handler's +0x40), +0x60 the session clock (v105), +0x70 the viewport (+0xa8; the full map centres it through slot 12), +0x80 the creature protocol message handler (+0x598, made just before); default TWorldMapCentralPosition at +0x90; +0xd8/+0xe0 null. Blocked: the session +0x68 member is not identified, and qtclient's handler reaches the creature/effect/ambient storages through process globals and game:: hooks; port with rsession's builder once +0x68 is known
+sub_8488b58f6e34	8488b58f6e34281e	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::TWorldmapProtocolMessageHandler
 sub_848c9d775173	848c9d7751733ea5	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_84954c63562b	84954c63562b33de	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onDpsTargetValueSelected
 sub_849e9289e6fe	849e9289e6fef6b1	ported	sprites/spriteidentifier.cpp:identifierHash
@@ -21035,7 +21035,7 @@ sub_870645981933	8706459819338b52	ported	skillwheel/skillwheeldata.cpp:mitigatio
 sub_870ab610b983	870ab610b983adcb	ported	gamewindow/marketcontroller.cpp:TDisplayMarketOffer::piecePriceText
 sub_8718472dc4fb	8718472dc4fbe2a4	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_87187bd6f079	87187bd6f07971cc	inlined	sound/sounddecompressorthreadpool.cpp:TSoundDecompressorThreadpool::loadStep
-sub_87188d2c6078	87188d2c60780363	todo	createNetworkStack (game/gameservergamesession.cpp): dual connection, sequence flow and raw data processors, the strict server message processor + server packet processor (wave 13) and the client message processor are built and linked; left: the client message processor's CipSoft arguments (translator, RSA helper, object position helper) are qtclient's classic frames
+sub_87188d2c6078	87188d2c60780363	todo	createNetworkStack (game/gameservergamesession.cpp): everything built and linked as CipSoft does except the client message translator's arguments: CipSoft passes (writer, a new shared::TRsaHelper, a new protocol::TProtobufObjectPositionHelper, session +0x58 vslot 8 = the appearances manager's protocol-parsing special appearances; the server translator gets the same value). qtclient's TProtobufClientMessageTranslator (misc, protocol/) takes only the writer and encodes through static helpers (login RSA helper, TAppearancesManager::instance()). Port = misc gives the translator CipSoft's 4-argument ctor and members, then this function passes them
 sub_8721425c106e	8721425c106e647d	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_87257f392be6	87257f392be67ae8	skip	library: protobuf runtime: AppearanceInstance::GetExtension<T> instantiations (ExtensionSet::GetMessage wrapper), read
 sub_87257f392be6#10	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
@@ -21220,10 +21220,10 @@ sub_8798a52c6a3a#6	8798a52c6a3adf6c	skip	generated: moc property getter, provide
 sub_8798a52c6a3a#7	8798a52c6a3adf6c	skip	generated: moc property getter, provided by the generated cip base
 sub_87a271ac2ab2	87a271ac2ab239a8	skip	library: SFML audio / miniaudio internals (statically linked library range)
 sub_87a7ee3c8037	87a7ee3c80370a2b	ported	shared/src/downloadpool.cpp:TDownloadPool::setPreferIPv4
-sub_87a7ee3c8037#2	87a7ee3c80370a2b	todo	creatures::TCreature static mark-options flag setter (read by TCreature::markOptions/hasMarks); set by TGameClient::v13; qtclient keeps g_markOptions in creaturestorage.cpp; port with v13 (world)
-sub_87a7ee3c8037#3	87a7ee3c80370a2b	todo	static bool flag setters set from client options by the v13 step sub_ed559f4efce0. Blocked by: the class owning each flag (read by sub_13e86149cf95, TBattleListRenderProvider::drawCommands, sub_c3d0ce2d2866) is not identified; misattributed to TGameClient (world/creatures)
-sub_87a7ee3c8037#4	87a7ee3c80370a2b	todo	static bool flag setters set from client options by the v13 step sub_ed559f4efce0. Blocked by: the class owning each flag (read by sub_13e86149cf95, TBattleListRenderProvider::drawCommands, sub_c3d0ce2d2866) is not identified; misattributed to TGameClient (world/creatures)
-sub_87a7ee3c8037#5	87a7ee3c80370a2b	todo	static bool flag setters set from client options by the v13 step sub_ed559f4efce0. Blocked by: the class owning each flag (read by sub_13e86149cf95, TBattleListRenderProvider::drawCommands, sub_c3d0ce2d2866) is not identified; misattributed to TGameClient (world/creatures)
+sub_87a7ee3c8037#2	87a7ee3c80370a2b	ported	creatures/creaturestorage.h:TCreature::setShowStaticSquare
+sub_87a7ee3c8037#3	87a7ee3c80370a2b	ported	creatures/creaturestorage.h:TCreature::setShowTimedSquare
+sub_87a7ee3c8037#4	87a7ee3c80370a2b	ported	creatures/creaturestorage.h:TCreature::setShowTargetFrame
+sub_87a7ee3c8037#5	87a7ee3c80370a2b	ported	creatures/creaturestorage.h:TCreature::setShowSelectionFrame
 sub_87af80d4152c	87af80d4152c93c6	skip	library: libc++ std::unordered_map/set template instantiation (find/emplace/rehash)
 sub_87b419b1e9c6	87b419b1e9c665f9	skip	generated: compiler-generated destructor pair
 sub_87b59f041554	87b59f041554d5bf	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -22018,7 +22018,7 @@ sub_92775a810d17	92775a810d1718cf	inlined	gamewindow/depotsearchwidgetcontroller
 sub_92781535079a	92781535079afc27	skip	library: std::sort instantiation over achievements (library)
 sub_927cffd001bb	927cffd001bb2bee	skip	library: libc++/Qt template instantiation (vector empty/size, std::map/string ctor/dtor, list iterator, variant index, QQmlContext::setContextProperty thunk)
 sub_928096b1633c#2	928096b1633c228b	inlined	protocol::TProtobufServerMessageTranslator::v175
-sub_92810c51bac9	92810c51bac9d696	inlined	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::refreshCooldown
+sub_92810c51bac9	92810c51bac9d696	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setCooldownRemainingPercent
 sub_92a0217e71b8	92a0217e71b8b15f	ported	renderer/lightmappainteditem.cpp:TLightmapPaintedItem::connectToGameSession
 sub_92ab3e0b2c90	92ab3e0b2c907a81	ported	worldmap/coordinates.h:TWorldMapCentralPosition::moveRight
 sub_92b2f523bf58	92b2f523bf58aac4	skip	generated: compiler-generated destructor pair
@@ -22364,7 +22364,7 @@ sub_9538e8f5cb02	9538e8f5cb0223ec	skip	library: SFML/miniaudio library internals
 sub_953de02752db	953de02752db7f17	ported	gamewindow/statusbarcontroller.h:TStatusBarController::remainingSkill
 sub_953f5bc39a72	953f5bc39a72c2f9	tested	sound/soundmanager.cpp:TPlayableSound::release	test=tests/client/soundplayer_test.cpp
 sub_953f5bc39a72#2	953f5bc39a72c2f9	tested	sound/soundmanager.cpp:TPlayableSound::release	test=tests/client/soundplayer_test.cpp
-sub_9544f202b8f7	9544f202b8f73bb7	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController: builds a text and publishes TGameActionCopyTrustedTextToClipboard; belongs to that controller
+sub_9544f202b8f7	9544f202b8f73bb7	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
 sub_9544f202b8f7#2	9544f202b8f73bb7	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::requestConfigurationContextMenu
 sub_9544f202b8f7#3	9544f202b8f73bb7	inlined	analysers/impactwidgets.cpp:TPartyHuntWidgetController::requestConfigurationContextMenu
 sub_9546aa9834ed	9546aa9834ed240c	skip	library: QList template instantiation (reserve/insert/detach of QList<shared_ptr<TChatChannelTabRenderInfo>>)
@@ -22760,7 +22760,7 @@ sub_9a68d4e636a1	9a68d4e636a1114b	inlined	gamewindow/characterinfomodels.cpp:TAc
 sub_9a772620dd2d	9a772620dd2dfcb1	skip	library: QMap<QUrl, QVariant> template code
 sub_9a7acf393f83	9a7acf393f8339da	ported	input/eventfiltermanager.cpp:TEventFilterManager::isDiscardAllKeyboardInputWanted
 sub_9a7d5c63f488	9a7d5c63f488eb69	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
-sub_9a84bcc2de5b	9a84bcc2de5bf4ca	todo	worldmap storage helper (owner world): the storage's area cuboid (+0x48) projected onto floor z as a 1-deep cuboid, called by TMinimapTileStorage::markUnseen (v14). Blocked: qtclient's TWorldMapStorage keeps no area cuboid; markUnseen asks IMinimapWorld::areaOn (TMinimapWorldFeed, from the central-position and aware-range globals). Port when world gives the storage its area member
+sub_9a84bcc2de5b	9a84bcc2de5bf4ca	ported	worldmap/coordinates.h:TShearedWorldMapCuboid::shearedFloorArea
 sub_9a89a3f3744a#10	9a89a3f3744aeaa8	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_9a89a3f3744a#11	9a89a3f3744aeaa8	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_9a89a3f3744a#13	9a89a3f3744aeaa8	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -22867,7 +22867,7 @@ sub_9bb9c4c9df7b	9bb9c4c9df7bf58c	ported	gamewindow/friendsaccountsearchpagecont
 sub_9bbd580b1d8c	9bbd580b1d8ca2ed	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_9bbd580b1d8c#2	9bbd580b1d8ca2ed	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_9bbd580b1d8c#3	9bbd580b1d8ca2ed	skip	generated: moc property getter (products list copy), provided by the generated cip base; read
-sub_9bc6e1c46c7e	9bc6e1c46c7ea20c	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_9bc6e1c46c7e	9bc6e1c46c7ea20c	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setProgressBarValue
 sub_9bc9242b5af4	9bc9242b5af43956	ported	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
 sub_9bc987ccfb34	9bc987ccfb346df9	skip	library: boost::bimap / std::map template instantiation
 sub_9bcdbb3fcf2a	9bcdbb3fcf2aed3b	skip	library: CryptoPP SecBlock destructor (zeroise + free)
@@ -22996,7 +22996,7 @@ sub_9d52ae7193c9	9d52ae7193c9a5a9	skip	library: Qt QHash<int,QByteArray> templat
 sub_9d59353e724d	9d59353e724d4d39	skip	library: libc++/Qt container template instantiation (vector assign/copy, map/set tree insert/assign/erase, QHash data copy/emplace, QList<QHostAddress>)
 sub_9d5a7fde25a5	9d5a7fde25a574fd	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_9d5c5aaf276d	9d5c5aaf276d1162	ported	worldmap/creaturehudcontroller.cpp:TCreatureHUDController::setOnTop
-sub_9d5e4a7fdfd5	9d5e4a7fdfd5a145	todo	TBossTrackerWidgetController ctor (gwA: gamewindow/bosstrackerwidgetcontroller.*); same redesign as sub_6252aa6f8e99 (host TBossTrackerWidgetManager)
+sub_9d5e4a7fdfd5	9d5e4a7fdfd5a145	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::TBossTrackerWidgetController
 sub_9d6940699d21	9d6940699d21dc38	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_9d6c9e8b819b	9d6c9e8b819b4eff	ported	appearances/appearancetype.h:formerObjectId
 sub_9d771da81ff9	9d771da81ff921d9	ported	game/blessingdialogdata.cpp:TBlessingDialogData::TBlessing::TBlessing
@@ -23147,7 +23147,7 @@ sub_9f89af8fe217	9f89af8fe217f894	ported	config/optionspages.cpp:THudOptionsPage
 sub_9f89af8fe217#2	9f89af8fe217f894	ported	config/optionspages.cpp:THudOptionsPage::setSpecialConditionsShowInBarEnabled
 sub_9f8f4c9ee659	9f8f4c9ee659abab	ported	store/qmlstoreobjects.cpp:TQmlStoreTransactionHistoryPage::~TQmlStoreTransactionHistoryPage
 sub_9f92376263fc	9f92376263fceb33	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
-sub_9f962d8df805	9f962d8df805134f	todo	misattributed: game::TSkillsWidgetEntryData::setShowButton (+0xd1, emits changed) (rsession, game/ files). Blocked on: rsession giving TSkillsWidgetEntryData per-field setters (qtclient has assign() only)
+sub_9f962d8df805	9f962d8df805134f	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setShowButton
 sub_9f98911bbf9e	9f98911bbf9e3a53	ported	worldmap/coordinates.h:TWorldMapCentralPosition::moveDown
 sub_9fa21e4bab34	9fa21e4bab34c52c	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::removeAll
 sub_9fa241f11151	9fa241f111519ae1	skip	library: libc++abi Itanium demangler (__cxa_demangle) internals
@@ -23712,7 +23712,7 @@ sub_a5ff1423df5a	a5ff1423df5a75b3	skip	library: miniaudio library
 sub_a6041ff12dd4	a6041ff12dd46b00	ported	skillwheel/skillwheeldata.cpp:TGridPathSolver::checkedTile
 sub_a60614dd3cec	a60614dd3cec8223	ported	input/gameaction.h:TGameActionStartTargetSelection::TGameActionStartTargetSelection
 sub_a60614dd3cec#2	a60614dd3cec8223	ported	input/gameaction.h:TGameActionStartTargetSelection::TGameActionStartTargetSelection
-sub_a6064729d916	a6064729d9162ec5	todo	CipSoft free helper outfitColorsFromProtobuf: the protobuf outfit's head/body/legs/feet (+0x18/+0x1c/+0x20/+0x24) each through outfitColor (sub_a3eca6ac48bf#2) into one outfit colour set (ctor sub_f49d5d27418d#2). Blocked: qtclient has no outfit colour set value type; its six callers (appearanceinstance.cpp createOutfit, things.cpp parseStaticInformation, cyclopediaciptypes.cpp character info, friendsciptypes.cpp, storestorage.cpp visualisation, character trade configuration) each copy the four indices into their own fields (map, world, shared and input owners). Port once map adds the shared TOutfitColorSet type and the callers take it
+sub_a6064729d916	a6064729d9162ec5	ported	appearances/outfitcolorset.cpp:outfitColorsFromProtobuf
 sub_a60935f1bf4b	a60935f1bf4bc717	skip	data: translation-unit static initialiser: constant strings/tables, typeid maps, QTimeZone/QTime constants
 sub_a60cf43a4e49	a60cf43a4e4917b4	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_a60cf43a4e49#2	a60cf43a4e4917b4	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -24046,7 +24046,7 @@ sub_aa531cfa99e8	aa531cfa99e8ab5f	skip	library: libc++/Qt/protobuf template inst
 sub_aa531cfa99e8#2	aa531cfa99e8ab5f	skip	library: libc++/Qt/protobuf template instantiation (std::map/set find/insert/assign, QHash<QKeySequence> find, ostream string insert, std::variant/optional assign, protobuf ExtensionSet)
 sub_aa563a4d2d01	aa563a4d2d01047b	ported	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::gainWasteSum
 sub_aa59fa5648d4	aa59fa5648d40892	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
-sub_aa5a9db3f098	aa5a9db3f098ba65	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_aa5a9db3f098	aa5a9db3f098ba65	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onShowContextMenu
 sub_aa612d92f679	aa612d92f679d3d1	skip	generated: compiler-generated destructor body
 sub_aa77956ca334	aa77956ca3349d1a	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::isInactive
 sub_aa8519e659f9	aa8519e659f9fdbb	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
@@ -24061,7 +24061,7 @@ sub_aa9cc9f22ef0	aa9cc9f22ef0a453	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_aaa128b87997	aaa128b87997b493	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_aaa30d7665ca	aaa30d7665ca1f71	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::switchTab
 sub_aaa313eafbdb	aaa313eafbdbd079	ported	analysers/impactwidgets.cpp:TImpactWidgetController::maxHpsString
-sub_aaaa8e291b34	aaaa8e291b34e950	todo	misattributed: game::TSkillsWidgetEntryData per-field setters emitting changed (rsession, game/ files). Blocked on: rsession's entry data class (qtclient assigns the whole entry)
+sub_aaaa8e291b34	aaaa8e291b34e950	ported	game/skillswidgetentrydata.cpp:TSkillsWidgetEntryData::setIconTooltip
 sub_aaad830785f7	aaad830785f70c11	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateGraph
 sub_aab976edddf6	aab976edddf6c4d6	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeVisible
 sub_aabb094393a5	aabb094393a5e3e5	skip	generated: compiler-generated aggregate constructor of minimap::TCreateMapTileScenegraphDrawCommandVisitor (shared_ptr, cuboid origin/end/extent, smooth byte), read
@@ -24148,7 +24148,7 @@ sub_aca360269663	aca3602696637701	ported	gamewindow/cyclopediadialogcontroller.c
 sub_aca5666434d1	aca5666434d17e90	tested	worldmap/coordinates.h:subfieldOfField	test=tests/client/worldmapcuboidops_test.cpp
 sub_aca77f49767f	aca77f49767f31b0	skip	generated: protobuf message code (constructors, MergeFrom/CopyFrom, InternalSwap, oneof clear, arena string set)
 sub_aca8a4dee468	aca8a4dee4681344	skip	library: libc++/Qt/absl/protobuf template or runtime internals (map/set tree find/emplace/destroy, QHash<QKeySequence> node/destroy, QList from initializer_list, QVariant(const char*), std::string init, protobuf arena string, absl time)
-sub_acae6caf296a	acae6caf296adfdf	todo	TActionButtonController cooldown record (+0x108 {remaining, duration, end, running}): remaining(now) = running ? max(0, end-now+remaining) : remaining; fraction clamp 0..1 over duration; equality; set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_acae6caf296a	acae6caf296adfdf	ported	game/cooldownstorage.h:TPassiveAbilityCooldown::remainingAt
 sub_acb0c7fb289e#3	acb0c7fb289e3b39	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_acb7b5c14920	acb7b5c14920dbe9	skip	library: libc++ runtime/template helper (statically linked library range)
 sub_acbc535e1f60	acbc535e1f60bd62	ported	input/gameaction.h:TGameActionSetShowOffSocketConfiguration::TGameActionSetShowOffSocketConfiguration
@@ -24406,7 +24406,7 @@ sub_b02e2b56a30d#2	b02e2b56a30d9191	ported	input/gameaction.h:TGameActionOpenEdi
 sub_b02e349a7c61	b02e349a7c618aff	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_b0321f9a98da	b0321f9a98da4099	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::gameWindowChild
 sub_b034d03bfaf7	b034d03bfaf7fc81	ported	sprites/spriteresolver.cpp:TSpriteResolver::TSpriteResolver
-sub_b03a579ec457	b03a579ec4572807	todo	gamewindow::TDeathDialogController::connectToGameSession (misfiled under TGameClient, read): close, connections dropped, session kept; session protocol handler requestOpenDeathDialog -> onRequestOpenDeathDialog; own signal -> session game action (sub_75397676dcc3#4); own logoutRequested -> onLogoutRequested; own buttonClicked -> onButtonClicked; session v42 signal -> sub_95f5692ac5b3. qtclient's connector does only the first (gwA)
+sub_b03a579ec457	b03a579ec4572807	todo	gamewindow::TDeathDialogController::connectToGameSession (misfiled under TGameClient, read): close, connections dropped, session kept; PMH requestOpenDeathDialog -> onRequestOpenDeathDialog; own sub_75397676dcc3#4 -> session vslot 0xa0; own sub_b23f4bae5127#2 -> onLogoutRequested; own sub_2a597929f078 -> onButtonClicked; session sub_f3dd7ce2c387#4 -> sub_95f5692ac5b3. qtclient's connector (gamewindow/deathdialogcontroller.cpp, gw) does only the first; requested from gw (wave 18 rclient R7)
 sub_b03bd2236fdc	b03bd2236fdc204b	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_b03c4a8dd3ff	b03c4a8dd3ff1b68	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_b04136b88d3f	b04136b88d3f7214	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
@@ -25825,7 +25825,7 @@ sub_ba0f3a106398	ba0f3a1063982d21	ported	game/gameworldvolumestorage.cpp:TGameWo
 sub_ba10c5a8d6a1	ba10c5a8d6a1fa41	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::tooltipRows
 sub_ba1f86e8c6e5	ba1f86e8c6e5837f	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController
 sub_ba2a758f1f6c	ba2a758f1f6cbda8	ported	input/gameaction.h:TGameActionSetStatusLine::TGameActionSetStatusLine
-sub_ba2a758f1f6c#2	ba2a758f1f6cbda8	todo	second copy of the make_shared<input::TGameActionSetStatusLine>(text) factory (see sub_ba2a758f1f6c); callers TSidebarWidgetsManager::onToggleHuntingSessionAnalyserWidget and TBattleListControllerStorage::openBattleList; owner input::TGameActionSetStatusLine (input)
+sub_ba2a758f1f6c#2	ba2a758f1f6cbda8	ported	input/gameaction.h:TGameActionSetStatusLine::TGameActionSetStatusLine
 sub_ba361e49a123	ba361e49a1239e88	ported	gamewindow/actionbarcontroller.cpp:TActionBarController::TActionBarController
 sub_ba36310d5f8d	ba36310d5f8d092b	skip	library: libc++ std::variant<QFileInfo, QByteArray, sf::SoundBuffer, ...> destroy (dispatch on the index, then mark valueless)
 sub_ba45082429ad	ba45082429ad1ee0	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -25944,7 +25944,7 @@ sub_bae3e6b3c6b3	bae3e6b3c6b3c247	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_bae76d6089c1	bae76d6089c1476b	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode
 sub_bae76d6089c1#2	bae76d6089c1476b	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode
 sub_bae7e771cd7d	bae7e771cd7dc351	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
-sub_bae7e771cd7d#2	bae7e771cd7dc351	todo	misattributed: TSessiondumpPlayer's started flag getter (+0xc0, set by v39 onSessiondumpMetadataLoaded; qtclient m_started has no getter); its caller is TSessiondumpGameSession::v142
+sub_bae7e771cd7d#2	bae7e771cd7dc351	ported	sessiondump/sessiondumpplayer.h:TSessiondumpPlayer::isStarted
 sub_bae87b991fc9	bae87b991fc95c23	skip	library: libc++ std::sort introsort internals, vector range insert, std::unique, map erase-by-key used by v13/v14
 sub_bae8feb8589f	bae8feb8589f2307	ported	gamewindow/monsterdialogcontroller.cpp:TQmlPreviewCharm::icon
 sub_bae8feb8589f#2	bae8feb8589f2307	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
@@ -25990,7 +25990,7 @@ sub_bb96d5d36b57#2	bb96d5d36b57689f	inlined	market/marketciptypes.cpp:TMarketPro
 sub_bb9c3c273034	bb9c3c273034aaac	ported	chat/chatchannel.cpp:keywordLinks
 sub_bb9cd7be09b7	bb9cd7be09b72f7d	ported	input/gameactioncontext.h:TLocationWorldMapCoordinateWithStackPositionContext::coordinate
 sub_bb9cd7be09b7#2	bb9cd7be09b72f7d	ported	input/gameactioncontext.h:TLocationWorldMapCoordinateContext::coordinate
-sub_bb9cd7be09b7#3	bb9cd7be09b72f7d	todo	misattributed: one ICF body for several classes' TWorldMapCoordinate getters at +0x10 (TMinimapTileManager / TSpriteResolver tile ids, TGameActionContextHelper::v2, TEffectGameActionHandler::v12, TGenericGameActionHandler::v15 context coordinates); qtclient's counterparts are separate Position members/getters of those classes, so no single symbol matches; lock per caller class when its owner ports the caller
+sub_bb9cd7be09b7#3	bb9cd7be09b72f7d	ported	sprites/minimaptilespritesheetidentifier.h:TMinimapTileSpritesheetIdentifier::tileId
 sub_bb9dc9efe6e6	bb9dc9efe6e63199	ported	assets/assetcatalog.h:TAssetCatalog::assetCount
 sub_bb9fab61a57c	bb9fab61a57c7951	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_bba47431aa88	bba47431aa88ba0c	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::maximumBonusGrade
@@ -26125,7 +26125,7 @@ sub_bd17d7a1582d	bd17d7a1582d1f71	ported	renderer/scenegraphdrawcommand.cpp:TSce
 sub_bd18245b82a2	bd18245b82a2ea9d	inlined	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestMonsterSearch
 sub_bd19ef3aa1b3	bd19ef3aa1b33f99	ported	market/marketstorage.h:TMarketOfferList::clear
 sub_bd1d4ef7cde7	bd1d4ef7cde7bf21	ported	gamewindow/taskboardshopcontroller.cpp:TTaskboardShopController::torsoColor
-sub_bd3140598e3c	bd3140598e3c3b87	todo	QML createInto with the inlined default constructor of taskboard::TBountyTasksPreferredMonsterListModel; belongs to that model
+sub_bd3140598e3c	bd3140598e3c3b87	ported	gamewindow/taskboardmodels.cpp:TBountyTasksPreferredMonsterListModel::TBountyTasksPreferredMonsterListModel
 sub_bd355e2b2ea5	bd355e2b2ea52588	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
 sub_bd355e2b2ea5#2	bd355e2b2ea52588	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
 sub_bd3568a75ccf	bd3568a75ccfa1e7	ported	config/clientoptiondefaults.cpp:buttonIds
@@ -26443,7 +26443,7 @@ sub_c18617383597	c18617383597f354	inlined	gamewindow/teamassemblepagecontroller.
 sub_c188db2679b8	c188db2679b88ea7	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c18e5ab0a35a	c18e5ab0a35ad582	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::assemblyStarted
 sub_c198acb819ae	c198acb819ae1005	skip	library: miniaudio library
-sub_c198f81321a0#2	c198f81321a04803	todo	TActionButtonController counter record (+0x128, two ints cur/max): remaining = max-cur, fraction = (max-cur)/max (0 when max 0), equality, set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_c198f81321a0#2	c198f81321a04803	ported	game/cooldownstorage.h:TPassiveAbilityCounter::operator==
 sub_c198f81321a0#3	c198f81321a04803	ported	market/marketstorage.h:TMarketOffer::sameOffer
 sub_c19941fd087d	c19941fd087d6494	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_c19fad607d49	c19fad607d49effe	ported	container/containergameactionprovider.cpp:TContainerGameActionProvider::TContainerGameActionProvider
@@ -26864,7 +26864,7 @@ sub_c794c50cd73f#2	c794c50cd73f8f24	skip	library: statically linked SFML audio /
 sub_c7968ab79674	c7968ab7967499b6	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::assembleTeam
 sub_c79804ba4282	c79804ba4282ad55	ported	gamewindow/socialdialogcontroller.cpp:TSocialDialogController::dialogTab
 sub_c79b8e44429b	c79b8e44429bb07c	skip	library: std::map / std::deque / std::vector template instantiation
-sub_c79bb73ff495	c79bb73ff4958dc7	todo	TImbuementTrackerWidgetController ctor (gwA: gamewindow/imbuementtrackerwidgetcontroller.*); same redesign as sub_6252aa6f8e99 (host TImbuementTrackerWidgetManager)
+sub_c79bb73ff495	c79bb73ff4958dc7	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuementTrackerWidgetController::TImbuementTrackerWidgetController
 sub_c7a7a4fe433d	c7a7a4fe433dff2a	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_c7aa459f75df	c7aa459f75df16dd	skip	data: translation-unit static initialiser: constant strings/tables, typeid maps, QTimeZone/QTime constants
 sub_c7abd9f5d43b	c7abd9f5d43b73ec	ported	config/tibiahotkeyactionsettingqmlwrapper.cpp:TTibiaHotkeyActionSettingQmlWrapper::setSmartModeEnabled
@@ -27762,7 +27762,7 @@ sub_d37a0611860b	d37a0611860b0d6b	skip	generated: std::make_shared forwarding th
 sub_d37a661bd7be	d37a661bd7becfce	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call); same code as sub_d37a661bd7be#2 (inlined appearances/appearancetype.cpp:TAppearanceType::fromProtobuf)
 sub_d37a661bd7be#2	d37a661bd7becfce	inlined	appearances/appearancetype.cpp:TAppearanceType::fromProtobuf
 sub_d37d3d5f4000	d37d3d5f400023ed	skip	generated: compiler-generated destructor of an optional proficiency table (string name, vector of perk-level vectors), member teardown only (read)
-sub_d38957b928e9	d38957b928e9ed4d	inlined	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::refreshCooldown
+sub_d38957b928e9	d38957b928e9ed4d	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setCooldownText
 sub_d38b44912402	d38b44912402a057	skip	data: translation-unit static initializer (misattributed)
 sub_d38ba19e1f46	d38ba19e1f462d72	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::isOwnName
 sub_d39cd1f13b11	d39cd1f13b11189b	skip	generated: moc property getter (generated in cip_gen)
@@ -28070,7 +28070,7 @@ sub_d7a7a0f965b9#4	d7a7a0f965b9294c	skip	generated: compiler-generated Qt slot-o
 sub_d7a874b1d062	d7a874b1d0623627	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::clear
 sub_d7ac2db5c039	d7ac2db5c0396983	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::spentSkillPoints
 sub_d7b93dbf80b1	d7b93dbf80b185d0	inlined	input/genericobjectgameactionprovider.cpp:TGenericObjectGameActionProvider::creatureActions
-sub_d7c6b77d039e	d7c6b77d039ecb1a	todo	misattributed: setter of a weak player creature at +0x38 of the object at session +0x858 (called by session v16); owner class unknown
+sub_d7c6b77d039e	d7c6b77d039ecb1a	ported	chat/chatgameactionhandler.h:TChatGameActionHandler::setWhiteBlacklist
 sub_d7c6b77d039e#2	d7c6b77d039ecb1a	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::setPremiumTimeStorage
 sub_d7c7b39e9ac6	d7c7b39e9ac6d722	skip	library: std::vector / std::optional teardown of highlight groups
 sub_d7c7b39e9ac6#2	d7c7b39e9ac6d722	skip	library: libc++ vector exception-guard destroy (tail of the guard)
@@ -28347,7 +28347,7 @@ sub_d9944a669789	d9944a669789c049	skip	dead: never runs: no call, jump, lea or p
 sub_d999b4405089	d999b4405089ec07	ported	input/gameactioncontext.cpp:objectApperanceTypeContextsEqual
 sub_d99e3b9c98a6	d99e3b9c98a6b731	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_d9a018ccbf5d	d9a018ccbf5db5d7	skip	library: libc++ runtime/template helper (statically linked library range)
-sub_d9a6cdb43fe1	d9a6cdb43fe1d44a	todo	misattributed: input::TGameActionMoveObject amount (+0x28) setter (input owner, input/gameaction.h). Blocked on: the input agent giving TGameActionMoveObject a settable amount; then TSelectObjectAmountDialogController::okButtonClicked sets it instead of building a new action
+sub_d9a6cdb43fe1	d9a6cdb43fe1d44a	ported	input/gameaction.h:TGameActionMoveObject::setAmount
 sub_d9b0554cb38a	d9b0554cb38ac540	ported	renderer/worldmapcamera.cpp:TWorldMapCamera::setTopLeftSubfieldCoordinateDelayed
 sub_d9b0554cb38a#2	d9b0554cb38ac540	ported	renderer/worldmapcamera.cpp:TWorldMapCamera::centerAtSubfieldCoordinateDelayed
 sub_d9b7c46dac22	d9b7c46dac2259dc	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -28381,13 +28381,13 @@ sub_da1a83bfa741	da1a83bfa74106e7	skip	library: SFML/miniaudio library internals
 sub_da1b9a1daa02	da1b9a1daa021637	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::makeElementalPierce
 sub_da1bfb4335bf	da1bfb4335bf4bb0	ported	shared/tibiafilesystemhelper.cpp:TTibiaFileSystemHelper::hasForcePatchMarker
 sub_da23be83463a	da23be83463a7c9b	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterSensitivity::fillPercentage
-sub_da24edc6b95b	da24edc6b95b4352	todo	TActionButtonController counter record (+0x128, two ints cur/max): remaining = max-cur, fraction = (max-cur)/max (0 when max 0), equality, set-if-different + changed signal. Lands with sub_dfcbe512ef43 (gwA, gwB requests R5)
+sub_da24edc6b95b	da24edc6b95b4352	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setCounterCooldown
 sub_da26ae50a3f3	da26ae50a3f3cb4d	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_da281a529da3	da281a529da38641	ported	input/gameaction.h:TGameActionDepotSearchRetrieve::TGameActionDepotSearchRetrieve
 sub_da281a529da3#2	da281a529da38641	ported	input/gameaction.h:TGameActionDepotSearchRetrieve::TGameActionDepotSearchRetrieve
-sub_da2c9c085bb6	da2c9c085bb62655	todo	misattributed: player position lookup for gamewindow::TBugReportDialogController::requestSendBugReport
+sub_da2c9c085bb6	da2c9c085bb62655	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
 sub_da3172845a03	da3172845a036e74	inlined	worldmap/creaturehudrenderprovider.cpp:TCreatureHUDRenderProvider::creatureHUDRenderInfo
-sub_da364dbf2739	da364dbf273981b3	todo	misattributed (catalog GUESS by address): helpers of appearances::TAppearanceInstanceGenericStorage / qmlcomponents::TAppearanceInstanceRendererBase's storage list (bool +0x68 getter/setter, member address getters +0x10/+0x20, make_shared<TAppearanceInstanceGenericStorage> appended at +0x20 from componentComplete, the v48/v49/v53 helper). Blocked on ownership: the code lives in appearances/genericstorage.* (rapp) and qmlcomponents/appearanceinstancerendererbase.* (ui), not in map's files
+sub_da364dbf2739	da364dbf273981b3	ported	appearances/genericstorage.h:TAppearanceInstanceGenericStorage::appearanceInstanceFactory
 sub_da364dbf2739#10	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsAccountSearchStorage::result
 sub_da364dbf2739#11	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsInviteStorage::inviteList
 sub_da364dbf2739#12	da364dbf273981b3	ported	game/gameciptypes.h:TOutfitDialogStorage::selectOutfitDialogData
@@ -28440,7 +28440,7 @@ sub_da60c9290911	da60c9290911bf93	inlined	news/newsstorage.cpp:TNewsStorage::cat
 sub_da64c3df8000	da64c3df80007abf	ported	qmlcomponents/outfittypes.cpp:TOutfitPresetQmlType::canBeFilledFromJsonObject
 sub_da6fb558d7b3	da6fb558d7b37dea	skip	generated: copy constructor of std::optional<TPassiveAbilityInfo> (read)
 sub_da70efcd4f55	da70efcd4f55728b	inlined	gamewindow/gamewindowcontroller.cpp:TGameWindowController::syncAnthemButton
-sub_da739108be16	da739108be161d2f	todo	operator== of a four-byte value type (four bytes compared in order), reached only from QtPrivate::QEqualityOperatorForType instantiations (sub_178e7b3eee92#2 at 0x1010ab600 compares the members at +0x10; sub_7fa37926bca5). Blocked: the value type is not identified
+sub_da739108be16	da739108be161d2f	ported	appearances/outfitcolorset.h:TOutfitColorSet::operator==
 sub_da74b77a62c7	da74b77a62c7aa78	tested	shared/src/jsonhelper.cpp:jsonArray	test=tests/client/sharednet_test.cpp
 sub_da74b8e8ed50	da74b8e8ed506f41	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreCategoriesMessage
 sub_da8cbdbde3f2	da8cbdbde3f28deb	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
@@ -28657,7 +28657,7 @@ sub_dd92459583ff	dd92459583ff2ef7	inlined	gamewindow/gamewindowcontroller.cpp:TG
 sub_dd97459b4085	dd97459b4085ed16	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_dd9dd2389fe7#4	dd9dd2389fe70f7d	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_dda480a91a20	dda480a91a2007a4	ported	gamewindow/lenshelpcontroller.cpp:TLenshelpController::hide
-sub_dda8174d41da	dda8174d41da2512	todo	misattributed: input::TGameActionStashRetrieve amount (+0x10) setter (input owner, input/gameaction.h). Blocked on: input adding the setter (qtclient builds a new action)
+sub_dda8174d41da	dda8174d41da2512	ported	input/gameaction.h:TGameActionStashRetrieve::setAmount
 sub_dda8e4e36212	dda8e4e3621278c2	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
 sub_ddb131087d4b	ddb131087d4ba47d	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_ddb304ca92b3	ddb304ca92b3d514	ported	gamewindow/weeklytaskscontroller.cpp:TWeeklyTasksController::rewardSoulSeals
@@ -28838,7 +28838,7 @@ sub_defbc31309b6	defbc31309b60133	skip	library: libc++ vector/split-buffer/optio
 sub_defbe93572c4	defbe93572c4d5fb	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::setCategory
 sub_df012cbd2550	df012cbd2550775a	ported	gamewindow/actionbarcontroller.cpp:TActionBarGroup::TActionBarGroup
 sub_df04791f4f76	df04791f4f76d7c9	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::addLoot
-sub_df05e820eb1e	df05e820eb1e3819	todo	TTibiaConfig client-setting helper called only by sub_10ece75982c4 (v13 settings block). Blocked by: the v13 settings block (static setters in appearances/creatures, see client::TGameClient::v13)
+sub_df05e820eb1e	df05e820eb1e3819	ported	config/tibiaconfig.cpp:TTibiaConfig::clientSettingBool
 sub_df0ef6d53f18	df0ef6d53f1867f1	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_df17863d272e	df17863d272e564d	skip	library: std::vector / std::optional teardown of highlight groups
 sub_df2484479ab9	df2484479ab916c5	ported	game/selectoutfitdialogdata.cpp:TSelectOutfitDialogData::isFemaleOutfit
@@ -28886,7 +28886,7 @@ sub_dfc4cc2bb9ca#14	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTra
 sub_dfc4cc2bb9ca#16	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_dfc4ecbdbd84	dfc4ecbdbd842ad5	ported	chat/chatprotocolmessagehandler.cpp:invitingName
 sub_dfc5f6c8ade1	dfc5f6c8ade12c2c	ported	appearances/spriteinfo.cpp:sameSpriteInfo
-sub_dfcbe512ef43	dfcbe512ef4371b2	todo	TActionButtonController per-frame cooldown refresh (gwA: gamewindow/actionbuttoncontroller.*). Read: by the button's cooldown kind (+0x8c): 2 = counter record (+0x128: two ints cur/max) -> percent floor5(100*(max-cur)/max) (+0x130, signal), text '' when max-cur<1 else '%1'; 0 = timestamp mode: setRemainingCooldown(max(0, end(+0xf0)-now)) (sub_5705bdd85efe); 1/0 then: record (+0x108 {remaining, duration, end, running}) fraction -> +0x130, remaining(now) -> cooldown text (sub_1acf5e8cbbae) -> +0x138; then the slots (+0x158..0x160, sub_3c838f63a14e) recurse. Blocker: qtclient's refreshCooldown recomputes from TCooldownStorage each frame; spec in gwB wave17 requests R5
+sub_dfcbe512ef43	dfcbe512ef4371b2	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::updateCooldown
 sub_dfce5ce5b4a4	dfce5ce5b4a404f6	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_dfce8c44cfcf	dfce8c44cfcfc6a3	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_dfcf2d8e1999	dfcf2d8e1999fdf5	skip	data: static initializer of shared header constants
@@ -28988,7 +28988,7 @@ sub_e13902ceb444	e13902ceb4446482	skip	library: nlohmann::json get_number/get_st
 sub_e1403cd9b64f	e1403cd9b64f8aa3	ported	config/optionspages.h:TActionBarsOptionsPage::toggleClearFlag
 sub_e14b453f6f50	e14b453f6f50183f	skip	library: Qt QMap<int,int>::operator[] template instantiation (detach, std::map lower_bound, insert node), read
 sub_e157b94d1143	e157b94d11437df6	inlined	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::rebuildListItems
-sub_e159b9cede0f	e159b9cede0f4217	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
+sub_e159b9cede0f	e159b9cede0f4217	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
 sub_e163596572ed	e163596572edc43d	skip	generated: Qt functor-call helper for a QUrl slot (template-generated)
 sub_e163596572ed#2	e163596572edc43d	skip	generated: Qt slot-object argument unpacking (FunctorCall, template-generated)
 sub_e16b33af63c7	e16b33af63c76fa0	skip	library: libc++/Qt template instantiation (string compare/append, initializer_list set/vector construct, vector move-assign, tree destroy/iterate, hash bucket index, unique_ptr reset)
@@ -29032,8 +29032,8 @@ sub_e1d1e41c7963	e1d1e41c79638cde	ported	appearances/appearanceinstance.cpp:TMis
 sub_e1d41a827cc4	e1d41a827cc49670	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_e1ec85ce3e73	e1ec85ce3e738436	skip	library: std::vector copy / growth of store records (library)
 sub_e1ec89e27320	e1ec89e273206b2c	tested	animation/phaseanimator.cpp:TAnimator::setRandomNumberGenerator	test=tests/client/animatorrandomsource_test.cpp
-sub_e1ec89e27320#2	e1ec89e273206b2c	todo	static shared_ptr instance setters called by TGameClient::v13 (#2: TDialogStackController made at +0x338 over the event filter manager). Blocked by: the dialog stack controller is made by rbuilder's TGameWindow, not by the client's v13 (see client::TGameClient::v13)
-sub_e1ec89e27320#3	e1ec89e273206b2c	todo	static shared_ptr instance setters called by TGameClient::v13 (#2: TDialogStackController made at +0x338 over the event filter manager). Blocked by: the dialog stack controller is made by rbuilder's TGameWindow, not by the client's v13 (see client::TGameClient::v13)
+sub_e1ec89e27320#2	e1ec89e273206b2c	ported	gamewindow/dialogmanager.cpp:TDialogStackController::setInstance
+sub_e1ec89e27320#3	e1ec89e273206b2c	ported	qmlcomponents/appearanceinstancerendererbase.cpp:setAppearanceInstanceRendererClockService
 sub_e1f5c9e3b1c4	e1f5c9e3b1c40315	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::togglePanel
 sub_e1fb6e7919c6	e1fb6e7919c663ca	ported	analysers/impactstorage.cpp:TImpactStorage::checkAllTimeMax
 sub_e1fe5a0c3b49	e1fe5a0c3b49050e	ported	prey/preydata.cpp:TPreyData::setNextFreeListReroll
@@ -29142,11 +29142,11 @@ sub_e37cc3c4ad7e	e37cc3c4ad7ef7ca	skip	dead: never runs: no call, jump, lea or p
 sub_e390193938fb	e390193938fbb01f	tested	renderer/scenegraphdrawcommand.cpp:scenegraphDrawCommandDataName	test=tests/client/scenegraphdrawcommand_test.cpp
 sub_e395f5ca8434	e395f5ca8434e6ed	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
 sub_e3a31c05fe81	e3a31c05fe81aed6	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::~TGameWindowController
-sub_e3a98fe300c6	e3a98fe300c6460c	todo	TSessiondumpGameSession constructor (game/sessiondumpgamesession.cpp): takes and forwards the 13 shared objects and builds the progress clock over the base's client clock; left: +0xa00 (a 14th by-value shared_ptr argument, read from the stack: TGameClient's plain-sessiondump factory passes its TDialogStackController, client +0x338) and +0xa10 (a copy of the 4th argument, passed in R8, i.e. the client options) that no other function of the class reads. Needs rclient's sessiondump factory to pass the dialog stack controller (gamewindow::TDialogStackController) and the ctor a trailing parameter; check the tutorial factory's arguments too
+sub_e3a98fe300c6	e3a98fe300c6460c	ported	game/sessiondumpgamesession.cpp:TSessiondumpGameSession::TSessiondumpGameSession
 sub_e3b63b2d5f11	e3b63b2d5f116c53	ported	shared/src/qtconnectionwrapper.cpp:TQtConnectionWrapper::setOnlyFirstSignal
 sub_e3b63b2d5f11#2	e3b63b2d5f116c53	inlined	config/sidebaroptions.cpp:parseSkills
 sub_e3b63b2d5f11#3	e3b63b2d5f116c53	inlined	config/sidebaroptions.cpp:parseSkills
-sub_e3b63b2d5f11#4	e3b63b2d5f116c53	todo	misattributed: protocol::TProtocolServerPacketProcessor setter of its +0x20 flag; no qtclient class
+sub_e3b63b2d5f11#4	e3b63b2d5f116c53	ported	protocol/protocolserverpacketprocessor.h:TProtocolServerPacketProcessor::setStopped
 sub_e3bb19118118	e3bb19118118d7cb	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_e3bb3e35863c	e3bb3e35863c88a1	inlined	client/gameclientbase.cpp:makeTibiaFileSystemHelper
 sub_e3c2e40846e0	e3c2e40846e09d78	ported	gamewindow/marketcontroller.cpp:appendStatistics
@@ -29350,7 +29350,7 @@ sub_e6b628813195	e6b628813195f5c3	ported	config/sidebaroptions.cpp:TSidebarOptio
 sub_e6b7011385bb	e6b7011385bbf0fb	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate
 sub_e6b7011385bb#2	e6b7011385bbf0fb	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate
 sub_e6b70690a031	e6b70690a0310f56	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateAccountEmail
-sub_e6c16f24f3f7	e6c16f24f3f78fdb	todo	field-by-field assignment that calls a change notifier for each changed field (outfit/appearance value next to qmlcomponents::TOutfitQmlModel); belongs to that class
+sub_e6c16f24f3f7	e6c16f24f3f78fdb	ported	qmlcomponents/qmlcomponentsciptypes.cpp:TOutfitQmlModel::copyFrom
 sub_e6c440725dc1	e6c440725dc1149f	inlined	gamewindow/gamewindowciptypes.cpp:TInspectObjectRow::setFromItem
 sub_e6c56ccaf0ba	e6c56ccaf0ba28ea	skip	library: SFML audio internals (sf::priv::AudioDevice / sf::Sound* lifecycle, shared_ptr control blocks)
 sub_e6cd9c742823	e6cd9c7428237259	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
@@ -29475,7 +29475,7 @@ sub_e77fc8093d68	e77fc8093d68dd15	ported	gamewindow/genericentertextdialogcontro
 sub_e78626dd0f5f	e78626dd0f5faade	ported	sound/soundmanager.cpp:TPlayableSound::TPlayableSound
 sub_e78c7de931a3	e78c7de931a3a1f2	ported	store/qmlstoreobjects.cpp:TQmlStoreProduct::TQmlStoreProduct
 sub_e78cdfcef410	e78cdfcef410e219	inlined	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::data
-sub_e78da0037cc5	e78da0037cc5efcf	todo	misattributed: input::TGameActionStashStowStack amount (+0x30) setter (input owner, input/gameaction.h). Blocked on: input adding the setter (qtclient builds a new action)
+sub_e78da0037cc5	e78da0037cc5efcf	ported	input/gameaction.h:TGameActionStashStowStack::setAmount
 sub_e7969fddc2df	e7969fddc2df8893	ported	sound/activesoundplayer.cpp:TActiveSoundPlayer::lastFadingSoundId
 sub_e79de1f3be22	e79de1f3be2232d0	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::updateFeaturedOffers
 sub_e7a45765bec3	e7a45765bec3b833	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::setWorldRegionFilter
@@ -29547,7 +29547,7 @@ sub_e8ee8e636208	e8ee8e6362081fea	ported	client/gameclientbase.cpp:TGameClientBa
 sub_e9071ee6211d	e9071ee6211dd089	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isObject	test=tests/client/jsonvalidator_test.cpp
 sub_e9076c3bb0c4	e9076c3bb0c47205	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeFilter::accepts
 sub_e9095805cf49	e9095805cf49466d	skip	dead: coordinate-in-set predicate (builds a TWorldMapCoordinate and looks it up); no call, jump or address reference in the whole disassembly and no data fixup pointing at it (checked xref index + rebase fixups)
-sub_e909cabb6414	e909cabb64143302	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_e909cabb6414	e909cabb64143302	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onShowContextMenu
 sub_e909fa71c78e	e909fa71c78e1012	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::addVips
 sub_e91055f2d2d3	e91055f2d2d39985	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_e918bda31d7b	e918bda31d7b834a	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
@@ -29604,7 +29604,7 @@ sub_e9eef1c49626	e9eef1c496269f68	skip	library: Abseil runtime internals (static
 sub_e9f0e3879725	e9f0e3879725aa67	skip	library: libc++ std::async / std::future / std::thread internals for the monitor query
 sub_ea027c6c9fcc	ea027c6c9fcc1119	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_ea0527de6b88	ea0527de6b889109	skip	library: std container template instance
-sub_ea0b38ab2d6e	ea0b38ab2d6ee88d	todo	TActionButtonController setter of the shown object's appearance instance (+0xb0, emits appearanceChanged) (gwA: actionbuttoncontroller.*); qtclient keeps a TObjectAppearanceInstanceTypeID, no instance object
+sub_ea0b38ab2d6e	ea0b38ab2d6ee88d	todo	TActionButtonController setter of the object's shared_ptr<TAppearanceInstance> (+0xb0): null -> take it; else only when the new instance has the same type (sub_cde4ee949282) and is another object -> take it; then appearanceChanged. Caller: TActionBarController::onEnableConditionsChanged, when the counted amount differs from the instance's, makes an instance with the new count (sub_5067ee7f3830) and sets it. qtclient keeps a TObjectAppearanceInstanceTypeID + m_objectCount (setObjectCount, sub_ab41e545f87c) instead of an instance object; port = the button holds the appearance instance (factory from the session) and objectID/tier/liquid/count read from it
 sub_ea0f87e578c6	ea0f87e578c6f88d	ported	sound/soundcontrollerambiencestream.cpp:TSoundControllerAmbienceStream::isStreamPlaying
 sub_ea103faf5334	ea103faf533428a7	ported	input/actionbuttongameactionhandler.cpp:TActionButtonGameActionHandler::actionToExecute
 sub_ea1125831f21	ea1125831f21e2c6	skip	generated: compiler-generated destructor pair
@@ -29782,7 +29782,7 @@ sub_ebc37ec640f4#9	ebc37ec640f415e0	skip	library: statically linked SFML audio /
 sub_ebc68f957b28	ebc68f957b288490	ported	shared/src/crashreportsender.cpp:TCrashReportSender::minidumpPath
 sub_ebc68f957b28#10	ebc68f957b288490	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_ebc68f957b28#15	ebc68f957b288490	inlined	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::updateSelectedPerk
-sub_ebc68f957b28#3	ebc68f957b288490	todo	misattributed (catalog GUESS by address): helpers of appearances::TAppearanceInstanceGenericStorage / qmlcomponents::TAppearanceInstanceRendererBase's storage list (bool +0x68 getter/setter, member address getters +0x10/+0x20, make_shared<TAppearanceInstanceGenericStorage> appended at +0x20 from componentComplete, the v48/v49/v53 helper). Blocked on ownership: the code lives in appearances/genericstorage.* (rapp) and qmlcomponents/appearanceinstancerendererbase.* (ui), not in map's files
+sub_ebc68f957b28#3	ebc68f957b288490	ported	appearances/genericstorage.h:TAppearanceInstanceGenericStorage::appearanceInstances
 sub_ebc68f957b28#4	ebc68f957b288490	inlined	config/specialconditionsoptions.cpp:SpecialConditionsOptions::toJson
 sub_ebc68f957b28#5	ebc68f957b288490	inlined	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openOutfitDialog
 sub_ebc68f957b28#6	ebc68f957b288490	inlined	gamewindow/servermodaldialogcontroller.cpp:TServerModalDialogController::open
@@ -29867,7 +29867,7 @@ sub_ed3bbb8ae554	ed3bbb8ae55418fc	ported	gamewindow/remainingdialogs.cpp:TMainCh
 sub_ed46866a784c	ed46866a784ca0b2	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::TItemInfoDialogController
 sub_ed4ace081076	ed4ace0810763b7d	inlined	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::TManageLootContainerDialogController
 sub_ed5098406487	ed5098406487b43d	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
-sub_ed559f4efce0	ed559f4efce06270	todo	TGameClient::v13 step (read): client options 0x4a/0x3f/0x4c -> TCreature static flag setters sub_87a7ee3c8037#2/#3/#4 (adjacent statics of TCreature: #2 = mark options flag), a clientOptions-changed lambda sub_13e86149cf95 re-reading them, option 0x76 negated -> #5, root context property false, a second options lambda sub_c3d0ce2d2866. Blocked by: qtclient's mark options are set per frame by TBattleListRenderProvider/TWorldMapRenderProvider (TCreature::setMarkOptions with a struct); needs world to turn them into the four CipSoft static bools and map the option ids
+sub_ed559f4efce0	ed559f4efce06270	ported	client/gameclient.cpp:TGameClient::initializeCreatureMarkOptions
 sub_ed562f4548cd	ed562f4548cd532a	ported	gamewindow/loottrackingwidgetcontroller.cpp:TQmlTrackedItem::setItemValue
 sub_ed57d2bb48f9#2	ed57d2bb48f96bae	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_ed587ca1d6a5	ed587ca1d6a5ef73	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
@@ -30188,11 +30188,11 @@ sub_f03f392ef72d#9	f03f392ef72db357	skip	library: SFML/miniaudio library interna
 sub_f04924f2bacf	f04924f2bacfbc7a	skip	data: translation-unit static initializer: vocation names, hotkey/inbox string constants, static vectors and maps (misattributed)
 sub_f04d9163e74b	f04d9163e74b5aec	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::createTile
 sub_f05605f7669b	f05605f7669bc202	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::hasDetails1
-sub_f0563d47fcf6	f0563d47fcf63d6b	todo	misattributed: TWorldMapQuickItem::setRenderSources(render provider shared_ptr +0x40, camera viewport shared_ptr +0x70; +0x80 = both set; then QQuickItem::update). Owner world (renderer/worldmapquickitem.{h,cpp}): qtclient's item has setRenderProvider(raw provider) only and takes no camera viewport; THousesInfoDialogController::setPreviewRenderSources hands the house volume's provider through setRenderProvider meanwhile. Port: add setRenderSources(provider, camera) to the quick item and call it from setPreviewRenderSources with m_houseVolume->worldMapCameraViewport()
+sub_f0563d47fcf6	f0563d47fcf63d6b	ported	renderer/worldmapquickitem.cpp:TWorldMapQuickItem::setRenderSources
 sub_f056cc75fd5e	f056cc75fd5e550d	skip	library: miniaudio library
 sub_f06120adf33e#11	f06120adf33ef220	skip	library: libc++ std::deque<TTrackedItem> rotate, add-capacity, split-buffer, erase range and move helpers (read: 0x1000 blocks, 0x80 per block)
 sub_f068a925c377	f068a925c377f833	ported	creatures/battlelistrenderprovider.cpp:TBattleListDrawCommand::setFiendish
-sub_f071ad3c482c	f071ad3c482c6743	todo	TSidebarWidgetsManager: bring the number of open widgets of one widget type (std::map<int, count> at +0x98) to N, removing (sub_b3a2f6e3e66f) or adding one at a time and emitting the change; callers closeAll, restoreSidebarConfigurationFromOptions and the TSidebarManager ctor
+sub_f071ad3c482c	f071ad3c482c6743	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::setSidebarCount
 sub_f07668f86246	f07668f862462072	ported	gamewindow/marketcontroller.cpp:TMarketController::setIndexOfSelectedTier
 sub_f07c9f79a1bc	f07c9f79a1bc7114	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::dataActualisationText
 sub_f07e4ec23f0e	f07e4ec23f0e99eb	tested	config/tibiaconfig.cpp:TTibiaConfig::clientSettingString	test=tests/client/tibiaconfig_test.cpp
@@ -30254,7 +30254,7 @@ sub_f1356202f211#5	f1356202f2111df6	skip	library: statically linked SFML audio /
 sub_f1356202f211#6	f1356202f2111df6	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_f1356202f211#7	f1356202f2111df6	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_f13601f281e5	f13601f281e57867	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_f138dedd9080	f138dedd90808837	todo	misattributed (catalog GUESS by address): helpers of appearances::TAppearanceInstanceGenericStorage / qmlcomponents::TAppearanceInstanceRendererBase's storage list (bool +0x68 getter/setter, member address getters +0x10/+0x20, make_shared<TAppearanceInstanceGenericStorage> appended at +0x20 from componentComplete, the v48/v49/v53 helper). Blocked on ownership: the code lives in appearances/genericstorage.* (rapp) and qmlcomponents/appearanceinstancerendererbase.* (ui), not in map's files
+sub_f138dedd9080	f138dedd90808837	ported	appearances/genericstorage.cpp:TAppearanceInstanceGenericStorage::TAppearanceInstanceGenericStorage
 sub_f13ada1e18f2	f13ada1e18f2fe33	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
 sub_f13ada1e18f2#2	f13ada1e18f2fe33	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::onPlayerLevelUp
 sub_f13c1b629d13	f13c1b629d135b79	ported	config/optionsarchive.cpp:optionsarchive::collect
@@ -30430,7 +30430,7 @@ sub_f251271c1ca2	f251271c1ca219ba	skip	library: protobuf runtime: ExtensionSet m
 sub_f2536589fcb3	f2536589fcb37d09	skip	data: translation-unit static initializer (misattributed)
 sub_f260cd441257	f260cd441257a115	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_f26499bbd99b	f26499bbd99be75c	skip	library: std::vector shrink_to_fit
-sub_f26e3ce7ca41	f26e3ce7ca417214	todo	context-menu slot lambda of gamewindow::TAnalyticsSelectorWidgetController (reads the analyser selection through the game session and sets an option on it); belongs to that controller
+sub_f26e3ce7ca41	f26e3ce7ca417214	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::onShowContextMenu
 sub_f275f94a3de0	f275f94a3de0dfdb	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setIsEnabled
 sub_f2795772842c	f2795772842cb752	skip	dead: never runs: no call, jump, lea or pointer fixup in the client binary references it (full objdump -d of the pinned client, index/fixups.txt, vtables and corpus call lists checked; entry follows a ret/jmp/noreturn call)
 sub_f27c0e21de88	f27c0e21de88ff51	ported	client/gameapplication.cpp:TGameApplication::setCrashReportLoginHost
@@ -30818,7 +30818,7 @@ sub_f81c54596d96	f81c54596d96e154	skip	data: translation-unit static initialiser
 sub_f825371218b5	f825371218b5c3bc	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_f827c33dea91	f827c33dea918aa2	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::applySelectedWorld
 sub_f831b5613ded	f831b5613dedc8be	tested	tutorial/sessiondumphintsprocessor.cpp:TSessiondumpHintsProcessor::hasHintToProcess	test=tests/client/sessiondumphintcondition_test.cpp
-sub_f832024bdc12	f832024bdc120eb4	todo	gamewindow::TTaskboardDialogController::connectToGameSession (misfiled under TGameClient; TGameClient +0x638, its three pages and the session's taskboard storage). Not compared this wave (gwB owns the class); called in CipSoft's place by connectGameWindowControllersToGameSession
+sub_f832024bdc12	f832024bdc120eb4	todo	gamewindow::TTaskboardDialogController::connectToGameSession (misfiled under TGameClient; base v14 close, connections dropped, session kept, session v0x138 storage, three connections, the three pages' setters). gw's class: requested (wave 18 rclient R7)
 sub_f83a66a8ac1b	f83a66a8ac1b9ebb	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)
 sub_f83a7adceddc	f83a7adceddc406b	skip	generated: moc-generated signal emitter
 sub_f83a7adceddc#2	f83a7adceddc406b	skip	generated: moc signal emitters (newAssetDataToLoad, minimapMarkersChanged): QMetaObject::activate only
@@ -30996,7 +30996,7 @@ sub_fa30b4979588	fa30b4979588b18e	inlined	gamewindow/vipwidgetcontroller.cpp:TVi
 sub_fa3385781152	fa33857811520af7	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_fa3471af0fd9	fa3471af0fd9c1b6	skip	library: libc++ std::__sort3 instantiation: orders three 56-byte entries by the int at +0x30 through the swap helper; called only by the skipped std::sort instantiations, read
 sub_fa36903027e4	fa36903027e416e4	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::setImbuementFilter
-sub_fa3b04c25048	fa3b04c250482100	todo	slot lambda of gamewindow::TDamageInputWidgetController / TImpactWidgetController (context-menu entries: reset, target selection, option toggles on the analyser); belongs to that controller
+sub_fa3b04c25048	fa3b04c250482100	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::addGraphEntry
 sub_fa3b2df9d61c	fa3b2df9d61c5a72	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::queryMonitors
 sub_fa3fec4e9945	fa3fec4e99453e0c	ported	authentication/authenticationandencryptioninfo.cpp:TAuthenticationAndEncryptionInfo::TAuthenticationAndEncryptionInfo
 sub_fa441d03eb86	fa441d03eb86af0d	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onCharacterNameChecked
@@ -31160,7 +31160,7 @@ sub_fc74b84ae942#4	fc74b84ae9425a5d	skip	generated: moc property getter, provide
 sub_fc74c759f9ec	fc74c759f9ec5cfb	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::accumulatedXpString
 sub_fc7575933c6d	fc7575933c6d2d1d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::isPremium
 sub_fc7bcd50ad8f	fc7bcd50ad8f4675	skip	library: libc++ std::deque<TTrackedItem> rotate, add-capacity, split-buffer, erase range and move helpers (read: 0x1000 blocks, 0x80 per block)
-sub_fc80dd3e242d	fc80dd3e242d53ac	todo	calls QSortFilterProxyModel::invalidate on its argument: a refresh of an imbuing proxy model (next to TImbuedObjectsModel); belongs to that proxy
+sub_fc80dd3e242d	fc80dd3e242d53ac	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuedObjectsSortFilterProxyModel::onOptionsChanged
 sub_fc81e2d5ff7f	fc81e2d5ff7ff7a6	skip	library: libc++ std::vector copy construction (0x60-byte elements)
 sub_fc83955ea2ea	fc83955ea2eaaaae	skip	generated: moc-generated signal emitter (QMetaObject::activate: gameLoginErrorMessage / gameLoginWaitMessage)
 sub_fc8b14890b08#2	fc8b14890b08fb2c	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
@@ -31210,7 +31210,7 @@ sub_fd7fb492e147	fd7fb492e1476c35	ported	game/passiveabilityinfostorage.cpp:TIte
 sub_fd875f4626c1	fd875f4626c19351	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_fd8a45b3849d	fd8a45b3849d5b3c	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)
 sub_fd8a45b3849d#2	fd8a45b3849d5b3c	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_fd8cf3763d2b	fd8cf3763d2b2d60	todo	TKillTrackerWidgetController ctor (gwA: gamewindow/killtrackerwidgetcontroller.*); same redesign as sub_6252aa6f8e99 (host TKillTrackerWidgetManager)
+sub_fd8cf3763d2b	fd8cf3763d2b2d60	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::TKillTrackerWidgetController
 sub_fd8ef1a53649	fd8ef1a536494916	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::connectToGameSession
 sub_fd91a632265e	fd91a632265e81fa	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyObject
 sub_fd91ead0bdc8	fd91ead0bdc8c31d	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setNumber
@@ -31297,7 +31297,7 @@ sub_ff079e3f148d	ff079e3f148dc9f0	tested	shared/src/crashhandler.cpp:TCrashHandl
 sub_ff13e0151443	ff13e0151443361f	skip	library: libc++ std::map instantiation: tree destroy, find-or-insert, erase (read)
 sub_ff144ff8f6b6	ff144ff8f6b69c36	inlined	chat/chatchannel.cpp:TChatChannelIdentifier::sameChannel
 sub_ff198b033e35	ff198b033e35dd95	inlined	protocol::TProtobufClientMessageTranslator::v3
-sub_ff19f153cbde	ff19f153cbde5638	todo	misattributed: TMarketCoinTransactionDetailsDialogController set details (gw2, gamewindow/marketcointransactiondetailsdialogcontroller.* or market/). Blocked on: gw2's file (qtclient's setTransactionDetails converts itself)
+sub_ff19f153cbde	ff19f153cbde5638	ported	gamewindow/marketcointransactiondetailsdialogcontroller.cpp:TMarketCoinTransactionDetailsDialogController::setTransactionDetails
 sub_ff352d90224f	ff352d90224fba4d	inlined	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::lessThan
 sub_ff3fa4480799	ff3fa4480799f203	ported	worldmap/worldmaptutorialmarkeroverlaycontroller.cpp:TWorldMapTutorialMarkerOverlayController::TWorldMapTutorialMarkerOverlayController
 sub_ff3fa4480799#2	ff3fa4480799f203	ported	worldmap/worldmaptutorialmarkeroverlaycontroller.cpp:TWorldMapTutorialMarkerOverlayController::TWorldMapTutorialMarkerOverlayController
@@ -31326,7 +31326,7 @@ sub_ffa5a8fbf471#3	ffa5a8fbf471c931	ported	sprites/imageresourcespriteidentifier
 sub_ffb3972cef69	ffb3972cef69e6f1	inlined	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onMonsterRaceDetailsChanged
 sub_ffbacdf62121	ffbacdf6212122f7	ported	renderer/spritetextureprovider.cpp:highlightStrength
 sub_ffbacdf62121#2	ffbacdf6212122f7	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
-sub_ffbf5cd30857	ffbf5cd30857d5d0	todo	TActionButtonController: follows the current slot chain (+0x158/+0x160, sub_3c838f63a14e) to the shown button and calls the bar's (+0x10) vslot 200 with its id (+0x90). Lands with the slot structure of gwA's action buttons (gwB requests R5)
+sub_ffbf5cd30857	ffbf5cd30857d5d0	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::hasHighlight
 sub_ffc0b8305f05	ffc0b8305f05b773	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_ffc395dee2f5	ffc395dee2f5073d	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::TWorldmapHighlightBaseplateSpriteInfo
 sub_ffc395dee2f5#2	ffc395dee2f5073d	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::TWorldmapHighlightBaseplateSpriteInfo
@@ -31656,7 +31656,7 @@ worldmap::TWorldMapPicker::v6	0b3e5d99e51428f6	ported	worldmap/worldmappicker.cp
 worldmap::TWorldMapPicker::v7	2e25cfc4f85eb0b5	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::creatureAt
 worldmap::TWorldMapRenderProvider::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 worldmap::TWorldMapRenderProvider::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
-worldmap::TWorldMapRenderProvider::v10	4259c5a44587663c	todo	object path ported as TWorldMapRenderProvider::addRenderInfos (objects via TObjectAppearanceInstance::appendRenderInfos, the show-off socket included: per render info with a sprite: counter of the info type, highlight unless creature mark/baseplate, light by objectShines(info type), occluder when type isOpaque and draw offset 0, type set); the mouse-target test is host-equivalent (field, stack position, type id instead of the instance pointer +0xe0). Left: the creature branch (placeholder render infos, creature light with the dim minimum, outfit/mount types and lights). Blocked: TCreature animates through its own host animators (m_outfitWalkAnimator/IdleAnimator), not the outfit instance's idle/moving sequences that TCreaturePlaceholderAppearanceInstance::appendRenderInfos picks the sprites from, so drawing creatures from placeholder infos freezes them; needs the outfit sequences animated (moving sequence with TMovingOutfitAnimator, now a TAnimator) and TCreature's animators removed (see wave17 world notes, Redesign needed: creature animation)
+worldmap::TWorldMapRenderProvider::v10	4259c5a44587663c	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::addRenderInfos
 worldmap::TWorldMapRenderProvider::v11	a1c3c8ec785f5012	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::addMissiles
 worldmap::TWorldMapRenderProvider::v12	af0f084c0e5aea75	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
 worldmap::TWorldMapRenderProvider::v13	8500c42dd63a1a7a	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects

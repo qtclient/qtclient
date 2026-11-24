@@ -72,6 +72,12 @@ TMessageDialogController::TMessageDialogController(QQmlEngine* engine, QQuickIte
 {
 }
 
+void TMessageDialogController::setMessageDialogTextFormat(EMessageDialogTextFormat format)
+{
+    m_messageDialogTextFormat = format;
+    Q_EMIT messageDialogTextFormatChanged();
+}
+
 void TMessageDialogController::setYesNoButtons()
 {
     qDeleteAll(m_buttons);

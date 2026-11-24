@@ -1,5 +1,6 @@
 #include "killtrackerwidgetcontroller.h"
 
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
@@ -96,22 +97,11 @@ void TTaskMonsterModel::setEntries(std::vector<Entry> entries)
     mergeSortedItems(m_entries, std::move(entries), less, sameKey, equal);
 }
 
-TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                           QObject* parent)
+TKillTrackerWidgetController::TKillTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
 {
     m_bountyTasksModel = new TTaskMonsterModel(this);
     m_weeklyTasksModel = new TTaskMonsterModel(this);
-    for (prey::TPreyData* data : m_storage->slots()) {
-        auto* info = new TPreyRenderInfo(data, this);
-        connect(info, &TPreyRenderInfo::publishGameAction, this, &TKillTrackerWidgetController::publishGameAction);
-        m_preyList.append(info);
-    }
-    Q_EMIT preyListChanged();
-    connect(m_storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TKillTrackerWidgetController::bonusRerollPossibleChanged);
-    connect(m_storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TKillTrackerWidgetController::lockPreyPossibleChanged);
-
     widget()->createItem(QStringLiteral("prey/KillTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TKillTrackerWidgetController::onWidgetQuickItemDestroyed);
@@ -163,21 +153,52 @@ TKillTrackerWidgetController::~TKillTrackerWidgetController() { clearPreyList();
 
 void TKillTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    clearPreyList();
     m_gameSessionConnections.disconnectAll();
-    auto* session = dynamic_cast<game::TGameSessionBase*>(GameSession.get());
+    m_storage.reset();
+    m_bountyTasksStorage.reset();
+    m_weeklyTasksStorage.reset();
+    m_options = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
         return;
-    // Task board storages → kill-tracker bounty/weekly rows.
-    m_gameSessionConnections.add(connect(session->taskboardBountyTasksStorage().get(),
-                                         &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
-                                         [this](const taskboard::TBountyTaskData& data) { applyBountyMonsters(data.tasks); }));
-    m_gameSessionConnections.add(connect(session->taskboardWeeklyTasksStorage().get(),
-                                         &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
-                                         [this](const taskboard::TWeeklyTaskData& data) {
-                                             m_weeklyActive = taskboardWeeklyActive(data);
-                                             m_pendingWeekly = taskboardWeeklyMonsterRows(data);
-                                             weeklyTaskDataChanged();
-                                         }));
+    // One render info per prey slot.
+    m_storage = session->preyStorage();
+    if (m_storage) {
+        for (prey::TPreyData* data : m_storage->slots()) {
+            auto* info = new TPreyRenderInfo(data, this);
+            connect(info, &TPreyRenderInfo::publishGameAction, this, &TKillTrackerWidgetController::publishGameAction);
+            m_preyList.append(info);
+        }
+        Q_EMIT preyListChanged();
+        m_gameSessionConnections.add(connect(m_storage.get(), &prey::TPreyStorage::bonusRerollPossibleChanged, this,
+                                             &TKillTrackerWidgetController::bonusRerollPossibleChanged));
+        m_gameSessionConnections.add(connect(m_storage.get(), &prey::TPreyStorage::choosePreyPossibleChanged, this,
+                                             &TKillTrackerWidgetController::lockPreyPossibleChanged));
+        Q_EMIT bonusRerollPossibleChanged();
+        Q_EMIT lockPreyPossibleChanged();
+    }
+    // The bounty and weekly task lists.
+    m_bountyTasksStorage = session->taskboardBountyTasksStorage();
+    if (m_bountyTasksStorage) {
+        m_gameSessionConnections.add(connect(m_bountyTasksStorage.get(), &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                             [this](const taskboard::TBountyTaskData& data) { applyBountyMonsters(data.tasks); }));
+        applyBountyMonsters(m_bountyTasksStorage->bountyTaskData().tasks);
+    }
+    m_weeklyTasksStorage = session->taskboardWeeklyTasksStorage();
+    if (m_weeklyTasksStorage) {
+        m_gameSessionConnections.add(connect(m_weeklyTasksStorage.get(), &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged,
+                                             this, &TKillTrackerWidgetController::weeklyTaskDataChanged));
+        weeklyTaskDataChanged();
+    }
+    // The widget options.
+    config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+    m_options = configuration ? configuration->sidebarOptions() : nullptr;
+    if (m_options)
+        m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::killTrackerWidgetOptionsChanged, this,
+                                             &TKillTrackerWidgetController::onWidgetOptionsChanged));
+    onWidgetOptionsChanged();
 }
 
 void TKillTrackerWidgetController::clearPreyList()
@@ -187,11 +208,18 @@ void TKillTrackerWidgetController::clearPreyList()
     qDeleteAll(old);
 }
 
-void TKillTrackerWidgetController::weeklyTaskDataChanged() { applyWeeklyMonsters(m_pendingWeekly); }
+void TKillTrackerWidgetController::weeklyTaskDataChanged()
+{
+    if (!m_weeklyTasksStorage)
+        return;
+    const taskboard::TWeeklyTaskData& data = m_weeklyTasksStorage->weeklyTaskData();
+    m_weeklyActive = taskboardWeeklyActive(data);
+    applyWeeklyMonsters(taskboardWeeklyMonsterRows(data));
+}
 
-bool TKillTrackerWidgetController::bonusRerollpossible() const { return m_storage->bonusRerollPossible(); }
+bool TKillTrackerWidgetController::bonusRerollpossible() const { return m_storage && m_storage->bonusRerollPossible(); }
 
-bool TKillTrackerWidgetController::lockPreyPossible() const { return m_storage->choosePreyPossible(); }
+bool TKillTrackerWidgetController::lockPreyPossible() const { return m_storage && m_storage->choosePreyPossible(); }
 
 QList<QObject*> TKillTrackerWidgetController::preyList() const { return m_preyList; }
 
@@ -216,12 +244,6 @@ void TKillTrackerWidgetController::setCursorToResizeVertical(const bool Enabled)
 }
 void TKillTrackerWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TKillTrackerWidgetController::onWidgetQuickItemDestroyed() {}
-
-void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
-{
-    m_options = options;
-    onWidgetOptionsChanged();
-}
 
 void TKillTrackerWidgetController::requestOpenPreyDialog() { Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_PREY_DIALOG)); }
 
@@ -254,58 +276,6 @@ void TKillTrackerWidgetController::onWidgetOptionsChanged()
     if (json.contains(QLatin1String("contentHeight")))
         widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
-}
-
-TKillTrackerWidgetManager::TKillTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
-    : QObject(parent)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
-{}
-
-TKillTrackerWidgetManager::~TKillTrackerWidgetManager() { delete m_controller; }
-
-void TKillTrackerWidgetManager::setPreyStorage(prey::TPreyStorage* storage)
-{
-    if (storage == m_storage)
-        return;
-    // The widget shows the slots of the storage it was made with.
-    close();
-    m_storage = storage;
-}
-
-TSidebarWidget* TKillTrackerWidgetManager::open(config::TSidebarOptions* options)
-{
-    if (!m_storage)
-        return nullptr;
-    if (!m_controller) {
-        m_controller = new TKillTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
-        connect(m_controller, &TKillTrackerWidgetController::publishGameAction, this, &TKillTrackerWidgetManager::publishGameAction);
-        m_controller->setSidebarOptions(options);
-        m_controller->connectToGameSession(m_gameSession);
-    }
-    return m_controller->widget();
-}
-
-void TKillTrackerWidgetManager::close(const bool saveWidgetOptions)
-{
-    if (!m_controller)
-        return;
-    if (saveWidgetOptions)
-        m_controller->saveWidgetOptions();
-    m_controller->deleteLater();
-    m_controller = nullptr;
-}
-
-TSidebarWidget* TKillTrackerWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
-
-void TKillTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    m_gameSession = GameSession;
-    // The widget shows the session's prey slots.
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    setPreyStorage(session ? session->preyStorage().get() : nullptr);
-    if (m_controller)
-        m_controller->connectToGameSession(m_gameSession);
 }
 
 }

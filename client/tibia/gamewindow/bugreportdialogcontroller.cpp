@@ -160,9 +160,14 @@ void TBugReportDialogController::requestSendBugReport(const int ClassificationIn
             : Other;
         const std::string comment = Comment.toStdString();
         switch (category) {
-        case Map:
-            tibia::game::reportBugCip(Map, comment, {}, {}, m_position);
+        case Map: {
+            // A map report without a field reports where the player stands.
+            const Position position = m_position.isValid() ? m_position
+                : tibia::game::hasLocalPlayer()            ? tibia::game::localPlayerPosition()
+                                                           : Position();
+            tibia::game::reportBugCip(Map, comment, {}, {}, position);
             break;
+        }
         case Typo:
             tibia::game::reportBugCip(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
             break;

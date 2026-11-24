@@ -48,8 +48,14 @@ public:
     static qint64 frameMillis();
     /// Holds the frame clock at `micros` (nowMicros scale).
     static void setFrameMicros(qint64 micros);
-    /// Moves the frame clock to real time.
+    /// Moves the frame clock to the frame source's now.
     static void updateFrame();
+    /// Host: the clock the frame clock follows (a replay's clock while it
+    /// plays; null: the process clock). Setting it moves the frame clock there.
+    static void setFrameSource(std::shared_ptr<IClockService> source);
+    static const std::shared_ptr<IClockService>& frameSource();
+    /// The frame source's nowMicros (the process clock's without a source).
+    static qint64 frameSourceMicros();
 
 private:
     QElapsedTimer m_elapsedTimer;

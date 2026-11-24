@@ -2,6 +2,7 @@
 #include "colorhelper.h"
 
 #include "chat/chatchannel.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
 #include "creatures/battlelistgameactionprovider.h"
 #include "creatures/creaturestorage.h"
@@ -29,6 +30,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
@@ -1064,10 +1066,28 @@ void TBattleListControllerStorage::removeBattleList(const uint8_t battleListId, 
     Q_EMIT battleListRemovedFromStorage();
 }
 
-void TBattleListControllerStorage::closeAll()
+void TBattleListControllerStorage::closeAll(const bool saveWidgetOptions)
 {
-    while (!m_controllers.empty())
-        removeBattleList(m_controllers.begin()->first, true);
+    if (saveWidgetOptions) {
+        for (const auto& [id, controller] : m_controllers)
+            controller->saveWidgetOptions();
+    }
+    const std::map<uint8_t, TBattleListController*> lists = std::exchange(m_controllers, {});
+    for (const auto& [id, controller] : lists) {
+        if (m_sidebars)
+            m_sidebars->removeWidget(controller->widget());
+        controller->widget()->hide();
+        controller->deleteLater();
+    }
+    m_updateTimer.stop();
+    if (m_primary) {
+        Q_EMIT widgetHidden(PrimaryWidgetType);
+        m_primary = nullptr;
+    }
+    if (m_party) {
+        Q_EMIT widgetHidden(PartyWidgetType);
+        m_party = nullptr;
+    }
 }
 
 std::vector<std::pair<int, TSidebarWidget*>> TBattleListControllerStorage::widgets() const
@@ -1100,9 +1120,21 @@ void TBattleListControllerStorage::onLoginRampUpFinished()
     m_sidebarOptions->setBattleListsOptions(lists);
 }
 
-void TBattleListControllerStorage::setGameSession(std::shared_ptr<game::IGameSession> GameSession)
+void TBattleListControllerStorage::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_gameSession = std::move(GameSession);
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    closeAll(true);
+    m_gameSession = GameSession;
+    m_loginRampUpFinished = false;
+    if (m_gameSession) {
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+        const config::TCharacterConfigurationManager* configuration = session ? session->characterConfigurationManager().get() : nullptr;
+        setSidebarOptions(configuration ? configuration->sidebarOptions() : nullptr);
+        m_gameSessionConnections.push_back(connect(m_gameSession.get(), &game::IGameSession::loginRampUpFinished, this,
+                                                   &TBattleListControllerStorage::onLoginRampUpFinished));
+    }
     for (const auto& [id, controller] : m_controllers)
         controller->connectToGameSession(m_gameSession);
 }

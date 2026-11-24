@@ -21,16 +21,8 @@ namespace tibia::renderer {
 
 namespace {
 
-struct SharedProviders {
-    QMutex mutex;
-    QHash<QQuickWindow*, TSpriteTextureProvider*> byWindow;
-};
-
-SharedProviders& sharedProviders()
-{
-    static SharedProviders state;
-    return state;
-}
+/// The game client's manager the UI renderers share providers through.
+TSpriteTextureProviderManager* g_liveManager = nullptr;
 
 bool spritesExist(const sprites::ISpriteIdentifier& identifier);
 
@@ -250,26 +242,49 @@ void TSpriteTextureProvider::onSceneGraphInvalidated()
     m_emptyTexture = {};
 }
 
-TSpriteTextureProviderManager::TSpriteTextureProviderManager(QObject* parent)
+TSpriteTextureProviderManager::TSpriteTextureProviderManager(std::shared_ptr<sprites::TSpriteResolver> spriteResolver,
+                                                             QObject* parent)
     : cip::tibia::renderer::TSpriteTextureProviderManager(parent)
+    , m_spriteResolver(std::move(spriteResolver))
 {
+    g_liveManager = this;
+}
+
+TSpriteTextureProviderManager::~TSpriteTextureProviderManager()
+{
+    if (g_liveManager == this)
+        g_liveManager = nullptr;
+    // Host: a provider still in the map belongs to a live scene graph and
+    // holds its textures; it is left to it.
 }
 
 TSpriteTextureProvider& TSpriteTextureProviderManager::sharedProvider(QQuickWindow* window)
 {
-    auto& state = sharedProviders();
-    const QMutexLocker lock(&state.mutex);
-    if (TSpriteTextureProvider* existing = state.byWindow.value(window))
+    if (g_liveManager)
+        return g_liveManager->provider(window);
+    // Host: renderers outside a game client (tools, tests) share a private
+    // manager that is never destroyed.
+    static TSpriteTextureProviderManager* const fallback = [] {
+        auto* manager = new TSpriteTextureProviderManager(nullptr);
+        g_liveManager = nullptr;
+        return manager;
+    }();
+    return fallback->provider(window);
+}
+
+TSpriteTextureProvider& TSpriteTextureProviderManager::provider(QQuickWindow* window)
+{
+    const QMutexLocker lock(&m_mutex);
+    if (TSpriteTextureProvider* existing = m_providers.value(window))
         return *existing;
     // CIP strong-map eviction assumes one caller requested every live key this frame.
     // Shared UI caches do not — disable eviction (stays WorldMap-only).
     auto* provider = new TSpriteTextureProvider(window, false);
-    state.byWindow.insert(window, provider);
+    m_providers.insert(window, provider);
     if (window) {
-        QObject::connect(window, &QQuickWindow::sceneGraphInvalidated, window, [window] {
-            auto& state = sharedProviders();
-            const QMutexLocker lock(&state.mutex);
-            delete state.byWindow.take(window);
+        QObject::connect(window, &QQuickWindow::sceneGraphInvalidated, this, [this, window] {
+            const QMutexLocker lock(&m_mutex);
+            delete m_providers.take(window);
         }, Qt::DirectConnection);
     }
     return *provider;
@@ -279,9 +294,8 @@ void TSpriteTextureProviderManager::handleGameAction(const input::IGameActionPtr
 {
     if (pGameAction->gameActionType() != input::EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE)
         return;
-    auto& state = sharedProviders();
-    const QMutexLocker lock(&state.mutex);
-    for (TSpriteTextureProvider* provider : std::as_const(state.byWindow))
+    const QMutexLocker lock(&m_mutex);
+    for (TSpriteTextureProvider* provider : std::as_const(m_providers))
         provider->handleGameAction(pGameAction);
 }
 

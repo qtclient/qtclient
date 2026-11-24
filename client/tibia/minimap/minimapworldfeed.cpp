@@ -1,7 +1,5 @@
 #include "minimapworldfeed.h"
 
-#include <tibia/game/mapsession.h>
-
 #include <algorithm>
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
@@ -40,15 +38,12 @@ void TMinimapWorldFeed::forEachKnownField(const int z, const std::function<void(
     }
 }
 
-// CIP: the world area shifted one field per floor of perspective .
+// CIP: the world storage's stored volume on floor `z` (one field per floor
+// of perspective away from its shear floor).
 QRect TMinimapWorldFeed::areaOn(const int z) const
 {
-    const tibia::game::MapPos mapCenter = tibia::game::centralPosition();
-    const Position center(mapCenter.x, mapCenter.y, static_cast<uint8_t>(mapCenter.z));
-    const tibia::game::MapAwareRange range = tibia::game::awareRange();
-    const int shift = center.z - z;
-    return QRect(center.x - range.left + shift, center.y - range.top + shift, range.horizontal(),
-                 range.vertical());
+    const tibia::worldmap::TWorldMapCuboid area = tibia::worldmap::TWorldMapStorage::ensureStorage()->storedVolume().shearedFloorArea(z);
+    return QRect(area.origin.x, area.origin.y, area.extent.width, area.extent.height);
 }
 
 }

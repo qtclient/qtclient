@@ -171,7 +171,8 @@ std::shared_ptr<assets::TAssetFileSystemHelper> TGameClientBase::createAssetFile
     const QDir assetsDirectory(QString::fromStdString(tibia::files::data().getRealPath(assetsRoot)));
     const std::string soundsPath = tibia::files::data().getRealPath("sounds");
     const QDir soundsDirectory = soundsPath.empty() ? assetsDirectory : QDir(QString::fromStdString(soundsPath));
-    return std::make_shared<assets::TAssetFileSystemHelper>(assetsDirectory, soundsDirectory);
+    tibiaFileSystemHelper()->setAssetsDirectories(assetsDirectory, soundsDirectory);
+    return std::make_shared<assets::TAssetFileSystemHelper>(tibiaFileSystemHelper());
 }
 
 void TGameClientBase::initializeStorages()
@@ -365,9 +366,7 @@ void TGameClientBase::initializeAssets()
 
 void TGameClientBase::initializeSpriteTextureProviderManager()
 {
-    // Host: qtclient's providers live in a process-wide registry, so the
-    // manager does not take the sprite resolver.
-    m_pSpriteTextureProviderManager = std::make_shared<renderer::TSpriteTextureProviderManager>();
+    m_pSpriteTextureProviderManager = std::make_shared<renderer::TSpriteTextureProviderManager>(m_pSpriteResolver);
     m_pEngine->rootContext()->setContextProperty(QStringLiteral("SpriteTextureProviderManager"),
                                                  m_pSpriteTextureProviderManager.get());
 }

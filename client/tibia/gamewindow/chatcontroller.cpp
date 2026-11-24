@@ -1986,7 +1986,6 @@ void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_
     m_gameSessionConnections.clear();
     m_tabs.setChannelStorage(nullptr);
     m_tabs.setMakeNewTabsCurrent(false);
-    m_pChatModeManager->onGameSessionDisconnected();
     m_channelListRequested = false;
     m_actionProvider.reset();
     m_chatProtocolMessageHandler.reset();

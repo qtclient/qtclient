@@ -21,7 +21,7 @@ namespace tibia::gamewindow {
 
 namespace {
 
-TDialogStackController* g_instance = nullptr;
+std::shared_ptr<TDialogStackController> g_instance;
 
 constexpr auto ModuleUrl = "qrc:/qt/qml/qmlcomponents/qml/";
 
@@ -72,24 +72,29 @@ void deleteItem(QPointer<QQuickItem>& item)
 
 }
 
-TDialogStackController::TDialogStackController(QQmlEngine* engine, QQuickItem* dialogPlaceholder, QObject* parent)
+TDialogStackController::TDialogStackController(std::shared_ptr<input::TEventFilterManager> EventFilterManager, QObject* parent)
     : cip::tibia::gamewindow::TDialogStackController(parent)
-    , m_engine(engine)
-    , m_placeholder(dialogPlaceholder)
+    , m_pEventFilterManager(std::move(EventFilterManager))
 {
     ownProductSurface(this);
-    g_instance = this;
 }
 
-TDialogStackController::~TDialogStackController()
+TDialogStackController::~TDialogStackController() = default;
+
+void TDialogStackController::setInstance(std::shared_ptr<TDialogStackController> DialogStackController)
 {
-    if (g_instance == this)
-        g_instance = nullptr;
+    g_instance = std::move(DialogStackController);
 }
 
 TDialogStackController* TDialogStackController::instance()
 {
-    return g_instance;
+    return g_instance.get();
+}
+
+void TDialogStackController::setDialogPlaceholder(QQmlEngine* engine, QQuickItem* dialogPlaceholder)
+{
+    m_engine = engine;
+    m_placeholder = dialogPlaceholder;
 }
 
 void TDialogStackController::show(TDialog* dialog)
@@ -129,14 +134,14 @@ bool TDialogStackController::hasDialogWithoutPersonalMouseShield() const
 void TDialogStackController::dialogTookFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        if (input::TEventFilterManager* eventFilters = m_pEventFilterManager.get())
             eventFilters->requestFocus();
 }
 
 void TDialogStackController::dialogReleasedFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        if (input::TEventFilterManager* eventFilters = m_pEventFilterManager.get())
             eventFilters->releaseFocus();
 }
 
@@ -162,7 +167,7 @@ void TDialogStackController::update()
 {
     // A top dialog without a personal mouse shield blocks the keyboard; an
     // empty stack or a shielded top dialog unblocks it.
-    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance()) {
+    if (input::TEventFilterManager* eventFilters = m_pEventFilterManager.get()) {
         if (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield())
             eventFilters->block();
         else

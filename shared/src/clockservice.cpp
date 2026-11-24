@@ -3,6 +3,7 @@
 #include <QDateTime>
 
 #include <atomic>
+#include <utility>
 
 namespace tibia::shared {
 
@@ -50,6 +51,12 @@ std::atomic<qint64>& frameClock()
     return micros;
 }
 
+std::shared_ptr<IClockService>& frameSourceClock()
+{
+    static std::shared_ptr<IClockService> source;
+    return source;
+}
+
 }
 
 const std::shared_ptr<TClockService>& TClockService::process()
@@ -80,7 +87,24 @@ void TClockService::setFrameMicros(const qint64 micros)
 
 void TClockService::updateFrame()
 {
-    setFrameMicros(process()->nowMicros());
+    setFrameMicros(frameSourceMicros());
+}
+
+void TClockService::setFrameSource(std::shared_ptr<IClockService> source)
+{
+    frameSourceClock() = std::move(source);
+    updateFrame();
+}
+
+const std::shared_ptr<IClockService>& TClockService::frameSource()
+{
+    return frameSourceClock();
+}
+
+qint64 TClockService::frameSourceMicros()
+{
+    const std::shared_ptr<IClockService>& source = frameSourceClock();
+    return source ? source->nowMicros() : process()->nowMicros();
 }
 
 }

@@ -2,6 +2,7 @@
 #include "colorhelper.h"
 #include "jsonvalidator.h"
 
+#include "appearances/outfitcolorset.h"
 #include "qmlcomponents/worldmapqmltypes.h"
 
 #ifdef TIBIA_WITH_GAMECORE
@@ -149,9 +150,21 @@ uint32_t TOutfitColorQmlType::colorIndices() const
         | uint32_t(uint8_t(m_detailColorIndex)) << 24;
 }
 
+namespace {
+
+/// The four palette indices of a colour object as a colour set (each index
+/// cut to its byte).
+appearances::TOutfitColorSet colorSetOf(const cip::tibia::qmlcomponents::TOutfitColorQmlType& colors)
+{
+    return { static_cast<uint8_t>(colors.headColorIndex()), static_cast<uint8_t>(colors.torsoColorIndex()),
+             static_cast<uint8_t>(colors.legsColorIndex()), static_cast<uint8_t>(colors.detailColorIndex()) };
+}
+
+}
+
 bool operator!=(const TOutfitColorQmlType& a, const TOutfitColorQmlType& b)
 {
-    return a.colorIndices() != b.colorIndices();
+    return colorSetOf(a) != colorSetOf(b);
 }
 
 QJsonObject TOutfitColorQmlType::toJsonObject()
@@ -328,8 +341,7 @@ bool TOutfitPresetQmlType::isEqual(cip::tibia::qmlcomponents::TOutfitPresetQmlTy
     const auto sameColor = [](cip::tibia::qmlcomponents::TOutfitColorQmlType* a, cip::tibia::qmlcomponents::TOutfitColorQmlType* b) {
         if (!a || !b)
             return !a && !b;
-        return a->headColorIndex() == b->headColorIndex() && a->torsoColorIndex() == b->torsoColorIndex()
-            && a->legsColorIndex() == b->legsColorIndex() && a->detailColorIndex() == b->detailColorIndex();
+        return colorSetOf(*a) == colorSetOf(*b);
     };
     return m_name == pOther->name() && sameColor(m_outfitColor, pOther->outfitColor()) && sameColor(m_mountColor, pOther->mountColor())
         && m_outfitID == pOther->outfitID() && m_mountID == pOther->mountID() && m_summonID == pOther->summonID()

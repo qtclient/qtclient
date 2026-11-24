@@ -34,6 +34,8 @@ public:
     double clientSettingReal(const QString& Group, const QString& Key, double DefaultValue) const;
     /// A text value of `[Group] Key`, `DefaultValue` when unset.
     QString clientSettingString(const QString& Group, const QString& Key, const QString& DefaultValue) const;
+    /// CIP: a boolean value of `[Group] Key`, `DefaultValue` when unset.
+    bool clientSettingBool(const QString& Group, const QString& Key, bool DefaultValue) const;
     /// As clientSetting, held at `Maximum`: a larger value is written back as `Maximum`.
     qint64 clientSettingAtMost(const QString& Group, const QString& Key, qint64 DefaultValue, qint64 Maximum) const;
     /// As clientSetting, held at `Minimum`: a smaller value is written back as `Minimum`.
@@ -43,6 +45,12 @@ public:
     QUrl readUrl(const QString& Key, const QUrl& DefaultValue) const;
     /// CIP: [URLS] loginWebService (empty when unset).
     QUrl loginWebServiceUrl() const;
+    /// CIP: [URLS] clientWebService (empty when unset): the client services.
+    QUrl clientWebServiceUrl() const;
+    /// CIP: [URLS] accountCreationClientServices (empty when unset).
+    QUrl accountCreationClientServicesUrl() const;
+    /// CIP: [URLS] hintsUrl (empty when unset).
+    QUrl hintsUrl() const;
 
     std::shared_ptr<QSettings> settings() const { return m_pSettings; }
 

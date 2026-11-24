@@ -75,6 +75,9 @@ public:
 
     /// The skip-to target, INT64_MAX without one.
     int64_t skipToTimestamp() const;
+    /// The dump's metadata arrived and its processing started (the progress
+    /// clock runs on the dump's time from then on).
+    bool isStarted() const { return m_started; }
 
 Q_SIGNALS:
     void publishGameAction(tibia::input::IGameActionPtr pGameAction) const;

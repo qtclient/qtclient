@@ -129,7 +129,7 @@ void TActionButtonController::reset()
         Q_EMIT changed();
     }
     m_objectCount = 0;
-    m_showsCooldown = false;
+    m_cooldownEnd = 0;
     for (TActionButtonController* child : m_children)
         child->reset();
     Q_EMIT changed();
@@ -433,25 +433,6 @@ void TActionButtonController::setObjectIsEquiped(const bool objectIsEquiped)
     Q_EMIT changed();
 }
 
-game::TCooldown TActionButtonController::currentCooldown(const qint64 now) const
-{
-    const game::TCooldownStorage* storage = m_cooldownStorage.get();
-    if (!storage)
-        return {};
-    if (m_type == SPELL)
-        return storage->spellCooldown(uint16_t(m_spellId), now);
-    if (m_type == PASSIVEABILITY)
-        return storage->passiveCooldown(now);
-    if (m_type == OBJECT) {
-        // A rune waits for the multi-use cooldown and its spell's.
-        if (m_spellInfoStorage && m_spellInfoStorage->runeSpellOfObject(int(m_objectID)))
-            return storage->objectCooldown(uint16_t(int(m_objectID)), now);
-        if (isMultiUse(int(m_objectID)))
-            return storage->multiUseCooldown(now);
-    }
-    return {};
-}
-
 namespace {
 
 /// A slot of a multi-action button as the multi action priority solver asks
@@ -554,45 +535,91 @@ TActionButtonController* TActionButtonController::currentMultiAction() const
     return chosen ? chosen->button() : nullptr;
 }
 
-void TActionButtonController::refreshShownSlot()
+void TActionButtonController::setCooldown(const qint64 duration, const qint64 end)
 {
-    TActionButtonController* slot = currentMultiAction();
+    if (m_cooldownDuration == duration && m_cooldownEnd == end)
+        return;
+    m_cooldownDuration = duration;
+    m_cooldownEnd = end;
+}
+
+void TActionButtonController::setAnchoredCooldown(const game::TPassiveAbilityCooldown& cooldown)
+{
+    if (m_anchoredCooldown == cooldown)
+        return;
+    m_anchoredCooldown = cooldown;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setCounterCooldown(const game::TPassiveAbilityCounter& counter)
+{
+    if (m_counterCooldown == counter)
+        return;
+    m_counterCooldown = counter;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setRemainingCooldown(const qint64 remaining)
+{
+    if (remaining == m_remainingCooldown)
+        return;
+    m_remainingCooldown = remaining;
+    uint percent = 0;
+    if (m_cooldownDuration >= 1)
+        percent = uint(qint64(std::min(1.0, double(remaining) / double(m_cooldownDuration)) * 100.0));
+    setCooldownRemainingPercent(percent);
+    setCooldownText(cooldownText(remaining));
+}
+
+void TActionButtonController::setCooldownRemainingPercent(const uint percent)
+{
+    const uint steps = percent / 5 * 5;
+    if (m_cooldownRemainingPercent == steps)
+        return;
+    m_cooldownRemainingPercent = steps;
+    Q_EMIT cooldownRemainingPercentChanged();
+}
+
+void TActionButtonController::setCooldownText(const QString& text)
+{
+    if (m_cooldownText == text)
+        return;
+    m_cooldownText = text;
+    Q_EMIT cooldownTextChanged();
+}
+
+void TActionButtonController::updateCooldown(const qint64 now)
+{
+    switch (m_progressType) {
+    case COUNTER_COOLDOWN: {
+        setCooldownRemainingPercent(uint(qint64(m_counterCooldown.fraction() * 100.0)));
+        const int remaining = m_counterCooldown.remaining();
+        setCooldownText(remaining < 1 ? QString() : QStringLiteral("%1").arg(remaining));
+        break;
+    }
+    case COOLDOWN:
+        setRemainingCooldown(std::max<qint64>(0, m_cooldownEnd - now));
+        break;
+    case ANCHORED_COOLDOWN:
+        setCooldownRemainingPercent(uint(qint64(m_anchoredCooldown.fractionAt(now) * 100.0)));
+        setCooldownText(cooldownText(m_anchoredCooldown.remainingAt(now)));
+        break;
+    }
+    // A multi-action button shows the slot that would run now.
+    TActionButtonController* const slot = m_children.empty() ? nullptr : currentMultiAction();
     if (slot == m_shownSlot)
         return;
     m_shownSlot = slot;
     Q_EMIT changed();
     Q_EMIT appearanceChanged();
+    // Host: the cooldown getters read the shown slot.
     Q_EMIT cooldownRemainingPercentChanged();
     Q_EMIT cooldownTextChanged();
 }
 
-bool TActionButtonController::refreshCooldown(const qint64 now)
+bool TActionButtonController::hasHighlight() const
 {
-    bool running = false;
-    for (TActionButtonController* child : m_children)
-        running = child->refreshCooldown(now) || running;
-    if (!m_children.empty())
-        refreshShownSlot();
-
-    const game::TCooldown cooldown = currentCooldown(now);
-    const qint64 remaining = cooldown.end - now;
-    uint percent = 0;
-    QString text;
-    if (remaining > 0 && cooldown.duration > 0) {
-        const double fraction = std::min(1.0, double(remaining) / double(cooldown.duration));
-        percent = uint(std::floor(fraction * 100.0 / 5.0) * 5.0);
-        text = cooldownText(remaining);
-        running = true;
-    }
-    if (percent != m_cooldownRemainingPercent) {
-        m_cooldownRemainingPercent = percent;
-        Q_EMIT cooldownRemainingPercentChanged();
-    }
-    if (text != m_cooldownText) {
-        m_cooldownText = text;
-        Q_EMIT cooldownTextChanged();
-    }
-    return running;
+    return m_spellInfoStorage && m_spellInfoStorage->isSpellUnlocked(static_cast<uint16_t>(spellId()));
 }
 
 QString TActionButtonController::cooldownText(const qint64 remainingMs)

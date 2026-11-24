@@ -21,10 +21,9 @@ void TMarketCoinTransactionDetailsDialogController::setTransactionDetails(const 
 {
     m_details = details;
     updateChildTransactionList();
-    if (!m_transactionLoaded) {
-        m_transactionLoaded = true;
-        Q_EMIT transactionLoadedChanged();
-    }
+    Q_EMIT dataChanged();
+    m_transactionLoaded = true;
+    Q_EMIT transactionLoadedChanged();
 }
 
 void TMarketCoinTransactionDetailsDialogController::updateChildTransactionList()

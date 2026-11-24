@@ -15,11 +15,24 @@ TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::shared
 
 void TAppearanceInstanceSpriteSequence::restartAnimation(const qint64 startMs)
 {
-    // Walking frames are animated by the creature's steps (host: TCreature).
-    if (!m_spritesInfo || m_moving)
+    if (!m_spritesInfo)
         return;
-    if (const animation::TAnimationInfo* info = m_spritesInfo->animation())
+    const animation::TAnimationInfo* info = m_spritesInfo->animation();
+    if (!info)
+        return;
+    if (!m_moving) {
         m_animator = std::make_shared<animation::TAnimator>(*info, startMs);
+        return;
+    }
+    // An outfit's walking frames: the walking animator runs on across a new
+    // pattern and only takes the frame group's phase count.
+    if (auto* moving = dynamic_cast<animation::TMovingOutfitAnimator*>(m_animator.get())) {
+        moving->setDivisor(info->phaseCount());
+        return;
+    }
+    m_animator = std::make_shared<animation::TMovingOutfitAnimator>(
+        info->phaseCount(), info->loopType == animation::TAnimationInfo::ELoopType::PingPong,
+        animation::TMovingOutfitAnimator::kMinimumCycleMs, animation::TMovingOutfitAnimator::kMaximumCycleMs);
 }
 
 void TAppearanceInstanceSpriteSequence::setPattern(const TAppearancePattern& pattern, const qint64 startMs,

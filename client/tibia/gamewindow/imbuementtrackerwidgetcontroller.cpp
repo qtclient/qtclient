@@ -2,6 +2,7 @@
 
 #include "gamewindow/appearanceinstanceroledata.h"
 
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -186,11 +187,7 @@ void TImbuedObjectsSortFilterProxyModel::setShowFlags(const bool showAlmostGone,
     onOptionsChanged();
 }
 
-void TImbuedObjectsSortFilterProxyModel::onOptionsChanged()
-{
-    beginFilterChange();
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
-}
+void TImbuedObjectsSortFilterProxyModel::onOptionsChanged() { invalidate(); }
 
 bool TImbuedObjectsSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
@@ -253,21 +250,34 @@ void TImbuementTrackerWidgetController::updateWithTimestamp(const qint64 timesta
 
 TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController() { m_model->setImbuedObjects({}); }
 
-void TImbuementTrackerWidgetController::setGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+void TImbuementTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();
+    m_options = nullptr;
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_imbuementDurationsStorage = session ? session->imbuementDurationsStorage() : nullptr;
-    if (m_imbuementDurationsStorage)
-        m_sessionConnections.push_back(connect(m_imbuementDurationsStorage.get(),
-                                               &cip::tibia::imbuing::TImbuementDurationsStorage::imbuedObjectsChanged, this,
-                                               &TImbuementTrackerWidgetController::onImbuedObjectsChanged));
-    // Host: qtclient keeps the widget across sessions, so it starts from the new session's objects.
-    m_model->setImbuedObjects(m_imbuementDurationsStorage ? m_imbuementDurationsStorage->imbuedObjects()
-                                                          : std::vector<imbuing::TImbuedObjectInformation>{});
+    if (session) {
+        if (m_imbuementDurationsStorage)
+            m_sessionConnections.push_back(connect(m_imbuementDurationsStorage.get(),
+                                                   &cip::tibia::imbuing::TImbuementDurationsStorage::imbuedObjectsChanged, this,
+                                                   &TImbuementTrackerWidgetController::onImbuedObjectsChanged));
+        config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+        m_options = configuration ? configuration->sidebarOptions() : nullptr;
+        if (m_options)
+            m_sessionConnections.push_back(connect(m_options.data(), &config::TSidebarOptions::imbuementTrackerWidgetOptionsChanged, this,
+                                                   &TImbuementTrackerWidgetController::onWidgetOptionsChanged));
+        if (configuration)
+            m_sessionConnections.push_back(connect(configuration, &config::TCharacterConfigurationManager::configurationLoadedForCharacter,
+                                                   this, &TImbuementTrackerWidgetController::onWidgetOptionsChanged));
+        onWidgetOptionsChanged();
+    }
+    // The filter follows the options too.
+    if (m_options)
+        m_sessionConnections.push_back(connect(m_options.data(), &config::TSidebarOptions::imbuementTrackerWidgetOptionsChanged, m_proxy,
+                                               &TImbuedObjectsSortFilterProxyModel::onOptionsChanged));
     m_proxy->invalidate();
 }
 
@@ -307,9 +317,8 @@ void TImbuementTrackerWidgetController::toggleShowFlag(bool& flag)
     saveWidgetOptions();
 }
 
-void TImbuementTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
+void TImbuementTrackerWidgetController::onWidgetOptionsChanged()
 {
-    m_options = options;
     if (!m_options)
         return;
     const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
@@ -367,44 +376,6 @@ void TImbuementTrackerWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TImbuementTrackerWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 
-TImbuementTrackerWidgetManager::TImbuementTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                               QObject* parent)
-    : QObject(parent)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
-{}
-
-TImbuementTrackerWidgetManager::~TImbuementTrackerWidgetManager() { delete m_controller; }
-
-TSidebarWidget* TImbuementTrackerWidgetManager::open(config::TSidebarOptions* options)
-{
-    if (!m_controller) {
-        m_controller = new TImbuementTrackerWidgetController(m_gameWindowItem, m_engine);
-        m_controller->setSidebarOptions(options);
-        m_controller->setGameSession(m_gameSession);
-    }
-    return m_controller->widget();
-}
-
-void TImbuementTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    m_gameSession = GameSession;
-    if (m_controller)
-        m_controller->setGameSession(GameSession);
-}
-
-void TImbuementTrackerWidgetManager::close(const bool saveWidgetOptions)
-{
-    if (!m_controller)
-        return;
-    if (saveWidgetOptions)
-        m_controller->saveWidgetOptions();
-    m_controller->deleteLater();
-    m_controller = nullptr;
-}
-
-TSidebarWidget* TImbuementTrackerWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
 
 }

@@ -14,6 +14,7 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -24,6 +25,8 @@ namespace creatures {
 class TCreature;
 }
 namespace cyclopedia {
+
+class TCyclopediaMapStaticDataStorage;
 
 /// CIP cyclopedia::TMapScaleFactor (moc imminent-raid / centerAt scale).
 struct TMapScaleFactor
@@ -92,6 +95,12 @@ public:
 
     explicit TCyclopediaMapStorage(QObject* parent = nullptr);
     ~TCyclopediaMapStorage() override;
+
+    /// The game client's static map data while the session is the current one (null otherwise).
+    void setStaticDataStorage(std::shared_ptr<TCyclopediaMapStaticDataStorage> staticDataStorage)
+    {
+        m_staticDataStorage = std::move(staticDataStorage);
+    }
 
     // The map data message's parts.
     /// The main areas with their status and progress and the two subarea lists.
@@ -183,6 +192,8 @@ Q_SIGNALS:
     void imminentRaidAnnouncement(worldmap::TWorldMapCoordinate WorldMapCoordinate, TMapScaleFactor MapScaleFactor);
 
 private:
+    std::shared_ptr<TCyclopediaMapStaticDataStorage> m_staticDataStorage;
+
     /// The active raid pieces again from the raids.
     void rebuildActiveRaids();
     void addViewpoint(const worldmap::TWorldMapCoordinate& coordinate, int state);

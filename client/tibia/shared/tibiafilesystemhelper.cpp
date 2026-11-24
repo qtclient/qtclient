@@ -192,8 +192,21 @@ QString TTibiaFileSystemHelper::getFilePathInDirectory(const EDirectory director
     return m_fileSystemHelper->joinPaths({ path, fileName });
 }
 
-QDir TTibiaFileSystemHelper::getAssetsDirectory() const { return getDirectory(DIRECTORY_ASSETS); }
-QDir TTibiaFileSystemHelper::getSoundsDirectory() const { return getDirectory(DIRECTORY_SOUNDS); }
+QDir TTibiaFileSystemHelper::getAssetsDirectory() const
+{
+    return m_hostAssetsDirectory ? *m_hostAssetsDirectory : getDirectory(DIRECTORY_ASSETS);
+}
+
+QDir TTibiaFileSystemHelper::getSoundsDirectory() const
+{
+    return m_hostSoundsDirectory ? *m_hostSoundsDirectory : getDirectory(DIRECTORY_SOUNDS);
+}
+
+void TTibiaFileSystemHelper::setAssetsDirectories(const QDir& assetsDirectory, const QDir& soundsDirectory)
+{
+    m_hostAssetsDirectory = assetsDirectory;
+    m_hostSoundsDirectory = soundsDirectory;
+}
 QDir TTibiaFileSystemHelper::getLogDirectory() const { return getDirectory(DIRECTORY_LOG); }
 QDir TTibiaFileSystemHelper::getMinimapDirectory() const { return getDirectory(DIRECTORY_MINIMAP); }
 QDir TTibiaFileSystemHelper::getCacheDirectory() const { return getDirectory(DIRECTORY_CACHE); }

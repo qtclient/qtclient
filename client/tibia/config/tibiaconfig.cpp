@@ -8,6 +8,9 @@ namespace {
 
 const QString kUrlsGroup = QStringLiteral("URLS");
 const QString kLoginWebService = QStringLiteral("loginWebService");
+const QString kClientWebService = QStringLiteral("clientWebService");
+const QString kAccountCreationClientServices = QStringLiteral("accountCreationClientServices");
+const QString kHintsUrl = QStringLiteral("hintsUrl");
 
 }
 
@@ -31,6 +34,14 @@ QString TTibiaConfig::clientSettingString(const QString& Group, const QString& K
 {
     m_pSettings->beginGroup(Group);
     const QString value = m_pSettings->value(Key, DefaultValue).toString();
+    m_pSettings->endGroup();
+    return value;
+}
+
+bool TTibiaConfig::clientSettingBool(const QString& Group, const QString& Key, const bool DefaultValue) const
+{
+    m_pSettings->beginGroup(Group);
+    const bool value = m_pSettings->value(Key, DefaultValue).toBool();
     m_pSettings->endGroup();
     return value;
 }
@@ -70,6 +81,21 @@ QUrl TTibiaConfig::readUrl(const QString& Key, const QUrl& DefaultValue) const
 QUrl TTibiaConfig::loginWebServiceUrl() const
 {
     return readUrl(kLoginWebService, QUrl());
+}
+
+QUrl TTibiaConfig::clientWebServiceUrl() const
+{
+    return readUrl(kClientWebService, QUrl());
+}
+
+QUrl TTibiaConfig::accountCreationClientServicesUrl() const
+{
+    return readUrl(kAccountCreationClientServices, QUrl());
+}
+
+QUrl TTibiaConfig::hintsUrl() const
+{
+    return readUrl(kHintsUrl, QUrl());
 }
 
 }

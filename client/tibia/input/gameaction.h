@@ -3232,6 +3232,8 @@ public:
     const std::optional<Position>& destination() const { return m_destination; }
     bool moveAll() const { return m_moveAll; }
     int amount() const { return m_amount; }
+    /// CIP +0x28: how many of the stack move (the amount dialog's choice).
+    void setAmount(uint8_t amount) const { m_amount = amount; }
     /// CIP +0x40: the move needs no stash confirmation any more. The container
     /// handler sets it on the move it sends; the confirmation dialog sets it on
     /// the move it lets through.
@@ -3241,7 +3243,7 @@ public:
 private:
     std::optional<Position> m_destination;
     bool m_moveAll;
-    int m_amount;
+    mutable int m_amount;
     mutable bool m_stashConfirmed = false;
 };
 using TMoveObjectPtr = std::shared_ptr<const TGameActionMoveObject>;
@@ -3319,9 +3321,11 @@ public:
     }
     EGameAction gameActionType() const override { return EGameAction::STASH_STOW_STACK; }
     uint8_t amount() const { return m_amount; }
+    /// CIP +0x30: how many of the stack are stowed.
+    void setAmount(uint8_t amount) const { m_amount = amount; }
 
 private:
-    uint8_t m_amount;
+    mutable uint8_t m_amount;
 };
 
 /// CIP input::TGameActionStashRetrieve (STASH_RETRIEVE): type (+0xc), amount (+0x10)
@@ -3338,11 +3342,13 @@ public:
     }
     uint16_t typeId() const { return m_typeId; }
     int amount() const { return m_amount; }
+    /// CIP +0x10: how many are retrieved.
+    void setAmount(uint32_t amount) const { m_amount = static_cast<int>(amount); }
     int source() const { return m_source; }
 
 private:
     uint16_t m_typeId;
-    int m_amount;
+    mutable int m_amount;
     int m_source;
 };
 

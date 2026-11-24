@@ -25,6 +25,8 @@ public:
                                    std::shared_ptr<TProtocolServerMessageProcessor> ServerMessageProcessor);
 
     void processPacket(const network::TGameserverNetworkPacket& Packet);
+    /// A stopped processor takes no more packets.
+    void setStopped(const bool Stopped) { m_stopped = Stopped; }
 
 private:
     std::shared_ptr<network::TUnencryptedRawMessageStream> m_messageStream;

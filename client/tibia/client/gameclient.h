@@ -29,6 +29,9 @@
 #include <memory>
 #include <vector>
 
+namespace tibia::analysers {
+class TItemPriceStorage;
+}
 namespace tibia::systemsurvey {
 class TFPSHistory;
 class TFPSHistoryController;
@@ -59,6 +62,7 @@ class TCreateCharacterDialogController;
 class TCrashReportDialogController;
 class TCyclopediaDialogController;
 class TDeathDialogController;
+class TDialogStackController;
 class TEditTextController;
 class TExaltationForgeDialogController;
 class TGameSessionDisconnectReactionController;
@@ -96,6 +100,7 @@ class TWeaponProficiencyShapeOptionsDialogController;
 }
 namespace shared {
 class TClipboardHelper;
+class TClockService;
 class TCrashReportSender;
 class TDownloadPool;
 class TReadOnlyMemoryBlob;
@@ -122,9 +127,16 @@ namespace network {
 class ExtendedOpcodeRouter;
 }
 namespace input {
+class TClipboardGameActionHandler;
+class TEventFilterManager;
 class TGameActionMapper;
+class TKeyboardInputToGameActionConverter;
 class TKeyboardShortcutHandler;
 class TKeyboardStatusStorage;
+class TKeyEventHandler;
+class TOpenWebsiteGameActionHandler;
+class TPlayerMovementInputInterpreter;
+class TRecordKeyboardShortcutHandler;
 }
 }
 namespace tibia {
@@ -168,6 +180,7 @@ class TWorldmapProtocolMessageHandler;
 }
 namespace tibia {
 namespace chat {
+class TChatModeManager;
 class TChatProtocolMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
@@ -545,18 +558,31 @@ private:
     /// its network) and the single-shot timer that builds the game window
     /// (createGameWindow) start. Only the game window start mode shows it.
     void startNetworkTimerAndShowGameWindow();
-    /// CIP (initialize): the client's own objects before the game window:
-    /// the clipboard helpers and URL tools, the white/blacklist and the mouse
-    /// mapping that follows the control and loot scheme.
+    /// CIP: the base's root context objects, then the client's own objects.
+    void initializeQmlContext() override;
+    /// CIP (initializeQmlContext): the client's own objects before the game window, in
+    /// CipSoft's order: the clipboard helpers and URL tools, the
+    /// white/blacklist, the mouse mapping that follows the control and loot
+    /// scheme, the creature mark options, the chat mode manager, the clock,
+    /// the keyboard objects and event filters, the premium time storage, the
+    /// website and clipboard handlers, the item prices, the client settings'
+    /// timings and the dialog stack.
     void initializeClientObjects();
-    /// The game window's keyboard shortcut handler (CIP +0x6f8, shared with
-    /// every session); null before the game window exists (in
-    /// gameclientgamewindow.cpp).
-    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler() const;
+    /// CIP: the creature frames follow the client options (target frame,
+    /// static and timed square, the mouse highlight instead of the selection
+    /// frame); the root context's UICachingEnabled is false.
+    void initializeCreatureMarkOptions();
+    /// CIP (constructor): the client window (qtclient: its placeholder, which
+    /// holds the title) gets the client's title.
+    static void setClientWindowTitle(QObject* ClientWindow);
+    /// The client's keyboard shortcut handler (CIP +0x6f8, shared with every
+    /// session).
+    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcutHandler() const { return m_pKeyboardShortcutHandler; }
     /// A new game session of type `Session` with the client's shared objects
-    /// (CipSoft's session factories).
-    template<typename Session>
-    std::shared_ptr<Session> createGameSession() const;
+    /// (CipSoft's session factories); `Extra` follow the shared objects (the
+    /// plain sessiondump's dialog stack).
+    template<typename Session, typename... Extra>
+    std::shared_ptr<Session> createGameSession(Extra&&... extra) const;
     /// The game window's controller; null before the game window exists
     /// (in gameclientgamewindow.cpp).
     gamewindow::TGameWindowController* gameWindowController() const;
@@ -635,7 +661,7 @@ private:
     /// The game window's sidebar manager; null before the game window exists
     /// (in gameclientgamewindow.cpp).
     gamewindow::TSidebarManager* sidebarManager() const;
-    /// The game window's keyboard status; null before the game window exists.
+    /// The client's keyboard status (CIP +0x268); null before initialize().
     input::TKeyboardStatusStorage* keyboardStatusStorage() const;
     /// The game window's disconnect reaction; null before the game window exists.
     gamewindow::TGameSessionDisconnectReactionController* gameSessionDisconnectReactionController() const;
@@ -717,6 +743,30 @@ private:
     std::shared_ptr<shared::TClipboardHelper> m_pClipboardHelper;
     std::shared_ptr<shared::TTibiaClipboardHelper> m_pTibiaClipboardHelper;
     std::shared_ptr<shared::TTibiaUrlTools> m_pTibiaUrlTools;
+    /// CIP +0x2e8: whether typing goes to the chat (the chat, the action bars,
+    /// the shortcuts and the walk keys share it).
+    std::shared_ptr<chat::TChatModeManager> m_pChatModeManager;
+    /// CIP +0x668: the client's clock. Host: the process clock.
+    std::shared_ptr<shared::TClockService> m_pClockService;
+    /// CIP +0x268 / +0x258 / +0x6f8 / +0x708 / +0x718: the keyboard state, the
+    /// key event handler, the keyboard shortcuts, the shortcut recorder and the
+    /// application event filters over them.
+    std::shared_ptr<input::TKeyboardStatusStorage> m_pKeyboardStatusStorage;
+    std::shared_ptr<input::TKeyEventHandler> m_pKeyEventHandler;
+    std::shared_ptr<input::TKeyboardShortcutHandler> m_pKeyboardShortcutHandler;
+    std::shared_ptr<input::TRecordKeyboardShortcutHandler> m_pRecordKeyboardShortcutHandler;
+    std::shared_ptr<input::TEventFilterManager> m_pEventFilterManager;
+    /// CIP +0x278 / +0x288: the walk keys and their movement intent.
+    std::shared_ptr<input::TPlayerMovementInputInterpreter> m_pPlayerMovementInputInterpreter;
+    std::shared_ptr<input::TKeyboardInputToGameActionConverter> m_pKeyboardInputToGameActionConverter;
+    /// CIP +0x308 / +0x318: the website and clipboard game actions.
+    std::shared_ptr<input::TOpenWebsiteGameActionHandler> m_pOpenWebsiteGameActionHandler;
+    std::shared_ptr<input::TClipboardGameActionHandler> m_pClipboardGameActionHandler;
+    /// CIP +0x2f8: the item prices. Host: the process-wide storage.
+    std::shared_ptr<analysers::TItemPriceStorage> m_pItemPriceStorage;
+    /// CIP +0x338: the dialog stack over the event filters (its static instance
+    /// is set from here).
+    std::shared_ptr<gamewindow::TDialogStackController> m_pDialogStackController;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     /// Host shim: the character configuration storages the game window still
     /// owns; each new session's manager takes them.

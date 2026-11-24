@@ -155,14 +155,12 @@ bool TBossTrackerListModel::lessThan(const Row& left, const Row& right) const
     return QString::compare(leftName, rightName, Qt::CaseSensitive) < 0;
 }
 
-TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem,
-                                                           QQmlEngine* engine, QObject* parent)
+TBossTrackerWidgetController::TBossTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_model(new TBossTrackerListModel(this))
 {
     m_bosses = m_model;
     m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch());
-    setStorage(storage);
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
     if (QQuickItem* item = quickItem()) {
         m_focus.setClickArea(item);
@@ -186,16 +184,6 @@ void TBossTrackerWidgetController::show()
     QTimer::singleShot(0, this, [this] { Q_EMIT requestWidgetControlToTakeFocus(); });
 }
 
-void TBossTrackerWidgetController::setStorage(bossbestiary::TBossTrackerStorage* const storage)
-{
-    disconnect(m_storageConnection);
-    m_storage = storage;
-    if (m_storage)
-        m_storageConnection = connect(m_storage.data(), &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
-                                      &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
-    onBossTrackingEntriesChanged();
-}
-
 void TBossTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_gameSessionConnections.disconnectAll();
@@ -203,7 +191,6 @@ void TBossTrackerWidgetController::connectToGameSession(const std::shared_ptr<ga
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (session == nullptr)
         return;
-    disconnect(m_storageConnection);
     m_storage = session->bossTrackerStorage().get();
     if (m_storage)
         m_gameSessionConnections.add(connect(m_storage.data(), &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
@@ -294,7 +281,7 @@ void TBossTrackerWidgetController::onBossTrackingEntriesChanged()
     for (const bossbestiary::TBossTrackerEntry& entry : m_storage->entries()) {
         TBossTrackerListModel::Row row;
         row.entry = entry;
-        row.outfit = entry.outfit.get();
+        row.outfit = row.entry.outfit.get();
         rows.push_back(std::move(row));
     }
     m_model->setRows(std::move(rows));
@@ -335,47 +322,5 @@ void TBossTrackerWidgetController::requestWidgetConfigurationMenu()
     menu->showCustomMenu();
 }
 
-TBossTrackerWidgetManager::TBossTrackerWidgetManager(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                     QObject* parent)
-    : QObject(parent)
-    , m_storage(storage)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
-{}
-
-TBossTrackerWidgetManager::~TBossTrackerWidgetManager() { delete m_controller; }
-
-void TBossTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_storage = session ? session->bossTrackerStorage().get() : nullptr;
-    m_gameSession = GameSession;
-    if (m_controller)
-        m_controller->connectToGameSession(m_gameSession);
-}
-
-TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options)
-{
-    if (!m_controller) {
-        m_controller = new TBossTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
-        connect(m_controller, &TBossTrackerWidgetController::publishGameAction, this, &TBossTrackerWidgetManager::publishGameAction);
-        m_controller->setSidebarOptions(options);
-        if (m_gameSession)
-            m_controller->connectToGameSession(m_gameSession);
-    }
-    return m_controller->widget();
-}
-
-void TBossTrackerWidgetManager::close(const bool saveWidgetOptions)
-{
-    if (!m_controller)
-        return;
-    if (saveWidgetOptions)
-        m_controller->saveWidgetOptions();
-    m_controller->deleteLater();
-    m_controller = nullptr;
-}
-
-TSidebarWidget* TBossTrackerWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
 
 } // namespace tibia::gamewindow

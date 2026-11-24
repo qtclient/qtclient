@@ -10,6 +10,7 @@
 #include <QQmlEngine>
 
 #include <unordered_map>
+#include <utility>
 
 namespace tibia::qmlcomponents {
 
@@ -17,12 +18,20 @@ namespace {
 
 constexpr int FieldSize = 32;
 
-/// The global clock's time for a new effect.
+std::shared_ptr<tibia::shared::IClockService> g_clockService;
+
+/// The renderers' clock's time for a new effect. Host: the frame clock until
+/// the game client hands its clock over.
 qint64 effectTimestamp()
 {
-    return static_cast<qint64>(tibia::shared::TClockService::frameMillis());
+    return g_clockService ? g_clockService->nowMillis() : static_cast<qint64>(tibia::shared::TClockService::frameMillis());
 }
 
+}
+
+void setAppearanceInstanceRendererClockService(std::shared_ptr<shared::IClockService> ClockService)
+{
+    g_clockService = std::move(ClockService);
 }
 
 template <class TGeneratedRenderer>
@@ -117,12 +126,11 @@ void TAppearanceInstanceRendererBase<TGeneratedRenderer>::showGraphicalEffect(co
     if (!m_pAppearanceInstanceStorage)
         return;
     const Position field(SubfieldCoordinate.x() / FieldSize, SubfieldCoordinate.y() / FieldSize, 0);
-    const appearances::TAppearanceType* type =
-        appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryEffect, static_cast<uint16_t>(AppearanceTypeID));
+    const auto& factory = m_pAppearanceInstanceStorage->appearanceInstanceFactory();
+    const appearances::TAppearanceType* type = factory->appearanceType(ThingCategoryEffect, static_cast<uint16_t>(AppearanceTypeID));
     if (type->getId() != 0) {
         const qint64 timestamp = effectTimestamp();
-        m_pAppearanceInstanceStorage->addAppearanceInstance(
-            appearances::TAppearanceInstanceFactory::installed()->createFieldEffect(type->getId(), field, 0, timestamp));
+        m_pAppearanceInstanceStorage->addAppearanceInstance(factory->createFieldEffect(type->getId(), field, 0, timestamp));
         m_effectsActive = true;
         m_drawCommandsChanged = true;
     }
@@ -139,12 +147,11 @@ void TAppearanceInstanceRendererBase<TGeneratedRenderer>::showMissileEffect(cons
         return;
     const Position source(SourceCoordinate.x() / FieldSize, SourceCoordinate.y() / FieldSize, 0);
     const Position destination(DestinationCoordinate.x() / FieldSize, DestinationCoordinate.y() / FieldSize, 0);
-    const appearances::TAppearanceType* type =
-        appearances::TAppearanceInstanceFactory::installed()->appearanceType(ThingCategoryMissile, static_cast<uint16_t>(AppearanceTypeID));
+    const auto& factory = m_pAppearanceInstanceStorage->appearanceInstanceFactory();
+    const appearances::TAppearanceType* type = factory->appearanceType(ThingCategoryMissile, static_cast<uint16_t>(AppearanceTypeID));
     if (type->getId() != 0) {
         const qint64 timestamp = effectTimestamp();
-        m_pAppearanceInstanceStorage->addAppearanceInstance(
-            appearances::TAppearanceInstanceFactory::installed()->createMissile(type->getId(), source, destination, 0, timestamp));
+        m_pAppearanceInstanceStorage->addAppearanceInstance(factory->createMissile(type->getId(), source, destination, 0, timestamp));
         m_effectsActive = true;
         m_drawCommandsChanged = true;
     }

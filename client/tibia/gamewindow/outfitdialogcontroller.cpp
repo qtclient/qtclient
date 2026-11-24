@@ -382,6 +382,13 @@ TOutfitAppearanceInstanceQmlType::ECreatureLookDirection TSelectOutfitDialogCont
 
 bool TSelectOutfitDialogController::isMounted() const { return m_dialogData && m_dialogData->Mounted; }
 
+qmlcomponents::TOutfitColorQmlType* createJavaScriptOwnedOutfitColor(const int head, const int torso, const int legs, const int detail)
+{
+    auto* color = new TOutfitColorQmlType(head, torso, legs, detail);
+    QJSEngine::setObjectOwnership(color, QJSEngine::JavaScriptOwnership);
+    return color;
+}
+
 /// A new JS-owned preset of the data's outfit (colours and add-ons), mount
 /// (colours) and summon.
 cip::tibia::qmlcomponents::TOutfitPresetQmlType* TSelectOutfitDialogController::selectedOutfitPreset() const
@@ -392,13 +399,12 @@ cip::tibia::qmlcomponents::TOutfitPresetQmlType* TSelectOutfitDialogController::
     auto* preset = new TOutfitPresetQmlType();
     QJSEngine::setObjectOwnership(preset, QJSEngine::JavaScriptOwnership);
     preset->setOutfitID(data.OutfitId);
-    TOutfitColorQmlType outfitColor(data.HeadColor, data.TorsoColor, data.LegsColor, data.DetailColor);
-    preset->outfitColor()->copyFrom(&outfitColor);
+    preset->outfitColor()->copyFrom(createJavaScriptOwnedOutfitColor(data.HeadColor, data.TorsoColor, data.LegsColor, data.DetailColor));
     preset->setOutfitFirstAddOn((data.AddOns & 1) != 0);
     preset->setOutfitSecondAddOn((data.AddOns & 2) != 0);
     preset->setMountID(data.MountId);
-    TOutfitColorQmlType mountColor(data.MountHeadColor, data.MountTorsoColor, data.MountLegsColor, data.MountDetailColor);
-    preset->mountColor()->copyFrom(&mountColor);
+    preset->mountColor()->copyFrom(
+        createJavaScriptOwnedOutfitColor(data.MountHeadColor, data.MountTorsoColor, data.MountLegsColor, data.MountDetailColor));
     preset->setSummonID(data.SummonId);
     return preset;
 }
@@ -603,7 +609,7 @@ QObject* TSelectOutfitDialogController::createFromClipboard()
     TOutfitColorQmlType color;
     TOutfitPresetQmlType preset;
     if (color.canBeFilledFromJsonObject(json)) {
-        auto* created = new TOutfitColorQmlType();
+        TOutfitColorQmlType* created = createJavaScriptOwnedOutfitColor(0, 0, 0, 0);
         created->fromJsonObject(json);
         result = created;
     } else if (preset.canBeFilledFromJsonObject(json)) {

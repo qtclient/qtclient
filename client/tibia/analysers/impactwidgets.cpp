@@ -350,7 +350,12 @@ void TImpactWidgetController::onShowContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("impact_reset")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] { m_storage->reset(); });
+    connect(menu->addCustomEntry(qtTrId("impact_reset")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
+        m_dpsGraphMaxY = 1.0;
+        m_hpsGraphMaxY = 1.0;
+        m_storage->reset();
+        Q_EMIT graphValuesChanged();
+    });
     connect(menu->addCustomEntry(qtTrId("impact_reset_all_time")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         m_storage->resetAllTimeMax();
     });

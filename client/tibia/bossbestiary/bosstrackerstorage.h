@@ -25,10 +25,16 @@ struct TBossTrackerEntry
     TBossTrackerEntry() = default;
     /// The outfit model is made from the race's outfit.
     TBossTrackerEntry(int raceId, QString name, const Outfit& outfit, qint64 cooldownUntil);
+    /// A copy owns a new outfit model filled from the other's.
+    TBossTrackerEntry(const TBossTrackerEntry& other);
+    /// Fills this entry's outfit model from the other's.
+    TBossTrackerEntry& operator=(const TBossTrackerEntry& other);
+    TBossTrackerEntry(TBossTrackerEntry&&) noexcept = default;
+    TBossTrackerEntry& operator=(TBossTrackerEntry&&) noexcept = default;
 
     int raceId = 0;
     QString name;
-    /// Owned by the entry; equal entries share the same model.
+    /// Owned by the entry (a copy makes its own); entries compare it by address.
     std::shared_ptr<qmlcomponents::TOutfitQmlModel> outfit;
     /// Unix seconds when the cooldown ends; 0 = none.
     qint64 cooldownUntil = 0;

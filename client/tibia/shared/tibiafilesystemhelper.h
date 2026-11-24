@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <memory>
+#include <optional>
 #include <string>
 
 class QImage;
@@ -61,6 +62,10 @@ public:
     QString getFilePathInDirectory(EDirectory directory, const QString& fileName) const;
     QDir getAssetsDirectory() const;
     QDir getSoundsDirectory() const;
+    /// Host: qtclient reads the assets and sounds from the CipSoft Resources
+    /// tree it found (see gamecore::assetsRoot); from then on the assets and
+    /// sounds directories are those instead of <data>/assets and <data>/sounds.
+    void setAssetsDirectories(const QDir& assetsDirectory, const QDir& soundsDirectory);
     QDir getLogDirectory() const;
     QDir getMinimapDirectory() const;
     QDir getCacheDirectory() const;
@@ -184,6 +189,9 @@ private:
     QDir m_dataDirectory;
     QDir m_baseDirectory;
     std::shared_ptr<TFileSystemHelper> m_fileSystemHelper;
+    // Host: the Resources tree's assets and sounds directories (setAssetsDirectories).
+    std::optional<QDir> m_hostAssetsDirectory;
+    std::optional<QDir> m_hostSoundsDirectory;
 
     std::string m_binaryPath;
     std::string m_workDir;

@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -83,9 +84,12 @@ public:
     bool isEmpty() const { return m_entries.empty(); }
     const TWeaponEntry& entry(int row) const { return m_entries[row]; }
     int size() const { return static_cast<int>(m_entries.size()); }
-    bool contains(uint16_t typeId) const
+    /// Whether a row has `typeId` and, when `tier` is given, that upgrade tier.
+    bool contains(uint16_t typeId, std::optional<uint8_t> tier = std::nullopt) const
     {
-        return std::ranges::any_of(m_entries, [typeId](const TWeaponEntry& entry) { return entry.type.typeId == typeId; });
+        return std::ranges::any_of(m_entries, [typeId, tier](const TWeaponEntry& entry) {
+            return entry.type.typeId == typeId && (!tier || (entry.type.hasTier && entry.type.tier == *tier));
+        });
     }
     uint32_t xp(int row) const { return m_storage->xp(m_entries[row].type.typeId); }
 

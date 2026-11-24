@@ -4,6 +4,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
+#include "appearances/creatureplaceholderappearanceinstance.h"
 #include "idleot/appearanceshape.h"
 #include "appearances/spriteinfo.h"
 #include "renderer/spritetextureprovider.h"
@@ -58,11 +59,6 @@ namespace tibia::qmlcomponents {
 namespace {
 
 constexpr int FieldSize = TWorldMapRenderProvider::FieldSize;
-
-uint32_t outfitColors(const Outfit& outfit)
-{
-    return outfit.getHead() | outfit.getBody() << 8 | outfit.getLegs() << 16 | static_cast<uint32_t>(outfit.getFeet()) << 24;
-}
 
 tibia::mods::LightingMapPos lightingCamera(const Position& camera)
 {
@@ -238,16 +234,12 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(
     , m_instanceTracker(std::move(instanceTracker))
 {
     loadLightOptions();
-    loadMarkOptions();
     loadLootHighlightOption();
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name.startsWith(QLatin1String("light")))
             loadLightOptions();
         else if (name == QLatin1String("gameWindowShowLootHighlighting"))
             loadLootHighlightOption();
-        else if (name.startsWith(QLatin1String("combatShow")) || name == QLatin1String("gameWindowShowTragetFrame")
-                 || name == QLatin1String("mouseHighlightTarget"))
-            loadMarkOptions();
     });
 }
 
@@ -307,28 +299,6 @@ void TWorldMapRenderProvider::setMouseTargetCreatureId(const uint32_t id)
     m_mouseTargetTypeId = 0;
     m_mouseTargetField = {};
     m_mouseTargetStackPos = -1;
-}
-
-void TWorldMapRenderProvider::loadMarkOptions()
-{
-    const QJsonObject options = app::ClientOptions::load().options();
-    tibia::creatures::TCreatureMarkOptions marks;
-    marks.targetFrame = options.value(QLatin1String("gameWindowShowTragetFrame")).toBool(true);
-    marks.staticSquare = options.value(QLatin1String("combatShowPvpFrames")).toBool(true);
-    marks.timedSquare = options.value(QLatin1String("combatShowFrames")).toBool(true);
-    marks.mouseHighlightTarget = options.value(QLatin1String("mouseHighlightTarget")).toBool(true);
-    tibia::creatures::TCreature::setMarkOptions(marks);
-}
-
-std::array<uint32_t, 3> TWorldMapRenderProvider::creatureMarks(const tibia::creatures::TCreature& creature) const
-{
-    std::array<uint32_t, 3> marks{};
-    if (!creature.hasMarks())
-        return marks;
-    const std::vector<QColor> colors = creature.shownMarks();
-    for (size_t i = 0; i < colors.size() && i < marks.size(); ++i)
-        marks[i] = colors[i].rgba();
-    return marks;
 }
 
 void TWorldMapRenderProvider::loadLightOptions()
@@ -1240,7 +1210,7 @@ void TWorldMapRenderProvider::addField(const FieldEntry& field, TOcclusionGrid& 
     m_key = DrawKey{ .group = 2, .x = field.x, .y = field.y, .z = m_floor };
     uint8_t elevation = 0;
     addTileBelow(field, dest, elevation, grid);
-    addTileCreatures(field, dest, elevation);
+    addTileCreatures(field, dest, elevation, grid);
     addTileEffects(field.field, dest);
     addTileTop(field, dest, grid);
     if (m_showLootHighlighting)
@@ -1322,7 +1292,8 @@ void TWorldMapRenderProvider::addTileBelow(const FieldEntry& field, const QPoint
 }
 
 void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, const int stackIndex,
-                                                    const QPoint& dest, const uint8_t elevation, const bool castHeight)
+                                                    const QPoint& dest, const uint8_t elevation, const bool castHeight,
+                                                    TOcclusionGrid& grid)
 {
     if (!tile || stackIndex < 0)
         return;
@@ -1335,18 +1306,18 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
     if (!row || row->isDisplaced() || row->position() != tile->getPosition())
         return;
-    // The field lifted the creature's placeholder; the creature draws its outfit.
+    // The field lifted the creature's placeholder.
     const appearances::TAppearanceInstancePtr placeholder = tile->appearanceAt(stackIndex);
     const uint8_t lift = placeholder ? placeholder->elevation() : elevation;
     const QPoint at(dest.x() - lift, dest.y() - lift);
-    addCreatureFromOutfitAppearance(row->outfitAppearance(), *row, at, castHeight);
-    noteCreature(tile->coordinate(), *row);
+    addCreature(*row, tile->coordinate(), at, lift, castHeight, grid);
 }
 
 /// A creature sorts with the field its step covers (CIP: the placeholder's
 /// covered field, its offset kept in (-32, 0]) and keeps the draw index of its
 /// placeholder on the field it stands on.
-void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QPoint& dest, const uint8_t elevation)
+void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QPoint& dest, const uint8_t elevation,
+                                               TOcclusionGrid& grid)
 {
     tibia::worldmap::TWorldMapField* tile = field.field;
     const Position& tilePos = tile->getPosition();
@@ -1371,9 +1342,12 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
         m_key = slotKey(field.coordinate, x, y, creatureLayer, drawIndex(*tile, entry.stackIndex));
         const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(entry.creatureId);
         const bool castHeight = row && shadeKeep(entry.creatureId, row->isLocalPlayer());
-        addFieldStackCreature(tile, entry.stackIndex, dest, elevation, castHeight);
+        addFieldStackCreature(tile, entry.stackIndex, dest, elevation, castHeight, grid);
     }
 
+    // Host: a stepping creature is drawn from the field its step covers (the
+    // field keeps the ids of the creatures stepping over it); its placeholder's
+    // render infos are built on the field it stands on and land on this one.
     for (const uint32_t creatureId : tile->walkingCreatureIds()) {
         const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
         if (!row || !row->isDisplaced())
@@ -1384,34 +1358,13 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
         if (stackPos == 0xff)
             continue;
         const int lift = row->drawElevation();
-        appearances::TAppearanceInstancePtr appearance = row->outfitAppearance();
-        if (!appearance)
-            continue;
         m_key = slotKey(field.coordinate, x, y, creatureLayer, drawIndex(*own, stackPos));
         // Mid-step silhouette is visible on this cell — always stamp height.
-        addCreatureFromOutfitAppearance(
-            appearance, *row,
-            QPoint(dest.x() + (pos.x - tilePos.x) * FieldSize - lift, dest.y() + (pos.y - tilePos.y) * FieldSize - lift),
-            true);
-        noteCreature(own->coordinate(), *row);
+        const QPoint ownCorner(dest.x() + (pos.x - tilePos.x) * FieldSize - lift,
+                               dest.y() + (pos.y - tilePos.y) * FieldSize - lift);
+        addCreature(*row, own->coordinate(), ownCorner, static_cast<uint8_t>(std::clamp(lift, 0, 0xff)), true, grid);
     }
     m_key = DrawKey{ .group = 2, .x = x, .y = y, .z = m_floor };
-}
-
-void TWorldMapRenderProvider::noteCreature(const worldmap::TWorldMapCoordinate& field,
-                                           const tibia::creatures::TCreature& creature)
-{
-    // The outfit's type, and the mount's while riding, are drawn this frame.
-    const appearances::TAppearanceInstancePtr outfit = creature.outfitAppearance();
-    TAppearanceType* type = outfit ? outfit->thingType() : nullptr;
-    if (!type)
-        return;
-    m_objectCounter.addObject(field, type->getId());
-    m_frameTypes.insert(type);
-    if (creature.isMounted()) {
-        if (const auto mount = creature.mountAppearance(); mount && mount->thingType())
-            m_frameTypes.insert(mount->thingType());
-    }
 }
 
 /// CIP: a field effect is kind 2 (group 3): drawn after every object, creature
@@ -1496,6 +1449,24 @@ void TWorldMapRenderProvider::pushRecord(SpriteRecord record)
     m_records.push_back(std::move(record));
 }
 
+namespace {
+
+/// The phase `outfit` draws on its idle or moving sequence, counted over the
+/// idle phases and then the moving ones (host: the pack lighting's stamp
+/// phases and TOutfitAppearanceInstance::spriteInfoAtPhase count that way).
+int outfitPhase(const appearances::TOutfitAppearanceInstance& outfit, const bool moving)
+{
+    const std::shared_ptr<appearances::TAppearanceInstanceSpriteSequence>& sequence =
+        moving ? outfit.movingSequence() : outfit.idleSequence();
+    const int phase = sequence && sequence->animator() ? sequence->animator()->phase() : 0;
+    if (!moving || outfit.movingSequence() == outfit.idleSequence())
+        return phase;
+    const auto& idle = outfit.idleSequence();
+    return (idle ? static_cast<int>(idle->spriteInfos().size()) : 0) + phase;
+}
+
+} // namespace
+
 void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInstance& instance,
                                              const worldmap::TWorldMapCoordinate& coordinate, const QPoint& dest,
                                              const SpriteRecord::Highlight highlight, const uint8_t lift,
@@ -1509,11 +1480,18 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
     // Host: an object the server marked undrawable draws nothing.
     if (object && !object->drawable())
         return;
+    const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(&instance);
+    const std::shared_ptr<tibia::creatures::TCreature> creature = placeholder ? placeholder->creature() : nullptr;
+    if (placeholder && !creature)
+        return;
 
-    // What the instance draws on its field.
+    // What the instance draws: an object's or a creature's render infos, else
+    // the instance's own sprite.
     renderer::TRenderInfoList infos;
     if (object) {
         object->appendRenderInfos(coordinate, infos);
+    } else if (placeholder) {
+        placeholder->appendRenderInfos(coordinate, infos);
     } else {
         infos.push_back({ .type = type, .spriteInfo = instance.currentSpriteInfo(), .coordinate = coordinate,
                           .displacement = instance.displacement(), .movementOffset = instance.movementOffset(),
@@ -1521,34 +1499,104 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
     }
 
     // Host (pack lighting): the object's own sprite stamps the phase the
-    // lighting asks for, with the object's pattern.
+    // lighting asks for, with the object's pattern; a creature stamps its
+    // outfit's and mount's phase with the look it is drawn with (the caller
+    // holds the creature's lighting context).
     const appearances::TAppearanceInstanceSpriteSequence* sequence = instance.spriteSequence().get();
     const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
         : object                                       ? object->calculateAnimationPhase()
                                                        : 0;
-    const int xPattern = object ? object->patternX() : 0;
-    const auto lightingScope = m_lighting
+    const int xPattern = object ? object->patternX() : creature ? creature->drawnPatternX() : 0;
+    const auto lightingScope = m_lighting && !placeholder
         ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile, castHeight)))
         : std::nullopt;
+    const bool moving = placeholder && placeholder->showsMovingSprite();
+    const std::shared_ptr<appearances::TOutfitAppearanceInstance> outfit =
+        creature ? std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(creature->outfitAppearance()) : nullptr;
+    const std::shared_ptr<appearances::TOutfitAppearanceInstance> mount =
+        creature && creature->isMounted() ? creature->mountAppearance() : nullptr;
+    bool packLightsAdded = false;
 
     using EKind = appearances::IAppearanceInstanceSpriteInfo::EKind;
     for (const renderer::TRenderInfo& info : infos) {
         if (!info.spriteInfo || !info.type)
             continue;
         m_objectCounter.addObject(coordinate, info.type->getId());
-        // Creature marks and the highlight baseplate are never tinted.
+        // The mouse target is tinted unless the sprite is a creature mark or
+        // the baseplate; otherwise a creature shows whether it is attacked or
+        // followed.
         const EKind kind = info.spriteInfo->kind();
-        const SpriteRecord::Highlight shown =
-            kind != EKind::CreatureMark && kind != EKind::HighlightBaseplate ? highlight : SpriteRecord::NoHighlight;
+        SpriteRecord::Highlight shown = SpriteRecord::NoHighlight;
+        if (kind != EKind::CreatureMark && kind != EKind::HighlightBaseplate && highlight != SpriteRecord::NoHighlight)
+            shown = highlight;
+        else if (creature)
+            shown = highlightOf(creature->creatureId());
+
+        // The info's sprite on the field it lands on (a stepping creature's
+        // covered field), moved by its draw offset.
+        const QPoint infoDest = dest
+            + QPoint((info.coordinate.x - coordinate.x) * FieldSize, (info.coordinate.y - coordinate.y) * FieldSize);
         const size_t firstRecord = m_records.size();
-        if (sequence && info.kind == renderer::TRenderInfo::Self && info.spriteInfo == sequence->currentSpriteInfo())
+        if (creature) {
+            const worldmap::TWorldMapSubfieldExtent offset = info.drawPosition().offset;
+            const QPoint at = infoDest + QPoint(offset.width + info.displacement.depth, offset.height + info.displacement.depth);
+            const appearances::TOutfitAppearanceInstance* figure = info.kind == renderer::TRenderInfo::FigureMount ? mount.get()
+                : info.kind == renderer::TRenderInfo::FigureOutfit                                                  ? outfit.get()
+                                                                                                                    : nullptr;
+            TAppearanceType* figureType = figure ? figure->thingType() : nullptr;
+            if (figureType && !figureType->isNull()) {
+                // Host (pack lighting): the figure stamps the phase the lighting
+                // asks for.
+                const int figurePhase = outfitPhase(*figure, moving);
+                const int stampPhase =
+                    m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(figurePhase) : figurePhase;
+                addSpriteInfo(figureType, at + figureType->getDisplacement(), info.spriteInfo,
+                              figure->spriteInfoAtPhase(stampPhase), xPattern, shown);
+            } else if (kind != EKind::Dummy && (m_emit & EmitRecords)) {
+                pushRecord({ .anchor = at + QPoint(FieldSize, FieldSize), .highlight = shown, .sprite = { info.spriteInfo } });
+            }
+        } else if (sequence && info.kind == renderer::TRenderInfo::Self && info.spriteInfo == sequence->currentSpriteInfo()) {
             addSequenceSprite(instance, dest, phase, xPattern, 1.f, 0, shown);
-        else
-            addRenderInfo(info, dest, shown);
+        } else {
+            addRenderInfo(info, infoDest, shown);
+        }
+
         // A shining type lights the map.
+        const QPoint lightCenter =
+            infoDest + QPoint(info.movementOffset.width + FieldSize / 2, info.movementOffset.height + FieldSize / 2);
         if (objectShines(*info.type, instance))
-            addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), info.type->getLight().intensity,
-                     info.type->getLight().color);
+            addLight(lightCenter, info.type->getLight().intensity, info.type->getLight().color);
+
+        if (creature) {
+            // A creature lights the map with its own light (at least a dim
+            // white one when it must stay visible), its outfit's and, while
+            // riding, its mount's; the drawn outfit and mount types are kept.
+            const auto addCreatureLight = [&](const Light& light) {
+                addLight(lightCenter, light.intensity, light.color);
+                // Host: the pack's lighting takes each light once per creature.
+                if (m_lighting && !packLightsAdded)
+                    m_lighting->addCenterLight(lightCenter.x(), lightCenter.y(), light.intensity, light.color);
+            };
+            addCreatureLight(creatureLight(*creature));
+            TAppearanceType* outfitType = outfit ? outfit->thingType() : nullptr;
+            if (outfitType) {
+                m_frameTypes.insert(outfitType);
+                if (outfitType->hasLight())
+                    addCreatureLight(outfitType->getLight());
+            }
+            TAppearanceType* mountType = mount ? mount->thingType() : nullptr;
+            if (mountType) {
+                m_frameTypes.insert(mountType);
+                if (mountType->hasLight())
+                    addCreatureLight(mountType->getLight());
+            }
+            if (!outfitType && !mountType)
+                m_frameTypes.insert(info.type);
+            packLightsAdded = true;
+        } else {
+            m_frameTypes.insert(info.type);
+        }
+
         // An opaque sprite drawn at its field's corner hides the lower floors
         // under the whole fields it covers.
         const worldmap::TWorldMapSubfieldExtent offset = info.drawPosition().offset;
@@ -1556,17 +1604,21 @@ void TWorldMapRenderProvider::addRenderInfos(const appearances::TAppearanceInsta
             for (size_t i = firstRecord; i < m_records.size(); ++i)
                 occlude(grid, m_records[i], m_floor);
         }
-        m_frameTypes.insert(info.type);
     }
 }
 
-void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                                              const tibia::creatures::TCreature& stored, const QPoint& dest,
-                                                              const bool castHeight)
+void TWorldMapRenderProvider::addCreature(const tibia::creatures::TCreature& stored,
+                                          const worldmap::TWorldMapCoordinate& coordinate, const QPoint& dest,
+                                          const uint8_t lift, const bool castHeight, TOcclusionGrid& grid)
 {
+    // Host: creatures the game hides, dead ones and the soft-dead local player
+    // are not drawn.
     if (stored.isLocalPlayer() && stored.isSoftDead())
         return;
     if (!stored.canBeSeen() || !stored.canDraw() || (stored.isDead() && !stored.isHidden()) || stored.isHided())
+        return;
+    const std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance>& placeholder = stored.placeholderAppearance();
+    if (!placeholder)
         return;
 
     const auto lightingScope = m_lighting
@@ -1574,18 +1626,14 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
               creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()), castHeight)))
         : std::nullopt;
 
-    QPoint at = dest + stored.walkOffset();
+    // Host: a jumping creature is drawn lifted by its jump.
+    QPoint jumped = dest;
     if (const QPointF jump = stored.jumpOffset(); !jump.isNull())
-        at -= QPoint(static_cast<int>(std::round(jump.x())), static_cast<int>(std::round(jump.y())));
+        jumped -= QPoint(static_cast<int>(std::round(jump.x())), static_cast<int>(std::round(jump.y())));
+    const QPoint walked = dest + stored.walkOffset();
+    const QPoint at = jumped + stored.walkOffset();
 
-    const QPoint lightCenter = at + QPoint(FieldSize / 2, FieldSize / 2);
-    const auto addCreatureLight = [&](const Light& light) {
-        addLight(lightCenter, light.intensity, light.color);
-        if (m_lighting)
-            m_lighting->addCenterLight(lightCenter.x(), lightCenter.y(), light.intensity, light.color);
-    };
-    addCreatureLight(creatureLight(stored));
-
+    // Host: the creature's HUD is drawn over its head.
     if (m_floor == m_camera.z && !stored.isDead() && !stored.isHidden()) {
         const uint32_t id = stored.creatureId();
         const bool listed = std::any_of(m_frame.creatures.begin(), m_frame.creatures.end(),
@@ -1596,95 +1644,39 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
         }
     }
 
-    if (const std::array<uint32_t, 3> marks = creatureMarks(stored); marks[0]) {
-        std::vector<QColor> colors;
-        for (const uint32_t mark : marks) {
-            if (!mark)
-                break;
-            colors.push_back(QColor::fromRgba(mark));
-        }
-        const QPoint anchor = at - stored.displacement() + QPoint(FieldSize, FieldSize);
-        if (m_emit & EmitRecords) {
-            pushRecord({ .anchor = QPoint(anchor.x(), anchor.y()),
-                         .sprite = { std::make_shared<appearances::TCreatureMarkAppearanceInstanceSpriteInfo>(std::move(colors)) } });
-        }
-    }
-
-    appearances::TAppearanceInstancePtr outfitAppearance = appearance;
-    if (!outfitAppearance)
-        outfitAppearance = stored.outfitAppearance();
-    if (!outfitAppearance)
-        return;
-
-    const auto* outfitInst = dynamic_cast<const appearances::TOutfitAppearanceInstance*>(outfitAppearance.get());
-    const Outfit& outfit = outfitInst ? outfitInst->outfit() : stored.outfit();
-    TAppearanceType* type = outfitAppearance->thingType();
-    if (!type)
-        type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
-    if (!type)
-        return;
-
-    // The outfit's own light, and the mount's while riding.
-    if (type->hasLight())
-        addCreatureLight(type->getLight());
-    const std::shared_ptr<appearances::TOutfitAppearanceInstance> mountAppearance =
-        stored.isMounted() ? stored.mountAppearance() : nullptr;
-    TAppearanceType* mount = mountAppearance ? mountAppearance->thingType() : nullptr;
-    if (mount && mount->hasLight())
-        addCreatureLight(mount->getLight());
-
-    const SpriteRecord::Highlight highlight = highlightOf(stored.creatureId());
-    const QPoint walked = dest + stored.walkOffset();
-    const QPoint jumped = at;
-    addAttachedEffects(stored, walked, jumped, false);
-
-    if (outfit.isCreature()) {
-        // The mount instance is drawn while riding (its sprites masked with the
-        // mount's colours); the outfit then shows its mounted sprites.
-        if (mount) {
-            at -= mount->getDisplacement();
-            const int mountPhase = stored.mountAnimationPhase();
-            const int mountStampPhase =
-                m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(mountPhase) : mountPhase;
-            addSpriteInfo(mount, at, mountAppearance->spriteInfoAtPhase(mountPhase),
-                          mountAppearance->spriteInfoAtPhase(mountStampPhase), stored.drawnPatternX(), highlight);
-            at += stored.displacement();
-        }
-        const int phase = stored.animationPhase();
-        if (outfitInst) {
-            // The outfit instance's sequences hold the sprite of every phase:
-            // masked with the outfit's colours, its addons layered over it.
-            const int stampPhase = m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(phase) : phase;
-            addSpriteInfo(type, at, outfitInst->spriteInfoAtPhase(phase), outfitInst->spriteInfoAtPhase(stampPhase),
-                          stored.drawnPatternX(), highlight);
-        } else {
-            const bool colorize = stored.drawOutfitColor() && type->getLayers() > 1;
-            const uint32_t colors = colorize ? outfitColors(outfit) : 0;
-            for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-                if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
-                    continue;
-                addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
-            }
-        }
-        addAttachedEffects(stored, walked, jumped, true);
-        return;
-    }
-
-    int phases = type->getAnimationPhases();
-    int ticks = tibia::config::itemTicksPerFrame();
-    if (outfit.isEffect()) {
-        phases = std::max(1, phases - 2);
-        ticks = tibia::config::invisibleTicksPerFrame();
-    }
-    int phase = 0;
-    if (outfit.isItem() && type->idleAnimation())
-        phase = stored.idleAnimationPhase();
-    else if (phases > 1)
-        phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
-    if (outfit.isEffect())
+    // Host: the product's attached effects under and over the creature.
+    addAttachedEffects(stored, walked, at, false);
+    const appearances::TAppearanceInstancePtr outfitAppearance = stored.outfitAppearance();
+    if (!outfitAppearance || dynamic_cast<const appearances::TOutfitAppearanceInstance*>(outfitAppearance.get())
+        || !outfitAppearance->thingType()) {
+        // The creature draws what its placeholder hands the map.
+        // Host: the mouse target is an object of a field (field, stack position,
+        // type), never a creature's placeholder.
+        addRenderInfos(*placeholder, coordinate, jumped, SpriteRecord::NoHighlight, lift, nullptr, castHeight, grid);
+    } else {
+        // Host: an effect worn as an outfit has no outfit sequences; it cycles
+        // its phases past the first and last by the clock.
+        TAppearanceType* type = outfitAppearance->thingType();
+        const QPoint lightCenter = at + QPoint(FieldSize / 2, FieldSize / 2);
+        const auto addCreatureLight = [&](const Light& light) {
+            addLight(lightCenter, light.intensity, light.color);
+            if (m_lighting)
+                m_lighting->addCenterLight(lightCenter.x(), lightCenter.y(), light.intensity, light.color);
+        };
+        addCreatureLight(creatureLight(stored));
+        if (type->hasLight())
+            addCreatureLight(type->getLight());
+        const int phases = std::max(1, type->getAnimationPhases() - 2);
+        const int ticks = tibia::config::invisibleTicksPerFrame();
+        int phase = 0;
+        if (phases > 1)
+            phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
         phase = std::min(phase + 1, phases);
-    addSprites(type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlight);
-    addAttachedEffects(stored, walked, jumped, true);
+        addSprites(type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlightOf(stored.creatureId()));
+        m_objectCounter.addObject(coordinate, type->getId());
+        m_frameTypes.insert(type);
+    }
+    addAttachedEffects(stored, walked, at, true);
 }
 
 void TWorldMapRenderProvider::addAttachedEffects(const tibia::creatures::TCreature& stored,

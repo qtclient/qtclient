@@ -1,5 +1,6 @@
 #include "appearances/appearanceinstance.h"
 #include "appearances/appearanceinstancetracker.h"
+#include "appearances/outfitcolorset.h"
 #include "protocol/objectdata.h"
 #include <protocol.pb.h>
 #include "config/clientsettings.h"
@@ -970,14 +971,14 @@ TAppearanceInstanceFactory::createOutfitFromProtobuf(const tibia::protobuf::prot
 {
     if (outfit.has_look_type()) {
         const auto lookType = static_cast<uint16_t>(outfit.look_type());
-        const tibia::protobuf::protocol::OutfitColor& colors = outfit.colors();
+        const TOutfitColorSet colors = outfitColorsFromProtobuf(outfit.colors());
         Outfit look;
         look.setCategory(ThingCategoryCreature);
         look.setId(lookType);
-        look.setHead(static_cast<uint8_t>(colors.head()));
-        look.setBody(static_cast<uint8_t>(colors.body()));
-        look.setLegs(static_cast<uint8_t>(colors.legs()));
-        look.setFeet(static_cast<uint8_t>(colors.feet()));
+        look.setHead(colors.head);
+        look.setBody(colors.body);
+        look.setLegs(colors.legs);
+        look.setFeet(colors.feet);
         look.setAddons(static_cast<uint8_t>(outfit.addons()));
         return createOutfit(appearanceType(ThingCategoryCreature, lookType), look, direction);
     }

@@ -143,14 +143,19 @@ void TSelectObjectAmountDialogController::open(const int typeId, const uint coun
 void TSelectObjectAmountDialogController::okButtonClicked()
 {
     if (m_inner && m_slot) {
-        // The pending action again, with the chosen amount.
-        const int amount = static_cast<int>(m_slot->count());
-        if (const auto* move = input::gameActionAs<input::TGameActionMoveObject>(m_inner))
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionMoveObject>(move->context(), move->destination(), move->moveAll(), amount));
+        // The pending action takes the chosen amount and is published.
+        const uint amount = m_slot->count();
+        bool publish = true;
+        if (const auto* retrieve = input::gameActionAs<input::TGameActionStashRetrieve>(m_inner))
+            retrieve->setAmount(amount);
         else if (const auto* stow = input::gameActionAs<input::TGameActionStashStowStack>(m_inner))
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashStowStack>(stow->context(), amount));
-        else if (const auto* retrieve = input::gameActionAs<input::TGameActionStashRetrieve>(m_inner))
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashRetrieve>(retrieve->typeId(), amount, retrieve->source()));
+            stow->setAmount(static_cast<uint8_t>(amount));
+        else if (const auto* move = input::gameActionAs<input::TGameActionMoveObject>(m_inner))
+            move->setAmount(static_cast<uint8_t>(amount));
+        else
+            publish = false;
+        if (publish)
+            Q_EMIT publishGameAction(m_inner);
     }
     finish();
 }

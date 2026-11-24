@@ -2,6 +2,7 @@
 
 #include <cip_gen.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <vector>
@@ -43,6 +44,22 @@ struct TPassiveAbilityCooldown
     qint64 total = 0;
     qint64 receivedAt = 0;
     bool decaying = false;
+
+    /// The time left at `now`: counting down from when it arrived while it
+    /// decays (not below 0), else as sent.
+    qint64 remainingAt(const qint64 now) const
+    {
+        return decaying ? std::max<qint64>(0, receivedAt - now + remaining) : remaining;
+    }
+    /// The part of the whole length left at `now`, 0 to 1 (0 without a length).
+    double fractionAt(const qint64 now) const
+    {
+        if (total == 0)
+            return 0.0;
+        const double left = std::max(0.0, double(remainingAt(now))) / double(total);
+        return left < 0.0 ? 0.0 : std::min(1.0, left);
+    }
+    bool operator==(const TPassiveAbilityCooldown&) const = default;
 };
 
 /// The server's passive ability counter.
@@ -50,6 +67,12 @@ struct TPassiveAbilityCounter
 {
     uint32_t current = 0;
     uint32_t maximum = 0;
+
+    /// What is left to count.
+    int remaining() const { return int(maximum) - int(current); }
+    /// The part left, 0 without a maximum.
+    double fraction() const { return maximum == 0 ? 0.0 : double(int(maximum) - int(current)) / double(int(maximum)); }
+    bool operator==(const TPassiveAbilityCounter&) const = default;
 };
 
 /// The spell, spell group, multi-use and passive ability cooldowns the server

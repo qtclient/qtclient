@@ -5,7 +5,9 @@
 
 #include <cip_gen.h>
 
+#include <QHash>
 #include <QImage>
+#include <QMutex>
 
 #include <memory>
 
@@ -14,6 +16,7 @@ class QQuickWindow;
 namespace tibia {
 namespace sprites {
 class TSprite;
+class TSpriteResolver;
 }
 namespace renderer {
 
@@ -92,15 +95,28 @@ class TSpriteTextureProviderManager final : public cip::tibia::renderer::TSprite
 {
     Q_OBJECT
 public:
-    explicit TSpriteTextureProviderManager(QObject* parent = nullptr);
+    /// The game client's manager over its sprite resolver, without providers yet.
+    explicit TSpriteTextureProviderManager(std::shared_ptr<sprites::TSpriteResolver> spriteResolver,
+                                           QObject* parent = nullptr);
+    ~TSpriteTextureProviderManager() override;
 
     /// The window's provider shared by its small renderers (slots, action buttons),
     /// dropped with its scene graph. Eviction is off: holders may skip asking for
-    /// idle sprites.
+    /// idle sprites. Host: the renderers reach the game client's manager (the
+    /// last one made; a private one when there is none).
     static TSpriteTextureProvider& sharedProvider(QQuickWindow* window);
-    /// REMOVE_SPRITEIDENTIFIER_FROM_CACHE goes to every provider. Host: the
-    /// providers live in a process-wide registry, so this is static.
-    static void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    /// REMOVE_SPRITEIDENTIFIER_FROM_CACHE goes to every provider.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+    const std::shared_ptr<sprites::TSpriteResolver>& spriteResolver() const { return m_spriteResolver; }
+
+private:
+    TSpriteTextureProvider& provider(QQuickWindow* window);
+
+    std::shared_ptr<sprites::TSpriteResolver> m_spriteResolver;
+    /// The providers by window (host: guarded, the scene graph threads ask too).
+    QMutex m_mutex;
+    QHash<QQuickWindow*, TSpriteTextureProvider*> m_providers;
 };
 
 /// CIP: the highlight pulse of the frame at `Timestamp` (milliseconds); the

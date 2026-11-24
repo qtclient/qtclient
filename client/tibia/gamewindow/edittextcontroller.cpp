@@ -1,5 +1,6 @@
 #include "edittextcontroller.h"
 
+#include "appearances/appearanceinstance.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 #include "input/gameaction.h"
@@ -76,9 +77,11 @@ void TEditTextController::connectToGameSession(const std::shared_ptr<game::IGame
                                                &TEditTextController::showEditGuildMessageDialog));
 }
 
-void TEditTextController::showItemText(const uint32_t id, const uint itemId, const int maxLength, const QString& text, const QString& author,
-                                       const QString& date, const bool recentlyTraded)
+void TEditTextController::showItemText(const uint32_t id, const QString& text, const int maxLength,
+                                       const std::shared_ptr<appearances::TObjectAppearanceInstance>& object, const QString& author,
+                                       const bool recentlyTraded, const QString& date)
 {
+    const uint itemId = object ? object->id() : 0;
     bool editable = false;
     bool reportable = false;
     if (tibia::game::isValidDatId(itemId, ThingCategoryItem)) {

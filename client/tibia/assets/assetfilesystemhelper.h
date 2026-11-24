@@ -10,6 +10,7 @@
 
 namespace tibia::shared {
 class TReadOnlyMemoryBlob;
+class TTibiaFileSystemHelper;
 }
 
 namespace tibia {
@@ -19,7 +20,9 @@ namespace assets {
 class TAssetFileSystemHelper
 {
 public:
-    TAssetFileSystemHelper(const QDir& assetsDirectory, const QDir& soundsDirectory);
+    /// Keeps the helper and takes its assets and sounds directories (empty
+    /// directories without a helper).
+    explicit TAssetFileSystemHelper(std::shared_ptr<tibia::shared::TTibiaFileSystemHelper> tibiaFileSystemHelper);
     virtual ~TAssetFileSystemHelper() = default;
 
     /// Deletes the file `fileName` of the assets directory.
@@ -30,10 +33,10 @@ public:
     /// The path of a file of an asset type: sounds live in the sounds directory, the
     /// rest in the assets directory; a missing file falls back to its ".lzma" packed copy.
     virtual QString getFilePath(TAsset::EType type, const QString& fileName) const;
-    /// The directory the assets live in.
-    virtual QDir assetsDirectory() const { return m_assetsDirectory; }
-    /// The directory the sounds live in.
-    virtual QDir soundsDirectory() const { return m_soundsDirectory; }
+    /// The directory the assets live in (asked from the helper).
+    virtual QDir assetsDirectory() const;
+    /// The directory the sounds live in (asked from the helper).
+    virtual QDir soundsDirectory() const;
     /// Asks `shouldBeRetained` about the name of every file of the assets
     /// directory and deletes the files it does not retain.
     virtual void forEachLocalFileDecideWhetherItShouldBeRetained(std::function<bool(const QString&)> shouldBeRetained) const;
@@ -47,6 +50,7 @@ public:
     virtual QString writeAsset(const TAsset& asset, const QByteArray& data) const;
 
 private:
+    std::shared_ptr<tibia::shared::TTibiaFileSystemHelper> m_pTibiaFileSystemHelper;
     QDir m_assetsDirectory;
     QDir m_soundsDirectory;
 };

@@ -404,6 +404,14 @@ public:
 
     /// The box itself.
     TWorldMapCuboid cuboid() const { return *this; }
+    /// The box's fields on floor `floor` as one floor: the origin's x and y on
+    /// that floor, moved diagonally by its distance to the shear floor (the
+    /// base's floorArea measures from the origin's own floor instead).
+    TWorldMapCuboid shearedFloorArea(const int floor) const
+    {
+        return TWorldMapCuboid(TWorldMapCoordinate(origin.x, origin.y, floor).shiftedTowardsFloor(shearFloor),
+                               TWorldMapExtent(extent.width, extent.height, 1));
+    }
     /// The floors `firstFloor` to `lastFloor` of the box (same shear); empty when
     /// lastFloor is above firstFloor.
     TShearedWorldMapCuboid restrictedToFloors(const int firstFloor, const int lastFloor) const

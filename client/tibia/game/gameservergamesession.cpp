@@ -396,6 +396,8 @@ void TGameserverGameSession::createSessionControllers()
         intent->setPlayer(player);
     connect(this, &IGameSession::playerCreatureAddedToCreatureStorage, intent, &TPlayerMovementIntentHandler::setPlayer);
     createPlayerMovementTimer();
+    // CipSoft then starts its client check timer, whose only work is the
+    // anti-cheat library's tick (not part of this client).
 }
 
 void TGameserverGameSession::createPlayerMovementTimer()
@@ -790,6 +792,9 @@ void TGameserverGameSession::disconnectNow()
     if (const std::shared_ptr<config::TCharacterConfigurationManager>& manager = characterConfigurationManager())
         manager->saveConfiguration();
     closeConnection();
+    // Packets that still arrive are not processed any more.
+    if (m_serverPacketProcessor)
+        m_serverPacketProcessor->setStopped(true);
     m_connectionManager.disconnectAll();
 }
 

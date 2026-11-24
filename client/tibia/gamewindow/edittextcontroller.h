@@ -11,6 +11,10 @@ namespace tibia::game {
 class IGameSession;
 }
 
+namespace tibia::appearances {
+class TObjectAppearanceInstance;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -39,8 +43,9 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP : a writable or readable item's text.
-    void showItemText(uint32_t id, uint itemId, int maxLength, const QString& text, const QString& author, const QString& date,
-                      bool recentlyTraded);
+    void showItemText(uint32_t id, const QString& text, int maxLength,
+                      const std::shared_ptr<appearances::TObjectAppearanceInstance>& object, const QString& author,
+                      bool recentlyTraded, const QString& date);
     /// CIP : a house access list.
     void showEditList(uint32_t id, uint8_t doorId, const QString& text);
 

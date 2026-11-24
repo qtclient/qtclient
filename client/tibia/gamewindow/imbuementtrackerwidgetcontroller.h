@@ -121,9 +121,10 @@ public:
     /// CIP: empties the imbued objects model before it is destroyed.
     ~TImbuementTrackerWidgetController() override;
 
-    void setSidebarOptions(config::TSidebarOptions* options);
-    /// CIP v12: follows the session's imbuement durations storage (null: none).
-    void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// CIP: follows the session's imbuement durations storage, and its sidebar
+    /// options (applied now, again when they change or the character's
+    /// configuration loads); the filters are applied again.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QObject* imbuedObjectsModel() const override;
 
@@ -159,7 +160,8 @@ Q_SIGNALS:
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
 
 private Q_SLOTS:
-    /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
+    /// CIP: the stored content height and maximized state are applied to the
+    /// widget (host: with the stored filters).
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
@@ -179,28 +181,6 @@ private:
     bool m_showEmptySlots = true;
 };
 
-class TImbuementTrackerWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TImbuementTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
-    ~TImbuementTrackerWidgetManager() override;
-
-    TSidebarWidget* open(config::TSidebarOptions* options);
-    void close(bool saveWidgetOptions = true);
-    TSidebarWidget* current() const;
-    /// The open widget's controller, or null.
-    TImbuementTrackerWidgetController* controller() const { return m_controller.data(); }
-    /// Host: the sidebar widgets manager hands the session to its widget managers; the open
-    /// widget follows it.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-private:
-    QQuickItem* m_gameWindowItem;
-    QQmlEngine* m_engine;
-    std::shared_ptr<game::IGameSession> m_gameSession;
-    QPointer<TImbuementTrackerWidgetController> m_controller;
-};
 
 }
 }

@@ -107,9 +107,18 @@ public:
     void setIsEnabled(bool isEnabled);
     /// Whether the equip button's object is worn; announces a change.
     void setObjectIsEquiped(bool objectIsEquiped);
-    /// CIP 's per-button part with / :
-    /// the remaining cooldown at `now`. Returns whether one runs.
-    bool refreshCooldown(qint64 now);
+    /// CIP: the cooldown of a spell or object button, its whole length and
+    /// when it ends; nothing is announced.
+    void setCooldown(qint64 duration, qint64 end);
+    /// CIP: whether the button's cooldown has an end.
+    bool isCooldownRunning() const { return m_cooldownEnd > 0; }
+    /// CIP: the cooldown of an anchored passive ability; announces a change.
+    void setAnchoredCooldown(const game::TPassiveAbilityCooldown& cooldown);
+    /// CIP: the counter of a counting passive ability; announces a change.
+    void setCounterCooldown(const game::TPassiveAbilityCounter& counter);
+    /// CIP (the bar's frame update): the cooldown progress and text by the
+    /// progress type at `now`, then the multi-action slot to show.
+    void updateCooldown(qint64 now);
     /// The slot of a multi-action button that runs now, as the multi action
     /// priority solver picks it over the slots (the first usable slot without
     /// cooldown, else the one whose cooldown ends first by more than
@@ -149,6 +158,9 @@ public:
     QString passiveAbilityIconUrl() const override { return shown()->m_passiveAbilityIconUrl; }
     uint cooldownRemainingPercent() const override { return shown()->m_cooldownRemainingPercent; }
     QString cooldownText() const override { return shown()->m_cooldownText; }
+    /// CIP: the shown slot's spell is one of the spell info storage's active
+    /// (unlocked) spells.
+    bool hasHighlight() const override;
     /// CIP .
     QString tooltip() const override;
 
@@ -168,11 +180,15 @@ Q_SIGNALS:
 
 private:
     const TActionButtonController* shown() const { return m_shownSlot ? m_shownSlot : this; }
-    /// Re-selects the shown slot; announces a change.
-    void refreshShownSlot();
+    /// CIP: the progress of a cooldown with `remaining` milliseconds left, in
+    /// steps of 5 percent of its whole length, and its text.
+    void setRemainingCooldown(qint64 remaining);
+    /// The progress in steps of 5 percent; announced when it changes.
+    void setCooldownRemainingPercent(uint percent);
+    /// Announced when it changes.
+    void setCooldownText(const QString& text);
     /// CIP : the tooltip's table rows for this button or slot.
     QString tooltipRows() const;
-    game::TCooldown currentCooldown(qint64 now) const;
 
     spells::TSpellInfoStorage* m_spellInfoStorage;
     game::TPassiveAbilityInfoStorage* m_passiveAbilityInfoStorage;
@@ -191,7 +207,14 @@ private:
     bool m_useEquipSmartMode = false;
     /// The object of an object button; m_text holds its server name.
     appearances::TObjectAppearanceInstanceTypeID m_objectInstance;
-    bool m_showsCooldown = false;
+    /// The cooldown of a spell or object button (COOLDOWN progress).
+    qint64 m_cooldownEnd = 0;
+    qint64 m_remainingCooldown = 0;
+    qint64 m_cooldownDuration = 0;
+    /// The passive ability's cooldown (ANCHORED_COOLDOWN) or counter
+    /// (COUNTER_COOLDOWN).
+    game::TPassiveAbilityCooldown m_anchoredCooldown;
+    game::TPassiveAbilityCounter m_counterCooldown;
     std::vector<TActionButtonController*> m_children;
     TActionButtonController* m_shownSlot = nullptr;
 };

@@ -38,6 +38,8 @@ public:
     /// Forgets every instance; with `KeepEffects` the effect instances stay.
     void clear(bool KeepEffects);
 
+    /// The factory the storage's instances are made with.
+    const std::shared_ptr<TAppearanceInstanceFactory>& appearanceInstanceFactory() const { return m_pAppearanceInstanceFactory; }
     const TAppearanceInstances& appearanceInstances() const { return m_appearanceInstances; }
     bool isEnabled() const { return m_enabled; }
     void setEnabled(const bool Enabled) { m_enabled = Enabled; }

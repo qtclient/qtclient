@@ -3,28 +3,30 @@
 #include "filesystemhelper.h"
 #include "localfileinfo.h"
 #include "readonlymemoryblob.h"
+#include "shared/tibiafilesystemhelper.h"
+
+#include <utility>
 
 namespace tibia::assets {
 
-namespace {
-
-const tibia::shared::TFileSystemHelper& fileSystem()
+TAssetFileSystemHelper::TAssetFileSystemHelper(std::shared_ptr<tibia::shared::TTibiaFileSystemHelper> tibiaFileSystemHelper)
+    : m_pTibiaFileSystemHelper(std::move(tibiaFileSystemHelper))
+    , m_assetsDirectory(QString())
+    , m_soundsDirectory(QString())
 {
-    static const tibia::shared::TFileSystemHelper helper;
-    return helper;
+    if (m_pTibiaFileSystemHelper) {
+        m_assetsDirectory = m_pTibiaFileSystemHelper->getAssetsDirectory();
+        m_soundsDirectory = m_pTibiaFileSystemHelper->getSoundsDirectory();
+    }
 }
 
-}
+QDir TAssetFileSystemHelper::assetsDirectory() const { return m_pTibiaFileSystemHelper->getAssetsDirectory(); }
 
-TAssetFileSystemHelper::TAssetFileSystemHelper(const QDir& assetsDirectory, const QDir& soundsDirectory)
-    : m_assetsDirectory(assetsDirectory)
-    , m_soundsDirectory(soundsDirectory)
-{
-}
+QDir TAssetFileSystemHelper::soundsDirectory() const { return m_pTibiaFileSystemHelper->getSoundsDirectory(); }
 
 void TAssetFileSystemHelper::removeAssetFile(const QString& fileName) const
 {
-    fileSystem().removeFile(m_assetsDirectory.filePath(fileName));
+    m_pTibiaFileSystemHelper->getFileSystemHelper()->removeFile(m_assetsDirectory.filePath(fileName));
 }
 
 QString TAssetFileSystemHelper::getFilePath(const TAsset& asset) const
@@ -37,9 +39,9 @@ QString TAssetFileSystemHelper::getFilePath(const TAsset::EType type, const QStr
     const bool sound = type == TAsset::Sounds || type == TAsset::Sound || type == TAsset::SoundCatalog;
     const QDir directory = sound ? m_soundsDirectory : m_assetsDirectory;
     QString path = directory.filePath(fileName);
-    if (!fileSystem().fileExists(path)) {
+    if (!m_pTibiaFileSystemHelper->getFileSystemHelper()->fileExists(path)) {
         const QString packed = path + QStringLiteral(".lzma");
-        if (fileSystem().fileExists(packed))
+        if (m_pTibiaFileSystemHelper->getFileSystemHelper()->fileExists(packed))
             path = packed;
     }
     return path;
@@ -48,11 +50,11 @@ QString TAssetFileSystemHelper::getFilePath(const TAsset::EType type, const QStr
 void TAssetFileSystemHelper::forEachLocalFileDecideWhetherItShouldBeRetained(
     std::function<bool(const QString&)> shouldBeRetained) const
 {
-    fileSystem().forEachFileInDirectory(assetsDirectory().absolutePath(),
-                                        [&shouldBeRetained, this](const tibia::shared::TLocalFileInfo& file) {
-                                            if (!shouldBeRetained(file.getFileName()))
-                                                removeAssetFile(file.getFileName());
-                                        });
+    m_pTibiaFileSystemHelper->getFileSystemHelper()->forEachFileInDirectory(
+        assetsDirectory().absolutePath(), [&shouldBeRetained, this](const tibia::shared::TLocalFileInfo& file) {
+            if (!shouldBeRetained(file.getFileName()))
+                removeAssetFile(file.getFileName());
+        });
 }
 
 void TAssetFileSystemHelper::removeAsset(const TAsset& asset) const
@@ -62,19 +64,19 @@ void TAssetFileSystemHelper::removeAsset(const TAsset& asset) const
 
 QByteArray TAssetFileSystemHelper::readAsset(const TAsset& asset) const
 {
-    return fileSystem().readFile(getFilePath(asset));
+    return m_pTibiaFileSystemHelper->getFileSystemHelper()->readFile(getFilePath(asset));
 }
 
 QString TAssetFileSystemHelper::writeAsset(const TAsset& asset, const QByteArray& data) const
 {
     QString path = getFilePath(asset);
-    fileSystem().writeFile(path, data);
+    m_pTibiaFileSystemHelper->getFileSystemHelper()->writeFile(path, data);
     return path;
 }
 
 std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob> TAssetFileSystemHelper::openAsset(const TAsset& asset) const
 {
-    return fileSystem().openReadOnlyMemoryBlob(getFilePath(asset));
+    return m_pTibiaFileSystemHelper->getFileSystemHelper()->openReadOnlyMemoryBlob(getFilePath(asset));
 }
 
 }

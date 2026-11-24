@@ -174,39 +174,6 @@ private:
     QPointer<config::TSidebarOptions> m_options;
 };
 
-class TCreatureTrackerWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TCreatureTrackerWidgetManager(TCreatureTrackerWidgetController::EWidgetMode mode, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                  QObject* parent = nullptr);
-    /// The storages are the session's (taken by the controller); kept until
-    /// the sidebar widgets manager makes the manager without them.
-    TCreatureTrackerWidgetManager(TCreatureTrackerWidgetController::EWidgetMode mode, cyclopedia::TCreatureTrackerStorage*,
-                                  bossbestiary::TBossTrackerStorage*, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                  QObject* parent = nullptr);
-    ~TCreatureTrackerWidgetManager() override;
-
-    /// The open controller connects to the session (and every one opened later).
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    /// The controller takes the options from the session.
-    TSidebarWidget* open(config::TSidebarOptions* options);
-    void close(bool saveWidgetOptions = true);
-    TSidebarWidget* current() const;
-    /// The open widget's controller, or null.
-    TCreatureTrackerWidgetController* controller() const { return m_controller; }
-
-Q_SIGNALS:
-    /// The controller's publishGameAction, forwarded.
-    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    TCreatureTrackerWidgetController::EWidgetMode m_mode;
-    std::shared_ptr<game::IGameSession> m_gameSession;
-    QQuickItem* m_gameWindowItem = nullptr;
-    QQmlEngine* m_engine = nullptr;
-    TCreatureTrackerWidgetController* m_controller = nullptr;
-};
 
 }
 }

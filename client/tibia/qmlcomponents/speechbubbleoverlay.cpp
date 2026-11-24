@@ -20,6 +20,8 @@ namespace {
 
 using Provider = TWorldMapRenderProvider;
 
+bool g_showBoundingRect = false;
+
 struct Box
 {
     double x, y, w, h;
@@ -115,6 +117,16 @@ void separate(const double width, const double height, std::vector<Box>& boxes)
     }
 }
 
+}
+
+void TSpeechBubbleController::setShowBoundingRect(const bool Show)
+{
+    g_showBoundingRect = Show;
+}
+
+bool TSpeechBubbleController::showBoundingRect() const
+{
+    return g_showBoundingRect;
 }
 
 TSpeechBubbleController::TSpeechBubbleController(const QColor& textColor, const QColor& styleColor, const int maximumWidth, QObject* parent)

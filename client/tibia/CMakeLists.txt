@@ -801,6 +801,7 @@ if(TIBIA_WITH_GAMECORE)
     appearances/worldmaphighlightbaseplate.cpp appearances/worldmaphighlightbaseplate.h
     appearances/creatureplaceholderappearanceinstance.cpp appearances/creatureplaceholderappearanceinstance.h
     appearances/useableappearances.h
+    appearances/outfitcolorset.cpp appearances/outfitcolorset.h
     animation/animator.h
     animation/worldmaplinearmovementtween.cpp animation/worldmaplinearmovementtween.h
     animation/animationinfo.h

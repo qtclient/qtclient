@@ -23,7 +23,8 @@ public:
     explicit TMarketCoinTransactionDetailsDialogController(QObject* parent = nullptr);
     ~TMarketCoinTransactionDetailsDialogController() override;
 
-    /// Host bridge: the store dialog hands over the storage's details when they arrive.
+    /// CIP: the store dialog hands over the details when they arrive; the child
+    /// list is rebuilt and the transaction counts as loaded.
     void setTransactionDetails(const store::TTransactionDetails& details);
 
     EMarketTransactionType transactionType() const override;

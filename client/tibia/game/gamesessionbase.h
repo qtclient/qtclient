@@ -796,7 +796,7 @@ public:
 
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
-    void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
+    virtual void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
 
 protected Q_SLOTS:
     /// Keeps the own creature and announces it.

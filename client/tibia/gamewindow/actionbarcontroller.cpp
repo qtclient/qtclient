@@ -542,10 +542,61 @@ void TActionBarController::tick(const qint64 now)
     if (!m_gameSession)
         return;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    if (!session || !session->cooldownStorage())
-        return;
-    for (TActionButtonController* button : m_buttons)
-        button->refreshCooldown(now);
+    if (const game::TCooldownStorage* cooldowns = session ? session->cooldownStorage().get() : nullptr) {
+        const spells::TSpellInfoStorage* spellStorage = spells::TSpellInfoStorage::instance();
+        const game::TPassiveAbilityInfoStorage* passiveAbilities = game::TPassiveAbilityInfoStorage::instance();
+        for (TActionButtonController* bar : m_buttons) {
+            // The button, then its multi-action slots.
+            std::vector<TActionButtonController*> buttons{ bar };
+            for (int index = 0; TActionButtonController* slot = bar->multiAction(index); ++index)
+                buttons.push_back(slot);
+            for (TActionButtonController* button : buttons) {
+                switch (button->type()) {
+                case TActionButtonController::SPELL: {
+                    const game::TCooldown cooldown = cooldowns->spellCooldown(static_cast<uint16_t>(button->spellId()), now);
+                    // An expired cooldown is kept; a cleared one ends the button's.
+                    if (cooldown.end >= now)
+                        button->setCooldown(cooldown.duration, cooldown.end);
+                    else if (button->isCooldownRunning() && cooldown.end == 0)
+                        button->setCooldown(cooldown.duration, 0);
+                    break;
+                }
+                case TActionButtonController::OBJECT: {
+                    if (button->useType() == config::EUseType::Equip || button->objectID() == 0)
+                        break;
+                    const auto objectId = static_cast<uint16_t>(button->objectID());
+                    // A rune waits for its spell's cooldown, another multi-use
+                    // object for the multi-use cooldown.
+                    if (spellStorage && spellStorage->runeSpellOfObject(objectId)) {
+                        const game::TCooldown cooldown = cooldowns->objectCooldown(objectId, now);
+                        if (now <= cooldown.end)
+                            button->setCooldown(cooldown.duration, cooldown.end);
+                    } else if (const auto* type = tibia::game::rawThingType(objectId, ThingCategoryItem);
+                               type && type->isMultiUse()) {
+                        const game::TCooldown cooldown = cooldowns->multiUseCooldown(now);
+                        if (now <= cooldown.end)
+                            button->setCooldown(cooldown.duration, cooldown.end);
+                    }
+                    break;
+                }
+                case TActionButtonController::PASSIVEABILITY: {
+                    const auto ability = static_cast<uint8_t>(button->passiveAbility());
+                    if (!passiveAbilities || !game::TPassiveAbilityInfoStorage::isKnownPassiveAbility(ability))
+                        break;
+                    // A counting ability shows its counter, another its anchored cooldown.
+                    if (passiveAbilities->info(ability).flag)
+                        button->setCounterCooldown(cooldowns->passiveAbilityCounter(ability));
+                    else
+                        button->setAnchoredCooldown(cooldowns->passiveAbilityCooldown(ability));
+                    break;
+                }
+                default:
+                    break;
+                }
+                button->updateCooldown(now);
+            }
+        }
+    }
     if (!m_actionBarCharacterOptionsChanged)
         return;
     onActionBarCharacterOptionsChangedAsync();

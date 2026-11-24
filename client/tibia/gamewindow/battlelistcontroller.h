@@ -292,8 +292,9 @@ public:
     bool handleGameAction(const input::IGameAction& action);
     /// CIP: the list leaves the storage; `saveOptions` first saves its options.
     void removeBattleList(uint8_t battleListId, bool saveOptions);
-    /// Every list leaves the storage, saving its options.
-    void closeAll();
+    /// CIP: every list is deleted (saving its options first when
+    /// `saveWidgetOptions`); an open primary or party list is announced hidden.
+    void closeAll(bool saveWidgetOptions);
     std::vector<std::pair<int, TSidebarWidget*>> widgets() const;
 
     /// The list's options from the sidebar options (defaults when it has none).
@@ -310,8 +311,11 @@ public:
 
     /// The hovered creature (the creature storage holds it and its frame).
     void setTemporarySelectedCreature(uint32_t creatureId);
-    /// The session whose battle list render provider builds the rows.
-    void setGameSession(std::shared_ptr<game::IGameSession> GameSession);
+    /// CIP: every list closes saving its options; the session's battle list
+    /// render provider builds the rows, the lists keep their options in the
+    /// session's sidebar options and the end of the session's login ramp-up
+    /// drops the options of lists that are not open.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// CIP: the shared model takes the draw commands of every creature.
@@ -350,6 +354,7 @@ private:
     TBattleListController* m_party = nullptr;
     std::map<uint8_t, TBattleListController*> m_controllers;
     std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     int m_controlScheme = 1; // CIP control scheme (1 classic)
     bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;

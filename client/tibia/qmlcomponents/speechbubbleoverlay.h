@@ -48,6 +48,11 @@ public:
     void setVisible(bool visible);
     void setPosition(const QPoint& position);
 
+    /// CIP: whether bubbles show their bounding rectangle ([DEBUG]
+    /// showSpeechBubbleBoundingRect, set once by the game client).
+    static void setShowBoundingRect(bool Show);
+    bool showBoundingRect() const override;
+
     /// Where the layout wants the bubble before overlaps are resolved.
     QPoint desiredPosition;
     QPointer<QQuickItem> item;

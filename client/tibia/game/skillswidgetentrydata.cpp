@@ -119,21 +119,103 @@ void TSkillsWidgetEntryData::assign(const SkillsWidgetEntry& entry)
 {
     if (entry == m_entry)
         return;
-    m_entry = entry;
+    // The fields without a setter of their own are copied and announced once;
+    // the others go through their setters, which announce each change.
+    const bool plainChanged = entry.caption != m_entry.caption || entry.tooltip != m_entry.tooltip
+        || entry.progressBarVisible != m_entry.progressBarVisible || entry.separatorType != m_entry.separatorType
+        || entry.changeHighlight != m_entry.changeHighlight || entry.entryVisible != m_entry.entryVisible;
     m_caption = entry.caption;
-    m_valueString = entry.valueString;
-    m_valueStringColor = entry.valueStringColor;
     m_tooltip = entry.tooltip;
     m_progressBarVisible = entry.progressBarVisible;
-    m_progressBarColor = entry.progressBarColor;
-    m_progressBarValue = entry.progressBarValue;
     m_separatorType = entry.separatorType;
     m_changeHighlight = entry.changeHighlight;
-    m_showButton = entry.showButton;
-    m_iconSource = entry.iconSource;
-    m_iconTooltip = entry.iconTooltip;
-    m_additionalValueString = entry.additionalValueString;
     m_entryVisible = entry.entryVisible;
+    m_entry.caption = entry.caption;
+    m_entry.tooltip = entry.tooltip;
+    m_entry.progressBarVisible = entry.progressBarVisible;
+    m_entry.separatorType = entry.separatorType;
+    m_entry.changeHighlight = entry.changeHighlight;
+    m_entry.entryVisible = entry.entryVisible;
+    if (plainChanged)
+        Q_EMIT changed();
+    setValueString(entry.valueString);
+    setValueStringColor(entry.valueStringColor);
+    setProgressBarColor(entry.progressBarColor);
+    setProgressBarValue(entry.progressBarValue);
+    setShowButton(entry.showButton);
+    // The icon tooltip is announced with its icon source.
+    const bool iconTooltipChanged = entry.iconTooltip != m_entry.iconTooltip;
+    if (iconTooltipChanged)
+        setIconTooltip(entry.iconTooltip);
+    if (iconTooltipChanged || entry.iconSource != m_entry.iconSource)
+        setIconSource(entry.iconSource);
+    if (entry.additionalValueString != m_entry.additionalValueString)
+        setAdditionalValueString(entry.additionalValueString);
+}
+
+void TSkillsWidgetEntryData::setValueString(const QString& ValueString)
+{
+    if (m_valueString == ValueString)
+        return;
+    m_valueString = ValueString;
+    m_entry.valueString = ValueString;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setValueStringColor(const EValueColorType ValueStringColor)
+{
+    if (m_valueStringColor == ValueStringColor)
+        return;
+    m_valueStringColor = ValueStringColor;
+    m_entry.valueStringColor = ValueStringColor;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setProgressBarColor(const QColor& ProgressBarColor)
+{
+    if (m_progressBarColor == ProgressBarColor)
+        return;
+    m_progressBarColor = ProgressBarColor;
+    m_entry.progressBarColor = ProgressBarColor;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setProgressBarValue(const double ProgressBarValue)
+{
+    if (m_progressBarValue == ProgressBarValue)
+        return;
+    m_progressBarValue = ProgressBarValue;
+    m_entry.progressBarValue = ProgressBarValue;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setShowButton(const bool ShowButton)
+{
+    if (m_showButton == ShowButton)
+        return;
+    m_showButton = ShowButton;
+    m_entry.showButton = ShowButton;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setIconSource(const QString& IconSource)
+{
+    m_iconSource = IconSource;
+    m_entry.iconSource = IconSource;
+    Q_EMIT changed();
+}
+
+void TSkillsWidgetEntryData::setIconTooltip(const QString& IconTooltip)
+{
+    // No change announcement: the tooltip is read with the icon source.
+    m_iconTooltip = IconTooltip;
+    m_entry.iconTooltip = IconTooltip;
+}
+
+void TSkillsWidgetEntryData::setAdditionalValueString(const QString& AdditionalValueString)
+{
+    m_additionalValueString = AdditionalValueString;
+    m_entry.additionalValueString = AdditionalValueString;
     Q_EMIT changed();
 }
 

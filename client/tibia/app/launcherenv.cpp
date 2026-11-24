@@ -216,6 +216,16 @@ QUrl LauncherEnv::fpsHistoryRecipientUrl() const
     return withPath(loginBase, ensureLeadingSlash(path));
 }
 
+QUrl LauncherEnv::tutorialProgressWebServiceUrl() const
+{
+    const QString path = qEnvironmentVariable("QTCLIENT_TUTORIAL_PROGRESS_PATH",
+                                              QStringLiteral("/clientservices/tutorialprogress.php"));
+    const QUrl absolute(path);
+    if (absolute.isValid() && !absolute.isRelative())
+        return absolute;
+    return withPath(loginBase, ensureLeadingSlash(path));
+}
+
 LauncherEnv LauncherEnv::load(const QString& workDir)
 {
     const auto release = readReleaseEnv(workDir);

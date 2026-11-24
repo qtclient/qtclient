@@ -221,10 +221,11 @@ protected:
     /// default as many 384x384 RGBA spritesheets as half the physical memory
     /// holds, at most 512 MB, at least 350); the size is logged.
     static std::shared_ptr<sprites::TSpritesheetManager> createSpritesheetManager(const config::TTibiaConfig& TibiaConfig);
-    /// CIP: where the assets and the sounds are read and written. Host: the
-    /// assets' and sounds' directories of qtclient's data tree (CipSoft: of
-    /// the Resources directory).
-    static std::shared_ptr<assets::TAssetFileSystemHelper> createAssetFileSystemHelper();
+    /// CIP: where the assets and the sounds are read and written: over the
+    /// client's file system helper. Host: that helper answers the assets' and
+    /// sounds' directories of qtclient's data tree (CipSoft: of the Resources
+    /// directory).
+    std::shared_ptr<assets::TAssetFileSystemHelper> createAssetFileSystemHelper();
 
     /// CIP: the storages the client keeps for the whole process: the
     /// spritesheet manager (the cache size from the Resources directory's
