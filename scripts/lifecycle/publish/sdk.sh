@@ -8,7 +8,9 @@ if [[ -z "$HOST_ID" ]]; then
 fi
 OWNER="${GITHUB_REPOSITORY_OWNER:-qtclient}"
 REGISTRY="${REGISTRY:-ghcr.io/$OWNER}"
-NAME="client-sdk"
+# Desktop SDK: client-sdk; wasm SDK: client-sdk-wasm (PACKAGE_NAME or COMP=wasm).
+NAME="${SDK_PACKAGE_NAME:-client-sdk}"
+case "${COMP:-}" in browser|wasm) NAME="${SDK_PACKAGE_NAME:-client-sdk-wasm}" ;; esac
 TARBALL="client-sdk.tgz"
 command -v oras >/dev/null || { echo "oras required" >&2; exit 1; }
 [[ -d "$OUT" ]] || { echo "[qtclient] publish: missing $OUT" >&2; exit 1; }

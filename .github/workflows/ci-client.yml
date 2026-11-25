@@ -94,6 +94,65 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
         run: bash scripts/lifecycle/publish/sdk.sh
 
+  # Wasm pack SDK (static-ABI packs). Published in parallel with desktop SDK so
+  # idleot/release pack-mod-wasm can skip local sdk.sh --wasm when present.
+  sdk-wasm:
+    name: sdk-wasm
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: lukka/get-cmake@v4.3.4
+      - name: Resolve CIP Qt SHA
+        id: cip
+        shell: bash
+        run: |
+          set -euo pipefail
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Pull CIP Qt wasm (SDK records the kit)
+        shell: bash
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        run: bash tools/qt/ci-setup.sh --wasm --pull-only
+      - name: Pack client-sdk-wasm (QtClientSdk)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk-wasm
+          COMP: wasm
+        run: bash scripts/lifecycle/package/sdk.sh
+      - name: Upload client-sdk-wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-sdk-wasm-${{ github.sha }}
+          path: ${{ runner.temp }}/client-sdk-wasm
+          retention-days: 30
+      - uses: oras-project/setup-oras@v1
+        if: env.PUBLISH_HOST == 'true'
+      - name: Push client-sdk-wasm to GHCR
+        if: env.PUBLISH_HOST == 'true'
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk-wasm
+          COMP: wasm
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish/sdk.sh
+
   # Full desktop matrix on main / dispatch (PRs use CI: checks only).
   client-desktop:
     name: client-${{ matrix.plat }}

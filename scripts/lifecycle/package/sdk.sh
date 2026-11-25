@@ -10,6 +10,7 @@ export QTCLIENT_HOST_BUILD_ID="$HOST_ID" SOURCE_COMMIT="$HOST_ID"
 
 # shellcheck source=_pack.sh
 source "$HERE/_pack.sh"
+# COMP=wasm|browser → wasm SDK install (see _pack.sh pack_sdk).
 OUT="${PACKAGE_OUT:-${RUNNER_TEMP:-$QTCLIENT/build/package}/client-sdk}"
 pack_sdk "$OUT"
 echo "PACKAGE_OUT=$OUT"
