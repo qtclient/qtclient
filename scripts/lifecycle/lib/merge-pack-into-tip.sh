@@ -59,6 +59,11 @@ cp -a "$PACK" "$dest"
 test -f "$dest/mod.json"
 # Runtime MODULE packs ship native/mod.* (host-pushed C ABI). Drop only stale lib/.
 rm -rf "$dest/lib"
+# A wasm tip (tibia.js / tibia.wasm here) links the pack's C++ as a static-ABI archive:
+# a desktop module merged from a desktop tip has no place there.
+if [[ -f "$TIP/tibia.wasm" || -f "$TIP/tibia.js" ]]; then
+  rm -rf "$dest/native"
+fi
 # Content fingerprint so /play OPFS restages when tip pack bytes change without a
 # wasm stamp bump (brand chrome, QML overrides, …).
 python3 - "$dest" <<'PY'

@@ -365,7 +365,7 @@ std::unique_ptr<QQmlEngine> createEngine()
 #if defined(TIBIA_QML_DISK)
     // DEV: also import from source pack qml/ so `import <pack qml module>` + disk remap stay in sync.
     // --no-mods drops pack qml/ and pack overrides (host has no client/overrides).
-    // Roots are in-tree mods/<id>/qml and QTCLIENT_LINKED_PACK qml/ (colon list).
+    // Roots are in-tree mods/<id>/qml and QTCLIENT_DEV_PACK_SOURCES qml/ (colon list).
     QString diskModDirs = QStringLiteral(TIBIA_QML_MOD_DIR);
     QString diskOverrideDirs = QStringLiteral(TIBIA_QML_OVERRIDES_DIR);
     if (tibia::mods::ModLoader::skipLoad()) {

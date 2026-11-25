@@ -10,8 +10,9 @@ namespace mods {
 
 /// Unified pack loader (desktop + WASM): directory layout
 /// mods/<id>/mod.json + native/mod.* + qml/ + overrides/ + resources/
-/// Native MODULE: dlopen → qtclient_mod_register(hostApi, ctx) (host-pushed C ABI).
-/// Deprecated absorb: QTCLIENT_HAS_LINKED_PACK still invokes linked entries once.
+/// Desktop MODULE: native/mod.* → qtclient_mod_register(hostApi, ctx) (host-pushed C ABI).
+/// WASM static-ABI: no native/; the pack's qtclient_mod_<id>_register_abi is linked in and
+/// found in the QTCLIENT_HAS_STATIC_ABI_MODS table (cmake/GenerateStaticAbiMods.cmake).
 /// Loads all autoload qtclient packs (priority: lower number wins identity/urls;
 /// override remap: later load wins — packs load high-priority-number first).
 class ModLoader

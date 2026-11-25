@@ -17,7 +17,7 @@ namespace app {
 ///
 /// Remaps only product trees to live files (dev / TIBIA_QML_DISK):
 /// qrc:/qt/qml/<module>/…         → pack qml/<module>/… (FS module;
-/// in-tree mods and QTCLIENT_LINKED_PACK)
+/// in-tree mods and QTCLIENT_DEV_PACK_SOURCES)
 /// qrc:/qt/qml/… under overrides  → pack overrides/ roots (colon list)
 /// Production always uses PackQmlInterceptor for pack qrc→file remaps.
 ///

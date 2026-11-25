@@ -383,7 +383,9 @@ class Gen:
                 seen.add(out[i][1])
         return out
 
-    def emit_class(self, name, emitted):
+    def class_members(self, name, emitted):
+        """What emit_class declares for a class: its properties (with C++ types), setters,
+        signals, public slots and invokables (tools/cip/gen_cip_objects.py reads them too)."""
         c = self.moc[name]
         ns, short = split_ns(self.cpp_path(name))
         root = self.roots[name]
@@ -451,6 +453,18 @@ class Gen:
         slot_keys = {(n, tuple(t for t, _ in a)) for n, _, a in slots}
         invokables = [m for m in methods("invokables") if (m[0], tuple(t for t, _ in m[2])) not in slot_keys]
         sig_args = {s: a for s, _, a in signals}
+        return dict(c=c, ns=ns, short=short, root=root, sup=sup, base=base, ctor_parent=ctor_parent,
+                    props=props, getters=getters, setters=setters, signals=signals,
+                    declared_signals=declared_signals, inherited_signals=inherited_signals,
+                    slots=slots, invokables=invokables, sig_args=sig_args)
+
+    def emit_class(self, name, emitted):
+        m = self.class_members(name, emitted)
+        c, ns, short, sup, base, ctor_parent = m["c"], m["ns"], m["short"], m["sup"], m["base"], m["ctor_parent"]
+        props, getters, setters, signals = m["props"], m["getters"], m["setters"], m["signals"]
+        declared_signals, inherited_signals = m["declared_signals"], m["inherited_signals"]
+        slots, invokables, sig_args = m["slots"], m["invokables"], m["sig_args"]
+        skip = self.skipped[name].append
 
         enum_member_names = set(getters) | set(setters) | {n for n, _, _ in signals + slots + invokables}
         lines = []

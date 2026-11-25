@@ -8,11 +8,7 @@
 extern "C" {
 #endif
 
-typedef struct QtClientMapPos {
-    int x;
-    int y;
-    int z;
-} QtClientMapPos;
+/* QtClientMapPos is in types.h (v9). */
 
 typedef struct QtClientMapAwareRange {
     uint8_t left;
@@ -160,6 +156,28 @@ typedef struct QtClientStaticMapArea {
     int mask_height;
 } QtClientStaticMapArea;
 
+/** An open container (host API v9; CipSoft TStoredContainer). */
+typedef struct QtClientContainerInfo {
+    uint8_t container_id;
+    /** The container object's type id (0: none). */
+    uint16_t type_id;
+    /** Slots per page. */
+    uint32_t capacity;
+    /** The objects inside (all pages) and the first one shown (paged containers). */
+    uint32_t size;
+    uint32_t first_index;
+    int has_parent;
+    int has_pages;
+    char name[96];
+} QtClientContainerInfo;
+
+/** An astral source of an imbuement (host API v9; CipSoft TQmlAstralSource). */
+typedef struct QtClientAstralSource {
+    uint16_t type_id;  /* objectID */
+    uint32_t count;    /* objectCount: how many the imbuement takes */
+    char name[96];
+} QtClientAstralSource;
+
 typedef struct QtClientSessionApiV1 {
     int (*is_online)(void);
     int (*is_dead)(void);
@@ -291,21 +309,11 @@ typedef struct QtClientSessionApiV1 {
     void (*local_player_hold_direction)(int direction);
     void (*local_player_release_direction)(void);
 
-    /** --- Current game session objects (host API v5+; read only when api_version >= 5) ---
-     *  Opaque tip pointers into the game client's current session (one per login, replay or
-     *  tutorial); null between sessions. Resolve them at call time and never keep them: the
-     *  next login builds new ones. Rebind signal connections on notify->subscribe_session_changed. */
-    /** container::TContainerStorage* (<qtclient/container/containerciptypes.h>). */
-    void* (*container_storage)(void);
-    /** container::TInventoryContainer* (<qtclient/container/containerciptypes.h>). */
-    void* (*inventory_container)(void);
-    /** creatures::TCreatureStorage* (<qtclient/creatures/creaturestorage.h>). */
-    void* (*creature_storage)(void);
-    /** game::TCooldownStorage* (<qtclient/cooldown.h>). */
-    void* (*cooldown_storage)(void);
-    /** quickloot::TQuickLootBlackWhitelistStorage* (<qtclient/quickloot/quicklootblackwhiteliststorage.h>). */
-    void* (*quick_loot_black_white_list_storage)(void);
-    /** Non-zero once the session read the character's configuration (quick-loot and analyser
+    /** --- Current game session (host API v5+; read only when api_version >= 5) ---
+     *  v9 removed the opaque tip getters container_storage, inventory_container,
+     *  creature_storage, cooldown_storage and quick_loot_black_white_list_storage: use the
+     *  container / quick-loot peels below (v9 tail), api->cooldown and creature_at_id.
+     *  Non-zero once the session read the character's configuration (quick-loot and analyser
      *  lists hold the character's), zero before that and after the game ended. */
     int (*character_configuration_loaded)(void);
 
@@ -344,6 +352,41 @@ typedef struct QtClientSessionApiV1 {
     int (*static_map_area)(uint16_t id, int subarea, QtClientStaticMapArea* out);
     size_t (*static_map_area_ids)(int subareas, uint16_t* out, size_t cap);
     size_t (*static_map_subareas_of_area)(uint16_t area_id, uint16_t* out, size_t cap);
+
+    /** --- Host API v9 (read only when api_version >= 9). Current session; 0 / empty between
+     *  sessions. Changes: notify->subscribe_containers, subscribe_session_changed. --- */
+
+    /** The open containers' ids, ascending (list). */
+    size_t (*open_container_ids)(uint8_t* out, size_t cap);
+    /** Container `container_id`'s row; nonzero when it is open. */
+    int (*container_info)(uint8_t container_id, QtClientContainerInfo* out);
+    /** Its slots in order (list; empty slots have `empty` set). */
+    size_t (*container_items)(uint8_t container_id, QtClientInventorySlotInfo* out, size_t cap);
+
+    /** CipSoft's quick-loot list in use (QTCLIENT_QUICK_LOOT_BLACKLIST / _WHITELIST). */
+    int (*quick_loot_list_type)(void);
+    /** The type ids of list `list_type`, ascending (list). */
+    size_t (*quick_loot_list)(int list_type, uint16_t* out, size_t cap);
+    /** Replaces both lists and the type in use locally (CipSoft replaceLists; no message to
+     *  the server: send request_quick_loot_black_white_list for that). */
+    void (*quick_loot_replace_lists)(int list_type, const uint16_t* blacklist, size_t blacklist_count,
+                                     const uint16_t* whitelist, size_t whitelist_count);
+
+    /** Adds `count` owned items of `type_id` to the imbuing dialog's material counts (CipSoft
+     *  TImbuingStorage::addOwned), e.g. after a pack purchase. */
+    void (*imbuing_add_owned)(uint16_t type_id, uint32_t count);
+    /** The astral sources of the imbuing dialog's selected imbuement (list; 0 when the dialog
+     *  shows none). */
+    size_t (*imbuing_selected_astral_sources)(QtClientAstralSource* out, size_t cap);
+
+    /** A bool option of CipSoft's NPC trade options by name, e.g. "sellEquipped" (CipSoft
+     *  TNPCTradeOptions); -1 for an unknown name. Client-wide. */
+    int (*npc_trade_option)(const char* name_utf8);
+
+    /** Sets CipSoft's attack mark (the creature storage's attack id: the target frame on the
+     *  map and in the battle list) without sending anything; 0 clears it. Pair it with
+     *  set_attacking_creature_id. */
+    void (*set_attack_mark)(uint32_t creature_id);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

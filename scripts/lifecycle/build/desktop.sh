@@ -165,7 +165,8 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
 
   HELPER="$MONOREPO/scripts/cmake-configure-if-needed.sh"
   # Always pass one -D each — empty "${arr[@]}" trips `set -u`.
-  # STOCK_HOST=1 → stock CIP tip. Product tip: QTCLIENT_LINKED_PACK=…/client.
+  # STOCK_HOST=1 → stock CIP tip. Product tip: QTCLIENT_PACKS=<installed pack prefix>
+  # (the pack's static-ABI archive, built against the wasm SDK — build/pack.sh --wasm).
   _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
   if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
     _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
@@ -174,9 +175,8 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   if [[ -n "${QTCLIENT_MODS:-}" ]]; then
     _mods_list_cmake=(-DQTCLIENT_MODS="${QTCLIENT_MODS}")
   fi
-  _linked_pack_cmake=()
-  if [[ -n "${QTCLIENT_LINKED_PACK:-}" ]]; then
-    _linked_pack_cmake=(-DQTCLIENT_LINKED_PACK="${QTCLIENT_LINKED_PACK}")
+  _packs_cmake=(-DQTCLIENT_PACKS="${QTCLIENT_PACKS:-}")
+  if [[ -n "${QTCLIENT_PACKS:-}" ]]; then
     _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
   fi
   WASM_CMAKE_ARGS=(
@@ -201,15 +201,15 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DOPTIONS_ENABLE_CCACHE=ON
     "$_mods_cmake"
     ${_mods_list_cmake[@]+"${_mods_list_cmake[@]}"}
-    ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
+    "${_packs_cmake[@]}"
   )
   FP="$(
     {
-    echo "tibia-wasm-vcpkg-v5-jspi-wasm-eh"
+    echo "tibia-wasm-vcpkg-v6-jspi-wasm-eh-installed-packs"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "mods-list=${QTCLIENT_MODS:-}"
-    echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
+    echo "packs=${QTCLIENT_PACKS:-}"
     printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
     _sha256 "$QTCLIENT/vcpkg.json" "$QTCLIENT/vcpkg-configuration.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
@@ -220,7 +220,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     cmake "${WASM_CMAKE_ARGS[@]}"
   fi
 
-  # STATIC packs link into tibia — one tip target.
+  # Static-ABI packs (QTCLIENT_PACKS) are prebuilt archives linked into tibia.
   cmake --build "$BUILD_DIR" --target tibia -j"$JOBS"
   cmake --build "$BUILD_DIR" --target launcher -j"$JOBS"
 
@@ -372,21 +372,23 @@ _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
 if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
   _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
 fi
-_linked_pack_cmake=()
-if [[ -n "${QTCLIENT_LINKED_PACK:-}" ]]; then
-  _linked_pack_cmake=(-DQTCLIENT_LINKED_PACK="${QTCLIENT_LINKED_PACK}")
+# Installed packs (build/pack.sh → <prefix>/mods/<id>/native/mod.*) are staged next
+# to the tip; QTCLIENT_DEV_PACK_SOURCES (pack client/ dirs) feed DEV disk QML only.
+_packs_cmake=(-DQTCLIENT_PACKS="${QTCLIENT_PACKS:-}" -DQTCLIENT_DEV_PACK_SOURCES="${QTCLIENT_DEV_PACK_SOURCES:-}")
+if [[ -n "${QTCLIENT_PACKS:-}" ]]; then
   _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
 fi
 FP="$(
   {
-    echo "tibia-desktop-vcpkg-v2-linked-tip"
+    echo "tibia-desktop-vcpkg-v3-installed-packs"
     echo "preset=$PRESET"
     echo "qt=$QT_DESKTOP"
     echo "triplet=$VCPKG_TARGET_TRIPLET"
     echo "qml-disk=$DEV_BUILD"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
-    echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
+    echo "packs=${QTCLIENT_PACKS:-}"
+    echo "dev-pack-sources=${QTCLIENT_DEV_PACK_SOURCES:-}"
     _sha256 "$QTCLIENT/CMakePresets.json" "$QTCLIENT/vcpkg.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
 )"
@@ -398,14 +400,14 @@ if [[ -f "$HELPER" ]]; then
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
     "$_mods_cmake" \
-    ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
+    "${_packs_cmake[@]}"
 else
   cmake --preset "$PRESET" \
     -DTOGGLE_BIN_FOLDER=ON \
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
     "$_mods_cmake" \
-    ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
+    "${_packs_cmake[@]}"
 fi
 # Expected qtclient outputs (TOGGLE_BIN_FOLDER=ON) — no multi-path search.
 case "$(uname -s)" in
@@ -446,5 +448,5 @@ if [[ "$LAUNCHER_BUILD" -eq 0 ]]; then
   fi
 fi
 if [[ "$DEV_BUILD" -eq 1 ]]; then
-  echo "[tibia] qml-disk: edit QTCLIENT_LINKED_PACK qml/ + overrides/ (and in-tree client/mods/*/qml); F5 clears cache — reopen panels after structural edits"
+  echo "[tibia] qml-disk: edit QTCLIENT_DEV_PACK_SOURCES qml/ + overrides/ (and in-tree client/mods/*/qml); F5 clears cache — reopen panels after structural edits"
 fi

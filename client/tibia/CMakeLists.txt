@@ -2,8 +2,8 @@
 # `make tibia-sync`, never edited) runs on Qt Quick with CIP's bootstrap;
 # controllers implement the generated cip:: bases (tools/cip/gen_cpp.py);
 # The engine (protocol, world, assets, net buffers) is compiled into this
-# executable. Packs link the fat host ABI via ENABLE_EXPORTS / QtClient::Host
-# (see cmake/QtClientHost.cmake). There is no separate gamecore library.
+# executable. Packs build against the pack SDK (sdk/) and the tip takes installed
+# packs (-DQTCLIENT_PACKS, cmake/TibiaMods.cmake). There is no separate gamecore library.
 #
 # Built two ways:
 #   - from the qtclient host (add_subdirectory): desktop, wasm, mobile.
@@ -29,7 +29,6 @@ include("${TIBIA_ROOT}/cmake/CipSoftDir.cmake")
 include("${TIBIA_ROOT}/cmake/CipCodegen.cmake")
 include("${TIBIA_ROOT}/cmake/CipQmlModule.cmake")
 include("${TIBIA_ROOT}/cmake/TibiaMods.cmake")
-include("${TIBIA_ROOT}/cmake/QtClientMod.cmake")
 include("${TIBIA_ROOT}/cmake/QtClientHost.cmake")
 include("${TIBIA_ROOT}/cmake/TibiaDesktopTip.cmake")
 
@@ -126,7 +125,7 @@ qt_add_executable(tibia
   renderer/renderdriver.cpp renderer/renderdriver.h
   cip_impl.h
 )
-cip_codegen(tibia)
+cip_codegen(tibia CIP_OBJECTS)
 target_include_directories(tibia PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 # WASM qtclient_deps historically omitted repo/client roots that desktop has —
 # keep them on tibia so #include <tibia/…> and "launcher/…" resolve.
@@ -144,7 +143,7 @@ if(TIBIA_QML_DISK)
   message(STATUS "tibia: TIBIA_QML_DISK — QML from source tree, NO_CACHEGEN, F5 clears cache")
   # Colon-separated roots for DiskQmlInterceptor + F5 watcher.
   # Pack overrides only (host has no client/overrides/). In-tree mods/<id>/
-  # plus QTCLIENT_LINKED_PACK(S) (e.g. the product pack/client).
+  # plus QTCLIENT_DEV_PACK_SOURCES (pack client/ source dirs).
   if(EXISTS "${TIBIA_ROOT}/client/overrides")
     message(FATAL_ERROR
       "tibia: host client/overrides/ must not exist (CipSoft parity). "
@@ -219,14 +218,27 @@ target_sources(tibia PRIVATE
   sprites/hdscale.cpp sprites/hdscale.h
   sprites/spritesession.cpp sprites/spritesession.h
   mods/registry.cpp mods/registry.h
+  mods/abi_internal.h
   mods/host_api_v1.cpp mods/host_api.h
+  mods/context_abi.cpp
+  mods/session_abi.cpp
+  mods/notify_abi.cpp
+  mods/options_abi.cpp
+  mods/gamehost_abi.cpp
+  mods/opcode_abi.cpp
+  mods/dialog_abi.cpp
+  mods/action_abi.cpp
+  mods/chat_abi.cpp
+  mods/gamedata_abi.cpp
+  mods/ui_abi.cpp
+  mods/backend_adapters.cpp
+  mods/cip_object_abi.cpp mods/cip_object_host.cpp mods/cip_object_support.h mods/cip_host_classes.h
   mods/pack_host_abi.cpp mods/pack_host_abi.h
   mods/mission_backend.h mods/attention_backend.h mods/instance_backend.h
   mods/lighting_types.h
   mods/worldview.cpp mods/worldview.h
   mods/textureatlashint.cpp mods/textureatlashint.h
-  mods/modloader.cpp mods/modloader.h
-  mods/mod_entry.h)
+  mods/modloader.cpp mods/modloader.h)
 target_include_directories(tibia PRIVATE "${TIBIA_ROOT}/include")
 # Host platform layer: every per-platform behaviour (platform/platform.h). One
 # implementation per platform; shared code carries no platform #ifdefs.

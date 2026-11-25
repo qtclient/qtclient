@@ -74,8 +74,6 @@ struct ModContext {
     QObject* host = nullptr;
     /// Optional `app::LauncherEnv*` (typed void to keep registry free of app headers).
     const void* launcherEnv = nullptr;
-    /// Tip-filled pack wiring. See qtclient/pack_host.h.
-    const void* packHost = nullptr;
 };
 
 using ModBootstrapFn = void (*)(const ModContext& ctx);

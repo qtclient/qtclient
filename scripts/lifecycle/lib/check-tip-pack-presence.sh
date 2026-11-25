@@ -3,20 +3,24 @@
 # package.json packedhashes are absent from the content-addressed store.
 #
 # Usage:
-#   check-tip-pack-presence.sh --tip <dir> --id <pack-id> [--cdn <dist/cdn>]
-# Linked tip: FS chrome only (mod.json + qml/overrides).
+#   check-tip-pack-presence.sh --tip <dir> --id <pack-id> [--native | --no-native] [--cdn <dist/cdn>]
+#   --native     desktop tip: the pack's MODULE native/mod.{dylib,so,dll} must be present
+#   --no-native  wasm tip: no native/ (the pack's C++ is static-ABI inside tibia.wasm)
 set -euo pipefail
 
 TIP=""
 CDN=""
 PACK_ID=""
+NATIVE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tip) TIP="${2:?}"; shift 2 ;;
     --cdn) CDN="${2:?}"; shift 2 ;;
     --id) PACK_ID="${2:?}"; shift 2 ;;
-    --allow-urls-only) shift ;; # accepted for older callers; always FS-only
+    --native) NATIVE=1; shift ;;
+    --no-native) NATIVE=0; shift ;;
+    --allow-urls-only) shift ;; # accepted for older callers
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
@@ -30,6 +34,18 @@ pack="$TIP/mods/$PACK_ID"
 if [[ ! -f "$pack/mod.json" ]]; then
   echo "::error::tip pack missing: $pack/mod.json" >&2
   echo "  Merge with merge-pack-into-tip.sh, then re-run make cdn / tip assemble." >&2
+  exit 1
+fi
+
+if [[ "$NATIVE" == "1" ]]; then
+  mod="$(find "$pack/native" -maxdepth 1 \( -name 'mod.dylib' -o -name 'mod.so' -o -name 'mod.dll' \) 2>/dev/null | head -1)"
+  [[ -n "$mod" ]] || {
+    echo "::error::desktop tip pack missing native/mod.{dylib,so,dll}: $pack/native" >&2
+    exit 1
+  }
+  echo "[tip-presence] ok native=$mod"
+elif [[ "$NATIVE" == "0" && -d "$pack/native" ]]; then
+  echo "::error::wasm tip pack must not ship native/ (static-ABI): $pack/native" >&2
   exit 1
 fi
 

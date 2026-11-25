@@ -43,8 +43,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
-      - name: Pack client-sdk
+      - uses: lukka/get-cmake@v4.3.4
+      # The SDK records the Qt kit packs must build with (QtClientSdkConfig: version,
+      # static/shared); it configures against the kit and compiles nothing.
+      - name: Resolve CIP Qt SHA
+        id: cip
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck source=tools/qt/qt-version.sh
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Pull CIP Qt (SDK records the kit)
+        shell: bash
         env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        run: bash tools/qt/ci-setup.sh --pull-only
+      - name: Pack client-sdk (QtClientSdk)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
           PACKAGE_KIND: sdk
@@ -165,7 +189,7 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
-          # Stock tip with default qtc-aac pack (FS chrome; no SIDE_MODULE).
+          # Stock tip with default qtc-aac pack (FS chrome; no C++ pack).
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
@@ -325,7 +349,7 @@ jobs:
       - name: Build wasm tip (+ qtc-aac linked default pack)
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
-          # Linked tip: stock qtc-aac pack (no SIDE_MODULE / host_exports).
+          # Stock tip: qtc-aac FS pack (no C++ pack, no host_exports).
           STOCK_HOST: '0'
           QTCLIENT_ENABLE_MODS: 'ON'
           QTCLIENT_MODS: 'qtc-aac'

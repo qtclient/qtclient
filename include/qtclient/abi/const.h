@@ -55,6 +55,45 @@ enum {
 
     /** QtClientCreatureDecoration.phase: the appearance's own animation on the frame clock. */
     QTCLIENT_DECORATION_PHASE_ANIMATED = -1,
+
+    /* --- Host API v9 --- */
+
+    /** The protocol's NPC talk mode (chat->add_npc_entry, console_color_rgba). */
+    QTCLIENT_MESSAGE_NPC_FROM = 11,
+
+    /** Message box buttons (CipSoft TMessageDialogButton::EMessageDialogButtonIdentifier).
+     *  OK / YES accept (CipSoft acceptClicked), CANCEL / NO discard (discardClicked). */
+    QTCLIENT_MESSAGE_BUTTON_OK = 0,
+    QTCLIENT_MESSAGE_BUTTON_CANCEL = 1,
+    QTCLIENT_MESSAGE_BUTTON_YES = 2,
+    QTCLIENT_MESSAGE_BUTTON_NO = 3,
+    QTCLIENT_MESSAGE_BUTTON_USER_DEFINED = 4,
+
+    /** Message box text (CipSoft EMessageDialogTextFormat). */
+    QTCLIENT_MESSAGE_TEXT_PLAIN = 0,
+    QTCLIENT_MESSAGE_TEXT_STYLED = 1,
+    QTCLIENT_MESSAGE_TEXT_RICH = 2,
+    QTCLIENT_MESSAGE_TEXT_MARKDOWN = 3,
+
+    /** Quick-loot lists (CipSoft TQuickLootBlackWhitelistStorage::EListType). */
+    QTCLIENT_QUICK_LOOT_BLACKLIST = 0,
+    QTCLIENT_QUICK_LOOT_WHITELIST = 1,
+
+    /** Team Finder member / application status (QtClientTeamFinderMember.status,
+     *  QtClientTeamFinderTeam.status, update_team_finder_member). */
+    QTCLIENT_TEAM_FINDER_STATUS_NONE = 0,
+    QTCLIENT_TEAM_FINDER_STATUS_APPLIED = 1,
+    QTCLIENT_TEAM_FINDER_STATUS_INVITED = 2,
+    QTCLIENT_TEAM_FINDER_STATUS_ACCEPTED = 3,
+    QTCLIENT_TEAM_FINDER_STATUS_REJECTED = 4,
+
+    /** Team Finder activity (QtClientTeamFinderParams.activity_kind; team_type of
+     *  QtClientTeamFinderAssemble stays the protocol's value). */
+    QTCLIENT_TEAM_FINDER_ACTIVITY_NONE = 0,
+    QTCLIENT_TEAM_FINDER_ACTIVITY_BOSS = 1,
+    QTCLIENT_TEAM_FINDER_ACTIVITY_HUNT = 2,
+    QTCLIENT_TEAM_FINDER_ACTIVITY_QUEST = 3,
+    QTCLIENT_TEAM_FINDER_ACTIVITY_OTHER = 4,
 };
 
 #ifdef __cplusplus

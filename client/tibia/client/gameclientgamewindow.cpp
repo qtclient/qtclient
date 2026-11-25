@@ -135,7 +135,7 @@
 #include "input/keyeventhandler.h"
 #include "input/playermovementinputinterpreter.h"
 #include "input/recordkeyboardshortcuthandler.h"
-#include "mods/pack_host_abi.h"
+#include "mods/abi_internal.h"
 #include "mods/registry.h"
 #include "platform/capabilities.h"
 #include "proficiency/proficiencystorage.h"
@@ -152,7 +152,6 @@
 
 #include <array>
 #include <QGuiApplication>
-#include <qtclient/pack_host.h>
 #include <tibia/game/gamenotify.h>
 #include "game/currentgamesession.h"
 #include "game/gamesessionbase.h"
@@ -253,8 +252,12 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TNewsDialogController> newsDialog;
     /// CIP: the client options mode switcher (the tutorial's options and back).
     std::unique_ptr<config::TClientOptionsModeSwitcher> clientOptionsModeSwitcher;
-    /// Outlives the packs' bootstrap: their deferred slots keep pointers into it.
-    std::unique_ptr<qtclient::PackHostWire> packHost;
+    /// Host (pack ABI): the objects above as the ABI tables see them; destroyed first, so
+    /// the tables stop reaching the game window before its objects go.
+    struct THostObjectsGuard
+    {
+        ~THostObjectsGuard() { mods::setHostObjects(nullptr); }
+    } hostObjectsGuard;
 };
 
 void TGameClient::TGameWindowDeleter::operator()(TGameWindow* gameWindow) const { delete gameWindow; }
@@ -435,6 +438,17 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     gameWindowController->showStartScreen();
     g.productHost = std::make_unique<QObject>();
     {
+        // Host (pack ABI): what exists before the game window's controllers.
+        mods::HostObjects early;
+        early.engine = engine;
+        early.rootItem = window->contentItem();
+        early.gameWindowItem = nullptr;
+        early.lifetimeParent = g.productHost.get();
+        early.launcherEnv = &g.env;
+        early.gameClient = this;
+        early.router = gameActionRouter()->internalRouter();
+        early.dialogStack = m_pDialogStackController.get();
+        mods::setHostObjects(&early);
         mods::ModContext earlyCtx;
         earlyCtx.engine = engine;
         earlyCtx.rootItem = window->contentItem();
@@ -1051,97 +1065,65 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     if (!preview)
         start();
 
-    // Host: the packs' wiring. Must outlive bootstrapAll: SuiteRuntime keeps
-    // PackHostWire* for deferred slots (HUD chat switch, store/options/logout).
-    g.packHost = std::make_unique<qtclient::PackHostWire>();
-    qtclient::PackHostWire& packHost = *g.packHost;
-    // Host extension: a pack's extra quest rows (the backend handles its own actions).
-    packHost.bindQuestTracker = [&g](mods::MissionBackend* backend) {
-        g.sidebarWidgets->questTrackerWidget()->setMissionBackend(backend);
-    };
-    packHost.bindQuestLog = [this](mods::MissionBackend* backend) {
-        m_pQuestLogController->setMissionBackend(backend);
-    };
-    packHost.bindInstanceToInfoDialogs = [this](mods::InstanceBackend* instance) {
-        m_pCyclopediaDialogController->setInstanceStorage(instance);
-    };
-    packHost.bindAttentionToButtonBar = [&g](mods::AttentionBackend* attention) {
-        if (auto* buttonBar = g.sidebarPanels->buttonBar())
-            buttonBar->setAttentionStorage(attention);
-    };
-    packHost.addOptionsPage = [optionsDialog](const int category, void* page) {
-        optionsDialog->addExtensionPage(category, static_cast<config::TOptionsPage*>(page));
-    };
-    // Host extension: chrome drawn over the map window forwards the mouse to it.
-    packHost.mapOverlayHover = [&g](const bool hovering, const double x, const double y) {
-        if (g.mapWindowController)
-            g.mapWindowController->setOverlayHover(hovering, x, y);
-    };
-    packHost.mapOverlayClick = [&g](const int x, const int y, const int button, const int modifiers) {
-        if (g.mapWindowController)
-            g.mapWindowController->onMapWindowClicked(x, y, button, modifiers);
-    };
-    packHost.mapOverlayStartDrag = [&g](const int x, const int y) {
-        if (g.mapWindowController)
-            g.mapWindowController->onMapWindowStartDrag(x, y, nullptr);
-    };
-    packHost.openOptionsPage = [optionsDialog](const int page) { optionsDialog->open(page); };
-    packHost.openStore = [storeDialog] { storeDialog->open(); };
-    packHost.requestLogoutViaButtonBar = [this, &g] {
-        if (auto* buttonBar = g.sidebarPanels->buttonBar()) {
-            buttonBar->onLogoutButtonClicked();
-            return;
-        }
-        requestLogoutOrShowStartScreen(nullptr);
-    };
-    // Host: a pack that brings its own social button (and dialog) replaces
-    // the stock one: the stock dialog stops answering the router's actions.
-    packHost.setSocialButtonOnButtonBar = [&g, router](QObject* controller) {
-        if (auto* buttonBar = g.sidebarPanels->buttonBar())
-            buttonBar->setSocialButtonController(controller);
-        if (controller && g.socialDialog)
-            QObject::disconnect(router, nullptr, g.socialDialog.get(), nullptr);
-    };
-    packHost.setActiveChatItem = [&g](QQuickItem* item) {
-        if (!item)
-            return;
-        g.chat->setChatItem(item);
-    };
-    packHost.installCreateCharacterController = [&g](QObject* controller) {
-        if (!g.sessionBootstrap || !controller)
-            return;
-        g.sessionBootstrap->installCreateCharacter(qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
-    };
-    packHost.blessingsDialog = [this]() -> QObject* { return m_pBlessingsDialogController.get(); };
-    packHost.npcDialog = [&g]() -> QObject* { return g.npcDialog.get(); };
-    packHost.chatController = [chat]() -> QObject* { return chat; };
-    packHost.chatStorage = [chat]() -> QObject* { return chat->storage(); };
-    // Pack ABI shim: the current game session's store handler.
-    packHost.storeMessages = [this]() -> QObject* {
-        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
-        return session ? session->storeProtocolMessageHandler().get() : nullptr;
-    };
-    packHost.storeImageManager = [storeDialog]() -> QObject* {
-        return storeDialog->property("dynamicallyLoadedImageManager").value<QObject*>();
-    };
-    packHost.minimapController = [&g]() -> QObject* { return g.minimapController; };
-    packHost.sidebarManager = [sidebarManager]() -> QObject* { return sidebarManager; };
-    packHost.sidebarWidgets = [sidebarWidgets]() -> QObject* { return sidebarWidgets; };
-    packHost.containers = [containers]() -> QObject* { return containers; };
-    packHost.buttonBar = [sidebarPanels]() -> QObject* { return sidebarPanels->buttonBar(); };
-    packHost.imbuingDialog = [&g]() -> QObject* { return g.imbuingDialog.get(); };
-    // Pack ABI shim: the current game session's imbuing storage.
-    packHost.imbuingStorage = [this]() -> QObject* {
-        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
-        return session ? session->imbuingStorage().get() : nullptr;
-    };
-    packHost.sessionBootstrap = [&g]() -> QObject* { return g.sessionBootstrap.get(); };
-    packHost.gameActionRouter = [router]() -> QObject* { return router; };
-    packHost.minimapPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->minimapItem(); };
-    packHost.inventoryPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->inventoryItem(); };
-    packHost.buttonBarPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->buttonBarItem(); };
-
-    mods::fillPackHostAbiFromPackHostWire(&packHost);
+    // Host (pack ABI, mods/abi_internal.h): the game window's CipSoft objects the ABI
+    // tables reach, set before the packs' bootstrap; the backends a pack set bind to them.
+    {
+        mods::HostObjects objects;
+        objects.engine = engine;
+        objects.rootItem = window->contentItem();
+        objects.gameWindowItem = gameWindowItem;
+        objects.mapWindowPane = mapWindowPane;
+        objects.dialogPlaceholder = g.dialogPlaceholder;
+        objects.lifetimeParent = g.productHost.get();
+        objects.launcherEnv = &g.env;
+        objects.gameClient = this;
+        objects.router = router;
+        objects.dialogStack = dialogStack;
+        objects.sessionBootstrap = g.sessionBootstrap.get();
+        objects.sidebarManager = sidebarManager;
+        objects.sidebarWidgets = sidebarWidgets;
+        objects.sidebarPanels = sidebarPanels;
+        objects.containers = containers;
+        objects.minimapController = g.minimapController;
+        objects.mapWindowController = g.mapWindowController;
+        objects.chat = chat;
+        objects.npcDialog = g.npcDialog.get();
+        objects.blessingsDialog = m_pBlessingsDialogController.get();
+        objects.imbuingDialog = g.imbuingDialog.get();
+        objects.optionsDialog = optionsDialog;
+        objects.storeDialog = storeDialog;
+        objects.questLog = m_pQuestLogController.get();
+        objects.cyclopediaDialog = m_pCyclopediaDialogController.get();
+        objects.socialDialog = g.socialDialog.get();
+        objects.bossDifficultyDialog = m_pBossDifficultySelectionDialogController.get();
+        objects.hostDialog = [this, &g](const int kind) -> gamewindow::TDialog* {
+            switch (kind) {
+            case QTCLIENT_HOST_DIALOG_BLESSINGS:
+                return m_pBlessingsDialogController ? m_pBlessingsDialogController->dialog() : nullptr;
+            case QTCLIENT_HOST_DIALOG_NPC:
+                return g.npcDialog ? g.npcDialog->dialog() : nullptr;
+            case QTCLIENT_HOST_DIALOG_IMBUING:
+                return g.imbuingDialog ? g.imbuingDialog->dialog() : nullptr;
+            case QTCLIENT_HOST_DIALOG_CREATE_CHARACTER:
+                return m_pCreateCharacterDialogController ? m_pCreateCharacterDialogController->dialog() : nullptr;
+            case QTCLIENT_HOST_DIALOG_CHARACTER_INFO:
+                // The character page is a Cyclopedia tab: its dialog.
+                return m_pCyclopediaDialogController ? m_pCyclopediaDialogController->dialog() : nullptr;
+            case QTCLIENT_HOST_DIALOG_BOSS_DIFFICULTY_SELECTION:
+                return m_pBossDifficultySelectionDialogController ? m_pBossDifficultySelectionDialogController->dialog() : nullptr;
+            default:
+                return nullptr;
+            }
+        };
+        objects.requestLogoutViaButtonBar = [this, &g] {
+            if (auto* buttonBar = g.sidebarPanels->buttonBar()) {
+                buttonBar->onLogoutButtonClicked();
+                return;
+            }
+            requestLogoutOrShowStartScreen(nullptr);
+        };
+        mods::setHostObjects(&objects);
+    }
 
     {
         mods::ModContext ctx;
@@ -1154,7 +1136,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         ctx.dialogStack = dialogStack;
         ctx.host = g.productHost.get();
         ctx.launcherEnv = &g.env;
-        ctx.packHost = &packHost;
         mods::bootstrapAll(ctx);
     }
 

@@ -2,87 +2,25 @@
 # shellcheck shell=bash
 # Shared pack_* helpers (HOST_ID, OTC must be set).
 pack_sdk() {
+  # QtClientSdk: include/qtclient/abi + lib/cmake/QtClientSdk (QtClientMod.cmake, config
+  # recording ABI version / hostBuildId / Qt kit) + share/qtclient-sdk. A pack builds
+  # with this tree and its Qt kit alone (find_package(QtClientSdk)); no tip closure,
+  # no cipgen, no protobuf, no host sources.
   local DEST="$1"
-  rm -rf "$DEST"
-  mkdir -p "$DEST/include/qtclient" "$DEST/cmake" "$DEST/client/tibia" "$DEST/cipgen"
-
-  # Public API = include/qtclient/. Tip closure is computed at pack time — no
-  # committed ALLOWLIST. See tools/cip/sdk_tip_closure.py.
-  python3 "$QTCLIENT/tools/cip/sdk_tip_closure.py" --copy "$DEST" \
-    || { echo "[package] error: sdk_tip_closure failed" >&2; return 1; }
+  local args=()
+  case "${COMP:-}" in browser|wasm) args=(--wasm) ;; esac
+  QTCLIENT_SDK_DIR="$DEST" QTCLIENT_HOST_BUILD_ID="$HOST_ID" \
+    bash "$QTCLIENT/scripts/lifecycle/build/sdk.sh" ${args[@]+"${args[@]}"} \
+    || { echo "[package] error: sdk install failed" >&2; return 1; }
   test -f "$DEST/include/qtclient/abi/host_api_v1.h" \
-    || { echo "[package] error: public SDK missing after copy" >&2; return 1; }
-
-  cp -a "$QTCLIENT/cmake/QtClientMod.cmake" "$DEST/cmake/"
-  cp -a "$QTCLIENT/cmake/QtClientHost.cmake" "$DEST/cmake/"
-  cp -a "$QTCLIENT/cmake/TibiaMods.cmake" "$DEST/cmake/" 2>/dev/null || true
-  cp -a "$QTCLIENT/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
-  cp -a "$QTCLIENT/cmake/GenerateLinkedMods.cmake" "$DEST/cmake/"
-  cp -a "$QTCLIENT/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
-  # Tip merge helpers (runtime MODULE packs ship native/mod.*; absorb packs do not).
-  mkdir -p "$DEST/scripts/lifecycle/lib" "$DEST/cmake"
-  cp -a "$QTCLIENT/scripts/lifecycle/lib/check-tip-pack-presence.sh" "$DEST/scripts/lifecycle/lib/"
-  cp -a "$QTCLIENT/scripts/lifecycle/lib/merge-pack-into-tip.sh" "$DEST/scripts/lifecycle/lib/"
-
-  python3 "$QTCLIENT/tools/cip/gen_cpp.py" \
-    "$QTCLIENT/client/upstream/contract" \
-    "$DEST/cipgen" \
-    --chunks 12 \
-    --qml "$QTCLIENT/client/upstream/qml/qmlcomponents"
-  test -f "$DEST/cipgen/cip_gen.h"
-
-  # CIP protobuf C++ stubs for out-of-tree packs (#include <appearances.pb.h>).
-  _proto_dir="$QTCLIENT/client/upstream/proto"
-  _proto_out="$DEST/include/protobuf"
-  mkdir -p "$_proto_out"
-  _protoc=""
-  if command -v protoc >/dev/null 2>&1; then
-    _protoc="$(command -v protoc)"
-  elif [[ -n "${VCPKG_ROOT:-}" ]]; then
-    for _cand in \
-      "$VCPKG_ROOT/installed/${VCPKG_TARGET_TRIPLET:-}/tools/protobuf/protoc" \
-      "$VCPKG_ROOT/installed/"*/tools/protobuf/protoc
-    do
-      [[ -x "$_cand" ]] && _protoc="$_cand" && break
-    done
+    || { echo "[package] error: SDK missing abi headers" >&2; return 1; }
+  if find "$DEST/include/qtclient" -name '*.h' ! -path '*/qtclient/abi/*' | grep -q .; then
+    echo "[package] error: SDK must ship include/qtclient/abi only" >&2
+    return 1
   fi
-  if [[ -z "$_protoc" ]]; then
-    echo "[package] warning: protoc missing — client-sdk will lack appearances.pb.h" >&2
-  else
-    "$_protoc" -I"$_proto_dir" --cpp_out="$_proto_out" \
-      appearances.proto shared.proto sounds.proto sounds-common.proto
-    test -f "$_proto_out/appearances.pb.h"
-  fi
-
-  cat >"$DEST/cmake/QtClientConfig.cmake" <<EOF
-# qtclient client-sdk (hostBuildId=${HOST_ID}) — public include/qtclient/ + tip closure
-set(QTCLIENT_ROOT "\${CMAKE_CURRENT_LIST_DIR}/..")
-set(QTCLIENT_HOST_BUILD_ID "${HOST_ID}")
-set(TIBIA_ROOT "\${QTCLIENT_ROOT}" CACHE PATH "qtclient SDK root" FORCE)
-# SDK include roots for QTCLIENT_PACK_SDK_ONLY packs (no full tip tree).
-# include/qtclient + tip closure + client/ (<tibia/…>) + tip tibia (framework/, client/) + cipgen + protobuf
-set(QTCLIENT_HOST_INCLUDE_DIR
-  "\${QTCLIENT_ROOT}/include;\${QTCLIENT_ROOT}/cipgen;\${QTCLIENT_ROOT}/client;\${QTCLIENT_ROOT}/client/tibia;\${QTCLIENT_ROOT}/include/protobuf"
-  CACHE PATH "qtclient client-sdk include roots" FORCE)
-list(APPEND CMAKE_MODULE_PATH "\${QTCLIENT_ROOT}/cmake")
-include("\${QTCLIENT_ROOT}/cmake/QtClientMod.cmake")
-if(NOT TARGET QtClient::Host)
-  add_library(QtClient::Host INTERFACE IMPORTED)
-  set_target_properties(QtClient::Host PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "\${QTCLIENT_HOST_INCLUDE_DIR}")
-endif()
-set(QtClient_FOUND TRUE)
-EOF
-
-  cat >"$DEST/client-sdk.json" <<EOF
-{
-  "hostBuildId": "${HOST_ID}",
-  "schema": 3,
-  "sdkInterface": "include/qtclient",
-  "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-  cp -f "$DEST/client-sdk.json" "$DEST/host-sdk.json"
+  # Legacy names read by release scripts (ensure-qtclient-host.sh / pull-client-sdk.sh).
+  cp -f "$DEST/share/qtclient-sdk/sdk.json" "$DEST/client-sdk.json"
+  cp -f "$DEST/share/qtclient-sdk/sdk.json" "$DEST/host-sdk.json"
   echo "[package] sdk hostBuildId=${HOST_ID} → ${DEST}"
 }
 

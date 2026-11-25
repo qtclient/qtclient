@@ -266,6 +266,7 @@ def _cip_file_record(dest_dir: Path, localfile: str, data: bytes) -> dict:
 # Keep in sync with apps/release/scripts/cip_package.py (WEB_CLIENT_BIN /
 # wasm_pack_files): web client packages use CipSoft's Linux layout — engine +
 # tip packs under bin/, assets/sounds from assets.json at the package root.
+# native/ is skipped on the web only: wasm packs are static-ABI inside tibia.wasm.
 WEB_CLIENT_BIN = "bin"
 WASM_PACK_SKIP_DIRS = frozenset({"lib", "native"})
 WASM_PACK_SKIP_FILES = frozenset({".pack.stamp", ".files.manifest"})

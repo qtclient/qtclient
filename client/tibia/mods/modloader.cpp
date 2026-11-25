@@ -2,12 +2,13 @@
 
 #include "platform/platform.h"
 #include "mods/host_api.h"
-#include "mods/mod_entry.h"
 #include "mods/registry.h"
 
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QCoreApplication>
+#include <QDebug>
+#include <QSet>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -18,6 +19,11 @@
 #include <algorithm>
 #include <cstring>
 #include <vector>
+
+#if defined(QTCLIENT_HAS_STATIC_ABI_MODS)
+// cmake/GenerateStaticAbiMods.cmake: the static-ABI packs linked into this binary (WASM).
+extern "C" QtClientModRegisterFn qtclient_static_abi_mod_entry(const char* id);
+#endif
 
 namespace tibia::mods {
 namespace {
@@ -106,17 +112,14 @@ QString nativeModulePath(const QString& packDir)
     return QFile::exists(file) ? file : QString();
 }
 
-bool invokeNativeRegister(const PackMeta& meta, const ModContext* earlyCtx)
+/// Calls a pack's entry once with the host table (desktop MODULE and static-ABI alike).
+void callRegister(const PackMeta& meta, const QtClientModRegisterFn registerFn)
 {
-    const QString path = nativeModulePath(meta.dir);
-    if (path.isEmpty())
-        return false;
-
+    static QSet<QString> registered;
+    if (!registerFn || registered.contains(meta.id))
+        return;
+    registered.insert(meta.id);
     const QtClientHostApiV1* api = qtclient_host_api_v1();
-    if (!api) {
-        return false;
-    }
-
     QtClientModLoadCtx ctx{};
     const QByteArray idBytes = meta.id.toUtf8();
     const QByteArray dirBytes = meta.dir.toUtf8();
@@ -124,19 +127,35 @@ bool invokeNativeRegister(const PackMeta& meta, const ModContext* earlyCtx)
     ctx.pack_dir = dirBytes.constData();
     ctx.host_build_id = api->host_build_id;
     ctx.api_version = api->api_version;
-    ctx.early_ctx = const_cast<ModContext*>(earlyCtx);
+    ctx.game = nullptr;
+    registerFn(api, &ctx);
+}
 
-    QtClientModRegisterFn registerFn = nullptr;
-
+bool invokeNativeRegister(const PackMeta& meta)
+{
+    const QString path = nativeModulePath(meta.dir);
+    if (path.isEmpty())
+        return false;
     QString loadError;
-    registerFn = reinterpret_cast<QtClientModRegisterFn>(
+    const auto registerFn = reinterpret_cast<QtClientModRegisterFn>(
         tibia::platform::loadNativeModule(path, QTCLIENT_MOD_REGISTER_SYMBOL, loadError));
     if (!registerFn) {
+        qWarning() << "Failed to load" << path << loadError;
         return false;
     }
-    registerFn(api, &ctx);
-
+    callRegister(meta, registerFn);
     return true;
+}
+
+/// A static-ABI pack's entry for this pack id (WASM: no native/, the pack is linked in).
+QtClientModRegisterFn staticAbiEntry(const QString& id)
+{
+#if defined(QTCLIENT_HAS_STATIC_ABI_MODS)
+    return qtclient_static_abi_mod_entry(id.toUtf8().constData());
+#else
+    Q_UNUSED(id);
+    return nullptr;
+#endif
 }
 
 QStringList collectTipPacks(const QStringList& tipRoots)
@@ -183,15 +202,6 @@ QStringList collectEnvPacks(const QString& envPath)
         return {};
     }
     return collectTipPacks({cleaned});
-}
-
-void invokeLinkedEntries(const ModContext* earlyCtx)
-{
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-    qtclient_invoke_linked_mods(earlyCtx);
-#else
-    Q_UNUSED(earlyCtx);
-#endif
 }
 
 } // namespace
@@ -291,32 +301,26 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
     registerPackQmlPaths(meta);
     tibia::files::data().addSearchPath(pack.toStdString(), true);
 
-    bool nativeOk = true;
+    Q_UNUSED(earlyCtx);
+    bool hasCode = false;
     if (hasNative) {
-        nativeOk = invokeNativeRegister(meta, earlyCtx);
-        if (!nativeOk)
+        if (!invokeNativeRegister(meta))
             return false;
+        hasCode = true;
+    } else if (const QtClientModRegisterFn entry = staticAbiEntry(meta.id)) {
+        callRegister(meta, entry);
+        hasCode = true;
     }
 
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-    return true;
-#else
-    if (hasNative || !meta.urls.empty() || !meta.identity.displayName.empty()
+    return hasCode || !meta.urls.empty() || !meta.identity.displayName.empty()
         || QDir(QDir(pack).filePath(QStringLiteral("qml"))).exists()
-        || QDir(QDir(pack).filePath(QStringLiteral("overrides"))).exists()) {
-        return nativeOk;
-    }
-    return false;
-#endif
+        || QDir(QDir(pack).filePath(QStringLiteral("overrides"))).exists();
 }
 
 int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
 {
     if (skipLoad())
         return 0;
-
-    // Deprecated absorb path: linked C++ once before FS chrome.
-    invokeLinkedEntries(earlyCtx);
 
     const QStringList tipRoots = roots.isEmpty() ? tipModsRoots() : roots;
     QStringList packs;
@@ -336,13 +340,8 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
         }
     }
 
-    if (packs.isEmpty()) {
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-        return 1;
-#else
+    if (packs.isEmpty())
         return 0;
-#endif
-    }
 
     int loaded = 0;
     for (const QString& packDir : packs) {

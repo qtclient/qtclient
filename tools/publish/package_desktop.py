@@ -320,19 +320,61 @@ def stage_moltenvk_frameworks(app: Path) -> None:
     print(f"[desktop] staged MoltenVK from {dylib}")
 
 
+MOD_NATIVE_GLOBS = ("mod.dylib", "mod.so", "mod.dll")
+
+
+def pack_modules(root: Path) -> list[Path]:
+    """Pack runtime MODULEs under <root>/mods/<id>/native/ (host API v9)."""
+    found: list[Path] = []
+    for pattern in MOD_NATIVE_GLOBS:
+        found += sorted(root.glob(f"mods/*/native/{pattern}"))
+    return found
+
+
+def copy_tip_mods(build: Path, dest: Path) -> None:
+    """Linux/Windows: the tip's mods/ (FS chrome + native/mod.*) next to the binary."""
+    src = build.parent / "mods"
+    if src.is_dir():
+        shutil.copytree(src, dest / "mods", symlinks=False, dirs_exist_ok=True)
+
+
+def macos_fix_module_rpaths(module: Path) -> None:
+    """Drop build-machine rpaths (the Qt kit) so mod.dylib loads only the bundled Qt
+    (Contents/Frameworks); a second Qt in the process breaks QObject/QML."""
+    out = subprocess.run(["otool", "-l", str(module)], capture_output=True, text=True, check=True).stdout
+    lines = out.splitlines()
+    rpaths = [lines[i + 2].split()[1] for i, ln in enumerate(lines)
+              if "cmd LC_RPATH" in ln and i + 2 < len(lines) and lines[i + 2].strip().startswith("path ")]
+    for rpath in rpaths:
+        if not rpath.startswith("@"):
+            subprocess.run(["install_name_tool", "-delete_rpath", rpath, str(module)], check=True)
+    if "@loader_path/../../../../Frameworks" not in rpaths:
+        subprocess.run(["install_name_tool", "-add_rpath", "@loader_path/../../../../Frameworks", str(module)],
+                       check=True)
+
+
 def tibia_macos_bundle(build: Path, dest: Path, qt: Path) -> Path:
     shutil.rmtree(dest / f"{APP_NAME}.app", ignore_errors=True)
     shutil.rmtree(dest / build.name, ignore_errors=True)
     dest.mkdir(parents=True, exist_ok=True)
     subprocess.run(["ditto", str(build), str(dest / build.name)], check=True)
+    # Pack MODULEs (Contents/MacOS/mods/<id>/native/mod.dylib) are deployed as extra
+    # executables so every Qt framework they use lands in Contents/Frameworks.
+    modules = pack_modules(dest / build.name / "Contents" / "MacOS")
     deploy = [str(qt / "bin" / "macdeployqt"), str(dest / build.name), "-always-overwrite", "-verbose=1",
-              "-appstore-compliant", f"-qmlimport={qt / 'qml'}", *(f"-qmldir={d}" for d in qml_dirs())]
+              "-appstore-compliant", f"-qmlimport={qt / 'qml'}", *(f"-qmldir={d}" for d in qml_dirs()),
+              *(f"-executable={m}" for m in modules)]
     with without_qt_sqldrivers(qt):
         subprocess.run(deploy, check=True)
     shutil.rmtree(dest / build.name / "Contents" / "PlugIns" / "sqldrivers", ignore_errors=True)
     stage_moltenvk_frameworks(dest / build.name)
     app = brand_bundle(dest)
     # arm64 refuses unsigned code; release signing re-signs over this ad-hoc seal.
+    # Inside-out: --deep does not reach Contents/MacOS/mods/, so seal each pack
+    # MODULE first (notarization rejects an unsigned mod.dylib).
+    for module in pack_modules(app / "Contents" / "MacOS"):
+        macos_fix_module_rpaths(module)
+        subprocess.run(["codesign", "--force", "--sign", "-", str(module)], check=True)
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
     return app
 
@@ -345,6 +387,8 @@ def tibia_windows_dir(build: Path, dest: Path, qt: Path) -> Path:
     shutil.copy2(build, exe)
     for dll in build.parent.glob("*.dll"):
         shutil.copy2(dll, dest / dll.name)
+    # mods/<id>/native/mod.dll loads the Qt DLLs the client already loaded (by name).
+    copy_tip_mods(build, dest)
     deploy = [str(qt / "bin" / "windeployqt.exe"), "--release", "--no-translations", "--no-system-d3d-compiler",
               "--no-opengl-sw", "--qmlimport", str(qt / "qml"), "--dir", str(dest)]
     for d in qml_dirs():
@@ -383,7 +427,9 @@ def tibia_linux_dir(build: Path, dest: Path, qt: Path) -> Path:
     shutil.copy2(build, binary)
     binary.chmod(0o755)
 
-    elves = [binary]
+    copy_tip_mods(build, dest)
+    # Pack MODULEs: their Qt libs are bundled like the binary's; RUNPATH → dest/lib.
+    elves = [binary, *pack_modules(dest)]
     for category in LINUX_QT_PLUGINS:
         src = qt / "plugins" / category
         if src.is_dir():

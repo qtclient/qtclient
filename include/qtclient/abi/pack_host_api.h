@@ -1,56 +1,53 @@
 #pragma once
 
-/// C ABI for tip pack-host wiring (mirrors the PackHostWire ops absorb packs use).
+/// Game window chrome a pack plugs into (host API v9: only Qt-typed and plain entries; the
+/// tip-object getters of v2..v8 are gone, see host_api_v1.h). Host:
+/// client/tibia/mods/pack_host_abi.cpp. Every function takes the table's `user` argument
+/// (pass null) and runs on the GUI thread; each is a no-op / null before the game window
+/// exists (`valid`).
 
-#include <stddef.h>
-#include <stdint.h>
+#include "qtclient/abi/types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Host passes mission / attention / instance as opaque object pointers. */
+/** A pack's options page (QtClientPackHostApiV1.add_options_page). */
+typedef struct QtClientOptionsPageV1 {
+    size_t struct_size;
+    /** The options dialog's category (CipSoft EDialogCategories) the page goes under. */
+    int category;
+    /** The page's QML controller (the page item binds it). Must outlive the options dialog
+     *  (the application). */
+    QtClientQObjectPtr page;
+    void* user;
+    /** The options dialog opens or resets: load the pending values (CipSoft TOptionsPage
+     *  load). May be null. */
+    void (*load)(void* user);
+    /** Apply / Ok: store the pending values (CipSoft TOptionsPage apply). May be null. */
+    void (*apply)(void* user);
+} QtClientOptionsPageV1;
+
 typedef struct QtClientPackHostApiV1 {
-    /** Returns non-zero when pack wiring is available (bind_quest_tracker set). */
+    /** Nonzero once the game window exists (the chrome entries below work). */
     int (*valid)(void* user);
 
-    /** v8: the extra quest rows' backend (tip mods::MissionBackend*); it handles its own actions. */
-    void (*bind_quest_tracker)(void* user, void* mission_backend);
-    void (*bind_quest_log)(void* user, void* mission_backend);
-    void (*bind_instance_to_info_dialogs)(void* user, void* instance_backend);
-    void (*bind_attention_to_button_bar)(void* user, void* attention_backend);
-    /** v8 (was add_product_options_page): a pack's page (tip config::TOptionsPage*) in the options dialog. */
-    void (*add_options_page)(void* user, int category, void* options_page);
+    /** v9 (was add_options_page(void*, int, void* TOptionsPage*)): adds a page to the options
+     *  dialog (CipSoft TOptionsMenuDialogController::addExtensionPage). Copied. */
+    void (*add_options_page)(void* user, const QtClientOptionsPageV1* page);
+    /** Opens the options dialog on `page` (CipSoft's page id). */
     void (*open_options_page)(void* user, int page);
     void (*open_store)(void* user);
+    /** The button bar's logout (CipSoft's confirmation included). */
     void (*request_logout_via_button_bar)(void* user);
-    void (*set_social_button_on_button_bar)(void* user, void* controller);
-    void (*set_active_chat_item)(void* user, void* qquick_item);
-    void (*install_create_character_controller)(void* user, void* controller);
+    /** The chat item CipSoft's chat controller drives (a pack's floating chat or CipSoft's
+     *  docked one). */
+    void (*set_active_chat_item)(void* user, QtClientQQuickItemPtr item);
 
-    void* (*blessings_dialog)(void* user);
-    void* (*npc_dialog)(void* user);
-    void* (*chat_controller)(void* user);
-    void* (*chat_storage)(void* user);
-    void* (*store_messages)(void* user);
-    void* (*store_image_manager)(void* user);
-    void* (*minimap_controller)(void* user);
-    void* (*sidebar_manager)(void* user);
-    void* (*sidebar_widgets)(void* user);
-    void* (*containers)(void* user);
-    void* (*button_bar)(void* user);
-    void* (*imbuing_dialog)(void* user);
-    void* (*imbuing_storage)(void* user);
-    void* (*session_bootstrap)(void* user);
-
-    void* (*minimap_panel_item)(void* user);
-    void* (*inventory_panel_item)(void* user);
-    void* (*button_bar_panel_item)(void* user);
-
-    /** game::TInternalGameActionRouter* (<qtclient/game/gameactionrouter.h>) the pack's
-     *  publishGameAction signals connect to; null before the game window exists.
-     *  Host API v4+: read it only when api_version >= 4 (older tables end before it). */
-    void* (*game_action_router)(void* user);
+    /** CipSoft's panels in the right sidebar's upper pane. */
+    QtClientQQuickItemPtr (*minimap_panel_item)(void* user);
+    QtClientQQuickItemPtr (*inventory_panel_item)(void* user);
+    QtClientQQuickItemPtr (*button_bar_panel_item)(void* user);
 
     /** Map window overlay input, API v8+: the mouse over chrome drawn on the map
      *  window (hovering 0: it left), a click, or a drag start at a map point.

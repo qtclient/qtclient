@@ -27,6 +27,12 @@ public:
     /// The process-unique id this router puts into IDsOfRouters.
     std::size_t id() const { return m_id; }
 
+    /// Host (pack ABI, mods/action_abi.cpp; no CipSoft counterpart): asked first for every
+    /// action a router handles; true takes the action over (no handler hears it). Null:
+    /// CipSoft's routing only.
+    using TPreDispatchHook = bool (*)(const tibia::input::IGameActionPtr& pGameAction);
+    static void setPreDispatchHook(TPreDispatchHook hook);
+
 Q_SIGNALS:
     void publishGameActionInternal(tibia::input::IGameActionPtr pGameAction);
     void publishGameActionBetweenRouters(tibia::input::IGameActionPtr pGameAction, std::set<std::size_t>& IDsOfRouters);

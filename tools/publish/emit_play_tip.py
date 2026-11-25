@@ -413,15 +413,28 @@ def stage_pack_into_tree(tree: Path, pack: Path, tip_os: str) -> None:
     except (OSError, ValueError):
         pack_id = pack.name
     dest = mods_root / pack_id
-    if dest.exists():
+    # The binary's build staged the installed pack (-DQTCLIENT_PACKS: mod.json with the
+    # SDK's hostBuildId, native/mod.* on desktop): that is the pack this binary runs.
+    # Keep it and lay the pack's filesystem chrome over it; never ship pack sources.
+    installed = (dest / "mod.json").is_file()
+    if dest.exists() and not installed:
         shutil.rmtree(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        pack,
-        dest,
-        ignore=shutil.ignore_patterns("lib", "*.a", ".git"),
-        symlinks=True,
+    source_ignore = shutil.ignore_patterns(
+        "lib", "native", "*.a", ".git", "*.cpp", "*.c", "*.cc", "*.h", "*.hpp", "*.mm",
+        "*.cmake", "CMakeLists.txt", "*.icns", "*.frag", "*.vert", "*.comp",
     )
+    if installed:
+        for name in ("qml", "overrides", "images", "resources"):
+            src = pack / name
+            if src.is_dir():
+                shutil.copytree(src, dest / name, ignore=source_ignore, symlinks=True, dirs_exist_ok=True)
+    else:
+        shutil.copytree(pack, dest, ignore=source_ignore, symlinks=True)
+    # Directories left empty by the source filter (e.g. idleot/ with only C++).
+    for path in sorted(dest.rglob("*"), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
     # Drop stock qtc-aac when a product pack supplies urls (merge-pack policy).
     sibling = mods_root / "qtc-aac"
     if sibling.is_dir() and pack_id != "qtc-aac":

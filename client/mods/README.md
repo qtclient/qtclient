@@ -10,16 +10,19 @@ through its `overrides/` (the host has none).
 |------|------|
 | `qtc-aac/` | [qtc-aac](https://github.com/qtclient/qtc-aac) login urls (`/clientservices/*.php`); staged by `make demo-pack` |
 
-Product packs live out-of-tree (`QTCLIENT_PACK` in the umbrella `.env`).
-`make qtclient desktop install` STATIC-links via `QTCLIENT_LINKED_PACK` and stages
-tip `mods/<id>`; product urls replace `qtc-aac`.
+Product packs live out-of-tree (`QTCLIENT_PACK` in the umbrella `.env`) and build
+apart from the host, against the pack SDK (`find_package(QtClientSdk)`).
+`make qtclient desktop install` installs the SDK, builds + installs the pack, then
+builds the tip with `-DQTCLIENT_PACKS=<pack install prefix>`, which stages tip
+`mods/<id>` (desktop: incl. `native/mod.*`); product urls replace `qtc-aac`.
 DEV builds load pack `qml/` + `overrides/` from the pack source tree
-(F5 / file watch) — see [`docs/mods.md`](../../docs/mods.md).
+(`QTCLIENT_DEV_PACK_SOURCES`; F5 / file watch) — see [`docs/mods.md`](../../docs/mods.md).
 
 ## Inplace (gitignored)
 
-Other experimental packs under this directory are gitignored. Drop a pack dir
-here or point `QTCLIENT_LINKED_PACK` at an out-of-tree `client/`. Prefer
+Other experimental packs under this directory are gitignored. An in-tree pack is
+FS-only (`mod.json`, `qml/`, `overrides/`); one with C++ builds against the SDK like any
+out-of-tree pack (a `CMakeLists.txt` here fails the host configure). Prefer
 `QTCLIENT_PACK` + `make qtclient desktop install` for product tips.
 
 Enable with default `QTCLIENT_ENABLE_MODS=ON` (auto-discovers non-`_*` packs).

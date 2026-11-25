@@ -24,7 +24,9 @@ cd "$DEST"
 layer="$(find . -type f \( -name '*.tgz' -o -name '*.tar.gz' -o -name 'client-sdk.tgz' -o -name 'host-sdk.tgz' \) | head -1 || true)"
 [[ -z "$layer" ]] && layer="$(find . -type f | head -1 || true)"
 [[ -n "$layer" ]] && tar -xzf "$layer" 2>/dev/null || true
-test -f cmake/QtClientMod.cmake
-test -f client-sdk.json -o -f host-sdk.json
-test -f cipgen/cip_gen.h || echo "[client-sdk] warning: missing cipgen/cip_gen.h (rebuild qtclient package)" >&2
-echo "[client-sdk] ready in $DEST"
+# QtClientSdk layout (host API v9): abi headers + lib/cmake/QtClientSdk; no cipgen.
+test -f lib/cmake/QtClientSdk/QtClientSdkConfig.cmake
+test -f lib/cmake/QtClientSdk/QtClientMod.cmake
+test -f include/qtclient/abi/host_api_v1.h
+test -f share/qtclient-sdk/sdk.json -o -f client-sdk.json
+echo "[client-sdk] ready in $DEST (find_package(QtClientSdk) with CMAKE_PREFIX_PATH=$DEST)"

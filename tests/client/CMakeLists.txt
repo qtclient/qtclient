@@ -19,11 +19,15 @@ function(qtclient_add_port_test TARGET_NAME)
     gtest_discover_tests(${TARGET_NAME})
 endfunction()
 
-# Weather state/sounds live in the product pack — build when the pack is linked or QTCLIENT_PACK is set.
+# Weather state/sounds live in the product pack — build when a pack source dir is given
+# (QTCLIENT_DEV_PACK_SOURCES) or QTCLIENT_PACK is set.
 set(_pack_client "")
-if(QTCLIENT_LINKED_PACK AND EXISTS "${QTCLIENT_LINKED_PACK}/idleot/weather/weatherstate.h")
-    set(_pack_client "${QTCLIENT_LINKED_PACK}")
-elseif(DEFINED ENV{QTCLIENT_PACK})
+foreach(_src IN LISTS QTCLIENT_DEV_PACK_SOURCES)
+    if(NOT _pack_client AND EXISTS "${_src}/idleot/weather/weatherstate.h")
+        set(_pack_client "${_src}")
+    endif()
+endforeach()
+if(NOT _pack_client AND DEFINED ENV{QTCLIENT_PACK})
     set(_pack_env "$ENV{QTCLIENT_PACK}")
     if(NOT IS_ABSOLUTE "${_pack_env}")
         # Umbrella .env uses repo-relative paths (e.g. apps/idleot-client).
@@ -260,6 +264,39 @@ if(Qt6_FOUND AND TARGET tibia)
         QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
     add_dependencies(client_sessiondumphints_tests cip_codegen_tibia)
     gtest_discover_tests(client_sessiondumphints_tests)
+endif()
+
+# Host API v9 cip_object table over the generated delegates (cipgen/cipobjects).
+if(Qt6_FOUND AND TARGET tibia AND TARGET cip_objects_tibia)
+    set(_cipobj)
+    foreach(_i 00 01 02 03 04 05 06 07 08 09 10 11)
+        list(APPEND _cipobj ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_${_i}.cpp
+                            ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cipobjects/cip_objects_${_i}.cpp)
+    endforeach()
+    list(APPEND _cipobj ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cipobjects/cip_objects_table.cpp)
+    set_source_files_properties(${_cipobj} PROPERTIES GENERATED TRUE)
+    add_executable(client_cipobject_tests
+        cipobject_test.cpp
+        ${_cipobj}
+        ${CMAKE_SOURCE_DIR}/client/tibia/mods/cip_object_abi.cpp
+    )
+    set_target_properties(client_cipobject_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    set_source_files_properties(${CMAKE_BINARY_DIR}/client/tibia/cipgen/cipobjects/cip_objects_table.cpp
+        PROPERTIES SKIP_AUTOMOC ON)
+    foreach(_i 00 01 02 03 04 05 06 07 08 09 10 11)
+        set_source_files_properties(${CMAKE_BINARY_DIR}/client/tibia/cipgen/cipobjects/cip_objects_${_i}.cpp
+            PROPERTIES SKIP_AUTOMOC ON)
+    endforeach()
+    target_include_directories(client_cipobject_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
+    )
+    target_link_libraries(client_cipobject_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+    target_compile_definitions(client_cipobject_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_cipobject_tests cip_objects_tibia)
+    gtest_discover_tests(client_cipobject_tests)
 endif()
 
 # CIP systemsurvey FPS history (counter, history, controller, JSON, uploader).

@@ -4,6 +4,12 @@ namespace tibia::game {
 
 namespace {
 std::size_t nextRouterId = 0;
+TInternalGameActionRouter::TPreDispatchHook preDispatchHook = nullptr;
+}
+
+void TInternalGameActionRouter::setPreDispatchHook(const TPreDispatchHook hook)
+{
+    preDispatchHook = hook;
 }
 
 TInternalGameActionRouter::TInternalGameActionRouter(QObject* parent)
@@ -14,6 +20,8 @@ TInternalGameActionRouter::TInternalGameActionRouter(QObject* parent)
 
 void TInternalGameActionRouter::handleGameActionInternal(tibia::input::IGameActionPtr pGameAction)
 {
+    if (preDispatchHook && pGameAction && preDispatchHook(pGameAction))
+        return;
     Q_EMIT publishGameActionInternal(pGameAction);
     std::set<std::size_t> IDsOfRouters{ m_id };
     Q_EMIT publishGameActionBetweenRouters(pGameAction, IDsOfRouters);
