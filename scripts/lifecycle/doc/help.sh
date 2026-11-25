@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
-echo "docs: $OTC/docs/mods.md $OTC/README.md"
+QTCLIENT="$(cd "$(dirname "$0")/../../.." && pwd)"
+echo "docs: $QTCLIENT/docs/mods.md $QTCLIENT/README.md"

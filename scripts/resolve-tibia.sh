@@ -4,12 +4,12 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/.." && pwd)"
+QTCLIENT="$(cd "$HERE/.." && pwd)"
 
 # Prefer in-tree / monorepo Python resolver.
 for cand in \
-  "$OTC/tools/tibia_paths.py" \
-  "$OTC/../../tools/tibia_paths.py" \
+  "$QTCLIENT/tools/tibia_paths.py" \
+  "$QTCLIENT/../../tools/tibia_paths.py" \
   "$HERE/../../tools/tibia_paths.py"
 do
   if [[ -f "$cand" ]]; then

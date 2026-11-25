@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Build tibia for Android (Phase 6).
+# EXPERIMENTAL — Android is not a shipping platform (desktop + WASM only).
 # Needs: make qt ANDROID=1, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT.
 #
-#   scripts/lifecycle/lib/build-tibia-android.sh
-#   scripts/lifecycle/lib/build-tibia-android.sh --abi arm64-v8a
+#   scripts/lifecycle/build/android.sh
+#   scripts/lifecycle/build/android.sh --abi arm64-v8a
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
-CACHE_ENV="$(cd "$OTC/../.." && pwd)/scripts/build-cache-env.sh"
+QTCLIENT="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+CACHE_ENV="$(cd "$QTCLIENT/../.." && pwd)/scripts/build-cache-env.sh"
 if [[ -f "$CACHE_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$CACHE_ENV"
 fi
-QT_PREFIX_SH="$OTC/tools/qt/qt-prefix.sh"
+QT_PREFIX_SH="$QTCLIENT/tools/qt/qt-prefix.sh"
 ABI="${ANDROID_ABI:-arm64-v8a}"
 DEBUG_BUILD=0
 
@@ -45,11 +45,11 @@ fi
 
 BUILD_TYPE=Release
 [[ "$DEBUG_BUILD" -eq 1 ]] && BUILD_TYPE=Debug
-BUILD_DIR="$OTC/build/tibia-android-$ABI"
+BUILD_DIR="$QTCLIENT/build/tibia-android-$ABI"
 JOBS="$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
 
-echo "[tibia-android] abi=$ABI qt=$QT_ANDROID sdk=$ANDROID_SDK_ROOT"
-"$QT_ANDROID/bin/qt-cmake" -S "$OTC" -B "$BUILD_DIR" -G Ninja \
+echo "[tibia-android] EXPERIMENTAL abi=$ABI qt=$QT_ANDROID sdk=$ANDROID_SDK_ROOT"
+"$QT_ANDROID/bin/qt-cmake" -S "$QTCLIENT" -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DQT_HOST_PATH="$QT_HOST" \
   -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
@@ -58,9 +58,7 @@ echo "[tibia-android] abi=$ABI qt=$QT_ANDROID sdk=$ANDROID_SDK_ROOT"
   -DANDROID_PLATFORM=android-28 \
   -DTIBIA_BUILD_APP=ON \
   -DTIBIA_BUILD_TESTS=OFF \
-  -DTOGGLE_WEBGPU=OFF \
   -DOPTIONS_ENABLE_IPO=OFF
 
 cmake --build "$BUILD_DIR" --target tibia -j"$JOBS"
 echo "[tibia-android] ok → $BUILD_DIR (apk via androiddeployqt / Qt Creator)"
-echo "[tibia-android] TIBIA_MOBILE=1: touch → map hover; TFullscreenLayout safe-area + density"

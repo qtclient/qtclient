@@ -4,9 +4,8 @@
 the client starts). Replay with:
 
 ```bash
-make client-start ARGS='--replay=records/your.cam'
+make desktop run ARGS='--replay=records/your.cam'
 # or a checked-in fixture:
-make tibia-dump-smoke
 # → testdata/sessiondumps/play.cam (preferred) or smoke.cam
 ```
 

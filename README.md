@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>qtclient</strong> · <code>otqt</code><br/>
+  <strong>qtclient</strong><br/>
   CipSoft-compatible <strong>Qt/QML</strong> Tibia client — desktop &amp; browser WASM
 </p>
 
@@ -20,26 +20,13 @@ removed. See [CHANGELOG.md](CHANGELOG.md).
 
 Public repository: **[qtclient/qtclient](https://github.com/qtclient/qtclient)**.
 
-## Why qtclient (vs OTClient)
-
-qtclient is **not** an OTClient fork. Use it when you want CipSoft parity; use
-OTClient when you want a Lua/OTUI community stack.
-
-| | **qtclient** | **OTClient** |
-|--|--|--|
-| UI | CipSoft **QML** (official chrome) | Lua / OTUI |
-| Upstream | Official CIP client (`make tibia-sync`) | Community protocol tree |
-| Launcher | CIP tip protocol | Custom / third-party updaters |
-| Browser | First-class **WASM** | Limited or separate ports |
-| Extensibility | Runtime **mods/packs** on a stock CIP host | Usually fork the tree |
-
 ### Highlights
 
 - **CIP QML host** — `client/upstream/` from sync; controllers under `client/tibia/`
 - **CIP launcher** — tip metadata Update / Play
-- **Desktop + WASM**
+- **Desktop + WASM** (Android/iOS scaffolds are experimental, not shipping)
 - **Stock vs packs** — optional `mods/<id>/` at runtime ([docs/mods.md](docs/mods.md))
-- **Pack SDK** — host-pushed C ABI ([`include/qtclient/`](include/qtclient/README.md)), filesystem QML, F5 hot reload in dev
+- **Pack SDK** — host-pushed C ABI ([`include/qtclient/abi/`](include/qtclient/README.md)), filesystem QML, F5 hot reload in dev
 - **Session tools** — `--record` / `--replay`
 - **Toolchain** — CMake + Ninja + vcpkg; CipSoft-patched Qt via `make qt`
 
@@ -132,7 +119,7 @@ install plugin; C++: [Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5Leg
 
 | Doc | Topic |
 |-----|--------|
-| [docs/building.md](docs/building.md) | Building (desktop, WASM, Android) |
+| [docs/building.md](docs/building.md) | Building (desktop, WASM) |
 | [docs/mods.md](docs/mods.md) | Packs |
 | [docs/pack-extension-contract.md](docs/pack-extension-contract.md) | Frozen tip hooks for packs |
 | [docs/public/CONTRIBUTING.md](docs/public/CONTRIBUTING.md) | Contributing |

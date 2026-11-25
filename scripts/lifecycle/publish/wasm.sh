@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
+QTCLIENT="$(cd "$(dirname "$0")/../../.." && pwd)"
 OUT="${PACKAGE_OUT:?PACKAGE_OUT required}"
 HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-}}}"
 if [[ -z "$HOST_ID" ]]; then
-  HOST_ID="$(git -C "$OTC" rev-parse HEAD 2>/dev/null || echo unknown)"
+  HOST_ID="$(git -C "$QTCLIENT" rev-parse HEAD 2>/dev/null || echo unknown)"
 fi
 OWNER="${GITHUB_REPOSITORY_OWNER:-qtclient}"
 REGISTRY="${REGISTRY:-ghcr.io/$OWNER}"

@@ -20,9 +20,9 @@
 #   QTCLIENT_SKIP_ORACLE          if 1, skip oracle compare even when present
 set -euo pipefail
 
-OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+QTCLIENT="$(cd "$(dirname "$0")/../.." && pwd)"
 CALLER_PWD="$PWD"
-cd "$OTC"
+cd "$QTCLIENT"
 
 # Paths from the environment are relative to where the script was called from.
 absolute() {
@@ -43,15 +43,15 @@ resolve_dump() {
   fi
   local candidate
   for candidate in \
-    "$OTC/testdata/sessiondumps/play.cam" \
-    "$OTC/testdata/sessiondumps/smoke.cam"; do
+    "$QTCLIENT/testdata/sessiondumps/play.cam" \
+    "$QTCLIENT/testdata/sessiondumps/smoke.cam"; do
     # -e follows symlinks; require a resolvable dump file.
     if [[ -e "$candidate" && -f "$candidate" ]]; then
       echo "$candidate"
       return
     fi
   done
-  echo "$OTC/testdata/sessiondumps/smoke.cam"
+  echo "$QTCLIENT/testdata/sessiondumps/smoke.cam"
 }
 
 DUMP="$(resolve_dump)"
@@ -65,7 +65,7 @@ if [[ ! -f "$DUMP" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$OTC/data/assets/catalog-content.json" ]]; then
+if [[ ! -f "$QTCLIENT/data/assets/catalog-content.json" ]]; then
   if [[ "$SKIP_NO_ASSETS" == "1" ]]; then
     echo "[session-dump-smoke] skip: no CIP assets (make extract TIBIA=…)"
     exit 0
@@ -77,13 +77,13 @@ fi
 # Resolve the tip binary and Qt kit paths in this shell. find-client-bin alone
 # runs in a subshell, so QT_PLUGIN_PATH (needed for offscreen) would be lost.
 # shellcheck source=../lifecycle/lib/desktop-paths.sh
-source "$OTC/scripts/lifecycle/lib/desktop-paths.sh"
-qtclient_desktop_paths "$OTC" || true
+source "$QTCLIENT/scripts/lifecycle/lib/desktop-paths.sh"
+qtclient_desktop_paths "$QTCLIENT" || true
 
 BIN="${QTCLIENT_CLIENT_BIN:-}"
 if [[ -z "$BIN" || ! -e "$BIN" ]]; then
-  FIND_BIN="$OTC/scripts/lifecycle/lib/find-client-bin.sh"
-  BIN="$("$FIND_BIN" "$OTC" 2>/dev/null || true)"
+  FIND_BIN="$QTCLIENT/scripts/lifecycle/lib/find-client-bin.sh"
+  BIN="$("$FIND_BIN" "$QTCLIENT" 2>/dev/null || true)"
 fi
 if [[ -z "${BIN:-}" || ! -x "$BIN" ]]; then
   echo "[session-dump-smoke] client binary not found — set QTCLIENT_CLIENT_BIN or run make client-build" >&2
@@ -94,8 +94,8 @@ fi
 # release .app may also miss offscreen unless plugins are next to the binary.
 if [[ -z "${QT_PLUGIN_PATH:-}" ]]; then
   qt_prefix=""
-  if [[ -x "$OTC/tools/qt/qt-prefix.sh" ]]; then
-    qt_prefix="$(bash "$OTC/tools/qt/qt-prefix.sh" 2>/dev/null || true)"
+  if [[ -x "$QTCLIENT/tools/qt/qt-prefix.sh" ]]; then
+    qt_prefix="$(bash "$QTCLIENT/tools/qt/qt-prefix.sh" 2>/dev/null || true)"
   fi
   if [[ -n "$qt_prefix" && -d "$qt_prefix/plugins" ]]; then
     export QT_PLUGIN_PATH="$qt_prefix/plugins"
@@ -193,11 +193,11 @@ fi
 
 ORACLE="${QTCLIENT_SCREENSHOT_ORACLE:-}"
 if [[ -z "$ORACLE" && "$(basename "$DUMP_ABS")" == "play.cam" ]]; then
-  ORACLE="$OTC/testdata/sessiondumps/play-baseline.oracle"
+  ORACLE="$QTCLIENT/testdata/sessiondumps/play-baseline.oracle"
 fi
 if [[ "${QTCLIENT_SKIP_ORACLE:-0}" != "1" && -n "$ORACLE" && -f "$ORACLE" ]]; then
   echo "[session-dump-smoke] oracle=$ORACLE"
-  python3 "$OTC/scripts/ci/compare-png-oracle.py" "$OUT_ABS" "$ORACLE"
+  python3 "$QTCLIENT/scripts/ci/compare-png-oracle.py" "$OUT_ABS" "$ORACLE"
 fi
 
 echo "[session-dump-smoke] ok (${size} bytes) $OUT_ABS"

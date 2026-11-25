@@ -11,6 +11,7 @@ Sync extracts, from the installed client:
   shaders/*.qsb                 the world shaders
   strings/client.en.qm          qsTrId translations
   conf/clientoptions.json       default options
+  conf/config.ini               bundled client settings (embedded :/conf/config.ini)
   proto/*.proto                 embedded protobuf schemas
   contract/                     moc metaobjects, QML elements and enum scopes, typed classes, option ids
   protocol/messages.json        message opcodes (requires --msgmap from TibiaMessageMap.java
@@ -19,11 +20,14 @@ then writes DRIFT.md against the previous tree, MANIFEST.json and VERSION.json, 
 copies graphics_resources.rcc (runtime art, never committed) into data/assets/.
 
 A new client_sha256 without --msgmap is a hard error so protocol/ cannot silently
-freeze across CIP releases. Raw decompiles stay in gitignored tmp/re/; commit upstream/.
+freeze across CIP releases. The same gate applies to --funcmap (TibiaFunctionBodies
+JSONL): it refreshes upstream/cip_stamps/ (per-function // b1/<hash> headers).
+Raw decompiles stay in gitignored tmp/re/; commit upstream/.
 
---check (CI) verifies the vendored tree against MANIFEST.json and that every
-*pack* overrides/ file still matches its cip-base sha. The host has no
-client/overrides/ (CipSoft parity — product forks live in the pack).
+--check (CI) verifies MANIFEST.json against kind-B under upstream/ and kind-A
+under QTCLIENT_CIPSOFT_DIR / apps/cipsoft-data (qml/shaders/strings/conf/proto),
+plus pack override cip-base shas. cip_stamps/ are not required in the dump.
+The host has no client/overrides/ (CipSoft parity — product forks live in the pack).
 """
 
 from __future__ import annotations
@@ -222,7 +226,7 @@ def cip_version_int(dotted: str) -> int | None:
 
 
 def read_product_client_version() -> int | None:
-    path = QTCLIENT_ROOT / "client/tibia/client/gameclient.h"
+    path = QTCLIENT_ROOT / "client/tibia/client/gameclientbase.h"
     if not path.is_file():
         return None
     m = re.search(r"static\s+constexpr\s+int\s+ClientVersion\s*=\s*(\d+)\s*;", path.read_text())
@@ -259,7 +263,7 @@ def sync_protocol_versions(cip_dotted: str, *, apply: bool) -> list[str]:
     if want is None:
         return [f"protocol: cannot parse cip_version `{cip_dotted}`"]
     lines: list[str] = []
-    client_path = QTCLIENT_ROOT / "client/tibia/client/gameclient.h"
+    client_path = QTCLIENT_ROOT / "client/tibia/client/gameclientbase.h"
     server_path = MONOREPO_ROOT / "apps/crystalserver/src/core.hpp"
     have_client = read_product_client_version()
     have_server = read_server_client_version()
@@ -276,7 +280,7 @@ def sync_protocol_versions(cip_dotted: str, *, apply: bool) -> list[str]:
     if have_client == want and have_server == want:
         lines.append(f"protocol: ClientVersion/CLIENT_VERSION already {want} ({cip_dotted})")
     elif have_client is None:
-        lines.append("protocol: gameclient.h ClientVersion not found")
+        lines.append("protocol: gameclientbase.h ClientVersion not found")
     elif have_server is None:
         lines.append("protocol: crystalserver core.hpp CLIENT_VERSION not found (submodule?)")
     return lines
@@ -319,6 +323,10 @@ def stage(contents: Path, work: Path, msgmap: Path | None) -> Path:
     shutil.copy2(contents / "MacOS/client.en.qm", stage_dir / "strings/client.en.qm")
     (stage_dir / "conf").mkdir()
     shutil.copy2(contents / "Resources/conf/clientoptions.json", stage_dir / "conf/clientoptions.json")
+    config_ini = [r / "conf/config.ini" for r in sorted(embedded.iterdir()) if (r / "conf/config.ini").is_file()]
+    if len(config_ini) != 1:
+        raise SystemExit(f"embedded conf/config.ini: expected 1 copy, carved {len(config_ini)}")
+    shutil.copy2(config_ini[0], stage_dir / "conf/config.ini")
 
     (stage_dir / "proto").mkdir()
     import protodump  # protobuf; only the extract path needs it
@@ -391,6 +399,7 @@ def collect_override_roots(extra: Path | None = None) -> list[Path]:
     pack = os.environ.get("QTCLIENT_PACK", "").strip()
     if pack:
         add(Path(pack) / "client" / "overrides")
+    add(MONOREPO_ROOT / "apps" / "idleot-client" / "client" / "overrides")
     if extra is not None:
         add(extra)
     return roots
@@ -408,12 +417,42 @@ def assert_no_host_overrides() -> list[str]:
     return ["host client/overrides/ (remove the directory; pack overrides only)"]
 
 
+KIND_A_PREFIXES = ("qml/", "shaders/", "strings/", "conf/", "proto/")
+
+
+def _is_kind_a(rel: str) -> bool:
+    return any(rel.startswith(p) for p in KIND_A_PREFIXES)
+
+
+def check_tree_manifest(out: Path) -> dict[str, str]:
+    """Actual file digests for --check: kind-B from upstream/, kind-A from dump."""
+    kind_a = drift.resolve_kind_a_dir(QTCLIENT_ROOT)
+    actual: dict[str, str] = {}
+    for rel, digest in manifest(out).items():
+        if rel.startswith("cip_stamps/") or _is_kind_a(rel):
+            # kind-A may linger locally as a gitignored cache; SoT is cipsoft-data.
+            continue
+        actual[rel] = digest
+    expected_keys = json.loads((out / "MANIFEST.json").read_text()) if (out / "MANIFEST.json").is_file() else {}
+    for rel in expected_keys:
+        if rel.startswith("cip_stamps/") or not _is_kind_a(rel):
+            continue
+        path = (kind_a / "client" / rel) if kind_a is not None else (out / rel)
+        if not path.is_file() and kind_a is not None:
+            path = out / rel
+        if path.is_file():
+            actual[rel] = sha256(path)
+    return actual
+
+
 def check(out: Path, extra_overrides: Path | None = None) -> int:
-    expected = json.loads((out / "MANIFEST.json").read_text()) if (out / "MANIFEST.json").is_file() else None
-    if expected is None:
+    expected_raw = json.loads((out / "MANIFEST.json").read_text()) if (out / "MANIFEST.json").is_file() else None
+    if expected_raw is None:
         log(f"no {out}/MANIFEST.json; run make tibia-sync")
         return 1
-    added, removed, changed = drift.keyed_diff(expected, manifest(out))
+    # cip_stamps/ are generated for porting; not part of the kind-A dump gate.
+    expected = {k: v for k, v in expected_raw.items() if not k.startswith("cip_stamps/")}
+    added, removed, changed = drift.keyed_diff(expected, check_tree_manifest(out))
     host_bad = assert_no_host_overrides()
     stale, orphan = drift.overrides_report(out, collect_override_roots(extra_overrides))
     for label, items in (("hand-added", added), ("missing", removed), ("hand-edited", changed),
@@ -472,14 +511,63 @@ def require_msgmap_for_new_client(out: Path, client_sha: str, msgmap: Path | Non
     )
 
 
+def require_funcmap_for_new_client(out: Path, client_sha: str, funcmap: Path | None) -> None:
+    """Fail when the binary changes but cip_stamps/ would be left stale.
+
+    First-time trees with no cip_stamps/ yet may omit --funcmap (bootstrap).
+    Once stamps exist, a new client_sha256 requires a fresh FUNCMAP.
+    """
+    prev = previous_client_sha(out)
+    stamps = out / "cip_stamps"
+    if prev == client_sha or funcmap is not None:
+        return
+    if not stamps.is_dir():
+        return
+    prev_label = f"{prev[:12]}…" if prev else "none"
+    raise SystemExit(
+        f"client binary changed ({prev_label} → {client_sha[:12]}…) and cip_stamps/ exists; "
+        "pass --funcmap=… (TibiaFunctionBodies.java JSONL) to refresh function body stamps"
+    )
+
+
+def apply_funcmap(
+    staged: Path,
+    funcmap_path: Path | None,
+    previous_out: Path,
+    client_bin: Path | None = None,
+) -> None:
+    """Write staged/cip_stamps from FUNCMAP, or keep the previous tree."""
+    import funcmap as fm
+
+    if funcmap_path is not None:
+        rows = fm.load_funcmap(funcmap_path)
+        tip = QTCLIENT_ROOT / "client" / "tibia"
+        if tip.is_dir():
+            rows = fm.attach_names_from_tip(rows, [tip])
+            if client_bin is not None and Path(client_bin).is_file():
+                tip_rows = fm.rows_from_tip_addrs(Path(client_bin), [tip])
+                rows = fm.merge_funcmap_and_tip(rows, tip_rows)
+                log(f"cip_stamps/: merged {len(tip_rows)} tip /// CIP addr hashes")
+        root, n = fm.write_stamp_headers(rows, staged, contract_dir=staged / "contract")
+        log(f"cip_stamps/: {n} methods → {root}")
+        return
+
+    prev = previous_out / "cip_stamps"
+    if prev.is_dir():
+        shutil.copytree(prev, staged / "cip_stamps")
+        log("cip_stamps/: kept the previous stamps (same client_sha256 or no --funcmap)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tibia", type=Path, help="Tibia.app (or its Contents)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--overrides", type=Path, default=None,
-                    help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK are scanned)")
+                    help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK + idleot-client are scanned)")
     ap.add_argument("--msgmap", type=Path, help="TibiaMessageMap.java output (JSONL) for protocol/messages.json "
                     "(required when client_sha256 changes)")
+    ap.add_argument("--funcmap", type=Path, help="TibiaFunctionBodies.java output (JSONL) for cip_stamps/ "
+                    "(required when client_sha256 changes once stamps exist)")
     ap.add_argument("--assets-dir", type=Path, help="assets dir for graphics_resources.rcc "
                     "(default apps/qtclient/data/assets)")
     ap.add_argument("--check", action="store_true", help="verify the vendored tree (CI)")
@@ -498,12 +586,14 @@ def main():
     contents = contents_dir(Path(tibia_path))
     client_sha = sha256(contents / "MacOS/client")
     require_msgmap_for_new_client(args.out, client_sha, args.msgmap)
+    require_funcmap_for_new_client(args.out, client_sha, args.funcmap)
     work = CACHE / client_sha[:12]
     work.mkdir(parents=True, exist_ok=True)
     staged = stage(contents, work, args.msgmap)
     if not args.msgmap and (args.out / "protocol").is_dir():
         shutil.copytree(args.out / "protocol", staged / "protocol")
         log("protocol/: kept the previous messages.json (same client_sha256)")
+    apply_funcmap(staged, args.funcmap, args.out, client_bin=contents / "MacOS/client")
 
     cip_ver = json.loads((staged / "VERSION.json").read_text()).get("cip_version", "")
     proto_lines = sync_protocol_versions(cip_ver, apply=True)

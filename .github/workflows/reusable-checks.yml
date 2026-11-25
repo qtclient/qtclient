@@ -23,7 +23,7 @@ jobs:
       - name: Setup dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck libxml2-utils lua-check luajit yamllint
+          sudo apt-get install -y cppcheck libxml2-utils yamllint
 
       - name: Run yamllint
         run: yamllint -c .yamllint.yaml .github

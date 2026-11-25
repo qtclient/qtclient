@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync qtclient spell icon strips and client IDs from a Tibia install."""
+"""Sync OTClient spell icon strips and client IDs from a Tibia install."""
 from __future__ import annotations
 
 import argparse

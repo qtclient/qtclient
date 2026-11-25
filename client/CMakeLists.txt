@@ -4,8 +4,6 @@ project(tibia)
 # Options
 # *****************************************************************************
 
-option(TOGGLE_FRAMEWORK_XML "Use XML " ON)
-option(TOGGLE_FRAMEWORK_NET "Use NET " ON)
 option(TOGGLE_FRAMEWORK_PROTOBUF "Use Protobuf" ON)
 option(TOGGLE_BIN_FOLDER "Use build/bin folder for generate compilation files" OFF)
 option(DEBUG_LOG "Enable Debug Log" OFF)
@@ -37,7 +35,7 @@ set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # *****************************************************************************
-# Client host: tibia executable (Lua client path retired)
+# Client host: tibia executable
 # *****************************************************************************
 # ${PROJECT_NAME} is not created. Engine sources compile into tibia.
 
@@ -46,14 +44,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Options Code
 # *****************************************************************************
 
-# Define Framework options for use in compilation
 set(FRAMEWORK_DEFINITIONS "")
-if (TOGGLE_FRAMEWORK_XML)
-  set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_XML)
-endif()
-if (TOGGLE_FRAMEWORK_NET)
-  set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_NET)
-endif()
 if (TOGGLE_FRAMEWORK_PROTOBUF)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_PROTOBUF)
 endif()
@@ -208,7 +199,7 @@ set(TIBIA_ENGINE_SOURCES "${_tibia_engine_abs}" PARENT_SCOPE)
 add_library(qtclient_deps INTERFACE)
 target_link_libraries(qtclient_deps INTERFACE tibia_thirdparty)
 add_dependencies(qtclient_deps protocol_dispatch_check)
-target_compile_definitions(qtclient_deps INTERFACE QTCLIENT_LUA=0 QTCLIENT_NATIVE_WINDOW=0 ${FRAMEWORK_DEFINITIONS})
+target_compile_definitions(qtclient_deps INTERFACE ${FRAMEWORK_DEFINITIONS})
 target_compile_features(qtclient_deps INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 
 if(NOT MSVC AND CMAKE_INTERPROCEDURAL_OPTIMIZATION MATCHES "^(ON|1|TRUE)$")
@@ -222,8 +213,6 @@ message(STATUS "Use precompiled header: OFF")
 if(SPEED_UP_BUILD_UNITY)
   log_option_enabled("Build unity for speed up compilation")
 endif(SPEED_UP_BUILD_UNITY)
-
-# Legacy Lua main.cpp / executable path retired.
 
 # *****************************************************************************
 # Build flags
@@ -274,8 +263,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
 else()
   log_option_disabled("DEBUG LOG")
 endif(CMAKE_BUILD_TYPE MATCHES Debug)
-
-target_compile_definitions(qtclient_deps INTERFACE ENABLE_DISCORD_RPC=0)
 
 # *****************************************************************************
 # Includes and librarys
@@ -467,10 +454,6 @@ endif()
 
 # macOS bundle identity lives on the `tibia` target (client/tibia/CMakeLists.txt).
 # Product packs under client/mods/*/ override MACOSX_BUNDLE_* there.
-
-if(ENABLE_DISCORD_RPC AND NOT ANDROID)
-        target_link_libraries(qtclient_deps INTERFACE ${DISCORDRPC_LIBRARY})
-endif()
 
 # *****************************************************************************
 # Enable debug console only for debug build

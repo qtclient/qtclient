@@ -8,31 +8,31 @@ pack_sdk() {
 
   # Public API = include/qtclient/. Tip closure is computed at pack time — no
   # committed ALLOWLIST. See tools/cip/sdk_tip_closure.py.
-  python3 "$OTC/tools/cip/sdk_tip_closure.py" --copy "$DEST" \
+  python3 "$QTCLIENT/tools/cip/sdk_tip_closure.py" --copy "$DEST" \
     || { echo "[package] error: sdk_tip_closure failed" >&2; return 1; }
   test -f "$DEST/include/qtclient/abi/host_api_v1.h" \
     || { echo "[package] error: public SDK missing after copy" >&2; return 1; }
 
-  cp -a "$OTC/cmake/QtClientMod.cmake" "$DEST/cmake/"
-  cp -a "$OTC/cmake/QtClientHost.cmake" "$DEST/cmake/"
-  cp -a "$OTC/cmake/TibiaMods.cmake" "$DEST/cmake/" 2>/dev/null || true
-  cp -a "$OTC/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
-  cp -a "$OTC/cmake/GenerateLinkedMods.cmake" "$DEST/cmake/"
-  cp -a "$OTC/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
+  cp -a "$QTCLIENT/cmake/QtClientMod.cmake" "$DEST/cmake/"
+  cp -a "$QTCLIENT/cmake/QtClientHost.cmake" "$DEST/cmake/"
+  cp -a "$QTCLIENT/cmake/TibiaMods.cmake" "$DEST/cmake/" 2>/dev/null || true
+  cp -a "$QTCLIENT/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
+  cp -a "$QTCLIENT/cmake/GenerateLinkedMods.cmake" "$DEST/cmake/"
+  cp -a "$QTCLIENT/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
   # Tip merge helpers (runtime MODULE packs ship native/mod.*; absorb packs do not).
   mkdir -p "$DEST/scripts/lifecycle/lib" "$DEST/cmake"
-  cp -a "$OTC/scripts/lifecycle/lib/check-tip-pack-presence.sh" "$DEST/scripts/lifecycle/lib/"
-  cp -a "$OTC/scripts/lifecycle/lib/merge-pack-into-tip.sh" "$DEST/scripts/lifecycle/lib/"
+  cp -a "$QTCLIENT/scripts/lifecycle/lib/check-tip-pack-presence.sh" "$DEST/scripts/lifecycle/lib/"
+  cp -a "$QTCLIENT/scripts/lifecycle/lib/merge-pack-into-tip.sh" "$DEST/scripts/lifecycle/lib/"
 
-  python3 "$OTC/tools/cip/gen_cpp.py" \
-    "$OTC/client/upstream/contract" \
+  python3 "$QTCLIENT/tools/cip/gen_cpp.py" \
+    "$QTCLIENT/client/upstream/contract" \
     "$DEST/cipgen" \
     --chunks 12 \
-    --qml "$OTC/client/upstream/qml/qmlcomponents"
+    --qml "$QTCLIENT/client/upstream/qml/qmlcomponents"
   test -f "$DEST/cipgen/cip_gen.h"
 
   # CIP protobuf C++ stubs for out-of-tree packs (#include <appearances.pb.h>).
-  _proto_dir="$OTC/client/upstream/proto"
+  _proto_dir="$QTCLIENT/client/upstream/proto"
   _proto_out="$DEST/include/protobuf"
   mkdir -p "$_proto_out"
   _protoc=""
@@ -95,7 +95,7 @@ pack_desktop() {
   rm -rf "$DEST"
   mkdir -p "$DEST/bin" "$DEST/engine"
 
-  python3 "$OTC/tools/publish/package_desktop.py" \
+  python3 "$QTCLIENT/tools/publish/package_desktop.py" \
     --platform "$PLATFORM" \
     --bin "$BIN" \
     --engine-bundle "$DEST/engine"
@@ -126,7 +126,7 @@ pack_wasm() {
   export TIBIA_ENGINE_SHA="$HOST_ID"
   rm -rf "$DEST"
   mkdir -p "$DEST"
-  bash "$OTC/scripts/lifecycle/package/pack-tibia-wasm.sh" "$SRC" "$DEST"
+  bash "$QTCLIENT/scripts/lifecycle/package/pack-tibia-wasm.sh" "$SRC" "$DEST"
   cat >"$DEST/host.json" <<EOF
 {
   "hostBuildId": "${HOST_ID}",

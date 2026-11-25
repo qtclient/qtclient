@@ -8,8 +8,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=desktop-paths.sh
 source "$HERE/desktop-paths.sh"
 
-OTC="${1:-${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}}"
-qtclient_desktop_paths "$OTC"
+QTCLIENT="${1:-${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}}"
+qtclient_desktop_paths "$QTCLIENT"
 # Windows .exe may not report -x under Git Bash — accept -e.
 if [[ -e "$QTCLIENT_CLIENT_BIN" ]]; then
   printf '%s\n' "$QTCLIENT_CLIENT_BIN"
@@ -32,7 +32,7 @@ for _base in release dev debug; do
   [[ "$_prefix" == windows && "$_base" == dev ]] && continue
   _preset="${_prefix}-${_base}"
   [[ "$_preset" == "$QTCLIENT_PRESET" ]] && continue
-  TIBIA_PRESET="$_preset" qtclient_desktop_paths "$OTC"
+  TIBIA_PRESET="$_preset" qtclient_desktop_paths "$QTCLIENT"
   if [[ -e "$QTCLIENT_CLIENT_BIN" ]]; then
     echo "[find-client-bin] using preset=$_preset ($QTCLIENT_CLIENT_BIN)" >&2
     printf '%s\n' "$QTCLIENT_CLIENT_BIN"

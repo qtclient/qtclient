@@ -17,7 +17,7 @@ those files.
 --apply downloads hints.json, downloads new or changed images, and rewrites
 image URLs onto /images/news/. It also vendors the launcher stylesheet and
 chrome from the CIP launcher binary into upstream/chrome/. It does not
-overwrite the product's launcher background or the two logos. A changed launcher
+overwrite IdleOT's launcher background or the two logos. A changed launcher
 binary, stylesheet, resource name, or client marker is reported in
 upstream/DRIFT.md.
 """
@@ -34,7 +34,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-# Monorepo umbrella copy uses repo root; in-tree qtclient copy uses qtclient root.
+# Monorepo umbrella copy uses repo root; in-tree otclient copy uses otclient root.
 _OTC = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient" / "client/tibia").is_dir() else ROOT
 DATA = _OTC / "data"
 HINTS = DATA / "hints.json"
@@ -43,13 +43,14 @@ UPSTREAM = _OTC / "launcher/upstream"
 FINGERPRINT = UPSTREAM / "FINGERPRINT.json"
 DRIFT = UPSTREAM / "DRIFT.md"
 CHROME = UPSTREAM  # chrome tree is launcher/upstream itself
-OURS_DIR = _OTC / "launcher/mods/qtclient/images/launcher"
+OURS_DIR = _OTC / "launcher/mods/idleot/images/launcher"
 
 DEFAULT_LAUNCHER = Path("/Applications/Tibia.app")
 DEFAULT_CLIENT = Path.home() / "Library/Application Support/CipSoft GmbH/Tibia/packages/Tibia.app"
 HINTS_URL = "https://static.tibia.com/hints.json"
 
-# product replacements of CIP art. A sync must not copy CIP pixels over these.
+# Product replacements live under idleot-client/launcher/images (runtime tip pack).
+# qtclient upstream always vendors the CIP originals so stock qtclient has chrome.
 OURS = {"BackgroundImage.jpg", "TibiaLogo_Classic.png", "CipSoftLogo.png"}
 
 MARKERS = (
@@ -158,7 +159,7 @@ def extract_styles(binary: Path) -> dict[str, str]:
 
 
 def vendor_chrome(launcher: Path, styles: dict[str, str]) -> list[str]:
-    """Copy CIP chrome and styles. the product's three images stay in images/launcher."""
+    """Copy CIP chrome and styles into qtclient upstream (including BackgroundImage)."""
     import subprocess
     import tempfile
 
@@ -181,7 +182,7 @@ def vendor_chrome(launcher: Path, styles: dict[str, str]) -> list[str]:
         image_dir.mkdir(parents=True, exist_ok=True)
         names: list[str] = []
         for src in sorted(carved.iterdir()):
-            if not src.is_file() or src.name in OURS:
+            if not src.is_file():
                 continue
             dest = image_dir / src.name
             data = src.read_bytes()
@@ -194,7 +195,7 @@ def vendor_chrome(launcher: Path, styles: dict[str, str]) -> list[str]:
         eula = eula_src.read_bytes()
         if not eula_dest.is_file() or eula_dest.read_bytes() != eula:
             eula_dest.write_bytes(eula)
-    # images/launcher keeps only the product replacements.
+    # Product tip pack keeps only its three replacements (runtime overlay).
     if OURS_DIR.is_dir():
         for path in OURS_DIR.iterdir():
             if path.is_file() and path.name not in OURS:
@@ -387,8 +388,8 @@ def apply(launcher: Path | None, client: Path | None) -> int:
     lines.extend(diff_list("Launcher resources", previous.get("launcher_resources", []), snap.get("launcher_resources", [])))
     lines.extend(diff_list("Client/launcher markers", previous.get("markers", []), snap.get("markers", [])))
     if previous.get("launcher_qss_sha256") and previous.get("launcher_qss_sha256") != snap.get("launcher_qss_sha256"):
-        lines.append("- Launcher stylesheet changed. Compare the new `:/images/launcher/` rules with `launcher/mods/qtclient/images/launcher/cip.qss`.")
-        lines.append(f"  Do not replace {', '.join(sorted(OURS))}; those are product art.")
+        lines.append("- Launcher stylesheet changed. Compare the new `:/images/launcher/` rules with `launcher/mods/idleot/images/launcher/cip.qss`.")
+        lines.append(f"  Do not replace {', '.join(sorted(OURS))}; those are IdleOT art.")
     if previous.get("launcher_sha256") and previous.get("launcher_sha256") != snap.get("launcher_sha256"):
         lines.append("- Launcher binary changed. Port new C++ behaviour from the markers and resource list; chrome pixels are not auto-copied.")
     if previous.get("client_sha256") and previous.get("client_sha256") != snap.get("client_sha256"):

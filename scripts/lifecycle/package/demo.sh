@@ -8,7 +8,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../../.." && pwd)"
+QTCLIENT="$(cd "$HERE/../../.." && pwd)"
 PLATFORM=""
 BIN=""
 OUT=""
@@ -28,7 +28,7 @@ done
   exit 1
 }
 
-HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-$(git -C "$OTC" rev-parse HEAD 2>/dev/null || echo dev)}}}"
+HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-$(git -C "$QTCLIENT" rev-parse HEAD 2>/dev/null || echo dev)}}}"
 export QTCLIENT_HOST_BUILD_ID="$HOST_ID"
 export SOURCE_COMMIT="${SOURCE_COMMIT:-$HOST_ID}"
 export QTCLIENT_APP_NAME="${QTCLIENT_APP_NAME:-qtclient}"
@@ -38,14 +38,14 @@ rm -rf "$OUT"
 mkdir -p "$OUT/launcher" "$OUT/engine" "$OUT/tip"
 
 echo "[pack-demo] staging launcher ($PLATFORM)…"
-python3 "$OTC/tools/publish/package_launcher.py" \
+python3 "$QTCLIENT/tools/publish/package_launcher.py" \
   --platform "$PLATFORM" \
   --bin "$BIN" \
   --out "$OUT/launcher"
 
 echo "[pack-demo] staging client engine ($PLATFORM)…"
 ENGINE_BUNDLE="$OUT/engine"
-python3 "$OTC/tools/publish/package_desktop.py" \
+python3 "$QTCLIENT/tools/publish/package_desktop.py" \
   --platform "$PLATFORM" \
   --bin "$BIN" \
   --engine-bundle "$ENGINE_BUNDLE"
@@ -67,13 +67,13 @@ esac
 }
 
 # Ensure default packs are present for staging into the client tree.
-[[ -f "$OTC/client/mods/qtc-aac/mod.json" ]] || {
-  echo "[pack-demo] missing $OTC/client/mods/qtc-aac/mod.json" >&2
+[[ -f "$QTCLIENT/client/mods/qtc-aac/mod.json" ]] || {
+  echo "[pack-demo] missing $QTCLIENT/client/mods/qtc-aac/mod.json" >&2
   exit 1
 }
 
 echo "[pack-demo] emit demo tip (default mods + CipSoft assetsurl)…"
-python3 "$OTC/tools/publish/emit_demo_tip.py" \
+python3 "$QTCLIENT/tools/publish/emit_demo_tip.py" \
   --platform "$PLATFORM" \
   --tree "$TREE" \
   --out "$OUT/tip" \

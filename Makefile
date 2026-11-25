@@ -1,4 +1,4 @@
-# qtclient (otqt) — CipSoft-compatible Qt/QML Tibia client
+# qtclient — CipSoft-compatible Qt/QML Tibia client
 # Cargo-like: make [<component>] <lifecycle>
 #   components: desktop (default) | launcher | browser
 #   lifecycles: build | run | check | test | clean | install | doc | package | publish

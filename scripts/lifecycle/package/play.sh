@@ -7,8 +7,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../../.." && pwd)"
-ROOT="$(cd "$OTC/../.." && pwd)"
+QTCLIENT="$(cd "$HERE/../../.." && pwd)"
+ROOT="$(cd "$QTCLIENT/../.." && pwd)"
 OUT="${QTCLIENT_PLAY_TIP:-$ROOT/dist/play/tip}"
 ARGS=()
 
@@ -25,8 +25,8 @@ done
 export DEV="${DEV:-1}"
 echo "[play-pack] emit tip → $OUT"
 if [[ ${#ARGS[@]} -gt 0 ]]; then
-  python3 "$OTC/tools/publish/emit_play_tip.py" --out "$OUT" --umbrella "$ROOT" "${ARGS[@]}"
+  python3 "$QTCLIENT/tools/publish/emit_play_tip.py" --out "$OUT" --umbrella "$ROOT" "${ARGS[@]}"
 else
-  python3 "$OTC/tools/publish/emit_play_tip.py" --out "$OUT" --umbrella "$ROOT"
+  python3 "$QTCLIENT/tools/publish/emit_play_tip.py" --out "$OUT" --umbrella "$ROOT"
 fi
 echo "[play-pack] QTCLIENT_URL=file://$OUT/tibiametadata.json"

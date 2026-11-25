@@ -20,8 +20,8 @@ CipSoft mounts CIP art from graphics_resources.rcc and the bundled minimap;
 staticdata uses official field numbers. Legacy opt-in extras:
 
   --spells        carve spell icon strips + remap spellInfo.generated.json
-  --otmm          build tibiamaps minimap.otmm (+ markers JSON)
-  --aac-sprites   render portal outfits_anim/ + items/ PNGs
+  --otmm          build tibiamaps minimap.otmm
+  --aac-sprites   render qtc-aac outfit + item sprites into apps/qtclient/data/aac/
 
 Usage:
   make extract TIBIA=/path/to/Tibia.app
@@ -42,19 +42,19 @@ from pathlib import Path
 _EXTRACT_DIR = Path(__file__).resolve().parent
 _TOOLS_DIR = _EXTRACT_DIR.parent
 _REPO = _TOOLS_DIR.parent
-# Monorepo: tools/extract → repo with apps/qtclient. Standalone otquartz: tools/ next to client/tibia.
+# Monorepo: tools/extract → repo with apps/qtclient. Standalone qtclient: tools/ next to client/tibia.
 if (_REPO / "apps/qtclient/client/tibia").is_dir():
     ROOT = _REPO
-    OTC_DIR = ROOT / "apps/qtclient"
+    QTCLIENT_DIR = ROOT / "apps/qtclient"
 elif (_REPO / "client/tibia").is_dir():
     ROOT = _REPO
-    OTC_DIR = ROOT
+    QTCLIENT_DIR = ROOT
 else:
     ROOT = _REPO
-    OTC_DIR = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient").is_dir() else ROOT
+    QTCLIENT_DIR = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient").is_dir() else ROOT
 
 HAS_ASSET_PIPELINE = (ROOT / "packages/asset-pipeline").is_dir()
-DEFAULT_ASSETS_DIR = OTC_DIR / "data" / "assets"
+DEFAULT_ASSETS_DIR = QTCLIENT_DIR / "data" / "assets"
 
 # Shared OS defaults (CipSoft package paths).
 sys.path.insert(0, str(_TOOLS_DIR))
@@ -347,24 +347,6 @@ def extract_assets(
     except OSError as exc:
         log(f"WARN: otmm minimap build skipped: {exc}")
 
-    # Minimap marker layer (same tibiamaps provenance as minimap.otmm).
-    markers_py = (
-        ROOT / "packages/asset-pipeline/src/features/minimap/build-minimap-markers.py"
-    )
-    if markers_py.is_file():
-        try:
-            subprocess.run(
-                [
-                    sys.executable,
-                    str(markers_py),
-                    f"--dest={assets_dir / 'minimap-markers.json'}",
-                ],
-                cwd=str(ROOT),
-                check=False,
-            )
-        except OSError as exc:
-            log(f"WARN: minimap markers build skipped: {exc}")
-
 
 def extract_sounds(
     install: dict[str, Path | None],
@@ -462,10 +444,16 @@ def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> No
     except GameTableError as exc:
         log(f"WARN: game tables skipped — {exc} (see packages/asset-pipeline/AGENTS.md § CIP game tables)")
         return
+    for name, err in tables["source.json"].get("errors", {}).items():
+        log(f"WARN: game table {name} skipped — {err} (see packages/asset-pipeline/AGENTS.md § CIP game tables)")
     spells_src = dest / "spells.json"
     if spells_src.is_file():
         shutil.copy2(spells_src, assets_dir / "spells.json")
         log(f"spells.json → {assets_dir / 'spells.json'} (qtclient disk load)")
+    previews_src = dest / "spells-previews.json"
+    if previews_src.is_file():
+        shutil.copy2(previews_src, assets_dir / "spells-previews.json")
+        log(f"spells-previews.json → {assets_dir / 'spells-previews.json'} (qtclient disk load)")
     log(
         f"game tables → {dest} ({len(tables['spells.json'])} spells, "
         f"{len(tables['charms.json'])} charms, "
@@ -474,12 +462,12 @@ def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> No
 
 
 def extract_aac_sprites(assets_dir: Path) -> None:
-    """Render AAC outfit frames + item sprites from the freshly extracted assets."""
-    if __package__:
-        from . import items, outfits
-    else:
-        import items
-        import outfits
+    """Render AAC outfit frames + item sprites (qtclient tools/publish/aac)."""
+    aac = Path(__file__).resolve().parents[2] / "apps/qtclient/tools/publish/aac"
+    if str(aac) not in sys.path:
+        sys.path.insert(0, str(aac))
+    import items  # noqa: E402  (qtclient renderer)
+    import outfits  # noqa: E402
 
     outfits.render_all(assets_dir)
     items.render_all(assets_dir)
@@ -520,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--aac-sprites",
         action="store_true",
-        help="LEGACY/portal: render outfits_anim/ + items/ (website CDN; not CipSoft)",
+        help="render qtc-aac outfit + item sprites (qtclient asset slices; not CipSoft)",
     )
     # Compat aliases (default CipSoft path already skips these).
     parser.add_argument("--skip-spells", action="store_true", help=argparse.SUPPRESS)
@@ -580,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             log(f"WARN: AAC outfits/items skipped — no assets at {assets_dir}")
     else:
-        log("portal outfits/items skipped (pass --aac-sprites for website CDN sprites)")
+        log("AAC outfits/items skipped (pass --aac-sprites for qtc-aac CDN sprites)")
 
     log("done.")
     log("next: make generate  # reads apps/qtclient/data/assets/ + Crystal")

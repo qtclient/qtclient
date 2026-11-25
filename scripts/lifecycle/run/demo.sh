@@ -7,13 +7,13 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
-ROOT="$(cd "$OTC/../.." && pwd)"
+QTCLIENT="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+ROOT="$(cd "$QTCLIENT/../.." && pwd)"
 TIP_DIR="${QTCLIENT_DEMO_TIP:-$ROOT/dist/demo/tip}"
 
 # shellcheck source=desktop-paths.sh
 source "$HERE/../lib/desktop-paths.sh"
-qtclient_desktop_paths "$OTC"
+qtclient_desktop_paths "$QTCLIENT"
 
 if [[ ! -x "$QTCLIENT_LAUNCHER_BIN" ]]; then
   echo "[demo] missing $QTCLIENT_LAUNCHER_BIN — make qtclient launcher build" >&2
@@ -39,12 +39,12 @@ elif [[ -n "${QTCLIENT_URL:-}" ]]; then
   echo "[demo] tip $QTCLIENT_URL"
 else
   echo "[demo] no tip yet — generate with:" >&2
-  echo "  make -C \"$OTC\" demo-pack   # or set QTCLIENT_URL" >&2
+  echo "  make -C \"$QTCLIENT\" demo-pack   # or set QTCLIENT_URL" >&2
   echo "[demo] launcher will still start (CDN/empty tip may apply)" >&2
 fi
 
 echo "[demo] starting $QTCLIENT_LAUNCHER_BIN (Play → tip client + default mods)"
-cd "$OTC"
+cd "$QTCLIENT"
 # Launcher chrome stays stock CIP (--no-mods); tip package still ships qtc-aac
 # for installs that do not forward --no-mods to Play.
 exec "$QTCLIENT_LAUNCHER_BIN" --no-mods "$@"

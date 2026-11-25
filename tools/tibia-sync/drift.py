@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -90,13 +91,36 @@ def section(lines, title, added, removed, changed=(), limit=60):
         lines.append("")
 
 
-def _override_base_file(upstream: Path, rel: str) -> Path | None:
+def resolve_kind_a_dir(qtclient_root: Path | None = None) -> Path | None:
+    """C5 kind-A root (qml/shaders/strings/conf/proto), or None for upstream-only."""
+    env = os.environ.get("QTCLIENT_CIPSOFT_DIR", "").strip()
+    candidates: list[Path] = []
+    if env:
+        candidates.append(Path(env))
+    if qtclient_root is not None:
+        candidates.append(qtclient_root.parent / "cipsoft-data")
+        candidates.append(qtclient_root / "cipsoft")
+    for root in candidates:
+        if (root / "client" / "qml").is_dir():
+            return root
+    return None
+
+
+def _override_base_file(
+    upstream: Path, rel: str, kind_a: Path | None = None
+) -> Path | None:
     """Resolve the file an override's cip-base must match.
 
     Pack stock forks (qmlcomponents + QtQuick/LegacyControls) live under
-    upstream/qml/ after tibia-sync. LegacyControls C++ stays in the
-    Qt5LegacyControls submodule and is not part of cip-base checks.
+    kind-A `client/qml/` (cipsoft-data) or vendored upstream/qml/. LegacyControls
+    C++ stays in the Qt5LegacyControls submodule and is not part of cip-base checks.
     """
+    if kind_a is None:
+        kind_a = resolve_kind_a_dir(upstream.parent.parent if upstream.name == "upstream" else None)
+    if kind_a is not None:
+        target = kind_a / "client" / "qml" / rel
+        if target.is_file():
+            return target
     target = upstream / "qml" / rel
     return target if target.is_file() else None
 
@@ -109,6 +133,7 @@ def overrides_report(new: Path, overrides: Path | list[Path]):
     Host client/overrides/ must not exist.
     """
     stale, orphan = [], []
+    kind_a = resolve_kind_a_dir(new.parent.parent if new.name == "upstream" else None)
     roots = overrides if isinstance(overrides, list) else [overrides]
     for overrides_root in roots:
         if not overrides_root.is_dir():
@@ -121,7 +146,7 @@ def overrides_report(new: Path, overrides: Path | list[Path]):
                 pack = overrides_root.parent.name
                 label = f"{pack}/overrides/{rel}"
             m = OVERRIDE_BASE.search(f.read_text(errors="replace"))
-            target = _override_base_file(new, rel)
+            target = _override_base_file(new, rel, kind_a=kind_a)
             if target is None:
                 orphan.append(label)
             elif not m or m.group(1) != sha256(target):

@@ -42,10 +42,20 @@ wasm chainloads Qt’s `qt.toolchain.cmake` with the `wasm32-emscripten` triplet
 Umbrella repo: same targets via top-level `make extract` / `make sync`
 (optional `TIBIA=`).
 
-## Android
+## Android / iOS (experimental)
 
-Use `scripts/lifecycle/build/android.sh` with the CipSoft Android Qt kit from
-`make qt ANDROID=1`. C++ deps still come from vcpkg.
+Not shipping platforms. Desktop and WASM are the supported targets. The
+`android/` tree and `scripts/lifecycle/build/{android,ios}.sh` are unsupported
+scaffolds (`make qt ANDROID=1` for the Android Qt kit if you experiment).
+
+## Layout notes
+
+| Path | Role |
+|------|------|
+| `shared/` | Shared C++ lib linked by **launcher + tibia** |
+| `client/tibia/shared/` | CIP client-only helpers (not the top-level lib) |
+| `include/qtclient/abi/` | Pack C ABI (extensibility surface) |
+| `data/qml/` | Not committed — comes from `make qt` |
 
 ## Animated UI assets
 

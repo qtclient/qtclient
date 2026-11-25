@@ -11,13 +11,13 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
-CACHE_ENV="$(cd "$OTC/../.." && pwd)/scripts/build-cache-env.sh"
+QTCLIENT="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+CACHE_ENV="$(cd "$QTCLIENT/../.." && pwd)/scripts/build-cache-env.sh"
 if [[ -f "$CACHE_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$CACHE_ENV"
 fi
-QT_PREFIX_SH="$OTC/tools/qt/qt-prefix.sh"
+QT_PREFIX_SH="$QTCLIENT/tools/qt/qt-prefix.sh"
 DEBUG_BUILD=0
 DEV_BUILD=0
 WASM_BUILD=0
@@ -50,7 +50,7 @@ if [[ "$DEV_BUILD" -eq 1 && "$WASM_BUILD" -eq 1 ]]; then
 fi
 
 # shellcheck source=../tools/qt/qt-version.sh
-source "$OTC/tools/qt/qt-version.sh"
+source "$QTCLIENT/tools/qt/qt-version.sh"
 if [[ -n "${QT_ROOT:-}" ]]; then
   QT_ROOT="$(qt_unix_path "$QT_ROOT")"
   export QT_ROOT
@@ -68,7 +68,7 @@ fi
 export VCPKG_ROOT
 
 # Shared binary cache — presets read these via $penv{VCPKG_*}.
-MONOREPO="$(cd "$OTC/../.." && pwd)"
+MONOREPO="$(cd "$QTCLIENT/../.." && pwd)"
 export VCPKG_DEFAULT_BINARY_CACHE="${VCPKG_DEFAULT_BINARY_CACHE:-$MONOREPO/.cache/vcpkg/archives}"
 export VCPKG_BINARY_SOURCES="${VCPKG_BINARY_SOURCES:-clear;files,$VCPKG_DEFAULT_BINARY_CACHE,readwrite}"
 export VCPKG_DOWNLOADS="${VCPKG_DOWNLOADS:-$HOME/vcpkg/downloads}"
@@ -146,7 +146,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   case "${WASM_PRELOAD_GRAPHICS_RCC:-}" in
     1|ON|on|true|TRUE|yes|YES)
       # Flat CIP extract (make extract) lands at data/assets/.
-      [[ -f "$OTC/data/assets/graphics_resources.rcc" ]] && RCC="$OTC/data/assets/graphics_resources.rcc"
+      [[ -f "$QTCLIENT/data/assets/graphics_resources.rcc" ]] && RCC="$QTCLIENT/data/assets/graphics_resources.rcc"
       if [[ -z "$RCC" ]]; then
         echo "[tibia] WARN: WASM_PRELOAD_GRAPHICS_RCC set but no graphics_resources.rcc (make extract)"
       else
@@ -158,7 +158,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
       ;;
   esac
 
-  BUILD_DIR="$OTC/build/tibia-wasm"
+  BUILD_DIR="$QTCLIENT/build/tibia-wasm"
   echo "[tibia] wasm qt=$QT_WASM emsdk=$EMSDK_DIR type=$BUILD_TYPE vcpkg=$VCPKG_ROOT"
 
   mkdir -p "$BUILD_DIR"
@@ -180,7 +180,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
   fi
   WASM_CMAKE_ARGS=(
-    -G Ninja -S "$OTC" -B "$BUILD_DIR"
+    -G Ninja -S "$QTCLIENT" -B "$BUILD_DIR"
     -DCMAKE_MAKE_PROGRAM="$NINJA"
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
     -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -211,7 +211,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     echo "mods-list=${QTCLIENT_MODS:-}"
     echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
     printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
-    _sha256 "$OTC/vcpkg.json" "$OTC/vcpkg-configuration.json" 2>/dev/null || true
+    _sha256 "$QTCLIENT/vcpkg.json" "$QTCLIENT/vcpkg-configuration.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
 )"
   if [[ -f "$HELPER" ]]; then
@@ -301,7 +301,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     echo "tibia wasm artifact sizes ($(date -u +%Y-%m-%dT%H:%MZ))"
     echo "BUILD_TYPE=$BUILD_TYPE (heap: client/tibia QT_WASM_INITIAL_MEMORY)"
     echo "EXCEPTIONS=wasm-EH+JSPI (Qt -feature-wasm-exceptions -feature-wasm-jspi)"
-    echo "VCPKG_BASELINE=$(python3 -c 'import json;print(json.load(open("'"$OTC"'/vcpkg.json")).get("builtin-baseline","")[:12])' 2>/dev/null || echo unknown)"
+    echo "VCPKG_BASELINE=$(python3 -c 'import json;print(json.load(open("'"$QTCLIENT"'/vcpkg.json")).get("builtin-baseline","")[:12])' 2>/dev/null || echo unknown)"
     for f in tibia.html tibia.js tibia.wasm tibia.data qtloader.js; do
       path="$OUT_DIR/$f"
       [[ -f "$path" ]] || continue
@@ -318,7 +318,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   [[ "$OUT_DIR" != "$BUILD_DIR" ]] && cp -f "$NOTES" "$OUT_DIR/tibia-wasm-size.txt"
 
   echo "[tibia] ok → $BUILD_DIR/tibia.html (from $OUT_HTML)"
-  echo "[tibia] serve: python3 $OTC/tools/emscripten-web-serve.py --root $OUT_DIR --port 8000  (open /tibia.html)"
+  echo "[tibia] serve: python3 $QTCLIENT/tools/emscripten-web-serve.py --root $OUT_DIR --port 8000  (open /tibia.html)"
   exit 0
 fi
 
@@ -357,10 +357,10 @@ case "$(uname -s)" in
     ;;
 esac
 
-cd "$OTC"
+cd "$QTCLIENT"
 # Canonical tree: apps/qtclient/build/<preset> (umbrella DEV → macos-dev / linux-dev).
 # Do not point cmake elsewhere or wipe this dir mid-build — use this script / make client-build.
-BUILD_DIR="$OTC/build/$PRESET"
+BUILD_DIR="$QTCLIENT/build/$PRESET"
 echo "[tibia] desktop preset=$PRESET build=$BUILD_DIR qt=$QT_DESKTOP triplet=$VCPKG_TARGET_TRIPLET"
 # pgrep is often missing on Windows Git Bash; never treat that as fatal.
 if [[ -f "$BUILD_DIR/build.ninja" ]] && command -v pgrep >/dev/null 2>&1 \
@@ -387,7 +387,7 @@ FP="$(
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
-    _sha256 "$OTC/CMakePresets.json" "$OTC/vcpkg.json" 2>/dev/null || true
+    _sha256 "$QTCLIENT/CMakePresets.json" "$QTCLIENT/vcpkg.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
 )"
 command -v cmake >/dev/null || { echo "[tibia] cmake not on PATH after env setup" >&2; exit 127; }
@@ -439,10 +439,10 @@ if [[ ! -e "$BIN" ]]; then
 fi
 echo "[tibia] ok → $BIN"
 if [[ "$LAUNCHER_BUILD" -eq 0 ]]; then
-  bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$BIN" "$OTC/data" || true
+  bash "$QTCLIENT/scripts/lifecycle/lib/link-cip-resources.sh" "$BIN" "$QTCLIENT/data" || true
   # Local crash reports: keep this build's symbols before the next one replaces it.
   if [[ -z "${CI:-}" ]]; then
-    bash "$OTC/scripts/lifecycle/lib/dump-symbols.sh" "$BIN" "$QT_DESKTOP" || true
+    bash "$QTCLIENT/scripts/lifecycle/lib/dump-symbols.sh" "$BIN" "$QT_DESKTOP" || true
   fi
 fi
 if [[ "$DEV_BUILD" -eq 1 ]]; then

@@ -18,10 +18,6 @@ target_include_directories(qtclient_map_spectator_tests_objects PRIVATE
     ${CMAKE_BINARY_DIR}/client/tibia/protobuf
 )
 # Avoid `-DCLIENT=1` — conflicts with cip_gen identifiers named CLIENT.
-target_compile_definitions(qtclient_map_spectator_tests_objects PRIVATE
-    FRAMEWORK_NET
-    FRAMEWORK_XML
-)
 find_package(Qt6 QUIET COMPONENTS Core Gui)
 if(Qt6_FOUND)
     target_link_libraries(qtclient_map_spectator_tests_objects PRIVATE Qt6::Core Qt6::Gui)

@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Configure tibia for iOS. Needs macOS and a Qt iOS kit (`make qt IOS=1`).
+# EXPERIMENTAL — iOS is not a shipping platform (desktop + WASM only).
+# Needs macOS and a Qt iOS kit (`make qt IOS=1`).
 #
-#   scripts/lifecycle/lib/build-tibia-ios.sh
+#   scripts/lifecycle/build/ios.sh
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
-CACHE_ENV="$(cd "$OTC/../.." && pwd)/scripts/build-cache-env.sh"
+QTCLIENT="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+CACHE_ENV="$(cd "$QTCLIENT/../.." && pwd)/scripts/build-cache-env.sh"
 if [[ -f "$CACHE_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$CACHE_ENV"
 fi
-QT_PREFIX_SH="$OTC/tools/qt/qt-prefix.sh"
+QT_PREFIX_SH="$QTCLIENT/tools/qt/qt-prefix.sh"
 
 command -v cmake >/dev/null || { echo "[tibia-ios] need cmake"; exit 1; }
 [[ "$(uname -s)" == Darwin ]] || { echo "[tibia-ios] macOS only"; exit 1; }
@@ -23,17 +24,15 @@ if [[ -z "$QT_IOS" || -z "$QT_HOST" ]]; then
   exit 1
 fi
 
-BUILD_DIR="$OTC/build/tibia-ios"
+BUILD_DIR="$QTCLIENT/build/tibia-ios"
 
-echo "[tibia-ios] qt=$QT_IOS"
-"$QT_IOS/bin/qt-cmake" -S "$OTC" -B "$BUILD_DIR" -G Xcode \
+echo "[tibia-ios] EXPERIMENTAL qt=$QT_IOS"
+"$QT_IOS/bin/qt-cmake" -S "$QTCLIENT" -B "$BUILD_DIR" -G Xcode \
   -DQT_HOST_PATH="$QT_HOST" \
   -DCMAKE_SYSTEM_NAME=iOS \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
   -DTIBIA_BUILD_APP=ON \
   -DTIBIA_BUILD_TESTS=OFF \
-  -DTOGGLE_WEBGPU=OFF \
   -DOPTIONS_ENABLE_IPO=OFF
 
 echo "[tibia-ios] configured → $BUILD_DIR (open in Xcode / cmake --build --target tibia)"
-echo "[tibia-ios] TIBIA_MOBILE=1: TFullscreenLayout safe-area + density on orientation"

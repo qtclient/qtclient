@@ -7,8 +7,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
-ROOT="$(cd "$OTC/../.." && pwd)"
+QTCLIENT="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+ROOT="$(cd "$QTCLIENT/../.." && pwd)"
 TIP_DIR="${QTCLIENT_PLAY_TIP:-$ROOT/dist/play/tip}"
 
 # Match product desktop install: DEV tip (macos-dev / linux-dev), not release.
@@ -18,7 +18,7 @@ fi
 
 # shellcheck source=../lib/desktop-paths.sh
 source "$HERE/../lib/desktop-paths.sh"
-qtclient_desktop_paths "$OTC"
+qtclient_desktop_paths "$QTCLIENT"
 
 if [[ ! -x "$QTCLIENT_LAUNCHER_BIN" ]]; then
   echo "[play] missing $QTCLIENT_LAUNCHER_BIN — make qtclient launcher build" >&2
@@ -50,7 +50,7 @@ if [[ -f "$TIP_DIR/play-sources.json" ]]; then
 fi
 
 echo "[play] starting $QTCLIENT_LAUNCHER_BIN (Update/Play → tip packages)"
-cd "$OTC"
+cd "$QTCLIENT"
 
 # Stock: CIP chrome + forward --no-mods to Play (demo-run parity).
 # Product (make qtclient …): tip packages already stage mods/<id>; do not pass
