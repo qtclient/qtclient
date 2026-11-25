@@ -177,11 +177,11 @@
       }
     },
     {
-      "name": "wasm-tibia",
+      "name": "wasm-qtclient",
       "inherits": "base",
-      "displayName": "WebAssembly - tibia",
+      "displayName": "WebAssembly - qtclient",
       "description": "Qt wasm OS via chainload; see scripts/lifecycle/build/entrypoint.sh --wasm",
-      "binaryDir": "${sourceDir}/build/tibia-wasm",
+      "binaryDir": "${sourceDir}/build/qtclient-wasm",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "WASM": "ON",
@@ -194,7 +194,7 @@
     }
   ],
   "buildPresets": [
-    { "name": "wasm-tibia", "configurePreset": "wasm-tibia", "targets": ["tibia"] },
+    { "name": "wasm-qtclient", "configurePreset": "wasm-qtclient", "targets": ["tibia"] },
     { "name": "linux-release", "configurePreset": "linux-release" },
     { "name": "linux-debug", "configurePreset": "linux-debug" },
     { "name": "linux-dev", "configurePreset": "linux-dev" },

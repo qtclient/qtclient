@@ -11,7 +11,7 @@ set -uo pipefail
 LAUNCHER_PID="${1:?usage: watch-crashdumps.sh <launcher pid>}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MONOREPO="$(cd "$HERE/../../../../.." && pwd)"
-STORE="${QTCAAC_SYMBOLS_DIR:-$MONOREPO/apps/qtc-aac/apps/web/data/telemetry/symbols}"
+STORE="${QTCAAC_SYMBOLS_DIR:-$MONOREPO/apps/portal/apps/web/data/telemetry/symbols}"
 STACKWALK="$(command -v minidump-stackwalk || true)"
 [[ -z "$STACKWALK" && -x "$HOME/.cargo/bin/minidump-stackwalk" ]] && STACKWALK="$HOME/.cargo/bin/minidump-stackwalk"
 FRAMES="${QTCLIENT_CRASH_FRAMES:-25}"

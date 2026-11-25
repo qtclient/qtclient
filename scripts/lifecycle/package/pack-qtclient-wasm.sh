@@ -6,7 +6,7 @@
 # <meta> is QTCLIENT_STORE_META (default .qtclient, as package_desktop.py).
 # A pack (QTCLIENT_PACK_DIR, else mods/<id> next to the wasm) is baked into the
 # tip; its launcher tree comes from QTCLIENT_PACK/launcher.
-# Usage: pack-tibia-wasm.sh <src-dir> <dest-dir>
+# Usage: pack-qtclient-wasm.sh <src-dir> <dest-dir>
 set -euo pipefail
 
 SRC="${1:?src dir}"
@@ -15,7 +15,7 @@ ENGINE_SHA="${TIBIA_ENGINE_SHA:-unknown}"
 
 for f in tibia.js tibia.wasm tibia.html; do
   if [[ ! -f "${SRC}/${f}" ]]; then
-    echo "[pack-tibia-wasm] missing ${SRC}/${f}" >&2
+    echo "[pack-qtclient-wasm] missing ${SRC}/${f}" >&2
     exit 1
   fi
 done
@@ -73,7 +73,7 @@ from pathlib import Path
 dest, rev, meta = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 doc = {"schema": 3, "revision": rev, "engine": rev, "files": {}}
 (dest / meta / "v3" / "content-web.json").write_text(json.dumps(doc, indent=1) + "\n")
-print(f"[pack-tibia-wasm] content-web: {len(doc['files'])} files (tibia; QML in binary)")
+print(f"[pack-qtclient-wasm] content-web: {len(doc['files'])} files (tibia; QML in binary)")
 PY
 
 cat >"${DEST}/${META}/wasm.json" <<EOF
@@ -96,7 +96,7 @@ if [[ -z "$PACK_SRC" ]]; then
     for cand in "$mods_root"/*; do
       [[ -d "$cand" && -f "$cand/mod.json" ]] || continue
       base="$(basename "$cand")"
-      [[ "$base" == qtc-aac ]] && continue
+      [[ "$base" == portal ]] && continue
       [[ -z "$first" ]] && first="$cand"
       if [[ -f "$cand/brand.json" ]]; then
         branded="$cand"
@@ -115,7 +115,7 @@ if [[ -n "$PACK_SRC" && -f "${PACK_SRC}/mod.json" ]]; then
   cp -a "$PACK_SRC" "${OUT}/mods/${pack_id}"
   # Drop linked STATIC archives from the FS tip (absorb path loads from the wasm).
   rm -rf "${OUT}/mods/${pack_id}/lib"
-  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/${pack_id} (brand=$([[ -f ${OUT}/mods/${pack_id}/brand.json ]] && echo yes || echo no))"
+  echo "[pack-qtclient-wasm] merged pack → ${OUT}/mods/${pack_id} (brand=$([[ -f ${OUT}/mods/${pack_id}/brand.json ]] && echo yes || echo no))"
 fi
 # The pack's launcher tree (brand, channels, chrome) even when PACK_SRC was a non-branded tree.
 PACK_ROOT="${QTCLIENT_PACK:-}"
@@ -150,8 +150,8 @@ PY
       cd "$mid"
       find . -type f | sed 's|^\./||' | sort
     ) >"${OUT}/mods/${id}.files"
-    echo "[pack-tibia-wasm] stamped mods/${id} ($(wc -l < "${OUT}/mods/${id}.files" | tr -d ' ') files)"
+    echo "[pack-qtclient-wasm] stamped mods/${id} ($(wc -l < "${OUT}/mods/${id}.files" | tr -d ' ') files)"
   done
 fi
 
-echo "[pack-tibia-wasm] revision=${REV} engine=${ENGINE_SHA} → ${OUT}"
+echo "[pack-qtclient-wasm] revision=${REV} engine=${ENGINE_SHA} → ${OUT}"

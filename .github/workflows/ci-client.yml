@@ -189,7 +189,7 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
-          # Stock tip with default qtc-aac pack (FS chrome; no C++ pack).
+          # Stock tip with default portal pack (FS chrome; no C++ pack).
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
@@ -232,7 +232,7 @@ jobs:
           [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
           BIN_DIR="$bin_dir" bash scripts/lifecycle/package/desktop.sh
 
-      - name: Pack demo Release (qtc-aac + CipSoft assetsurl)
+      - name: Pack demo Release (portal + CipSoft assetsurl)
         # Demo is optional — never block client tip / GHCR publish on pack glitches.
         continue-on-error: true
         shell: bash
@@ -301,7 +301,7 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
         run: bash scripts/lifecycle/publish/desktop.sh
 
-  # Wasm + stock qtc-aac linked pack. ORAS when PUBLISH_HOST.
+  # Wasm + stock portal linked pack. ORAS when PUBLISH_HOST.
   wasm:
     name: wasm
     runs-on: ubuntu-24.04
@@ -346,25 +346,25 @@ jobs:
         # Same as desktop: wait for the qtclient/Qt5 kits — never compile Qt here.
         run: bash tools/qt/ci-setup.sh --wasm --pull-only --with-vcpkg --with-deps
 
-      - name: Build wasm tip (+ qtc-aac linked default pack)
+      - name: Build wasm tip (+ portal linked default pack)
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
-          # Stock tip: qtc-aac FS pack (no C++ pack, no host_exports).
+          # Stock tip: portal FS pack (no C++ pack, no host_exports).
           STOCK_HOST: '0'
           QTCLIENT_ENABLE_MODS: 'ON'
-          QTCLIENT_MODS: 'qtc-aac'
+          QTCLIENT_MODS: 'portal'
         run: |
           set -euo pipefail
           mkdir -p "$CCACHE_DIR"
           ccache -z || true
           if ! bash scripts/lifecycle/build/wasm.sh; then
             echo '::error::wasm build failed; last link recipe:' >&2
-            ninja -C build/tibia-wasm -t commands tibia 2>/dev/null | tail -n 5 || true
-            ninja -C build/tibia-wasm -v bin/tibia.js 2>&1 | tail -n 80 || true
-            ls -la build/tibia-wasm/bin/ 2>/dev/null || true
+            ninja -C build/qtclient-wasm -t commands tibia 2>/dev/null | tail -n 5 || true
+            ninja -C build/qtclient-wasm -v bin/tibia.js 2>&1 | tail -n 80 || true
+            ls -la build/qtclient-wasm/bin/ 2>/dev/null || true
             exit 1
           fi
-          test -f build/tibia-wasm/bin/tibia.wasm
+          test -f build/qtclient-wasm/bin/tibia.wasm
           ccache -s || true
 
       # The kit's network layer on the web (qtclient/Qt5: fetch QNetworkReply,
@@ -399,7 +399,7 @@ jobs:
       - name: Pack client wasm
         env:
           PACKAGE_OUT: ${{ runner.temp }}/client-wasm
-          WASM_BUILD: ${{ github.workspace }}/build/tibia-wasm
+          WASM_BUILD: ${{ github.workspace }}/build/qtclient-wasm
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: bash scripts/lifecycle/package/wasm.sh

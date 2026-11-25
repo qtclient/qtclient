@@ -435,9 +435,9 @@ def stage_pack_into_tree(tree: Path, pack: Path, tip_os: str) -> None:
     for path in sorted(dest.rglob("*"), reverse=True):
         if path.is_dir() and not any(path.iterdir()):
             path.rmdir()
-    # Drop stock qtc-aac when a product pack supplies urls (merge-pack policy).
-    sibling = mods_root / "qtc-aac"
-    if sibling.is_dir() and pack_id != "qtc-aac":
+    # Drop stock portal when a product pack supplies urls (merge-pack policy).
+    sibling = mods_root / "portal"
+    if sibling.is_dir() and pack_id != "portal":
         shutil.rmtree(sibling)
     # The pack's launcher config (download channels), next to its client/ dir.
     launcher_json = pack.parent / "launcher" / "launcher.json"
@@ -580,11 +580,11 @@ def emit_tip(
             stage_pack_into_tree(staged if tip_os == "macos" else stage, source.pack, tip_os)
         elif tip_os != "macos":
             # Stock login pack when no product pack.
-            qtc = OTC / "client" / "mods" / "qtc-aac"
+            qtc = OTC / "client" / "mods" / "portal"
             if (qtc / "mod.json").is_file():
                 stage_pack_into_tree(stage, qtc, tip_os)
         else:
-            qtc = OTC / "client" / "mods" / "qtc-aac"
+            qtc = OTC / "client" / "mods" / "portal"
             if source.pack is None and (qtc / "mod.json").is_file():
                 stage_pack_into_tree(staged, qtc, tip_os)
 

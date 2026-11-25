@@ -158,7 +158,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
       ;;
   esac
 
-  BUILD_DIR="$QTCLIENT/build/tibia-wasm"
+  BUILD_DIR="$QTCLIENT/build/qtclient-wasm"
   echo "[tibia] wasm qt=$QT_WASM emsdk=$EMSDK_DIR type=$BUILD_TYPE vcpkg=$VCPKG_ROOT"
 
   mkdir -p "$BUILD_DIR"
@@ -205,7 +205,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   )
   FP="$(
     {
-    echo "tibia-wasm-vcpkg-v6-jspi-wasm-eh-installed-packs"
+    echo "qtclient-wasm-vcpkg-v6-jspi-wasm-eh-installed-packs"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "mods-list=${QTCLIENT_MODS:-}"
@@ -296,7 +296,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     fi
   fi
 
-  NOTES="$BUILD_DIR/tibia-wasm-size.txt"
+  NOTES="$BUILD_DIR/qtclient-wasm-size.txt"
   {
     echo "tibia wasm artifact sizes ($(date -u +%Y-%m-%dT%H:%MZ))"
     echo "BUILD_TYPE=$BUILD_TYPE (heap: client/tibia QT_WASM_INITIAL_MEMORY)"
@@ -315,7 +315,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
       echo "tibia.js.gz $(wc -c < "$OUT_DIR/tibia.js.gz" | tr -d ' ')"
     fi
   } | tee "$NOTES"
-  [[ "$OUT_DIR" != "$BUILD_DIR" ]] && cp -f "$NOTES" "$OUT_DIR/tibia-wasm-size.txt"
+  [[ "$OUT_DIR" != "$BUILD_DIR" ]] && cp -f "$NOTES" "$OUT_DIR/qtclient-wasm-size.txt"
 
   echo "[tibia] ok → $BUILD_DIR/tibia.html (from $OUT_HTML)"
   echo "[tibia] serve: python3 $QTCLIENT/tools/emscripten-web-serve.py --root $OUT_DIR --port 8000  (open /tibia.html)"
@@ -380,7 +380,7 @@ if [[ -n "${QTCLIENT_PACKS:-}" ]]; then
 fi
 FP="$(
   {
-    echo "tibia-desktop-vcpkg-v3-installed-packs"
+    echo "qtclient-desktop-vcpkg-v3-installed-packs"
     echo "preset=$PRESET"
     echo "qt=$QT_DESKTOP"
     echo "triplet=$VCPKG_TARGET_TRIPLET"

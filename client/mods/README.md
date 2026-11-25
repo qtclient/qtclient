@@ -8,13 +8,13 @@ through its `overrides/` (the host has none).
 
 | Pack | Role |
 |------|------|
-| `qtc-aac/` | [qtc-aac](https://github.com/qtclient/qtc-aac) login urls (`/clientservices/*.php`); staged by `make demo-pack` |
+| `portal/` | [portal](https://github.com/qtclient/portal) login urls (`/clientservices/*.php`); staged by `make demo-pack` |
 
 Product packs live out-of-tree (`QTCLIENT_PACK` in the umbrella `.env`) and build
 apart from the host, against the pack SDK (`find_package(QtClientSdk)`).
 `make qtclient desktop install` installs the SDK, builds + installs the pack, then
 builds the tip with `-DQTCLIENT_PACKS=<pack install prefix>`, which stages tip
-`mods/<id>` (desktop: incl. `native/mod.*`); product urls replace `qtc-aac`.
+`mods/<id>` (desktop: incl. `native/mod.*`); product urls replace `portal`.
 DEV builds load pack `qml/` + `overrides/` from the pack source tree
 (`QTCLIENT_DEV_PACK_SOURCES`; F5 / file watch) — see [`docs/mods.md`](../../docs/mods.md).
 

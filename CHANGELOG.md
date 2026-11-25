@@ -43,14 +43,14 @@ qtclient v1: a complete port of CipSoft's client and launcher.
   asset enums, and every client-side workaround for server differences
   (CrystalServer now behaves like CipSoft's server instead).
 - The `otclient` example pack and the sample SDK pack `client/mods/_sample`;
-  the default tip pack is `mods/qtc-aac`.
+  the default tip pack is `mods/portal`.
 - Tip export lists / `host_exports.json` and packs importing
   `qtclient_mod_host_api_v1()` (replaced by the `qtclient_mod_register` argument).
 
 ### Changed
 
-- Default tip pack `mods/myaac` → `mods/qtc-aac`: login and account pages point
-  at [qtc-aac](https://github.com/qtclient/qtc-aac)
+- Default tip pack `mods/myaac` → `mods/portal`: login and account pages point
+  at [qtc-aac](https://github.com/qtclient/portal)
   (`http://127.0.0.1:5173/clientservices/*.php`). MyAAC servers can still use
   `package_desktop.py --login-profile myaac`.
 - Stock core is CIP classic lighting only; product raycast / weather live in

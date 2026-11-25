@@ -132,13 +132,13 @@ def desktop() -> int:
 
 
 def _wasm_src_dir() -> Path | None:
-    """Prefer build/tibia-wasm/bin (TOGGLE_BIN_FOLDER) over stale root symlinks.
+    """Prefer build/qtclient-wasm/bin (TOGGLE_BIN_FOLDER) over stale root symlinks.
 
     Older cmake layouts left tibia.wasm at the build root (or a symlink into
     client/tibia/). Linked-tip installs write the live tip under bin/; prefer
     that over a stale root binary.
     """
-    root = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
+    root = Path((os.environ.get("QTCLIENT_WASM_DIR") or os.environ.get("TIBIA_WASM_DIR") or str(OTC / "build" / "qtclient-wasm")))
     candidates = (root / "bin", root)
     best: Path | None = None
     best_mtime = -1.0
@@ -279,8 +279,8 @@ def _wasm_mods_root(src_dir: Path) -> Path | None:
         src_dir,
         src_dir.parent / "bin",
         src_dir.parent,
-        OTC / "build" / "tibia-wasm" / "bin",
-        OTC / "build" / "tibia-wasm",
+        OTC / "build" / "qtclient-wasm" / "bin",
+        OTC / "build" / "qtclient-wasm",
     )
     best: Path | None = None
     for cand in candidates:
@@ -434,7 +434,7 @@ def launcher() -> int:
     """Hot-swap /play's Qt launcher WASM under launcher/launcher-web-current."""
     if not cdn_ready():
         return 0
-    src_dir = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
+    src_dir = Path((os.environ.get("QTCLIENT_WASM_DIR") or os.environ.get("TIBIA_WASM_DIR") or str(OTC / "build" / "qtclient-wasm")))
     # Prefer bin/ (TOGGLE_BIN_FOLDER) over stale root symlinks into launcher/src/.
     candidates = [
         src_dir / "bin",

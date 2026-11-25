@@ -64,7 +64,7 @@ foreach(_file IN LISTS _chrome_files)
 endforeach()
 
 # In-tree default mod: lowest-priority launcher settings (no CipSoft urls by default).
-set(_default_mod_json "${TIBIA_ROOT}/client/mods/qtc-aac/mod.json")
+set(_default_mod_json "${TIBIA_ROOT}/client/mods/portal/mod.json")
 if(EXISTS "${_default_mod_json}")
   set_source_files_properties("${_default_mod_json}" PROPERTIES QT_RESOURCE_ALIAS "mods/default/mod.json")
   list(APPEND _launcher_resources "${_default_mod_json}")

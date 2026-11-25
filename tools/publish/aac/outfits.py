@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render AAC outfit frames from the CIP assets (appearances + sprites).
 
-Output layout (read by qtc-aac `/api/outfits`, published as the CDN
+Output layout (read by portal `/api/outfits`, published as the CDN
 `assets/outfits/` slice by `make -C apps/qtclient publish-assets`):
 
   <dest>/<looktype>/<phase>_<mount>_<addon>_<direction>[_template].png

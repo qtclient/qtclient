@@ -42,17 +42,17 @@ Public repository: **[qtclient/qtclient](https://github.com/qtclient/qtclient)**
 |-------|-------------------|--------------|
 | CipSoft client / launcher | `client/tibia`, `launcher/src` (+ `upstream/` from sync) | — |
 | `upstream/*` / CIP assets | `make sync` + `make extract` from a licensed install | Same |
-| Pack SDK + default pack (`qtc-aac`) | Yes | `mod.json` + native MODULE / FS QML |
+| Pack SDK + default pack (`portal`) | Yes | `mod.json` + native MODULE / FS QML |
 | Product packs | Not required to build stock | Drop in `mods/<id>/` or umbrella `make qtclient desktop install` (`QTCLIENT_PACK`) |
 
 No pack / `--no-mods` → real CipSoft. Login URLs otherwise come from the tip pack.
 
 ## Use a release binary
 
-1. Run [qtc-aac](https://github.com/qtclient/qtc-aac) + your game server (Crystal, etc.).
+1. Run [portal](https://github.com/qtclient/portal) + your game server (Crystal, etc.).
 2. Download the qtclient demo Release for your OS.
 3. Start `./launcher` (sidecar `tibiametadata.json` or set `QTCLIENT_URL`). **Update**
-   pulls CipSoft assets; **Play** uses qtc-aac login.
+   pulls CipSoft assets; **Play** uses portal login.
 
 ```bash
 # optional explicit tip

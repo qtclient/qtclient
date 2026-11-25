@@ -3,7 +3,7 @@
 
 Dev /play and a dev launcher read /cdn/latest/release.json exactly like
 production; the portal serves dist/cdn at /cdn. Slices land in dist/slices/:
-  wasm/     build/tibia-wasm via pack-tibia-wasm.sh
+  wasm/     build/qtclient-wasm via pack-qtclient-wasm.sh
   desktop/  tibia engine-<platform> + content-desktop (make client-build)
   assets/   content-things + store/outfits/items                     (make publish-assets)
 then qtclient/release's scripts/assemble.py builds dist/cdn from them.
@@ -46,15 +46,15 @@ def host_platform() -> str | None:
 
 def wasm_slice() -> bool:
     out = SLICES / "wasm"
-    tibia_dir = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
+    tibia_dir = Path((os.environ.get("QTCLIENT_WASM_DIR") or os.environ.get("TIBIA_WASM_DIR") or str(OTC / "build" / "qtclient-wasm")))
     if not ((tibia_dir / "tibia.html").is_file() and (tibia_dir / "tibia.wasm").is_file()):
-        print("[local-cdn] no tibia-wasm build — skipping wasm (make tibia-wasm)")
+        print("[local-cdn] no qtclient-wasm build — skipping wasm (make qtclient browser build)")
         return False
     shutil.rmtree(out, ignore_errors=True)
     subprocess.run(
         [
             "bash",
-            str(OTC / "scripts" / "lifecycle" / "package" / "pack-tibia-wasm.sh"),
+            str(OTC / "scripts" / "lifecycle" / "package" / "pack-qtclient-wasm.sh"),
             str(tibia_dir),
             str(out),
         ],

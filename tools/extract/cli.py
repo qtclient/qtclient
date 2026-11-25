@@ -21,7 +21,7 @@ staticdata uses official field numbers. Legacy opt-in extras:
 
   --spells        carve spell icon strips + remap spellInfo.generated.json
   --otmm          build tibiamaps minimap.otmm
-  --aac-sprites   render qtc-aac outfit + item sprites into apps/qtclient/data/aac/
+  --aac-sprites   render portal outfit + item sprites into apps/qtclient/data/aac/
 
 Usage:
   make extract TIBIA=/path/to/Tibia.app
@@ -508,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--aac-sprites",
         action="store_true",
-        help="render qtc-aac outfit + item sprites (qtclient asset slices; not CipSoft)",
+        help="render portal outfit + item sprites (qtclient asset slices; not CipSoft)",
     )
     # Compat aliases (default CipSoft path already skips these).
     parser.add_argument("--skip-spells", action="store_true", help=argparse.SUPPRESS)
@@ -568,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             log(f"WARN: AAC outfits/items skipped — no assets at {assets_dir}")
     else:
-        log("AAC outfits/items skipped (pass --aac-sprites for qtc-aac CDN sprites)")
+        log("AAC outfits/items skipped (pass --aac-sprites for portal CDN sprites)")
 
     log("done.")
     log("next: make generate  # reads apps/qtclient/data/assets/ + Crystal")

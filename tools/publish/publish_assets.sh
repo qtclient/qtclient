@@ -10,7 +10,7 @@
 #                                    $QTCAAC_STORE_IMAGES (not shipped here)
 #   images/payment/                — webshop product art (optional placeholders)
 #   assets/store/                  — legacy alias (copied from images/store for old tips)
-#   assets/{outfits,items}/manifest.json — {"revision", "path": "<rev>/"} (qtc-aac)
+#   assets/{outfits,items}/manifest.json — {"revision", "path": "<rev>/"} (portal)
 #   assets/outfits/<rev>/<looktype>/     — outfit frames (tools/publish/aac/outfits.py)
 #   assets/items/<rev>/<client id>.png   — item sprites + names.json (tools/publish/aac/items.py)
 #   .qtclient/assets.json            — pointer read by the bundle build

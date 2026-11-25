@@ -59,7 +59,7 @@ jobs:
             echo "::error::include/qtclient/ holds abi/ only (non-abi façades were removed)" >&2
             exit 1
           fi
-          test -f client/mods/qtc-aac/mod.json
+          test -f client/mods/portal/mod.json
           bash -n scripts/lifecycle/lib/merge-launcher-brand.sh
           bash -n scripts/lifecycle/build/sdk.sh
           # MAIN_MODULE only via TibiaMods, for Qt-free wasm SIDE_MODULE packs (no export list).

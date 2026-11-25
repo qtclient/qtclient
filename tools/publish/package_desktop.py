@@ -139,7 +139,7 @@ def release_env_entry(
 ) -> tuple[Path, str]:
     """Write release_env.lua (revision + optional origin/asset).
 
-    Login paths live in pack mod.json `urls` (demo qtc-aac / product CIP).
+    Login paths live in pack mod.json `urls` (demo portal / product CIP).
     login_profile legacy values myaac|cip still bake paths as a fallback when
     the tip has no mod; prefer `mod` (default) — origin only for domain remap.
     """

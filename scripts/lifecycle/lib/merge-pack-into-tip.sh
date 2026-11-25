@@ -4,7 +4,7 @@
 #
 # --tip is the applicationDirPath (desktop) or the directory that contains
 # tibia.wasm (wasm). Destination: <tip>/mods/<pack-id>
-# Drops qtc-aac (the pack's urls replace it) and any other sibling pack.
+# Drops portal (the pack's urls replace it) and any other sibling pack.
 #
 # Usage:
 #   merge-pack-into-tip.sh --pack <mods/<id> tree> --tip <applicationDirPath>
@@ -40,7 +40,7 @@ pack_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("
 [[ -n "$pack_id" ]] || pack_id="$(basename "$PACK")"
 
 mods_root="$TIP/mods"
-# Keep only this pack; drop qtc-aac (the pack's urls) and unknowns.
+# Keep only this pack; drop portal (the pack's urls) and unknowns.
 if [[ -d "$mods_root" ]]; then
   for sibling in "$mods_root"/*; do
     [[ -e "$sibling" ]] || continue

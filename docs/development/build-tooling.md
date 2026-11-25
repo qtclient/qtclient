@@ -34,10 +34,10 @@ make qt WASM=1   # + wasm_multithread + emsdk
 ```bash
 make client-build          # umbrella: disk QML / hot reload
 make -C apps/qtclient client-build   # production embedded QML
-make tibia-wasm            # browser (needs make qt WASM=1)
+make qtclient browser build / stock browser build            # browser (needs make qt WASM=1)
 ```
 
-Presets (`macos-dev`, `linux-release`, `windows-release`, `wasm-tibia`, …) all use the vcpkg toolchain. Wasm chainloads Qt’s `qt.toolchain.cmake` and the `wasm32-emscripten` triplet (SJLJ / pthread ABI aligned with Qt wasm).
+Presets (`macos-dev`, `linux-release`, `windows-release`, `wasm-qtclient`, …) all use the vcpkg toolchain. Wasm chainloads Qt’s `qt.toolchain.cmake` and the `wasm32-emscripten` triplet (SJLJ / pthread ABI aligned with Qt wasm).
 
 ## Dependencies
 

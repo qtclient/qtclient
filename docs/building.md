@@ -36,7 +36,7 @@ submodule on branch `main` (not hash-pinned). Details:
 [`docs/development/build-tooling.md`](development/build-tooling.md).
 
 Presets live in `CMakePresets.json` (`macos-dev`, `linux-release`,
-`windows-release`, `wasm-tibia`, …). All of them use the vcpkg toolchain;
+`windows-release`, `wasm-qtclient`, …). All of them use the vcpkg toolchain;
 wasm chainloads Qt’s `qt.toolchain.cmake` with the `wasm32-emscripten` triplet.
 
 Umbrella repo: same targets via top-level `make extract` / `make sync`

@@ -3,7 +3,7 @@
 # so crash reports sent to the local portal symbolicate. Every install replaces
 # the binary, so its symbols must be kept now or that build's reports stay raw.
 #   dump-symbols.sh <client binary> [<qt prefix>]
-# Store: $QTCAAC_SYMBOLS_DIR, else <monorepo>/apps/qtc-aac/apps/web/data/telemetry/symbols
+# Store: $QTCAAC_SYMBOLS_DIR, else <monorepo>/apps/portal/apps/web/data/telemetry/symbols
 # (the portal's default QTCAAC_TELEMETRY_DIR/symbols), in the
 # <module>/<debug_id>/<module>.sym layout `minidump-stackwalk --symbols-path` reads.
 # Qt frameworks are dumped once per kit. Missing dump_syms only warns.
@@ -12,8 +12,8 @@ BIN="${1:?usage: dump-symbols.sh <client binary> [<qt prefix>]}"
 QT_PREFIX_DIR="${2:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MONOREPO="$(cd "$HERE/../../../../.." && pwd)"
-STORE="${QTCAAC_SYMBOLS_DIR:-$MONOREPO/apps/qtc-aac/apps/web/data/telemetry/symbols}"
-if [[ -z "${QTCAAC_SYMBOLS_DIR:-}" && ! -d "$MONOREPO/apps/qtc-aac/apps/web" ]]; then
+STORE="${QTCAAC_SYMBOLS_DIR:-$MONOREPO/apps/portal/apps/web/data/telemetry/symbols}"
+if [[ -z "${QTCAAC_SYMBOLS_DIR:-}" && ! -d "$MONOREPO/apps/portal/apps/web" ]]; then
   exit 0 # no local portal next to this checkout
 fi
 

@@ -153,7 +153,7 @@ relinks when pack C++ changes (rebuild the pack, re-stage `mods/<id>`).
 | qtclient build | Result |
 |------------|--------|
 | Stock (`--no-mods`) | CIP tip; no packs |
-| Default tip mods | `qtc-aac` FS urls |
+| Default tip mods | `portal` FS urls |
 | Product (`-DQTCLIENT_PACKS=<prefix>`) | stages the installed pack (desktop MODULE / wasm static-ABI) |
 
 Local product path: `make qtclient desktop|browser install`.
@@ -302,7 +302,7 @@ The launcher is CipSoft's; a pack configures it from its tip `mods/<id>/`
 
 Host `[URLS]` keys beside CipSoft's: `clientRevision` (a JSON document whose
 `revision` is handed to the client as `QTCLIENT_CLIENT_REVISION`; the default
-`qtc-aac` pack sets `{cdn}/latest/release.json`), `contentStore`
+`portal` pack sets `{cdn}/latest/release.json`), `contentStore`
 (content-addressed file downloads, `<store>/<aa>/<packedhash>`; unset = CipSoft's
 file urls), `systemSurvey`. `{cdn}` in a url is the tip CDN (`QTCLIENT_CDN_URL`,
 else `QTCLIENT_ASSET_BASE`, else the brand's `defaultCdn`); without one the url
@@ -310,7 +310,7 @@ is unset.
 
 | Pack | Role |
 |------|------|
-| [`mods/qtc-aac`](../client/mods/qtc-aac/mod.json) | Default tip [qtc-aac](https://github.com/qtclient/qtc-aac) |
+| [`mods/portal`](../client/mods/portal/mod.json) | Default tip [portal](https://github.com/qtclient/portal) |
 | Product `mods/<id>/` | Author pack |
 
 ### WASM

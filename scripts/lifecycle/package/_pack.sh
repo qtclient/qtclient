@@ -64,7 +64,7 @@ pack_wasm() {
   export TIBIA_ENGINE_SHA="$HOST_ID"
   rm -rf "$DEST"
   mkdir -p "$DEST"
-  bash "$QTCLIENT/scripts/lifecycle/package/pack-tibia-wasm.sh" "$SRC" "$DEST"
+  bash "$QTCLIENT/scripts/lifecycle/package/pack-qtclient-wasm.sh" "$SRC" "$DEST"
   cat >"$DEST/host.json" <<EOF
 {
   "hostBuildId": "${HOST_ID}",

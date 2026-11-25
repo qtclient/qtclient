@@ -1,7 +1,7 @@
 """CIP things-pack readers shared by the AAC sprite renderers (outfits, items).
 
-The renders are the qtclient asset contract consumed by qtc-aac
-(`assets/{items,outfits}/` CDN slices; see qtc-aac docs/assets.md).
+The renders are the qtclient asset contract consumed by portal
+(`assets/{items,outfits}/` CDN slices; see portal docs/assets.md).
 
 Stdlib only: minimal protobuf wire decoding of appearances.dat, LZMA1 sprite
 sheets (same decode as otclient spriteappearances.cpp) and PNG/APNG writers.

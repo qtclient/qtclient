@@ -6,7 +6,7 @@ first pattern (count 1 / default fluid), all animation phases. Animated items
 are looping APNGs using the client's phase durations.
 
 Output (published as the CDN `assets/items/` slice by `make publish-assets`;
-read by qtc-aac `/api/items`):
+read by portal `/api/items`):
 
   <dest>/<client id>.png
   <dest>/names.json       {"<client id>": "item name"}

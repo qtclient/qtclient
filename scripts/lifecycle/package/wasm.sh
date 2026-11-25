@@ -10,7 +10,7 @@ export QTCLIENT_HOST_BUILD_ID="$HOST_ID" SOURCE_COMMIT="$HOST_ID"
 
 # shellcheck source=_pack.sh
 source "$HERE/_pack.sh"
-WASM_SRC="${WASM_BUILD:-$QTCLIENT/build/tibia-wasm}"
+WASM_SRC="${WASM_BUILD:-$QTCLIENT/build/qtclient-wasm}"
 OUT="${PACKAGE_OUT:-${RUNNER_TEMP:-$QTCLIENT/build/package}/client-wasm}"
 pack_wasm "$WASM_SRC" "$OUT"
 echo "PACKAGE_OUT=$OUT"
