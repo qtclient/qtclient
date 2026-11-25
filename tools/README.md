@@ -11,5 +11,6 @@ This tree keeps:
 - **Rust Qt spikes** ([`rust-qt-spikes/`](rust-qt-spikes/)) — Bridge / CXX-Qt
   probes on CIP Qt (not product packs; see that README + `RESULTS.md`)
 - **Stand-alone fallbacks** of extract / tibia-sync / re when this repo is
-  checked out without the umbrella `tools/` tree — keep them in sync with
-  umbrella when you change ingest behavior.
+  checked out without the umbrella `tools/` tree. Shared files are gated by
+  umbrella `scripts/ci/check-qtclient-tools-sync.sh` — edit umbrella first,
+  then copy into this tree.
