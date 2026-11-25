@@ -488,6 +488,8 @@ QObject* TAbstractItemModelHelper::createSortProxyModel(QAbstractItemModel* pAbs
 
 QString TAbstractItemModelHelper::loadStringFromResource(const QString& ResourcePath)
 {
+    if (ResourcePath.isEmpty())
+        return {};
     QFile file(ResourcePath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open" << ResourcePath;
@@ -498,6 +500,8 @@ QString TAbstractItemModelHelper::loadStringFromResource(const QString& Resource
 
 QJSValue TAbstractItemModelHelper::loadJsonFromResource(const QString& ResourcePath)
 {
+    if (ResourcePath.isEmpty())
+        return QJSValue(QJSValue::UndefinedValue);
     QFile file(ResourcePath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open" << ResourcePath;

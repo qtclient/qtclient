@@ -101,14 +101,20 @@ publish_things() {
     --include "$appearances" --exclude 'appearances-*' "$src/" "$assets_dir/"
 
   # Every catalog file must be in the package (CipSoft's asset manager fails the
-  # install otherwise).
+  # install otherwise — browser shows "Update failed. Please reinstall"). The
+  # fullmap backdrop is the one that most often drifts after a CipSoft extract.
   python3 - "$src/catalog-content.json" "$assets_dir" <<'PY'
 import json, sys
 from pathlib import Path
 catalog, root = sys.argv[1], Path(sys.argv[2])
-missing = [e["file"] for e in json.load(open(catalog)) if not (root / e["file"]).is_file()]
+entries = json.load(open(catalog))
+missing = [e["file"] for e in entries if not (root / e["file"]).is_file()]
 if missing:
     sys.exit(f"[assets] catalog files missing from the package: {missing[:5]} (+{max(0, len(missing) - 5)})")
+fullmap = [e["file"] for e in entries if e.get("type") == "fullmap"]
+if not fullmap:
+    sys.exit("[assets] catalog-content.json has no type=fullmap backdrop")
+print(f"[assets] fullmap backdrop ok: {fullmap[0]}")
 PY
 
   # Engine UI art — CIP ships this in the client package; keep it on the assets

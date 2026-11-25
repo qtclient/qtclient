@@ -389,8 +389,10 @@ void TCharacterSelectionController::onCharacterSelectionConfirmed(const QList<in
         data.characterName = character.name;
         data.worldAddressProtected = world.externalAddressProtected;
         data.worldAddressUnprotected = world.externalAddressUnprotected;
-        data.worldPortUnprotected = world.externalPortUnprotected;
-        data.worldPortProtected = world.externalPortProtected;
+        // Browser: port()/portUnprotected() prefer websocketport* over TCP
+        // externalport* (wss://…:443 via Traefik, not raw :7171).
+        data.worldPortUnprotected = world.portUnprotected();
+        data.worldPortProtected = world.port();
         data.worldName = world.name;
         data.antiCheatProtection = world.antiCheatProtection;
         data.tutorial = character.tutorial;
