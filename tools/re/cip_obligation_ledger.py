@@ -56,7 +56,7 @@ NAME_LINE = re.compile(
     r"^0x[0-9a-fA-F]+\s+((?:[A-Za-z_][A-Za-z0-9_]*::)+)(T[A-Za-z0-9_]+)::"
 )
 OUT_OF_SCOPE = re.compile(
-    r"^(tibia::)?(battleye|emac|anticheat|protobuf::|reporting::TBattl)",
+    r"^(tibia::)?(battleye|anticheat|protobuf::|reporting::TBattl)",
     re.I,
 )
 TIBIA_NS = re.compile(r"qtclient", re.I)

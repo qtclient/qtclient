@@ -92,7 +92,7 @@ QString specialMagicLevelInformation(const SkillType type)
     return text;
 }
 
-std::optional<tibia::client::Skill> otcSkill(const SkillType type)
+std::optional<tibia::client::Skill> cipSkill(const SkillType type)
 {
     switch (type) {
         case SkillType::Fist: return tibia::client::Fist;
@@ -347,7 +347,7 @@ SkillsWidgetEntry buildSkillEntry(const SkillType type, const bool precisePercen
         base = player().baseMagicLevel();
         loyaltyBase = player().magicLevelLoyalty();
         percent = player().magicLevelPercentHundredths() / 100.0;
-    } else if (const auto skill = otcSkill(type)) {
+    } else if (const auto skill = cipSkill(type)) {
         value = player().skillLevel(*skill);
         base = player().skillBaseLevel(*skill);
         loyaltyBase = player().skillLoyaltyLevel(*skill);
