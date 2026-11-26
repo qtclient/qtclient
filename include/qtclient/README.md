@@ -45,8 +45,8 @@ library linked into `tibia.wasm` (the Qt WASM kit is static, so a Qt pack cannot
 `lib/cmake/QtClientSdk/` (`QtClientMod.cmake`; the config records the ABI version,
 `hostBuildId` and the host's Qt kit) and `share/qtclient-sdk/sdk.json`. A pack builds with
 `find_package(QtClientSdk)` + Qt only — no host build, host sources or tip targets — and the
-host takes the installed pack (`-DQTCLIENT_PACKS`). See
-[`docs/mods.md` → Build](../../docs/mods.md#build-sdk--pack--host).
+host takes the installed pack (`-DQTCLIENT_PACKS`). See this README and
+[`AGENTS.md`](../../AGENTS.md).
 
 **Non-abi façades removed (v9).** The transitional C++ façades that used to sit beside `abi/`
 (`worldview.h`, `pack_host.h`, `dialog.h`, `gameactions.h`, `session.h`, `cooldown.h`,
@@ -68,7 +68,7 @@ per-session class's `T::instance()`:
   while it is still current. Cooldown, container and store-image subscriptions follow the
   session by themselves.
 
-Rust: see [`docs/mods.md` → Rust packs](../../docs/mods.md#rust-packs).
+Rust: see Client Mod trees under `apps/idleot-client/` (and `rust-smoke/`).
 
 ## Logging
 

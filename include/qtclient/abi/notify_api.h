@@ -79,7 +79,7 @@ typedef struct QtClientNotifyApiV1 {
      *  an object keyed by its C++ member names as the host declares them (camelCase, e.g.
      *  {"bossRaceId": 1, "cooldownTime": 0}), a vector an array, a tuple an array of its
      *  elements, a string type a string, 64-bit integers numbers (exact up to 2^53).
-     *  The host documents the payload of each structured field in docs/mods.md (e.g.
+     *  The host documents the payload of each structured field in include/qtclient/README.md (e.g.
      *  onBossCooldown, onUpdateBestiaryMonsterData, onUpdateBestiaryCharmsData,
      *  onParseCyclopediaTracker, onCyclopediaMapDiscoveryArea, onTeamFinderList,
      *  onTeamFinderLeader). */

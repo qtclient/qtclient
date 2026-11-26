@@ -1,7 +1,7 @@
 // Host API v9: the notify table (abi/notify_api.h): CipSoft's field bus
 // (game/tgamenotify.h), session / world time / Team Finder / container changes, and the
 // arguments of a field call (arg_*; structured payloads as JSON, documented in
-// docs/mods.md). Split out of host_api_v1.cpp.
+// include/qtclient/README.md). Split out of host_api_v1.cpp.
 #include "mods/abi_internal.h"
 
 #include "container/containerciptypes.h"

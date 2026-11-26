@@ -164,7 +164,7 @@ std::unique_ptr<AbiLightingDriver> g_abiLighting;
 
 void setWorldLightingDriver(WorldLightingDriver* driver)
 {
-    // Exclusive hook: first non-null wins; log conflicts (docs/mods.md).
+    // Exclusive hook: first non-null wins; log conflicts (include/qtclient/README.md).
     if (driver && g_lighting && g_lighting != driver) {
         return;
     }

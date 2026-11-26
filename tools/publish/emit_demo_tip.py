@@ -195,7 +195,7 @@ def emit_package(
     stage_default_mods(tree, platform)
     write_revision_release_env(tree, revision)
 
-    # CipSoft layout (docs/reverse-engineering/cip-package-layout.md in the
+    # CipSoft layout (CIP package layout (packages/<name>/) in the
     # monorepo): the macOS package is the bundle, Linux/Windows keep the engine
     # under bin/ with assets/ and sounds/ (CipSoft's assets.json) beside it.
     files = pack_tree(package_dir, tree, "" if platform == "macos-arm64" else "bin/")

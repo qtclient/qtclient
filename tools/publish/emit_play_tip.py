@@ -3,7 +3,7 @@
 
 Mirrors CipSoft's tibiametadata.json contract (live tip: Tibia + Tibia External
 Test): tip-driven `packages[]`, no client-count cap, separate package vs assets
-version URLs, bare `directoryname`. See docs/reverse-engineering/cip-package-layout.md
+version URLs, bare `directoryname`. See CIP package layout (packages/<name>/)
 and the launcher::TPackage unit (variant / directoryname / installautomatically /
 builds).
 

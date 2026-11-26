@@ -29,7 +29,7 @@ foreach(_gone QTCLIENT_LINKED_PACK QTCLIENT_LINKED_PACKS QTCLIENT_LINKED_PACK_LI
   if(${_gone})
     message(FATAL_ERROR "${_gone} was removed: the host no longer builds packs. Build the pack against "
       "the SDK (find_package(QtClientSdk)), install it, and pass -DQTCLIENT_PACKS=<install prefix> "
-      "(apps/qtclient/docs/mods.md, Build).")
+      "(apps/qtclient/include/qtclient/README.md).")
   endif()
 endforeach()
 

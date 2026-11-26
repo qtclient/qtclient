@@ -16,13 +16,13 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
 
 - `client/tibia/` — C++/QML rewrite of the official client (desktop + WASM).
 - **`client/upstream/` is vendored, never hand-edited.** From `make tibia-sync` / `make sync`.
-- Product UI belongs in **runtime packs** (`client/mods/<id>/`), not stock `client/tibia/`.
-- Packs build apart from the host against the pack SDK (`sdk/`, `find_package(QtClientSdk)`,
+- Product UI belongs in **Client Mods** (`client/mods/<id>/`), not Bare Dist `client/tibia/`.
+- Mods build apart from the Host against the Mod SDK (`sdk/`, `find_package(QtClientSdk)`,
   `include/qtclient/abi/` only) and define one entry with `QTCLIENT_MOD_DEFINE_REGISTER`:
   desktop runtime MODULE `native/mod.*` (`qtclient_mod_register`), WASM static-ABI archive
-  the host links (`qtclient_mod_<c_id>_register_abi`). The host takes installed packs via
-  `-DQTCLIENT_PACKS`; it never builds or absorbs pack C++.
-  See [`docs/mods.md`](docs/mods.md) and [`docs/pack-extension-contract.md`](docs/pack-extension-contract.md).
+  the host links (`qtclient_mod_<c_id>_register_abi`). The host takes installed Mods via
+  `-DQTCLIENT_PACKS`; it never builds or absorbs Mod C++.
+  See [`include/qtclient/README.md`](include/qtclient/README.md).
 - **No Lua gameplay host** — QML + C++ only.
 
 ## Porting CipSoft code (mandatory)

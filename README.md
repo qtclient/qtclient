@@ -25,8 +25,8 @@ Public repository: **[qtclient/qtclient](https://github.com/qtclient/qtclient)**
 - **CIP QML host** — `client/upstream/` from sync; controllers under `client/tibia/`
 - **CIP launcher** — tip metadata Update / Play
 - **Desktop + WASM** (Android/iOS scaffolds are experimental, not shipping)
-- **Stock vs packs** — optional `mods/<id>/` at runtime ([docs/mods.md](docs/mods.md))
-- **Pack SDK** — host-pushed C ABI ([`include/qtclient/abi/`](include/qtclient/README.md)), filesystem QML, F5 hot reload in dev
+- **Bare Dist vs Mods** — optional `mods/<id>/` at runtime ([`client/mods/README.md`](client/mods/README.md))
+- **Mod SDK** — Host-pushed C ABI ([`include/qtclient/abi/`](include/qtclient/README.md)), filesystem QML, F5 hot reload in dev
 - **Session tools** — `--record` / `--replay`
 - **Toolchain** — CMake + Ninja + vcpkg; CipSoft-patched Qt via `make qt`
 
@@ -68,8 +68,8 @@ export QTCLIENT_URL="https://github.com/qtclient/qtclient/releases/latest/downlo
 ./client
 ```
 
-See [docs/public/demo-tip.md](docs/public/demo-tip.md). Local monorepo play is
-launcher-first: [docs/public/play-tip.md](docs/public/play-tip.md).
+Local monorepo play is launcher-first (`make qtclient desktop run` from the
+umbrella). Direct Dist binary is the debug hatch (`DIRECT=1`).
 
 ## Build from source
 
@@ -84,8 +84,7 @@ make desktop build && make launcher build && make desktop run
 
 `make setup` runs `make qt`, then `make sync` and `make extract` against the
 default CipSoft package path (override with `TIBIA=` / `MSGMAP=`). BYO licensed
-Tibia install — CipSoft blobs are never redistributed. More:
-[docs/building.md](docs/building.md).
+Tibia install — CipSoft blobs are never redistributed.
 
 | Build | CMake |
 |-------|--------|
@@ -117,11 +116,6 @@ install plugin; C++: [Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5Leg
 
 ## Docs
 
-| Doc | Topic |
-|-----|--------|
-| [docs/building.md](docs/building.md) | Building (desktop, WASM) |
-| [docs/mods.md](docs/mods.md) | Packs |
-| [docs/pack-extension-contract.md](docs/pack-extension-contract.md) | Frozen tip hooks for packs |
-| [docs/public/CONTRIBUTING.md](docs/public/CONTRIBUTING.md) | Contributing |
-| [SECURITY.md](SECURITY.md) | Security |
-| [AGENTS.md](AGENTS.md) | CIP-as-upstream rules |
+Product vocabulary lives in the umbrella [`GLOSSARY.md`](../../GLOSSARY.md).
+Here: [AGENTS.md](AGENTS.md) (CIP-as-upstream), [SECURITY.md](SECURITY.md),
+[include/qtclient/README.md](include/qtclient/README.md) (Mod SDK).
